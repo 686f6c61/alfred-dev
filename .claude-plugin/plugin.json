@@ -8,5 +8,17 @@
   "homepage": "https://686f6c61.github.io/Claude-JARVIS-dev/",
   "repository": "https://github.com/686f6c61/Claude-JARVIS-dev",
   "license": "MIT",
-  "keywords": ["sdlc", "agents", "security", "tdd", "devops", "qa", "product", "spanish", "rgpd", "nis2"]
+  "keywords": ["sdlc", "agents", "security", "tdd", "devops", "qa", "product", "spanish", "rgpd", "nis2"],
+  "commands": [
+    "./commands/alfred.md",
+    "./commands/audit.md",
+    "./commands/config.md",
+    "./commands/feature.md",
+    "./commands/fix.md",
+    "./commands/help.md",
+    "./commands/ship.md",
+    "./commands/spike.md",
+    "./commands/status.md",
+    "./commands/update.md"
+  ]
 }
