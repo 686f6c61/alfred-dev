@@ -1,0 +1,7 @@
+node_modules/
+.claude/alfred-dev-state.json
+.claude/alfred-dev.local.md
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/

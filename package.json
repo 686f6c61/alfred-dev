@@ -1,0 +1,29 @@
+{
+  "name": "alfred-dev",
+  "version": "0.1.0",
+  "description": "Plugin de Claude Code: tu empresa de ingenieria de software en un plugin",
+  "author": "00b",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/686f6c61/Claude-JARVIS-dev"
+  },
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "sdlc",
+    "security",
+    "rgpd",
+    "nis2",
+    "agents"
+  ],
+  "files": [
+    ".claude-plugin/",
+    "agents/",
+    "skills/",
+    "commands/",
+    "hooks/",
+    "core/",
+    "templates/"
+  ]
+}

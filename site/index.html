@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alfred Dev - Tus compañeros de desarrollo en un plugin</title>
+<meta name="description" content="Plugin de Claude Code que simula un equipo completo de ingeniería de software. 8 agentes especializados, quality gates infranqueables, compliance RGPD/NIS2/CRA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;1,400&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset y variables ────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #07080c;
+  --bg-surface: #0e1017;
+  --bg-card: #14161e;
+  --bg-card-hover: #1a1d28;
+  --border: #1e2130;
+  --border-light: #2a2d3e;
+  --blue: #5b9cf5;
+  --blue-dim: #3d6fbd;
+  --blue-glow: rgba(91, 156, 245, 0.08);
+  --gold: #c9a96e;
+  --gold-dim: #8a7348;
+  --text: #d8dae3;
+  --text-bright: #eef0f7;
+  --text-muted: #6e738a;
+  --text-dim: #4a4e63;
+  --red: #e5564f;
+  --green: #4ec990;
+  --orange: #e8a44a;
+  --purple: #a07ee8;
+  --cyan: #4ec9c9;
+  --white: #c8c8d0;
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Utilidades ───────────────────────────────────── */
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+a { color: var(--blue); text-decoration: none; transition: color 0.2s; }
+a:hover { color: var(--text-bright); }
+
+/* ── Navegacion ───────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(7, 8, 12, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+
+.nav-brand {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.02em;
+}
+
+.nav-brand span { color: var(--blue); }
+
+.nav-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--text-bright); }
+
+.nav-version {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+/* ── Hero ─────────────────────────────────────────── */
+.hero {
+  padding: 160px 0 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(91,156,245,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--blue);
+  background: var(--blue-glow);
+  border: 1px solid rgba(91,156,245,0.15);
+  padding: 6px 16px;
+  border-radius: 20px;
+  margin-bottom: 32px;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--blue);
+  border-radius: 50%;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(44px, 6.5vw, 72px);
+  font-weight: 800;
+  color: var(--text-bright);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
+}
+
+.hero h1 em {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-style: italic;
+  color: var(--blue);
+  letter-spacing: -0.01em;
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 560px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: all;
+}
+
+.hero-cta:hover {
+  border-color: var(--blue-dim);
+  background: var(--bg-card-hover);
+}
+
+.hero-cta .copy-hint {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+/* ── Stats ────────────────────────────────────────── */
+.stats {
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 24px;
+  text-align: center;
+}
+
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+/* ── Secciones ────────────────────────────────────── */
+section {
+  padding: 80px 0;
+}
+
+.section-header {
+  margin-bottom: 48px;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  color: var(--text-bright);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.section-desc {
+  font-size: 15px;
+  color: var(--text-muted);
+  max-width: 600px;
+  line-height: 1.7;
+}
+
+/* ── Agentes ──────────────────────────────────────── */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.agent-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--agent-color, var(--blue));
+  opacity: 0.6;
+  transition: opacity 0.25s;
+}
+
+.agent-card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.agent-card:hover::before { opacity: 1; }
+
+.agent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.agent-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.agent-model {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--bg-deep);
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+}
+
+.agent-alias {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--agent-color, var(--blue));
+  margin-bottom: 8px;
+}
+
+.agent-role {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.agent-phrase {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+  border-left: 2px solid var(--agent-color, var(--border));
+  padding-left: 12px;
+  line-height: 1.5;
+}
+
+/* ── Flujos ───────────────────────────────────────── */
+.flows-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.flow-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  align-items: center;
+  gap: 32px;
+  transition: all 0.25s;
+}
+
+.flow-card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+
+.flow-cmd {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--blue);
+}
+
+.flow-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.flow-phases {
+  display: flex;
+  gap: 4px;
+}
+
+.flow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-light);
+}
+
+.flow-dot.active { background: var(--blue); }
+
+/* ── Skills ───────────────────────────────────────── */
+.skills-domains {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.domain-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.domain-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.domain-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.domain-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-deep);
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.domain-skills {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.domain-skills li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.domain-skills li::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--border-light);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.skill-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--blue);
+}
+
+/* ── Infraestructura (hooks, templates, core) ───── */
+.infra-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.infra-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.infra-card h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.infra-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.infra-item + .infra-item {
+  border-top: 1px solid rgba(30, 33, 48, 0.5);
+}
+
+.infra-item-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.infra-item-desc {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: right;
+  max-width: 200px;
+}
+
+.infra-item-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: var(--bg-deep);
+}
+
+/* ── Gates ────────────────────────────────────────── */
+.gates-section {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.gates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.gate-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.gate-icon {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--red);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gate-icon::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+}
+
+.gate-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ── Compliance ──────────────────────────────────── */
+.compliance-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.compliance-badge {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 24px;
+  text-align: center;
+}
+
+.compliance-badge-name {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+}
+
+.compliance-badge-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ── Footer ──────────────────────────────────────── */
+footer {
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+footer p {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.8;
+}
+
+footer a {
+  color: var(--text-muted);
+}
+
+/* ── Animaciones ─────────────────────────────────── */
+.fade-in {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .flow-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .flow-phases { display: none; }
+  .agents-grid { grid-template-columns: 1fr; }
+  .skills-domains { grid-template-columns: 1fr; }
+  .infra-grid { grid-template-columns: 1fr; }
+  .gates-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .hero h1 { font-size: 36px; }
+  .stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── Navegacion ─────────────────────────────── -->
+<nav>
+  <div class="container">
+    <div class="nav-brand">Alfred <span>Dev</span></div>
+    <ul class="nav-links">
+      <li><a href="#agentes">Agentes</a></li>
+      <li><a href="#flujos">Flujos</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#gates">Gates</a></li>
+      <li><a href="#infra">Infra</a></li>
+    </ul>
+    <span class="nav-version">v0.1.0</span>
+  </div>
+</nav>
+
+<!-- ─── Hero ───────────────────────────────────── -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-badge">Plugin de Claude Code</div>
+    <h1>Tus compañeros de<br>desarrollo en un <em>plugin</em></h1>
+    <p class="hero-subtitle">
+      8 agentes especializados con personalidad propia. Quality gates infranqueables.
+      Compliance RGPD, NIS2 y CRA integrado. Todo el ciclo de desarrollo de software,
+      de la idea a producción.
+    </p>
+    <div class="hero-cta">
+      <span>curl -fsSL https://raw.githubusercontent.com/686f6c61/Claude-JARVIS-dev/main/install.sh | bash</span>
+    </div>
+  </div>
+</header>
+
+<!-- ─── Stats ──────────────────────────────────── -->
+<div class="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="fade-in">
+        <div class="stat-number">8</div>
+        <div class="stat-label">Agentes</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-number">29</div>
+        <div class="stat-label">Skills</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-number">5</div>
+        <div class="stat-label">Flujos</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-number">8</div>
+        <div class="stat-label">Comandos</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-number">7</div>
+        <div class="stat-label">Templates</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-number">5</div>
+        <div class="stat-label">Hooks</div>
+      </div>
+      <div class="fade-in">
+        <div class="stat-number">3</div>
+        <div class="stat-label">Compliance</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Agentes ────────────────────────────────── -->
+<section id="agentes">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">El equipo</div>
+      <h2 class="section-title">8 agentes especializados</h2>
+      <p class="section-desc">
+        Cada agente tiene un rol definido, una personalidad propia y frases
+        características. Trabajan coordinados por Alfred, el mayordomo jefe.
+      </p>
+    </div>
+    <div class="agents-grid">
+
+      <div class="agent-card fade-in" style="--agent-color: var(--blue)">
+        <div class="agent-header">
+          <span class="agent-name">Alfred</span>
+          <span class="agent-model">opus</span>
+        </div>
+        <div class="agent-alias">Mayordomo jefe</div>
+        <div class="agent-role">Orquestador del equipo. Decide qué agentes activar, en qué orden, y evalúa las quality gates entre fases.</div>
+        <div class="agent-phrase">"Muy bien, señor. Permítame organizar eso."</div>
+      </div>
+
+      <div class="agent-card fade-in" style="--agent-color: var(--purple)">
+        <div class="agent-header">
+          <span class="agent-name">El buscador de problemas</span>
+          <span class="agent-model">opus</span>
+        </div>
+        <div class="agent-alias">Product Owner</div>
+        <div class="agent-role">Obsesionado con el problema del usuario. PRDs, historias de usuario, criterios de aceptación, análisis competitivo.</div>
+        <div class="agent-phrase">"Muy bonito, pero qué problema resuelve esto?"</div>
+      </div>
+
+      <div class="agent-card fade-in" style="--agent-color: var(--green)">
+        <div class="agent-header">
+          <span class="agent-name">El dibujante de cajas</span>
+          <span class="agent-model">opus</span>
+        </div>
+        <div class="agent-alias">Arquitecto</div>
+        <div class="agent-role">Piensa en sistemas, no en líneas de código. Diagramas Mermaid, ADRs, matrices de decisión, evaluación de dependencias.</div>
+        <div class="agent-phrase">"Si no cabe en un diagrama, es demasiado complejo."</div>
+      </div>
+
+      <div class="agent-card fade-in" style="--agent-color: var(--orange)">
+        <div class="agent-header">
+          <span class="agent-name">El artesano</span>
+          <span class="agent-model">opus</span>
+        </div>
+        <div class="agent-alias">Senior Dev</div>
+        <div class="agent-role">Pragmático, test-first. TDD estricto, refactoring, commits atómicos. Alergia crónica al código clever.</div>
+        <div class="agent-phrase">"Primero el test. Siempre primero el test."</div>
+      </div>
+
+      <div class="agent-card fade-in" style="--agent-color: var(--red)">
+        <div class="agent-header">
+          <span class="agent-name">El paranoico</span>
+          <span class="agent-model">opus</span>
+        </div>
+        <div class="agent-alias">Security Officer</div>
+        <div class="agent-role">Desconfiado por defecto. OWASP Top 10, compliance RGPD/NIS2/CRA, auditoría de dependencias, threat modeling, SBOM.</div>
+        <div class="agent-phrase">"Habéis validado esa entrada? No, en serio."</div>
+      </div>
+
+      <div class="agent-card fade-in" style="--agent-color: var(--red)">
+        <div class="agent-header">
+          <span class="agent-name">El rompe-cosas</span>
+          <span class="agent-model">sonnet</span>
+        </div>
+        <div class="agent-alias">QA Engineer</div>
+        <div class="agent-role">Su misión es demostrar que el código no funciona. Test plans, code review, testing exploratorio, regresión.</div>
+        <div class="agent-phrase">"Ese edge case que no contemplaste? Lo encontré."</div>
+      </div>
+
+      <div class="agent-card fade-in" style="--agent-color: var(--cyan)">
+        <div class="agent-header">
+          <span class="agent-name">El fontanero</span>
+          <span class="agent-model">sonnet</span>
+        </div>
+        <div class="agent-alias">DevOps Engineer</div>
+        <div class="agent-role">Infraestructura invisible es infraestructura bien hecha. Docker, CI/CD, deploy, monitoring. Todo automatizado.</div>
+        <div class="agent-phrase">"Si lo despliegas a mano, lo despliegas mal."</div>
+      </div>
+
+      <div class="agent-card fade-in" style="--agent-color: var(--white)">
+        <div class="agent-header">
+          <span class="agent-name">El traductor</span>
+          <span class="agent-model">sonnet</span>
+        </div>
+        <div class="agent-alias">Tech Writer</div>
+        <div class="agent-role">Si no está documentado, no existe. API docs, guías de usuario, arquitectura, changelogs, release notes.</div>
+        <div class="agent-phrase">"He visto tumbas con más información que este README."</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── Flujos ─────────────────────────────────── -->
+<section id="flujos" style="background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Flujos de trabajo</div>
+      <h2 class="section-title">5 flujos, 15 fases</h2>
+      <p class="section-desc">
+        Cada flujo tiene fases secuenciales con quality gates entre ellas.
+        Si una gate no se supera, el flujo no avanza.
+      </p>
+    </div>
+    <div class="flows-list">
+
+      <div class="flow-card fade-in">
+        <div>
+          <div class="flow-cmd">/alfred feature</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Ciclo completo o parcial</div>
+        </div>
+        <div class="flow-desc">6 fases: producto, arquitectura, desarrollo TDD, calidad + seguridad, documentación, entrega. Puedes arrancar desde cualquier fase.</div>
+        <div class="flow-phases">
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+        </div>
+      </div>
+
+      <div class="flow-card fade-in">
+        <div>
+          <div class="flow-cmd">/alfred fix</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Corrección rápida</div>
+        </div>
+        <div class="flow-desc">Diagnóstico de causa raíz, corrección con TDD (test que reproduce el bug primero), validación con QA + seguridad.</div>
+        <div class="flow-phases">
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+        </div>
+      </div>
+
+      <div class="flow-card fade-in">
+        <div>
+          <div class="flow-cmd">/alfred spike</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Investigación</div>
+        </div>
+        <div class="flow-desc">Exploración técnica sin compromiso: prototipos, benchmarks, evaluación de alternativas. Documento de hallazgos.</div>
+        <div class="flow-phases">
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+        </div>
+      </div>
+
+      <div class="flow-card fade-in">
+        <div>
+          <div class="flow-cmd">/alfred ship</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Despliegue</div>
+        </div>
+        <div class="flow-desc">Auditoría final paralela, documentación de release, empaquetado con versionado semántico, despliegue a producción.</div>
+        <div class="flow-phases">
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+          <div class="flow-dot active"></div>
+        </div>
+      </div>
+
+      <div class="flow-card fade-in">
+        <div>
+          <div class="flow-cmd">/alfred audit</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Auditoría</div>
+        </div>
+        <div class="flow-desc">4 agentes en paralelo: calidad, seguridad, arquitectura y documentación. Informe consolidado con prioridades.</div>
+        <div class="flow-phases">
+          <div class="flow-dot active"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── Quality Gates ──────────────────────────── -->
+<section id="gates" class="gates-section">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">HARD-GATES</div>
+      <h2 class="section-title">Infranqueables</h2>
+      <p class="section-desc">
+        Las quality gates no se saltan. No hay excusas, no hay atajos,
+        no hay "luego lo hacemos". Si la gate falla, el flujo se detiene.
+      </p>
+    </div>
+    <div class="gates-grid">
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">Tests en verde obligatorios antes de avanzar a calidad</div>
+      </div>
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">QA y seguridad deben aprobar antes de desplegar</div>
+      </div>
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">Pipeline CI/CD verde como requisito de entrega</div>
+      </div>
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">PRD aprobado por el usuario antes de diseñar</div>
+      </div>
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">Security officer valida antes de pasar a desarrollo</div>
+      </div>
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">Cero vulnerabilidades OWASP críticas o altas</div>
+      </div>
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">Sin CVEs críticos en dependencias directas</div>
+      </div>
+      <div class="gate-item fade-in">
+        <div class="gate-icon"></div>
+        <div class="gate-text">Compliance RGPD + NIS2 + CRA verificado</div>
+      </div>
+    </div>
+
+    <div class="compliance-badges fade-in">
+      <div class="compliance-badge">
+        <div class="compliance-badge-name">RGPD</div>
+        <div class="compliance-badge-desc">Protección de datos<br>desde el diseño</div>
+      </div>
+      <div class="compliance-badge">
+        <div class="compliance-badge-name">NIS2</div>
+        <div class="compliance-badge-desc">Ciberseguridad para<br>operadores esenciales</div>
+      </div>
+      <div class="compliance-badge">
+        <div class="compliance-badge-name">CRA</div>
+        <div class="compliance-badge-desc">Ciber-resiliencia para<br>productos digitales</div>
+      </div>
+      <div class="compliance-badge">
+        <div class="compliance-badge-name">OWASP</div>
+        <div class="compliance-badge-desc">Top 10 vulnerabilidades<br>más explotadas</div>
+      </div>
+      <div class="compliance-badge">
+        <div class="compliance-badge-name">SBOM</div>
+        <div class="compliance-badge-desc">Bill of Materials<br>de software</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Skills ─────────────────────────────────── -->
+<section id="skills">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Capacidades</div>
+      <h2 class="section-title">29 skills en 7 dominios</h2>
+      <p class="section-desc">
+        Cada skill es una habilidad concreta que los agentes ejecutan.
+        Organizados por área de responsabilidad.
+      </p>
+    </div>
+    <div class="skills-domains">
+
+      <div class="domain-card fade-in">
+        <div class="domain-header">
+          <span class="domain-name">Producto</span>
+          <span class="domain-count">4 skills</span>
+        </div>
+        <ul class="domain-skills">
+          <li><span class="skill-name">write-prd</span> PRD completo con historias y criterios</li>
+          <li><span class="skill-name">user-stories</span> Descomposición en historias de usuario</li>
+          <li><span class="skill-name">acceptance-criteria</span> Criterios Given/When/Then</li>
+          <li><span class="skill-name">competitive-analysis</span> Análisis de alternativas</li>
+        </ul>
+      </div>
+
+      <div class="domain-card fade-in">
+        <div class="domain-header">
+          <span class="domain-name">Arquitectura</span>
+          <span class="domain-count">4 skills</span>
+        </div>
+        <ul class="domain-skills">
+          <li><span class="skill-name">write-adr</span> Architecture Decision Records</li>
+          <li><span class="skill-name">choose-stack</span> Matriz de decisión de stack</li>
+          <li><span class="skill-name">design-system</span> Diseño con diagramas Mermaid</li>
+          <li><span class="skill-name">evaluate-deps</span> Auditoría de dependencias</li>
+        </ul>
+      </div>
+
+      <div class="domain-card fade-in">
+        <div class="domain-header">
+          <span class="domain-name">Desarrollo</span>
+          <span class="domain-count">4 skills</span>
+        </div>
+        <ul class="domain-skills">
+          <li><span class="skill-name">tdd-cycle</span> Ciclo rojo-verde-refactor</li>
+          <li><span class="skill-name">explore-codebase</span> Exploración de código</li>
+          <li><span class="skill-name">refactor</span> Refactoring guiado</li>
+          <li><span class="skill-name">review-response</span> Respuesta a code reviews</li>
+        </ul>
+      </div>
+
+      <div class="domain-card fade-in">
+        <div class="domain-header">
+          <span class="domain-name">Seguridad</span>
+          <span class="domain-count">5 skills</span>
+        </div>
+        <ul class="domain-skills">
+          <li><span class="skill-name">threat-model</span> Modelado STRIDE</li>
+          <li><span class="skill-name">dependency-audit</span> CVEs, licencias, versiones</li>
+          <li><span class="skill-name">security-review</span> OWASP Top 10</li>
+          <li><span class="skill-name">compliance-check</span> RGPD, NIS2, CRA</li>
+          <li><span class="skill-name">sbom-generate</span> Software Bill of Materials</li>
+        </ul>
+      </div>
+
+      <div class="domain-card fade-in">
+        <div class="domain-header">
+          <span class="domain-name">Calidad</span>
+          <span class="domain-count">4 skills</span>
+        </div>
+        <ul class="domain-skills">
+          <li><span class="skill-name">test-plan</span> Test plans por riesgo</li>
+          <li><span class="skill-name">code-review</span> Review de calidad</li>
+          <li><span class="skill-name">exploratory-test</span> Testing exploratorio</li>
+          <li><span class="skill-name">regression-check</span> Análisis de regresión</li>
+        </ul>
+      </div>
+
+      <div class="domain-card fade-in">
+        <div class="domain-header">
+          <span class="domain-name">DevOps</span>
+          <span class="domain-count">4 skills</span>
+        </div>
+        <ul class="domain-skills">
+          <li><span class="skill-name">dockerize</span> Dockerfile multi-stage</li>
+          <li><span class="skill-name">ci-cd-pipeline</span> GitHub Actions, GitLab CI</li>
+          <li><span class="skill-name">deploy-config</span> Vercel, Railway, Fly, AWS, K8s</li>
+          <li><span class="skill-name">monitoring-setup</span> Logging, alertas, tracking</li>
+        </ul>
+      </div>
+
+      <div class="domain-card fade-in">
+        <div class="domain-header">
+          <span class="domain-name">Documentación</span>
+          <span class="domain-count">4 skills</span>
+        </div>
+        <ul class="domain-skills">
+          <li><span class="skill-name">api-docs</span> Endpoints, params, ejemplos</li>
+          <li><span class="skill-name">architecture-docs</span> Visión global del sistema</li>
+          <li><span class="skill-name">user-guide</span> Instalación, uso, troubleshooting</li>
+          <li><span class="skill-name">changelog</span> Keep a Changelog</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── Infraestructura ────────────────────────── -->
+<section id="infra" style="background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Bajo el capó</div>
+      <h2 class="section-title">Hooks, templates y core</h2>
+      <p class="section-desc">
+        La infraestructura que hace funcionar al equipo: hooks que vigilan,
+        templates que estandarizan y un core que orquesta.
+      </p>
+    </div>
+    <div class="infra-grid">
+
+      <div class="infra-card fade-in">
+        <h3>5 hooks</h3>
+        <div class="infra-item">
+          <span class="infra-item-name">session-start.sh</span>
+          <span class="infra-item-tag">SessionStart</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">stop-hook.py</span>
+          <span class="infra-item-tag">Stop</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">secret-guard.sh</span>
+          <span class="infra-item-tag">PreToolUse</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">quality-gate.py</span>
+          <span class="infra-item-tag">PostToolUse</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">dependency-watch.py</span>
+          <span class="infra-item-tag">PostToolUse</span>
+        </div>
+      </div>
+
+      <div class="infra-card fade-in">
+        <h3>7 templates</h3>
+        <div class="infra-item">
+          <span class="infra-item-name">prd.md</span>
+          <span class="infra-item-desc">Product Requirements</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">adr.md</span>
+          <span class="infra-item-desc">Architecture Decision</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">test-plan.md</span>
+          <span class="infra-item-desc">Plan de testing</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">threat-model.md</span>
+          <span class="infra-item-desc">Modelado STRIDE</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">sbom.md</span>
+          <span class="infra-item-desc">Bill of Materials</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">changelog-entry.md</span>
+          <span class="infra-item-desc">Entrada de changelog</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">release-notes.md</span>
+          <span class="infra-item-desc">Notas de release</span>
+        </div>
+      </div>
+
+      <div class="infra-card fade-in">
+        <h3>3 módulos core</h3>
+        <div class="infra-item">
+          <span class="infra-item-name">orchestrator.py</span>
+          <span class="infra-item-desc">Flujos, sesiones, gates</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">personality.py</span>
+          <span class="infra-item-desc">Motor de personalidad</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">config_loader.py</span>
+          <span class="infra-item-desc">Config y detección de stack</span>
+        </div>
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <div class="infra-item">
+            <span style="font-size:12px; color:var(--text-dim);">Líneas de código</span>
+            <span class="infra-item-name">1.426</span>
+          </div>
+          <div class="infra-item">
+            <span style="font-size:12px; color:var(--text-dim);">Tests</span>
+            <span class="infra-item-name">23 passing</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── Comandos ───────────────────────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Interfaz</div>
+      <h2 class="section-title">8 comandos</h2>
+      <p class="section-desc">
+        Todo se controla desde la línea de comandos de Claude Code.
+        Un prefijo, un verbo, una descripción.
+      </p>
+    </div>
+    <div class="flows-list">
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred feature</div></div>
+        <div class="flow-desc">Ciclo completo de 6 fases o desde la que indiques. Alfred pregunta y se adapta: "desde desarrollo", "solo documentación", "ciclo completo".</div>
+        <div></div>
+      </div>
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred fix</div></div>
+        <div class="flow-desc">Corregir un bug con flujo de 3 fases: diagnóstico, corrección TDD, validación.</div>
+        <div></div>
+      </div>
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred spike</div></div>
+        <div class="flow-desc">Investigación exploratoria sin compromiso: prototipos, benchmarks, conclusiones.</div>
+        <div></div>
+      </div>
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred ship</div></div>
+        <div class="flow-desc">Preparar release: auditoría final, documentación, empaquetado, despliegue.</div>
+        <div></div>
+      </div>
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred audit</div></div>
+        <div class="flow-desc">Auditoría completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentación.</div>
+        <div></div>
+      </div>
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred config</div></div>
+        <div class="flow-desc">Configurar autonomía, stack tecnológico, compliance y personalidad del equipo.</div>
+        <div></div>
+      </div>
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred status</div></div>
+        <div class="flow-desc">Sesión activa: fase actual, fases completadas con duración, gate pendiente y agente activo.</div>
+        <div></div>
+      </div>
+      <div class="flow-card fade-in">
+        <div><div class="flow-cmd">/alfred help</div></div>
+        <div class="flow-desc">Ayuda completa de todos los comandos disponibles.</div>
+        <div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Stack detection ────────────────────────── -->
+<section style="background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Detección automática</div>
+      <h2 class="section-title">Se adapta a tu proyecto</h2>
+      <p class="section-desc">
+        Alfred Dev detecta automáticamente el stack tecnológico de tu proyecto
+        y adapta sus artefactos al ecosistema real.
+      </p>
+    </div>
+    <div class="gates-grid">
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Node.js</strong> -- npm, pnpm, bun, yarn. Express, Next.js, Fastify, Hono.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Python</strong> -- pip, poetry, uv. Django, Flask, FastAPI.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Rust</strong> -- cargo. Actix, Axum, Rocket.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Go</strong> -- go mod. Gin, Echo, Fiber.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Ruby</strong> -- bundler. Rails, Sinatra.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Elixir</strong> -- mix. Phoenix.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Java / Kotlin</strong> -- Maven, Gradle. Spring Boot, Quarkus, Micronaut.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>PHP</strong> -- Composer. Laravel, Symfony.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>C# / .NET</strong> -- dotnet, NuGet. ASP.NET, Blazor.</div>
+      </div>
+      <div class="gate-item fade-in" style="border-color: var(--border-light);">
+        <div class="gate-icon" style="border-color: var(--green);"><div style="width:8px;height:8px;background:var(--green);border-radius:50%;"></div></div>
+        <div class="gate-text"><strong>Swift</strong> -- SPM. Vapor.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Footer ─────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <p>
+      <strong style="color: var(--text);">Alfred Dev</strong> v0.1.0
+      <span style="margin: 0 8px; color: var(--border-light);">|</span>
+      MIT License
+      <span style="margin: 0 8px; color: var(--border-light);">|</span>
+      <a href="https://github.com/686f6c61/Claude-JARVIS-dev">GitHub</a>
+    </p>
+    <p style="margin-top: 8px;">
+      Plugin de <a href="https://claude.ai/claude-code">Claude Code</a>.
+      8 agentes. 29 skills. Quality gates infranqueables.
+    </p>
+    <p style="margin-top: 24px; font-size: 12px; color: var(--text-dim);">
+      Ingeniería de software automatizada para Claude Code.
+    </p>
+  </div>
+</footer>
+
+<!-- ─── Scroll animations ──────────────────────── -->
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => {
+        entry.target.classList.add('visible');
+      }, i * 60);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

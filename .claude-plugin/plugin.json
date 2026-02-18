@@ -1,0 +1,12 @@
+{
+  "name": "alfred-dev",
+  "description": "Plugin que simula una empresa de ingenieria de software completa: producto, arquitectura, desarrollo, seguridad, QA, DevOps y documentacion. 8 agentes con personalidad propia, quality gates infranqueables y compliance RGPD/NIS2/CRA integrado.",
+  "version": "0.1.0",
+  "author": {
+    "name": "00b"
+  },
+  "homepage": "https://686f6c61.github.io/Claude-JARVIS-dev/",
+  "repository": "https://github.com/686f6c61/Claude-JARVIS-dev",
+  "license": "MIT",
+  "keywords": ["sdlc", "agents", "security", "tdd", "devops", "qa", "product", "spanish", "rgpd", "nis2"]
+}

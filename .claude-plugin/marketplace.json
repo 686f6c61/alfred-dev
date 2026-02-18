@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "alfred-dev",
+  "description": "Tu empresa de ingenieria de software en un plugin de Claude Code",
+  "owner": {
+    "name": "686f6c61"
+  },
+  "plugins": [
+    {
+      "name": "alfred-dev",
+      "description": "Plugin que simula una empresa de ingenieria de software completa con 8 agentes especializados, quality gates y compliance europeo integrado.",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "686f6c61"
+      },
+      "category": "development",
+      "homepage": "https://686f6c61.github.io/Claude-JARVIS-dev/"
+    }
+  ]
+}
