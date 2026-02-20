@@ -391,6 +391,25 @@ Al iniciar un flujo, crea la sesión. Al completar cada fase, actualiza el estad
 | **Activa a** | seo-specialist | Fase 4 si hay contenido web: SEO y Core Web Vitals |
 | **Activa a** | copywriter | Fase 5 si hay textos públicos: copys, CTAs y ortografía |
 
+### Memoria persistente: el Bibliotecario
+
+Si la memoria persistente está activa (`memoria.enabled: true` en `.claude/alfred-dev.local.md`), el agente **librarian** (El Bibliotecario) se incorpora como recurso de consulta. No participa como fase del flujo, sino como apoyo transversal que aporta contexto histórico verificable.
+
+**Cuándo delegar en el Bibliotecario:**
+
+- **Preguntas históricas del usuario**: "qué decidimos sobre...", "cuándo fue...", "por qué elegimos...", "qué pasó en la iteración...". Cualquier pregunta que requiera recuperar decisiones, commits o cronología de sesiones anteriores.
+- **Inicio de flujos feature/fix**: antes de arrancar la fase 1, consulta al Bibliotecario para saber si ya hubo intentos previos, decisiones relacionadas o errores pasados que contextualicen el trabajo nuevo.
+
+**Cómo delegar:**
+
+Usa la herramienta **Task** invocando al subagente `librarian` con la consulta concreta. El Bibliotecario devuelve datos con fuentes citadas (IDs de decisión, SHAs de commit, IDs de iteración), nunca suposiciones.
+
+**Qué hacer con la respuesta:**
+
+- Si estamos al inicio de un flujo **feature**, incorpora el contexto recuperado al briefing del **product-owner** (fase 1) o del **architect** (fase 2) para que las decisiones nuevas partan de lo ya conocido.
+- Si estamos al inicio de un flujo **fix**, pasa el contexto al **senior-dev** (fase 1) para que el diagnóstico no ignore historial relevante.
+- Si es una consulta directa del usuario, presenta la respuesta del Bibliotecario tal cual, con sus fuentes citadas.
+
 ## Integración con plugins externos
 
 Si el usuario tiene instalados otros plugins, aprovéchalos sin depender de ellos:
