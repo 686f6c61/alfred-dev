@@ -62,3 +62,47 @@ agentes_opcionales:
   seo-specialist: true
   copywriter: false
 ```
+
+## Sección de memoria persistente
+
+La memoria persistente permite que Alfred Dev recuerde decisiones, iteraciones y commits entre sesiones. Está gestionada por el agente **librarian** (El Bibliotecario), que se activa automáticamente cuando la memoria está habilitada.
+
+### Paso 1: comprobar el estado actual
+
+Comprueba si la base de datos de memoria existe buscando el fichero `.claude/alfred-memory.db` en el proyecto:
+
+- **Si existe**: lee las estadísticas con la herramienta MCP `memory_stats` y presenta al usuario un resumen compacto: número de decisiones, commits registrados, iteraciones y fecha del registro más antiguo. Indica que la memoria está **activa**.
+- **Si no existe**: indica al usuario que la memoria persistente **no está activada** y que puede activarla desde aquí.
+
+### Paso 2: preguntar al usuario
+
+Usa AskUserQuestion para preguntar al usuario si quiere activar o desactivar la memoria persistente. Presenta las opciones de forma clara:
+
+- **Activar**: Alfred registrará decisiones, commits e iteraciones automáticamente entre sesiones. El Bibliotecario estará disponible para consultas históricas.
+- **Desactivar**: no se registrará nada y el Bibliotecario no participará en los flujos. Los datos existentes se conservan pero no se consultan.
+
+### Paso 3: aplicar la configuración
+
+Si el usuario elige **activar** la memoria, escribe (o actualiza) la sección `memoria:` en el frontmatter de `.claude/alfred-dev.local.md` con estos valores:
+
+```yaml
+memoria:
+  enabled: true
+  capture_decisions: true
+  capture_commits: true
+  retention_days: 365
+```
+
+Si el usuario elige **desactivar** la memoria, actualiza la sección a:
+
+```yaml
+memoria:
+  enabled: false
+```
+
+### Paso 4: confirmar
+
+Informa al usuario del resultado:
+
+- Si se activó: confirma que el Bibliotecario se activará automáticamente en los flujos y que las decisiones y commits se registrarán a partir de ahora.
+- Si se desactivó: confirma que la memoria queda inactiva pero los datos existentes no se borran.
