@@ -18,7 +18,7 @@ set -euo pipefail
 
 REPO="686f6c61/Claude-JARVIS-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.1.5"
+VERSION="0.2.0"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGINS_DIR="${CLAUDE_DIR}/plugins"
 CACHE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}"

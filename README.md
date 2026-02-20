@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-8 agentes especializados con personalidad propia, 56 skills organizados en 13 dominios, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseño.
+15 agentes especializados con personalidad propia (8 de nucleo + 7 opcionales), 56 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/Claude-JARVIS-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -72,26 +72,40 @@ Cada transición entre fases requiere superar la quality gate correspondiente.
 
 ## Arquitectura
 
-### Agentes
+### Agentes de nucleo (8)
 
-El plugin implementa 8 agentes, cada uno con un system prompt especializado, un conjunto de herramientas definido y un modelo asignado según la complejidad de su tarea:
+El plugin implementa 8 agentes de nucleo, siempre activos, cada uno con un system prompt especializado, un conjunto de herramientas definido y un modelo asignado segun la complejidad de su tarea:
 
 | Agente | Rol | Modelo | Responsabilidad |
 |--------|-----|--------|-----------------|
-| **Alfred** | Orquestador | opus | Coordina flujos, activa agentes, evalúa gates entre fases |
-| **El buscador de problemas** | Product Owner | opus | PRDs, historias de usuario, criterios de aceptación, análisis competitivo |
-| **El dibujante de cajas** | Arquitecto | opus | Diseño de sistemas, ADRs, diagramas Mermaid, matrices de decisión |
-| **El artesano** | Senior Dev | opus | Implementación TDD estricto, refactoring, commits atómicos |
+| **Alfred** | Orquestador | opus | Coordina flujos, activa agentes, evalua gates entre fases |
+| **El buscador de problemas** | Product Owner | opus | PRDs, historias de usuario, criterios de aceptacion, analisis competitivo |
+| **El dibujante de cajas** | Arquitecto | opus | Diseno de sistemas, ADRs, diagramas Mermaid, matrices de decision |
+| **El artesano** | Senior Dev | opus | Implementacion TDD estricto, refactoring, commits atomicos |
 | **El paranoico** | Security Officer | opus | OWASP Top 10, threat modeling STRIDE, SBOM, compliance RGPD/NIS2/CRA |
-| **El rompe-cosas** | QA Engineer | sonnet | Test plans, code review, testing exploratorio, regresión |
+| **El rompe-cosas** | QA Engineer | sonnet | Test plans, code review, testing exploratorio, regresion |
 | **El fontanero** | DevOps Engineer | sonnet | Docker multi-stage, CI/CD, deploy, monitoring, observabilidad |
-| **El traductor** | Tech Writer | sonnet | Documentación de API, arquitectura, guías de usuario, changelogs |
+| **El traductor** | Tech Writer | sonnet | Documentacion de API, arquitectura, guias de usuario, changelogs |
 
-Los agentes con modelo `opus` realizan tareas que requieren razonamiento complejo (diseño, seguridad, implementación). Los agentes con modelo `sonnet` cubren tareas estructuradas con patrones más predecibles (QA, infra, documentación).
+Los agentes con modelo `opus` realizan tareas que requieren razonamiento complejo (diseno, seguridad, implementacion). Los agentes con modelo `sonnet` cubren tareas estructuradas con patrones mas predecibles (QA, infra, documentacion).
 
-### Skills (29)
+### Agentes opcionales (7)
 
-Cada skill es una habilidad concreta que un agente ejecuta. Están organizados por dominio:
+Agentes predefinidos que el usuario activa segun las necesidades de su proyecto con `/alfred config`. Se sugieren automaticamente en funcion del stack detectado:
+
+| Agente | Rol | Cuando es util |
+|--------|-----|----------------|
+| **Data Engineer** | Ingeniero de datos | Proyectos con base de datos, ORM, migraciones |
+| **UX Reviewer** | Revisor de UX | Proyectos con frontend (React, Vue, Svelte, etc.) |
+| **Performance Engineer** | Ingeniero de rendimiento | Proyectos grandes o con requisitos de rendimiento |
+| **GitHub Manager** | Gestor de GitHub | Cualquier proyecto con repositorio en GitHub |
+| **SEO Specialist** | Especialista SEO | Proyectos web con contenido publico |
+| **Copywriter** | Copywriter | Proyectos con textos publicos: landing, emails, onboarding |
+| **El Bibliotecario** | Consultas historicas | Proyectos con memoria persistente activa |
+
+### Skills (56)
+
+Cada skill es una habilidad concreta que un agente ejecuta. Estan organizados por dominio:
 
 ```
 skills/
@@ -104,17 +118,18 @@ skills/
   documentación/     -- api-docs, architecture-docs, user-guide, changelog
 ```
 
-### Hooks (5)
+### Hooks (6)
 
-Los hooks interceptan eventos del ciclo de vida de Claude Code para aplicar validaciones automáticas:
+Los hooks interceptan eventos del ciclo de vida de Claude Code para aplicar validaciones automaticas:
 
-| Hook | Evento | Función |
+| Hook | Evento | Funcion |
 |------|--------|---------|
-| `session-start.sh` | `SessionStart` | Detecta stack tecnológico e inicializa el contexto de sesión |
-| `stop-hook.py` | `Stop` | Genera resumen de sesión con fases completadas y pendientes |
+| `session-start.sh` | `SessionStart` | Detecta stack tecnologico, inyecta contexto de sesion y memoria persistente |
+| `stop-hook.py` | `Stop` | Genera resumen de sesion con fases completadas y pendientes |
 | `secret-guard.sh` | `PreToolUse` (Write/Edit) | Bloquea escritura de secretos (API keys, tokens, passwords) |
-| `quality-gate.py` | `PostToolUse` (Bash) | Verifica que los tests pasen después de ejecuciones de Bash |
+| `quality-gate.py` | `PostToolUse` (Bash) | Verifica que los tests pasen despues de ejecuciones de Bash |
 | `dependency-watch.py` | `PostToolUse` (Write/Edit) | Detecta dependencias nuevas y notifica al security officer |
+| `memory-capture.py` | `PostToolUse` (Write/Edit) | Captura automatica de eventos en la memoria persistente del proyecto |
 
 ### Templates (7)
 
@@ -128,15 +143,16 @@ Plantillas estandarizadas que los agentes usan para generar artefactos con estru
 - `changelog-entry.md` -- Entrada de changelog (Keep a Changelog)
 - `release-notes.md` -- Notas de release con resumen ejecutivo
 
-### Core (3 módulos, ~1.400 líneas)
+### Core (4 modulos)
 
-El núcleo del plugin está implementado en Python con tests unitarios:
+El nucleo del plugin esta implementado en Python con tests unitarios:
 
-| Módulo | Líneas | Función |
-|--------|--------|---------|
-| `orchestrator.py` | ~600 | Máquina de estados de flujos, gestión de sesiones, evaluación de gates |
-| `personality.py` | ~400 | Motor de personalidad: frases, tono, anuncios, formato de veredicto |
-| `config_loader.py` | ~400 | Carga de configuración, detección de stack, preferencias de proyecto |
+| Modulo | Funcion |
+|--------|---------|
+| `orchestrator.py` | Maquina de estados de flujos, gestion de sesiones, evaluacion de gates |
+| `personality.py` | Motor de personalidad: frases, tono, anuncios, formato de veredicto |
+| `config_loader.py` | Carga de configuracion, deteccion de stack, preferencias de proyecto |
+| `memory.py` | Base de datos SQLite de memoria persistente: decisiones, commits, iteraciones, eventos |
 
 ```bash
 # Ejecutar tests
@@ -185,6 +201,21 @@ El hook `session-start.sh` analiza el directorio de trabajo al iniciar sesión y
 | C# / .NET | `*.csproj`, `*.sln` | dotnet, NuGet -- ASP.NET, Blazor |
 | Swift | `Package.swift` | SPM -- Vapor |
 
+## Memoria persistente
+
+A partir de v0.2.0, Alfred Dev puede recordar decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local (`.claude/alfred-memory.db`) dentro de cada proyecto, sin dependencias externas ni servicios remotos.
+
+La activacion es opcional y se gestiona con `/alfred config`. Una vez activa, el sistema captura automaticamente eventos del flujo de trabajo (inicio y fin de iteraciones, cambios de fase) mediante un hook `PostToolUse`, mientras que las decisiones arquitectonicas se registran a traves del agente **El Bibliotecario** o del servidor MCP integrado.
+
+Funcionalidades principales:
+
+- **Trazabilidad completa**: problema, decision, commit y validacion enlazados con IDs referenciables.
+- **Busqueda**: texto completo con FTS5 (cuando disponible) o fallback a LIKE.
+- **Servidor MCP**: 6 herramientas accesibles desde cualquier agente (buscar, registrar, consultar linea temporal).
+- **El Bibliotecario**: agente opcional que responde consultas historicas citando siempre las fuentes con formato `[D#id]`, `[C#sha]`, `[I#id]`.
+- **Contexto de sesion**: al iniciar una sesion, se inyectan automaticamente las ultimas 5 decisiones y la iteracion activa para dar continuidad al trabajo.
+- **Seguridad**: sanitizacion de secretos con los mismos patrones que `secret-guard.sh`, permisos 0600 en el fichero de base de datos.
+
 ## Estructura del proyecto
 
 ```
@@ -192,12 +223,15 @@ alfred-dev/
   .claude-plugin/
     plugin.json           # Manifiesto del plugin
     marketplace.json      # Metadatos para el marketplace
-  agents/                 # 8 agentes con system prompts completos
-  commands/               # 8 comandos /alfred
+    mcp.json              # Servidor MCP de memoria persistente
+  agents/                 # 8 agentes de nucleo
+  agents/optional/        # 7 agentes opcionales
+  commands/               # 10 comandos /alfred
   skills/                 # 56 skills en 13 dominios
   hooks/                  # 6 hooks del ciclo de vida
-    hooks.json            # Configuración de eventos
-  core/                   # Motor de orquestación (Python)
+    hooks.json            # Configuracion de eventos
+  core/                   # Motor de orquestacion y memoria (Python)
+  mcp/                    # Servidor MCP stdio (memoria persistente)
   templates/              # 7 plantillas de artefactos
   tests/                  # Tests unitarios (pytest)
   site/                   # Landing page para GitHub Pages
