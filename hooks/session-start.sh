@@ -135,6 +135,87 @@ Puedes continuar la sesión con /alfred status o avanzar a la siguiente fase."
   fi
 fi
 
+# --- Memoria persistente del proyecto ---
+
+# Si el proyecto tiene memoria activa (.claude/alfred-memory.db), se extrae
+# un resumen de las últimas decisiones para dar contexto histórico a Claude.
+# El bloque Python importa core.memory desde el directorio raíz del plugin
+# y consulta la base de datos. Si algo falla, se omite silenciosamente.
+MEMORY_DB="${PROJECT_DIR}/.claude/alfred-memory.db"
+PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+
+if [[ -f "$MEMORY_DB" ]]; then
+  MEMORY_INFO=$(PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
+import sys
+
+try:
+    from core.memory import MemoryDB
+
+    db = MemoryDB(sys.argv[1])
+
+    # Estadísticas generales para saber cuántas decisiones hay
+    stats = db.get_stats()
+    total = stats.get('total_decisions', 0)
+
+    if total == 0:
+        db.close()
+        sys.exit(0)
+
+    # Últimas 5 decisiones (las más recientes primero)
+    decisions = db.get_decisions(limit=5)
+
+    # Iteración activa (si la hay)
+    active = db.get_active_iteration()
+
+    # Construir el bloque de texto
+    lines = []
+    lines.append('### Memoria del proyecto')
+    lines.append('')
+    lines.append(f'El proyecto tiene memoria persistente activa con {total} decisiones registradas.')
+    lines.append('Ultimas decisiones:')
+    lines.append('')
+
+    for d in decisions:
+        fecha = d.get('decided_at', '')[:10]
+        titulo = d.get('title', 'sin titulo')
+        iter_id = d.get('iteration_id')
+
+        # Obtener datos de la iteración asociada si existe
+        if iter_id is not None:
+            it = db.get_iteration(iter_id)
+            if it is not None:
+                cmd = it.get('command', '?')
+                lines.append(f'- [{fecha}] {titulo} (iteracion: {cmd} #{iter_id})')
+            else:
+                lines.append(f'- [{fecha}] {titulo}')
+        else:
+            lines.append(f'- [{fecha}] {titulo}')
+
+    if active is not None:
+        lines.append('')
+        cmd_activo = active.get('command', '?')
+        desc_activa = active.get('description', '')
+        lines.append(f'Iteracion activa: {cmd_activo} #{active[\"id\"]}')
+        if desc_activa:
+            lines.append(f'Descripcion: {desc_activa}')
+
+    lines.append('')
+    lines.append('Para consultas historicas detalladas, delega en El Bibliotecario (agente opcional).')
+
+    db.close()
+    print('\n'.join(lines))
+except Exception:
+    # Cualquier error se ignora: la memoria es contexto opcional
+    sys.exit(0)
+" "$MEMORY_DB") || MEMORY_INFO=""
+
+  if [[ -n "$MEMORY_INFO" ]]; then
+    CONTEXT="${CONTEXT}
+
+${MEMORY_INFO}"
+  fi
+fi
+
 # --- Comprobación de actualizaciones ---
 
 # Consulta la última release publicada en GitHub. Si hay versión nueva,
