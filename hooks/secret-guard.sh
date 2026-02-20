@@ -60,9 +60,15 @@ fi
 
 CONTENT=$(echo "$HOOK_INPUT" | sed '1,/^---HOOK_SEPARATOR_8f3a---$/d')
 
-# Validar que FILE_PATH se extrajo correctamente
+# Validar que FILE_PATH se extrajo correctamente.
+# Si hay contenido pero no hay ruta, se bloquea (fail-closed): contenido
+# sin destino conocido es sospechoso. Si ambos estan vacios, no hay nada
+# que analizar y se permite la operacion.
 if [[ -z "$FILE_PATH" ]]; then
-  echo "[El Paranoico] No se pudo determinar la ruta del fichero. Operación permitida con precaución." >&2
+  if [[ -n "$CONTENT" ]]; then
+    echo "[El Paranoico] Hay contenido pero no se pudo determinar la ruta del fichero. Operación bloqueada por precaución." >&2
+    exit 2
+  fi
   exit 0
 fi
 

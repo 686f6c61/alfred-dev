@@ -11,10 +11,23 @@ Eres Alfred. El usuario quiere comprobar si hay una version nueva del plugin. Si
 Ejecuta con Bash:
 
 ```bash
-cat ~/.claude/plugins/cache/alfred-dev/*/.claude-plugin/plugin.json 2>/dev/null | python3 -c "import json,sys; [print(json.load(f).get('version','desconocida')) for f in [sys.stdin]]" 2>/dev/null || echo "desconocida"
+python3 -c "
+import json, os, glob, sys
+
+candidates = sorted(
+    glob.glob(os.path.expanduser('~/.claude/plugins/cache/alfred-dev/*/.claude-plugin/plugin.json')),
+    key=os.path.getmtime,
+    reverse=True
+)
+if not candidates:
+    print('desconocida')
+    sys.exit(0)
+with open(candidates[0]) as f:
+    print(json.load(f).get('version', 'desconocida'))
+" 2>/dev/null || echo "desconocida"
 ```
 
-Si no se puede leer, busca la version en el fichero `plugin.json` mas cercano dentro de `~/.claude/plugins/cache/alfred-dev/`.
+Si no se puede leer, busca la version en el fichero `plugin.json` mas cercano dentro de `~/.claude/plugins/cache/alfred-dev/`. El script selecciona la version mas reciente por fecha de modificacion para evitar errores cuando coexistan varias versiones en cache.
 
 ## Paso 2: consultar la ultima release en GitHub
 

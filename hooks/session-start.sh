@@ -140,7 +140,7 @@ fi
 # Consulta la última release publicada en GitHub. Si hay versión nueva,
 # añade un aviso al contexto de sesión. Falla silenciosamente si no hay
 # red, se excede el timeout (3s) o la API devuelve error.
-CURRENT_VERSION="0.1.4"
+CURRENT_VERSION="0.1.5"
 if command -v curl &>/dev/null; then
   LATEST_RELEASE=$(curl -s --max-time 3 --proto '=https' \
     "https://api.github.com/repos/686f6c61/Claude-JARVIS-dev/releases/latest" \

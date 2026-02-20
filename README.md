@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-8 agentes especializados con personalidad propia, 29 skills organizados en 7 dominios, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseño.
+8 agentes especializados con personalidad propia, 56 skills organizados en 13 dominios, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseño.
 
 [Documentación completa](https://686f6c61.github.io/Claude-JARVIS-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -194,8 +194,8 @@ alfred-dev/
     marketplace.json      # Metadatos para el marketplace
   agents/                 # 8 agentes con system prompts completos
   commands/               # 8 comandos /alfred
-  skills/                 # 29 skills en 7 dominios
-  hooks/                  # 5 hooks del ciclo de vida
+  skills/                 # 56 skills en 13 dominios
+  hooks/                  # 6 hooks del ciclo de vida
     hooks.json            # Configuración de eventos
   core/                   # Motor de orquestación (Python)
   templates/              # 7 plantillas de artefactos

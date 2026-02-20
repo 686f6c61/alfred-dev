@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev",
   "description": "Plugin de ingeniería de software completa: 8 agentes de núcleo y 6 opcionales con personalidad propia, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": {
     "name": "00b"
   },

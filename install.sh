@@ -18,7 +18,7 @@ set -euo pipefail
 
 REPO="686f6c61/Claude-JARVIS-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.1.4"
+VERSION="0.1.5"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGINS_DIR="${CLAUDE_DIR}/plugins"
 CACHE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}"
@@ -65,6 +65,10 @@ if ! command -v python3 &>/dev/null; then
     error "python3 no está instalado"
     exit 1
 fi
+
+# Asegurar que el directorio de plugins existe.
+# En instalaciones limpias (sin ningun plugin previo) podria no existir.
+mkdir -p "${PLUGINS_DIR}"
 
 # -- Limpieza automática en caso de interrupción ---------------------------
 

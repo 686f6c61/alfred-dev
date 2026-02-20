@@ -17,7 +17,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/Claude-JARVIS-dev"
 $PluginName = "alfred-dev"
-$Version = "0.1.4"
+$Version = "0.1.5"
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
 $PluginsDir = Join-Path $ClaudeDir "plugins"
 $CacheDir = Join-Path $PluginsDir "cache" $PluginName
