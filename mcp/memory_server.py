@@ -7,15 +7,26 @@ exclusivamente la biblioteca estandar de Python (json, sys, struct, logging).
 El formato de transporte es JSON-RPC 2.0 con encabezados Content-Length,
 identico al que usa LSP (Language Server Protocol).
 
-El servidor expone seis herramientas que permiten a los agentes de Alfred
-consultar y registrar informacion en la base de datos de memoria del proyecto:
+El servidor expone quince herramientas que permiten a los agentes de Alfred
+consultar, registrar y gestionar la base de datos de memoria del proyecto:
 
-    - memory_search: busqueda textual en decisiones y commits.
-    - memory_log_decision: registra una decision de diseno formal.
-    - memory_log_commit: registra un commit y lo vincula a decisiones.
+    Consulta (10 originales):
+    - memory_search: busqueda textual con filtros temporales, por tags y estado.
+    - memory_log_decision: registra una decision de diseno formal con etiquetas.
+    - memory_log_commit: registra un commit con ficheros afectados.
     - memory_get_iteration: detalle de una iteracion (o la ultima).
     - memory_get_timeline: cronologia de eventos de una iteracion.
     - memory_stats: estadisticas generales de la memoria.
+    - memory_record_decision / memory_record_iteration / memory_record_event / memory_record_commit
+    - memory_link_commit: vincula un commit con una decision.
+    - memory_get_decisions: listado filtrado de decisiones.
+
+    Gestion (5 nuevas en v0.2.3):
+    - memory_update_decision: actualiza estado y etiquetas de una decision.
+    - memory_link_decisions: crea relaciones entre decisiones.
+    - memory_health: validacion de integridad de la base de datos.
+    - memory_export: exporta decisiones a Markdown (formato ADR).
+    - memory_import: importa desde historial Git o ficheros ADR.
 
 Ciclo de vida:
     Claude Code lanza este proceso al inicio de sesion y lo mantiene vivo.
@@ -96,6 +107,24 @@ _TOOLS: List[Dict[str, Any]] = [
                     "type": "integer",
                     "description": "Filtrar resultados por ID de iteracion.",
                 },
+                "since": {
+                    "type": "string",
+                    "description": "Filtrar resultados posteriores a esta fecha (ISO 8601).",
+                },
+                "until": {
+                    "type": "string",
+                    "description": "Filtrar resultados anteriores a esta fecha (ISO 8601).",
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filtrar decisiones que tengan alguna de estas etiquetas.",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["active", "superseded", "deprecated"],
+                    "description": "Filtrar decisiones por estado.",
+                },
             },
             "required": ["query"],
         },
@@ -139,6 +168,11 @@ _TOOLS: List[Dict[str, Any]] = [
                     "type": "string",
                     "description": "Fase del flujo en la que se tomo.",
                 },
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Etiquetas para clasificar la decision.",
+                },
             },
             "required": ["title", "chosen"],
         },
@@ -172,6 +206,11 @@ _TOOLS: List[Dict[str, Any]] = [
                     "description": (
                         "ID de iteracion. Si se omite, se usa la activa."
                     ),
+                },
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Lista de ficheros afectados por el commit.",
                 },
             },
             "required": ["sha"],
@@ -321,6 +360,16 @@ _TOOLS: List[Dict[str, Any]] = [
                     "description": "Numero maximo de decisiones (por defecto 50).",
                     "default": 50,
                 },
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filtrar decisiones por etiquetas.",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["active", "superseded", "deprecated"],
+                    "description": "Filtrar decisiones por estado.",
+                },
             },
             "required": [],
         },
@@ -343,6 +392,128 @@ _TOOLS: List[Dict[str, Any]] = [
                 },
             },
             "required": ["retention_days"],
+        },
+    },
+    {
+        "name": "memory_update_decision",
+        "description": (
+            "Actualiza el estado o las etiquetas de una decision existente. "
+            "Permite marcar decisiones como superseded o deprecated, y "
+            "anadir etiquetas para clasificarlas."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "ID de la decision a actualizar.",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["active", "superseded", "deprecated"],
+                    "description": "Nuevo estado de la decision.",
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Etiquetas a anadir a la decision.",
+                },
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "memory_link_decisions",
+        "description": (
+            "Crea una relacion entre dos decisiones. Permite documentar "
+            "que una decision sustituye, depende, contradice o se "
+            "relaciona con otra."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "source_id": {
+                    "type": "integer",
+                    "description": "ID de la decision origen.",
+                },
+                "target_id": {
+                    "type": "integer",
+                    "description": "ID de la decision destino.",
+                },
+                "link_type": {
+                    "type": "string",
+                    "enum": ["supersedes", "depends_on", "contradicts", "relates"],
+                    "description": "Tipo de relacion.",
+                },
+            },
+            "required": ["source_id", "target_id", "link_type"],
+        },
+    },
+    {
+        "name": "memory_health",
+        "description": (
+            "Valida la integridad de la base de datos de memoria. "
+            "Comprueba version del esquema, sincronizacion FTS5, "
+            "permisos del fichero y tamano de la BD."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "memory_export",
+        "description": (
+            "Exporta las decisiones del proyecto a un fichero Markdown "
+            "con formato ADR-like. Incluye fecha, estado, etiquetas, "
+            "contexto, decision, alternativas y justificacion."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "string",
+                    "enum": ["markdown"],
+                    "description": "Formato de exportacion (por ahora solo markdown).",
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Ruta del fichero de salida. Por defecto DECISIONS.md.",
+                },
+                "iteration_id": {
+                    "type": "integer",
+                    "description": "Exportar solo decisiones de esta iteracion.",
+                },
+            },
+            "required": ["format"],
+        },
+    },
+    {
+        "name": "memory_import",
+        "description": (
+            "Importa datos en la memoria desde fuentes externas: "
+            "historial de Git (commits) o ficheros ADR (decisiones)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "enum": ["git", "adr"],
+                    "description": "Fuente de importacion.",
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Ruta del repositorio Git o directorio de ADRs.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Numero maximo de registros a importar (para git).",
+                    "default": 100,
+                },
+            },
+            "required": ["source"],
         },
     },
 ]
@@ -572,7 +743,7 @@ class MemoryMCPServer:
             "protocolVersion": "2024-11-05",
             "serverInfo": {
                 "name": "alfred-memory",
-                "version": "0.2.1",
+                "version": "0.2.3",
             },
             "capabilities": {
                 "tools": {},
@@ -689,11 +860,23 @@ class MemoryMCPServer:
         query: str = args.get("query", "")
         limit: int = args.get("limit", 20)
         iteration_id: Optional[int] = args.get("iteration_id")
+        since: Optional[str] = args.get("since")
+        until: Optional[str] = args.get("until")
+        tags: Optional[List[str]] = args.get("tags")
+        status: Optional[str] = args.get("status")
 
         if not query.strip():
             return {"results": [], "message": "La consulta esta vacia."}
 
-        results = db.search(query, limit=limit, iteration_id=iteration_id)
+        results = db.search(
+            query,
+            limit=limit,
+            iteration_id=iteration_id,
+            since=since,
+            until=until,
+            tags=tags,
+            status=status,
+        )
         return {
             "results": results,
             "total": len(results),
@@ -731,6 +914,7 @@ class MemoryMCPServer:
             rationale=args.get("rationale"),
             impact=args.get("impact"),
             phase=args.get("phase"),
+            tags=args.get("tags"),
         )
 
         return {
@@ -765,6 +949,7 @@ class MemoryMCPServer:
             sha=sha,
             message=args.get("message"),
             iteration_id=args.get("iteration_id"),
+            files=args.get("files"),
         )
 
         # Vincular con decisiones si se proporcionaron
@@ -1036,8 +1221,15 @@ class MemoryMCPServer:
         """
         iteration_id: Optional[int] = args.get("iteration_id")
         limit: int = args.get("limit", 50)
+        tags: Optional[List[str]] = args.get("tags")
+        status: Optional[str] = args.get("status")
 
-        decisions = db.get_decisions(iteration_id=iteration_id, limit=limit)
+        decisions = db.get_decisions(
+            iteration_id=iteration_id,
+            limit=limit,
+            tags=tags,
+            status=status,
+        )
 
         return {
             "decisions": decisions,
@@ -1079,6 +1271,187 @@ class MemoryMCPServer:
                 f"Eliminados {purged} eventos con mas de "
                 f"{retention_days} dias de antigueedad."
             ),
+        }
+
+    def _call_memory_update_decision(
+        self, db: MemoryDB, args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Actualiza el estado o las etiquetas de una decision existente.
+
+        Permite marcar decisiones como ``superseded`` o ``deprecated`` y
+        anadir etiquetas de clasificacion. Ambos cambios son opcionales y
+        se aplican de forma independiente.
+
+        Args:
+            db: instancia de MemoryDB abierta.
+            args: ``id`` (int, obligatorio), ``status`` (str), ``tags`` (list[str]).
+
+        Returns:
+            Diccionario con confirmacion o error si falta el ID.
+        """
+        decision_id: Optional[int] = args.get("id")
+
+        if decision_id is None:
+            return {"error": "El campo 'id' es obligatorio."}
+
+        new_status: Optional[str] = args.get("status")
+        new_tags: Optional[List[str]] = args.get("tags")
+
+        if new_status:
+            try:
+                db.update_decision_status(decision_id, new_status)
+            except ValueError as exc:
+                return {"error": str(exc)}
+
+        if new_tags:
+            db.add_decision_tags(decision_id, new_tags)
+
+        return {
+            "message": "Decision actualizada.",
+            "id": decision_id,
+        }
+
+    def _call_memory_link_decisions(
+        self, db: MemoryDB, args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Crea una relacion dirigida entre dos decisiones.
+
+        Documenta que una decision sustituye, depende, contradice o se
+        relaciona con otra. La operacion es idempotente: si la relacion
+        ya existe, no se duplica.
+
+        Args:
+            db: instancia de MemoryDB abierta.
+            args: ``source_id`` (int), ``target_id`` (int), ``link_type`` (str).
+                  Los tres campos son obligatorios.
+
+        Returns:
+            Diccionario con confirmacion o error si faltan campos.
+        """
+        source_id: Optional[int] = args.get("source_id")
+        target_id: Optional[int] = args.get("target_id")
+        link_type: Optional[str] = args.get("link_type")
+
+        if source_id is None or target_id is None or link_type is None:
+            return {
+                "error": (
+                    "Los campos 'source_id', 'target_id' y 'link_type' "
+                    "son obligatorios."
+                ),
+            }
+
+        db.link_decisions(source_id, target_id, link_type)
+
+        return {
+            "message": (
+                f"Relacion '{link_type}' creada entre decision "
+                f"{source_id} y {target_id}."
+            ),
+            "source_id": source_id,
+            "target_id": target_id,
+            "link_type": link_type,
+        }
+
+    def _call_memory_health(
+        self, db: MemoryDB, args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Valida la integridad de la base de datos de memoria.
+
+        Delega en ``MemoryDB.check_health()`` y devuelve el resultado
+        directamente, que incluye version del esquema, estado de FTS5,
+        permisos y tamano del fichero.
+
+        Args:
+            db: instancia de MemoryDB abierta.
+            args: sin parametros (se ignora).
+
+        Returns:
+            Diccionario con el informe de salud de la base de datos.
+        """
+        return db.check_health()
+
+    def _call_memory_export(
+        self, db: MemoryDB, args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Exporta las decisiones a un fichero Markdown con formato ADR-like.
+
+        Por ahora solo soporta el formato ``markdown``. El fichero de
+        salida incluye fecha, estado, etiquetas, contexto, decision
+        elegida, alternativas y justificacion de cada decision.
+
+        Args:
+            db: instancia de MemoryDB abierta.
+            args: ``format`` (str, obligatorio), ``path`` (str),
+                  ``iteration_id`` (int).
+
+        Returns:
+            Diccionario con el numero de decisiones exportadas, la ruta
+            y el formato.
+        """
+        fmt: str = args.get("format", "")
+        path: str = args.get("path", "DECISIONS.md")
+        iteration_id: Optional[int] = args.get("iteration_id")
+
+        if fmt != "markdown":
+            return {
+                "error": (
+                    f"Formato no soportado: '{fmt}'. "
+                    "Solo se admite 'markdown'."
+                ),
+            }
+
+        count = db.export_decisions_markdown(path, iteration_id)
+
+        return {
+            "exported": count,
+            "path": path,
+            "format": fmt,
+        }
+
+    def _call_memory_import(
+        self, db: MemoryDB, args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Importa datos en la memoria desde fuentes externas.
+
+        Soporta dos fuentes: ``git`` para importar el historial de commits
+        de un repositorio, y ``adr`` para importar ficheros ADR como
+        decisiones. La operacion es idempotente para commits (los SHA
+        duplicados se ignoran).
+
+        Args:
+            db: instancia de MemoryDB abierta.
+            args: ``source`` (str, obligatorio), ``path`` (str),
+                  ``limit`` (int, solo para git).
+
+        Returns:
+            Diccionario con el numero de registros importados y la fuente.
+        """
+        source: str = args.get("source", "")
+        path: Optional[str] = args.get("path")
+        limit: int = args.get("limit", 100)
+
+        if source == "git":
+            repo_path = path or os.getcwd()
+            count = db.import_git_history(repo_path, limit)
+        elif source == "adr":
+            adr_path = path or "docs/adr"
+            count = db.import_adrs(adr_path)
+        else:
+            return {
+                "error": (
+                    f"Fuente no soportada: '{source}'. "
+                    "Usa 'git' o 'adr'."
+                ),
+            }
+
+        return {
+            "imported": count,
+            "source": source,
         }
 
     # --- Bucle principal ---------------------------------------------------

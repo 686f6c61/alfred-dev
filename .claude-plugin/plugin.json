@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev",
   "description": "Plugin de ingeniería de software completa: 8 agentes de núcleo y 7 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": {
     "name": "00b"
   },
@@ -34,5 +34,16 @@
     "./skills/incident-response.md",
     "./skills/release-planning.md",
     "./skills/dependency-strategy.md"
+  ],
+  "hooks": [
+    {
+      "event": "PostToolUse",
+      "pattern": "Bash",
+      "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/commit-capture.py"
+    },
+    {
+      "event": "PreCompact",
+      "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py"
+    }
   ]
 }

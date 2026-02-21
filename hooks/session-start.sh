@@ -162,43 +162,59 @@ try:
         db.close()
         sys.exit(0)
 
-    # Últimas 5 decisiones (las más recientes primero)
-    decisions = db.get_decisions(limit=5)
-
-    # Iteración activa (si la hay)
+    # Contexto por iteracion activa o global
     active = db.get_active_iteration()
 
-    # Construir el bloque de texto
     lines = []
-    lines.append('### Memoria del proyecto')
-    lines.append('')
-    lines.append(f'El proyecto tiene memoria persistente activa con {total} decisiones registradas.')
-    lines.append('Ultimas decisiones:')
-    lines.append('')
 
-    for d in decisions:
-        fecha = d.get('decided_at', '')[:10]
-        titulo = d.get('title', 'sin titulo')
-        iter_id = d.get('iteration_id')
-
-        # Obtener datos de la iteración asociada si existe
-        if iter_id is not None:
-            it = db.get_iteration(iter_id)
-            if it is not None:
-                cmd = it.get('command', '?')
-                lines.append(f'- [{fecha}] {titulo} (iteracion: {cmd} #{iter_id})')
-            else:
-                lines.append(f'- [{fecha}] {titulo}')
-        else:
-            lines.append(f'- [{fecha}] {titulo}')
-
-    if active is not None:
+    if active:
+        # Inyectar decisiones de la iteracion activa
+        decisions = db.get_decisions(iteration_id=active['id'], limit=10)
+        lines.append('### Memoria del proyecto')
         lines.append('')
         cmd_activo = active.get('command', '?')
         desc_activa = active.get('description', '')
         lines.append(f'Iteracion activa: {cmd_activo} #{active[\"id\"]}')
         if desc_activa:
             lines.append(f'Descripcion: {desc_activa}')
+        lines.append(f'Decisiones en esta iteracion: {len(decisions)}')
+        lines.append(f'Total de decisiones del proyecto: {total}')
+    else:
+        # Sin iteracion activa: ultimas 5 globales
+        decisions = db.get_decisions(limit=5)
+        lines.append('### Memoria del proyecto')
+        lines.append('')
+        lines.append(f'El proyecto tiene memoria persistente activa con {total} decisiones registradas.')
+
+    if decisions:
+        lines.append('Ultimas decisiones:')
+        lines.append('')
+
+        for d in decisions:
+            fecha = d.get('decided_at', '')[:10]
+            titulo = d.get('title', 'sin titulo')
+            tags = d.get('tags', '[]')
+            try:
+                import json as _json
+                tag_list = _json.loads(tags) if isinstance(tags, str) else tags
+                if tag_list:
+                    _sep = ', '
+                    tag_str = ' [' + _sep.join(tag_list) + ']'
+                else:
+                    tag_str = ''
+            except Exception:
+                tag_str = ''
+
+            iter_id = d.get('iteration_id')
+            if iter_id is not None:
+                it = db.get_iteration(iter_id)
+                if it is not None:
+                    cmd = it.get('command', '?')
+                    lines.append(f'- [{fecha}] {titulo}{tag_str} (iteracion: {cmd} #{iter_id})')
+                else:
+                    lines.append(f'- [{fecha}] {titulo}{tag_str}')
+            else:
+                lines.append(f'- [{fecha}] {titulo}{tag_str}')
 
     lines.append('')
     lines.append('Para consultas historicas detalladas, delega en El Bibliotecario (agente opcional).')
