@@ -17,7 +17,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.2.2"
+$Version = "0.2.3"
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
 $PluginsDir = Join-Path $ClaudeDir "plugins"
 # La ruta de cache sigue la convencion de Claude Code: cache/<marketplace>/<plugin>/<version>.

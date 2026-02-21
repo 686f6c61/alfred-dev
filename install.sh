@@ -18,7 +18,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.2.2"
+VERSION="0.2.3"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGINS_DIR="${CLAUDE_DIR}/plugins"
 # La ruta de caché sigue la convención de Claude Code: cache/<marketplace>/<plugin>/<version>.
