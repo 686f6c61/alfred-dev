@@ -43,11 +43,11 @@ La razon de tener esta copia separada de la cache es que Claude Code trata el ma
 
 ### 3. Cache del plugin
 
-**Ruta:** `~/.claude/plugins/cache/alfred-dev/<version>/`
+**Ruta:** `~/.claude/plugins/cache/alfred-dev/alfred-dev/<version>/`
 
 Este directorio contiene todos los ficheros que Claude Code carga al iniciar sesion: agentes, comandos, hooks, skills, modulos del nucleo, servidores MCP y el manifiesto `.claude-plugin/plugin.json`. Es la copia operativa del plugin, la que realmente se ejecuta.
 
-La estructura versionada (`cache/alfred-dev/0.2.0/`) permite que coexistan varias versiones en disco, aunque Claude Code solo carga la que esta referenciada en `installed_plugins.json`. Esto facilita las actualizaciones y los rollbacks sin perder la version anterior.
+La estructura versionada (`cache/alfred-dev/alfred-dev/0.2.1/`) permite que coexistan varias versiones en disco, aunque Claude Code solo carga la que esta referenciada en `installed_plugins.json`. Esto facilita las actualizaciones y los rollbacks sin perder la version anterior.
 
 Los artefactos de desarrollo (directorio `.git`, tests, scripts de instalacion) se eliminan de la cache durante la instalacion para mantener limpio el entorno de ejecucion.
 
@@ -66,8 +66,8 @@ La clave de cada plugin sigue el formato `<plugin>@<marketplace>`, que en el cas
     "alfred-dev@alfred-dev": [
       {
         "scope": "user",
-        "installPath": "~/.claude/plugins/cache/alfred-dev/0.2.0",
-        "version": "0.2.0",
+        "installPath": "~/.claude/plugins/cache/alfred-dev/alfred-dev/0.2.1",
+        "version": "0.2.1",
         "installedAt": "2026-02-21T10:00:00.000Z",
         "lastUpdated": "2026-02-21T10:00:00.000Z",
         "gitCommitSha": "abc123..."
@@ -101,7 +101,7 @@ Este diseno separa la gestion del ciclo de vida (instalar/desinstalar) de la pre
 |---|---------|-----------|---------|
 | 1 | Registro del marketplace | `known_marketplaces.json` | Dar a conocer el repositorio de plugins a Claude Code |
 | 2 | Directorio del marketplace | `marketplaces/alfred-dev/` | Catalogo local de plugins disponibles |
-| 3 | Cache del plugin | `cache/alfred-dev/0.2.0/` | Ficheros operativos que Claude Code carga en ejecucion |
+| 3 | Cache del plugin | `cache/alfred-dev/alfred-dev/0.2.1/` | Ficheros operativos que Claude Code carga en ejecucion |
 | 4 | Registro de instalacion | `installed_plugins.json` | Inventario con version, ruta y SHA del commit |
 | 5 | Habilitacion | `settings.json > enabledPlugins` | Interruptor de activacion/desactivacion |
 
@@ -137,7 +137,7 @@ sequenceDiagram
     S->>P: Copiar .claude-plugin/ y modulos a marketplaces/alfred-dev/
 
     Note over S,P: Paso 3 -- Cache del plugin
-    S->>P: Copiar repositorio a cache/alfred-dev/0.2.0/<br/>Eliminar artefactos de desarrollo (.git, tests)
+    S->>P: Copiar repositorio a cache/alfred-dev/alfred-dev/0.2.1/<br/>Eliminar artefactos de desarrollo (.git, tests)
 
     Note over S,P: Paso 4 -- Registro de instalacion
     S->>P: Actualizar installed_plugins.json<br/>con version, ruta y gitCommitSha
@@ -171,10 +171,10 @@ Las variables al inicio del script definen toda la configuracion. Estan centrali
 |----------|-------|-----------|
 | `PLUGIN_NAME` | `alfred-dev` | Identificador del plugin en todo el sistema |
 | `REPO` | `686f6c61/alfred-dev` | Repositorio de GitHub de origen |
-| `VERSION` | `0.2.0` | Version que se instala |
+| `VERSION` | `0.2.1` | Version que se instala |
 | `CLAUDE_DIR` | `$HOME/.claude` | Directorio raiz de Claude Code |
 | `PLUGINS_DIR` | `$CLAUDE_DIR/plugins` | Directorio base de plugins |
-| `INSTALL_DIR` | `cache/alfred-dev/0.2.0` | Ruta final de la cache versionada |
+| `INSTALL_DIR` | `cache/alfred-dev/alfred-dev/0.2.1` | Ruta final de la cache versionada |
 
 ### Verificaciones previas
 
@@ -322,7 +322,7 @@ python3 -c "import json; print(json.dumps(json.load(open('$HOME/.claude/plugins/
 ls -la ~/.claude/plugins/marketplaces/alfred-dev/.claude-plugin/
 
 # 3. Comprobar que la cache existe y contiene plugin.json
-ls -la ~/.claude/plugins/cache/alfred-dev/0.2.0/.claude-plugin/
+ls -la ~/.claude/plugins/cache/alfred-dev/alfred-dev/0.2.1/.claude-plugin/
 
 # 4. Comprobar el registro de instalacion
 python3 -c "import json; d=json.load(open('$HOME/.claude/plugins/installed_plugins.json')); print(json.dumps(d.get('plugins',{}).get('alfred-dev@alfred-dev','NO ENCONTRADO'), indent=2))"

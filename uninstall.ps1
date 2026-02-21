@@ -10,6 +10,8 @@ $ErrorActionPreference = 'Stop'
 $PluginName = "alfred-dev"
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
 $PluginsDir = Join-Path $ClaudeDir "plugins"
+# La ruta de cache sigue la convencion de Claude Code: cache/<marketplace>/<plugin>/<version>.
+# Se borra el directorio completo del marketplace para cubrir instalaciones viejas y nuevas.
 $CacheDir = Join-Path $PluginsDir "cache" $PluginName
 $MarketplaceDir = Join-Path $PluginsDir "marketplaces" $PluginName
 $InstalledFile = Join-Path $PluginsDir "installed_plugins.json"

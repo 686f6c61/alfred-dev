@@ -82,7 +82,7 @@ El script recorre cinco fuentes de informacion, cada una opcional y con fallo si
 
 4. **Memoria persistente.** Si existe `.claude/alfred-memory.db`, consulta la base de datos SQLite a traves del modulo `core.memory` para obtener las ultimas cinco decisiones registradas y la iteracion activa, si la hay. Esto proporciona contexto historico sin necesidad de releer toda la conversacion anterior.
 
-5. **Comprobacion de actualizaciones.** Consulta la API de GitHub (`https://api.github.com/repos/686f6c61/alfred-dev/releases/latest`) con un timeout de 3 segundos. Si hay una version nueva con formato semantico valido distinta de la actual (`0.2.0`), anade un aviso al contexto. La validacion del formato de version (`^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$`) evita inyeccion de contenido arbitrario desde la respuesta de la API.
+5. **Comprobacion de actualizaciones.** Consulta la API de GitHub (`https://api.github.com/repos/686f6c61/alfred-dev/releases/latest`) con un timeout de 3 segundos. Si hay una version nueva con formato semantico valido distinta de la actual (`0.2.1`), anade un aviso al contexto. La validacion del formato de version (`^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$`) evita inyeccion de contenido arbitrario desde la respuesta de la API.
 
 La salida es un JSON con la clave `hookSpecificOutput.additionalContext` que Claude Code inyecta como contexto del sistema. Para generar JSON seguro, el contenido se escapa a traves de `python3 -c "import json..."` en lugar de hacerlo con manipulacion de cadenas en bash, lo que evita problemas con caracteres especiales.
 

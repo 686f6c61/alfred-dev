@@ -146,6 +146,7 @@ PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 if [[ -f "$MEMORY_DB" ]]; then
   MEMORY_INFO=$(PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
+import sqlite3
 import sys
 
 try:
@@ -204,8 +205,20 @@ try:
 
     db.close()
     print('\n'.join(lines))
-except Exception:
-    # Cualquier error se ignora: la memoria es contexto opcional
+except ImportError:
+    # core.memory no disponible: la memoria no esta instalada o el path es incorrecto
+    sys.exit(0)
+except sqlite3.OperationalError as e:
+    # DB bloqueada, disco lleno u otro error operativo de SQLite
+    print(f'[Alfred Dev] Aviso: error al leer la memoria del proyecto: {e}', file=sys.stderr)
+    sys.exit(0)
+except sqlite3.DatabaseError as e:
+    # DB corrupta: avisar al usuario para que pueda reconstruirla
+    print(f'[Alfred Dev] Aviso: la base de datos de memoria puede estar corrupta: {e}', file=sys.stderr)
+    sys.exit(0)
+except Exception as e:
+    # Otros errores inesperados: registrar para diagnostico
+    print(f'[Alfred Dev] Aviso: error inesperado al cargar memoria: {e}', file=sys.stderr)
     sys.exit(0)
 " "$MEMORY_DB") || MEMORY_INFO=""
 
@@ -221,7 +234,7 @@ fi
 # Consulta la última release publicada en GitHub. Si hay versión nueva,
 # añade un aviso al contexto de sesión. Falla silenciosamente si no hay
 # red, se excede el timeout (3s) o la API devuelve error.
-CURRENT_VERSION="0.2.0"
+CURRENT_VERSION="0.2.1"
 if command -v curl &>/dev/null; then
   LATEST_RELEASE=$(curl -s --max-time 3 --proto '=https' \
     "https://api.github.com/repos/686f6c61/alfred-dev/releases/latest" \

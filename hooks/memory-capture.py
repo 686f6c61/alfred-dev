@@ -35,8 +35,12 @@ def main():
     """
     try:
         data = json.load(sys.stdin)
-    except (ValueError, json.JSONDecodeError):
-        # Entrada invalida: no se puede procesar, salir sin bloquear
+    except (ValueError, json.JSONDecodeError) as e:
+        print(
+            f"[memory-capture] Aviso: no se pudo leer la entrada del hook: {e}. "
+            f"La captura de memoria está desactivada para esta operación.",
+            file=sys.stderr,
+        )
         sys.exit(0)
 
     tool_input = data.get("tool_input", {})
@@ -66,8 +70,11 @@ def main():
 
     try:
         from core.memory import MemoryDB
-    except ImportError:
-        # El modulo de memoria no esta disponible: salir sin bloquear
+    except ImportError as e:
+        print(
+            f"[memory-capture] Aviso: no se pudo importar core.memory: {e}",
+            file=sys.stderr,
+        )
         sys.exit(0)
 
     # Resolver la ruta de la base de datos de memoria del proyecto
@@ -80,15 +87,20 @@ def main():
 
     try:
         db = MemoryDB(db_path)
-    except Exception:
-        # No se puede abrir la DB: salir sin bloquear
+    except Exception as e:
+        print(
+            f"[memory-capture] Aviso: no se pudo abrir la DB de memoria: {e}",
+            file=sys.stderr,
+        )
         sys.exit(0)
 
     try:
         _process_state(db, new_state, db_exists)
-    except Exception:
-        # Cualquier error durante el procesamiento: salir sin bloquear
-        pass
+    except Exception as e:
+        print(
+            f"[memory-capture] Aviso: error al procesar estado: {e}",
+            file=sys.stderr,
+        )
     finally:
         db.close()
 
