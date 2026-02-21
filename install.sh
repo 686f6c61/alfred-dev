@@ -21,7 +21,9 @@ PLUGIN_NAME="alfred-dev"
 VERSION="0.2.0"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGINS_DIR="${CLAUDE_DIR}/plugins"
-CACHE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}"
+# La ruta de caché sigue la convención de Claude Code: cache/<marketplace>/<plugin>/<version>.
+# En nuestro caso marketplace y plugin comparten nombre, por lo que se repite.
+CACHE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}/${PLUGIN_NAME}"
 INSTALL_DIR="${CACHE_DIR}/${VERSION}"
 MARKETPLACE_DIR="${PLUGINS_DIR}/marketplaces/${PLUGIN_NAME}"
 INSTALLED_FILE="${PLUGINS_DIR}/installed_plugins.json"

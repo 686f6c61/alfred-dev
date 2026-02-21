@@ -11,7 +11,8 @@ set -euo pipefail
 PLUGIN_NAME="alfred-dev"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGINS_DIR="${CLAUDE_DIR}/plugins"
-CACHE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}"
+# La ruta de caché sigue la convención de Claude Code: cache/<marketplace>/<plugin>/<version>.
+CACHE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}/${PLUGIN_NAME}"
 MARKETPLACE_DIR="${PLUGINS_DIR}/marketplaces/${PLUGIN_NAME}"
 INSTALLED_FILE="${PLUGINS_DIR}/installed_plugins.json"
 KNOWN_MARKETPLACES="${PLUGINS_DIR}/known_marketplaces.json"
@@ -36,9 +37,13 @@ fi
 
 printf "\n${BOLD}Desinstalando Alfred Dev${NC}\n\n"
 
-# Eliminar cache del plugin
-if [ -d "${CACHE_DIR}" ]; then
-    rm -rf "${CACHE_DIR}"
+# Eliminar cache del plugin.
+# Se borra el directorio completo del marketplace en caché (cache/alfred-dev/)
+# para limpiar tanto instalaciones nuevas (cache/alfred-dev/alfred-dev/<version>)
+# como antiguas (cache/alfred-dev/<version>) de forma uniforme.
+CACHE_MARKETPLACE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}"
+if [ -d "${CACHE_MARKETPLACE_DIR}" ]; then
+    rm -rf "${CACHE_MARKETPLACE_DIR}"
     ok "Cache del plugin eliminada"
 else
     info "No se encontró cache del plugin"
