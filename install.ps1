@@ -2,7 +2,7 @@
 # Alfred Dev -- script de instalacion para Claude Code (Windows)
 #
 # Uso:
-#   irm https://raw.githubusercontent.com/686f6c61/jarvis-dev/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex
 #
 # Que hace:
 #   1. Registra el marketplace en known_marketplaces.json
@@ -15,7 +15,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$Repo = "686f6c61/jarvis-dev"
+$Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
 $Version = "0.2.0"
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
@@ -253,5 +253,5 @@ Write-Host "  Reinicia Claude Code y ejecuta:"
 Write-Host "  /alfred help" -ForegroundColor White
 Write-Host ""
 Write-Host "  Repositorio: https://github.com/$Repo" -ForegroundColor DarkGray
-Write-Host "  Documentacion: https://686f6c61.github.io/jarvis-dev/" -ForegroundColor DarkGray
+Write-Host "  Documentacion: https://686f6c61.github.io/alfred-dev/" -ForegroundColor DarkGray
 Write-Host ""

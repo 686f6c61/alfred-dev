@@ -5,8 +5,8 @@
   "author": {
     "name": "00b"
   },
-  "homepage": "https://686f6c61.github.io/jarvis-dev/",
-  "repository": "https://github.com/686f6c61/jarvis-dev",
+  "homepage": "https://686f6c61.github.io/alfred-dev/",
+  "repository": "https://github.com/686f6c61/alfred-dev",
   "license": "MIT",
   "keywords": ["sdlc", "agents", "security", "tdd", "devops", "qa", "product", "spanish", "seo", "ux", "data"],
   "commands": [

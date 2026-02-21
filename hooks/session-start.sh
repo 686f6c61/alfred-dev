@@ -224,7 +224,7 @@ fi
 CURRENT_VERSION="0.2.0"
 if command -v curl &>/dev/null; then
   LATEST_RELEASE=$(curl -s --max-time 3 --proto '=https' \
-    "https://api.github.com/repos/686f6c61/jarvis-dev/releases/latest" \
+    "https://api.github.com/repos/686f6c61/alfred-dev/releases/latest" \
     | python3 -c "import json,sys; print(json.load(sys.stdin).get('tag_name','').lstrip('v'))" 2>/dev/null || echo "")
 
   # Solo aceptar versiones con formato semántico válido para evitar

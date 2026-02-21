@@ -34,7 +34,7 @@ Si no se puede leer, busca la version en el fichero `plugin.json` mas cercano de
 Ejecuta con Bash:
 
 ```bash
-curl -s --max-time 10 "https://api.github.com/repos/686f6c61/jarvis-dev/releases/latest"
+curl -s --max-time 10 "https://api.github.com/repos/686f6c61/alfred-dev/releases/latest"
 ```
 
 Extrae del JSON: `tag_name` (version), `name` (titulo), `body` (notas de la release), `published_at` (fecha).
@@ -78,13 +78,13 @@ uname -s 2>/dev/null || echo "Windows"
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/686f6c61/jarvis-dev/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/686f6c61/jarvis-dev/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex
 ```
 
 Despues de que termine, informa al usuario de que **debe reiniciar Claude Code** (cerrar y volver a abrir) para que los cambios surtan efecto. Los plugins se cargan al inicio de sesion.

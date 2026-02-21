@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://686f6c61.github.io/jarvis-dev/sitemap.xml
+Sitemap: https://686f6c61.github.io/alfred-dev/sitemap.xml

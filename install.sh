@@ -3,7 +3,7 @@
 # Alfred Dev -- script de instalación para Claude Code
 #
 # Uso:
-#   curl -fsSL https://raw.githubusercontent.com/686f6c61/jarvis-dev/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash
 #
 # Qué hace:
 #   1. Registra el marketplace en known_marketplaces.json
@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-REPO="686f6c61/jarvis-dev"
+REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
 VERSION="0.2.0"
 CLAUDE_DIR="${HOME}/.claude"
@@ -299,4 +299,4 @@ printf "\n${GREEN}${BOLD}Instalación completada${NC}\n\n"
 printf "  Reinicia Claude Code y ejecuta:\n"
 printf "  ${BOLD}/alfred help${NC}\n\n"
 printf "  ${DIM}Repositorio: https://github.com/${REPO}${NC}\n"
-printf "  ${DIM}Documentación: https://686f6c61.github.io/jarvis-dev/${NC}\n\n"
+printf "  ${DIM}Documentación: https://686f6c61.github.io/alfred-dev/${NC}\n\n"
