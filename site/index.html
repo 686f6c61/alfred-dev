@@ -1357,7 +1357,7 @@ footer a {
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
   "license": "https://opensource.org/licenses/MIT",
   "url": "https://686f6c61.github.io/alfred-dev/",
-  "softwareVersion": "0.2.2"
+  "softwareVersion": "0.2.3"
 }
 </script>
 </head>
@@ -1385,7 +1385,7 @@ footer a {
       <span></span>
       <span></span>
     </button>
-    <button class="nav-version" id="changelogBtn" title="Ver changelog" style="cursor: pointer;">v0.2.2</button>
+    <button class="nav-version" id="changelogBtn" title="Ver changelog" style="cursor: pointer;">v0.2.3</button>
   </div>
 </nav>
 
@@ -2042,7 +2042,7 @@ footer a {
     <div class="infra-grid">
 
       <div class="infra-card fade-in">
-        <h3>9 hooks</h3>
+        <h3>11 hooks</h3>
         <div class="infra-item">
           <span class="infra-item-name">session-start.sh</span>
           <span class="infra-item-tag">SessionStart</span>
@@ -2078,6 +2078,14 @@ footer a {
         <div class="infra-item">
           <span class="infra-item-name">memory-capture.py</span>
           <span class="infra-item-tag">PostToolUse</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">commit-capture.py</span>
+          <span class="infra-item-tag">PostToolUse</span>
+        </div>
+        <div class="infra-item">
+          <span class="infra-item-name">memory-compact.py</span>
+          <span class="infra-item-tag">PreCompact</span>
         </div>
       </div>
 
@@ -2462,7 +2470,9 @@ footer a {
           <li><strong style="color: var(--text);">Quality gate</strong> -- verifica que los tests pasen despu&eacute;s de cada cambio significativo</li>
           <li><strong style="color: var(--text);">Vigilancia de dependencias</strong> -- detecta nuevas librer&iacute;as y notifica al auditor de seguridad</li>
           <li><strong style="color: var(--text);">Guardia ortogr&aacute;fico</strong> -- detecta palabras castellanas sin tilde al escribir o editar ficheros</li>
-          <li><strong style="color: var(--text);">Captura de memoria</strong> -- registra autom&aacute;ticamente eventos del flujo de trabajo en la memoria persistente del proyecto</li>
+          <li><strong style="color: var(--text);">Captura de memoria</strong> -- registra autom&aacute;ticamente eventos del flujo de trabajo en la memoria persistente</li>
+          <li><strong style="color: var(--text);">Captura de commits</strong> -- detecta cada <code>git commit</code> y registra SHA, autor y ficheros en la memoria</li>
+          <li><strong style="color: var(--text);">Contexto protegido</strong> -- las decisiones cr&iacute;ticas sobreviven a la compactaci&oacute;n de contexto</li>
         </ul>
       </div>
 
@@ -2474,12 +2484,13 @@ footer a {
 <section id="memoria" style="background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
   <div class="container">
     <div class="section-header fade-in">
-      <div class="section-label" style="color: var(--gold);">Nuevo en v0.2.0</div>
+      <div class="section-label" style="color: var(--gold);">Desde v0.2.0 &middot; Mejorada en v0.2.3</div>
       <h2 class="section-title">Memoria persistente</h2>
       <p class="section-desc">
         Alfred Dev recuerda decisiones, commits e iteraciones entre sesiones.
         La memoria se almacena en una base de datos SQLite local dentro de cada proyecto,
-        sin dependencias externas ni servicios remotos.
+        sin dependencias externas ni servicios remotos. Desde v0.2.3: etiquetas, estado y relaciones
+        entre decisiones, auto-captura de commits, filtros avanzados y export/import.
       </p>
     </div>
 
@@ -2524,24 +2535,25 @@ footer a {
       <div class="fade-in" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 24px;">
         <h4 style="font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-bright); margin-bottom: 12px;">Captura autom&aacute;tica</h4>
         <p style="font-size: 13px; color: var(--text-muted); line-height: 1.7;">
-          Un hook PostToolUse registra autom&aacute;ticamente eventos del flujo de trabajo: inicio y fin de iteraciones,
-          cambios de fase. Las decisiones arquitect&oacute;nicas se registran a trav&eacute;s del Bibliotecario o del servidor MCP.
+          Dos hooks complementarios capturan todo autom&aacute;ticamente: <code style="font-family: var(--font-mono); font-size: 12px; color: var(--blue);">memory-capture.py</code> registra eventos del flujo
+          (iteraciones, fases) y <code style="font-family: var(--font-mono); font-size: 12px; color: var(--blue);">commit-capture.py</code> detecta cada <code style="font-family: var(--font-mono); font-size: 12px; color: var(--blue);">git commit</code>
+          y registra SHA, mensaje, autor y ficheros afectados.
         </p>
       </div>
 
       <div class="fade-in" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 24px;">
         <h4 style="font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-bright); margin-bottom: 12px;">Servidor MCP integrado</h4>
         <p style="font-size: 13px; color: var(--text-muted); line-height: 1.7;">
-          10 herramientas accesibles desde cualquier agente via MCP stdio: buscar, registrar decisiones, registrar commits,
-          consultar iteraciones, l&iacute;nea temporal de eventos, estad&iacute;sticas, gesti&oacute;n de iteraciones y b&uacute;squeda avanzada. Sin dependencias externas.
+          15 herramientas accesibles desde cualquier agente via MCP stdio: buscar, registrar, consultar iteraciones,
+          estad&iacute;sticas, gesti&oacute;n de iteraciones, ciclo de vida de decisiones, validaci&oacute;n de integridad, export/import. Sin dependencias externas.
         </p>
       </div>
 
       <div class="fade-in" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 24px;">
         <h4 style="font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-bright); margin-bottom: 12px;">Contexto de sesi&oacute;n</h4>
         <p style="font-size: 13px; color: var(--text-muted); line-height: 1.7;">
-          Al iniciar cada sesi&oacute;n, se inyectan autom&aacute;ticamente las &uacute;ltimas 5 decisiones y la iteraci&oacute;n activa.
-          Esto da continuidad al trabajo sin que el usuario tenga que recordar d&oacute;nde lo dej&oacute;.
+          Al iniciar cada sesi&oacute;n, se inyectan las decisiones relevantes: si hay iteraci&oacute;n activa, las de esa iteraci&oacute;n;
+          si no, las 5 &uacute;ltimas globales. Un hook PreCompact protege estas decisiones durante la compactaci&oacute;n de contexto.
         </p>
       </div>
 
@@ -2569,7 +2581,9 @@ footer a {
       <p style="font-size: 14px; color: var(--text-muted); line-height: 1.8; margin-bottom: 20px;">
         El Bibliotecario es el agente que responde consultas hist&oacute;ricas sobre el proyecto. A diferencia de otros agentes
         que trabajan sobre el c&oacute;digo actual, este se centra en el <em>por qu&eacute;</em> de las decisiones pasadas: qu&eacute; se decidi&oacute;,
-        cu&aacute;ndo, qu&eacute; alternativas se descartaron y qu&eacute; commits implementaron cada decisi&oacute;n.
+        cu&aacute;ndo, qu&eacute; alternativas se descartaron y qu&eacute; commits implementaron cada decisi&oacute;n. Desde v0.2.3 tambi&eacute;n gestiona
+        el ciclo de vida de las decisiones (estado, etiquetas, relaciones), valida la integridad de la memoria
+        y permite exportar decisiones a Markdown o importar desde Git y ADRs.
       </p>
       <p style="font-size: 14px; color: var(--text-muted); line-height: 1.8; margin-bottom: 24px;">
         Tiene una regla infranqueable: <strong style="color: var(--text-bright);">siempre cita las fuentes</strong>. Cada afirmaci&oacute;n
@@ -3033,6 +3047,27 @@ footer a {
 
     <div class="cl-version">
       <div class="cl-version-header">
+        <span class="cl-version-tag">0.2.3</span>
+        <span class="cl-version-date">2026-02-21</span>
+      </div>
+      <p class="cl-section-title added">Added</p>
+      <ul class="cl-list">
+        <li><strong>Memoria persistente v2</strong> -- migraci&oacute;n de esquema, etiquetas, estado y relaciones entre decisiones.</li>
+        <li><strong>5 herramientas MCP nuevas</strong> -- total 15: update, link, health, export, import.</li>
+        <li><strong>Filtros de b&uacute;squeda</strong> -- par&aacute;metros <code>since</code>, <code>until</code>, <code>tags</code>, <code>status</code>.</li>
+        <li><strong>Export/Import</strong> -- decisiones a Markdown (ADR), import desde Git y ADRs.</li>
+        <li><strong>Hook commit-capture.py</strong> -- auto-captura de commits en la memoria.</li>
+        <li><strong>Hook memory-compact.py</strong> -- protege decisiones durante la compactaci&oacute;n.</li>
+        <li>Inyecci&oacute;n de contexto por iteraci&oacute;n activa. ~268 tests.</li>
+      </ul>
+      <p class="cl-section-title changed">Changed</p>
+      <ul class="cl-list">
+        <li>El Bibliotecario ampliado: ciclo de vida de decisiones, integridad, export/import.</li>
+      </ul>
+    </div>
+
+    <div class="cl-version">
+      <div class="cl-version-header">
         <span class="cl-version-tag">0.2.2</span>
         <span class="cl-version-date">2026-02-21</span>
       </div>
@@ -3159,7 +3194,7 @@ footer a {
 <footer>
   <div class="container">
     <p>
-      <strong style="color: var(--text);">Alfred Dev</strong> v0.2.2
+      <strong style="color: var(--text);">Alfred Dev</strong> v0.2.3
       <span style="margin: 0 8px; color: var(--border-light);">|</span>
       MIT License
       <span style="margin: 0 8px; color: var(--border-light);">|</span>
