@@ -160,21 +160,34 @@ class GUIServer:
         Se envia a cada cliente al conectarse para que pueda renderizar
         el dashboard sin necesidad de esperar al siguiente ciclo de
         sondeo. Incluye la iteracion activa, decisiones recientes,
-        eventos y elementos marcados.
+        eventos, commits y elementos marcados.
 
         Returns:
             Diccionario con las claves: ``iteration``, ``decisions``,
-            ``events``, ``pinned``.
+            ``events``, ``commits``, ``pinned``.
         """
         active = self._db.get_active_iteration()
 
         decisions = []
         events = []
+        commits = []
         if active:
             decisions = self._db.get_decisions(
                 iteration_id=active["id"], limit=50
             )
             events = self._db.get_timeline(active["id"], limit=100)
+            # Obtener commits de la iteracion activa
+            conn = sqlite3.connect(self._db_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                rows = conn.execute(
+                    "SELECT * FROM commits WHERE iteration_id = ? "
+                    "ORDER BY id DESC LIMIT 50",
+                    (active["id"],),
+                ).fetchall()
+                commits = [dict(r) for r in rows]
+            finally:
+                conn.close()
 
         pinned = self._db.get_pinned_items()
 
@@ -182,6 +195,7 @@ class GUIServer:
             "iteration": active,
             "decisions": decisions,
             "events": events,
+            "commits": commits,
             "pinned": pinned,
         }
 

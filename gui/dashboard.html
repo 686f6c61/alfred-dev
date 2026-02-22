@@ -236,7 +236,7 @@
     .agent-card:hover { border-color: var(--border-light); background: var(--bg-card-hover); }
     .agent-card.active-agent { border-color: var(--blue); }
     .agent-card-header { display: flex; align-items: center; gap: 12px; }
-    .agent-card-avatar { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--bg-surface), var(--bg-deep)); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .agent-card-avatar { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--bg-surface), var(--bg-deep)); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; letter-spacing: -0.5px; flex-shrink: 0; }
     .agent-card-name { font-weight: 600; font-size: 14px; color: var(--text-bright); }
     .agent-card-status { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     .agent-card-toggle { margin-left: auto; flex-shrink: 0; }
@@ -308,6 +308,8 @@
     <div class="header-sep"></div>
     <div class="header-project">
       Proyecto: <strong id="header-project-name">—</strong>
+      &nbsp;&middot;&nbsp;
+      Iteracion: <strong id="header-iteration-id">—</strong>
       &nbsp;&middot;&nbsp;
       Fase: <strong id="header-phase">—</strong>
     </div>
@@ -847,8 +849,36 @@ function renderCurrentView() {
 /** Actualiza el nombre de proyecto y fase en la cabecera. */
 function updateHeaderInfo() {
   var iter = state.iteration;
-  document.getElementById('header-project-name').textContent = iter ? (iter.project_name || iter.name || 'Iteracion #' + iter.id) : '—';
-  document.getElementById('header-phase').textContent = iter ? (iter.current_phase || iter.phase || '—') : '—';
+  /* Nombre del proyecto: usar description si existe, o fallback a comando + id. */
+  var projectName = '—';
+  if (iter) {
+    projectName = iter.description || iter.project_name || iter.name || ('Iteracion #' + iter.id);
+  }
+  document.getElementById('header-project-name').textContent = projectName;
+
+  /* Fase activa: buscar el ultimo evento phase_start en la timeline. */
+  var phaseName = '—';
+  if (iter && iter.current_phase) {
+    phaseName = iter.current_phase;
+  } else if (state.events && state.events.length) {
+    for (var i = 0; i < state.events.length; i++) {
+      var ev = state.events[i];
+      if (ev.event_type === 'phase_start' || ev.type === 'phase_start') {
+        try {
+          var p = typeof ev.payload === 'string' ? JSON.parse(ev.payload) : (ev.payload || {});
+          if (p.phase) { phaseName = p.phase; break; }
+        } catch(_) {}
+      }
+    }
+  }
+  document.getElementById('header-phase').textContent = phaseName;
+  /* Iteracion: tipo + numero. */
+  var iterLabel = '—';
+  if (iter) {
+    var cmd = iter.command ? iter.command.charAt(0).toUpperCase() + iter.command.slice(1) : '';
+    iterLabel = (cmd ? cmd + ' ' : '') + '#' + iter.id;
+  }
+  document.getElementById('header-iteration-id').textContent = iterLabel;
   document.getElementById('footer-session').textContent = iter ? '#' + iter.id : '—';
 }
 
@@ -993,7 +1023,9 @@ function renderTimeline() {
   var events = state.events.slice().reverse();
   if (filter !== 'all') {
     events = events.filter(function(e) {
-      return (e.event_type || e.type || '').toLowerCase() === filter;
+      var t = (e.event_type || e.type || '').toLowerCase();
+      // Los filtros son prefijos: "decision" matchea "decision_recorded", etc.
+      return t.indexOf(filter) === 0;
     });
   }
 
@@ -1018,11 +1050,71 @@ function renderTimeline() {
      de insertarse. El uso de innerHTML aqui es seguro en contexto
      de herramienta de desarrollo local. */
   var html = events.map(function(e) {
-    var type    = (e.event_type || e.type || 'system').toLowerCase();
-    var summary = e.summary || e.description || e.message || JSON.stringify(e);
-    var phase   = e.phase || '';
-    var ts      = formatTime(e.created_at || e.timestamp);
-    var id      = e.id || '';
+    var type = (e.event_type || e.type || 'system').toLowerCase();
+    var id   = e.id || '';
+    var ts   = formatTime(e.created_at || e.timestamp);
+
+    // Parsear el payload (puede ser string JSON o ya un objeto)
+    var payload = {};
+    try {
+      payload = typeof e.payload === 'string' ? JSON.parse(e.payload) : (e.payload || {});
+    } catch(_) { payload = {}; }
+
+    // Fase: del campo directo o del payload
+    var phase = e.phase || payload.phase || '';
+
+    // Generar resumen legible segun tipo de evento
+    var summary = '';
+    var details = [];
+    switch (type) {
+      case 'phase_start':
+        summary = 'Inicio de fase: ' + (payload.phase || '?');
+        if (payload.agents && payload.agents.length) {
+          details.push('Agentes: ' + payload.agents.join(', '));
+        }
+        break;
+      case 'agent_activated':
+        summary = 'Agente activado: ' + (payload.agent || '?');
+        if (payload.phase) details.push('Fase: ' + payload.phase);
+        break;
+      case 'agent_deactivated':
+        summary = 'Agente desactivado: ' + (payload.agent || '?');
+        break;
+      case 'decision_recorded':
+        summary = 'Decision registrada: ' + (payload.title || '?');
+        if (payload.impact) details.push('Impacto: ' + payload.impact);
+        break;
+      case 'gate_passed':
+        summary = 'Gate superada: ' + (payload.gate || '?');
+        if (payload.phase) details.push('Fase: ' + payload.phase);
+        break;
+      case 'gate_failed':
+        summary = 'Gate fallida: ' + (payload.gate || '?');
+        if (payload.reason) details.push('Razon: ' + payload.reason);
+        break;
+      case 'commit_detected':
+        summary = 'Commit: ' + (payload.message || payload.sha || '?');
+        if (payload.sha) details.push('SHA: ' + payload.sha);
+        if (payload.files_changed) details.push('Ficheros: ' + payload.files_changed);
+        break;
+      case 'iteration_completed':
+        summary = 'Iteracion completada';
+        if (payload.comando) details.push('Comando: ' + payload.comando);
+        if (payload.total_fases) details.push('Fases completadas: ' + payload.total_fases);
+        break;
+      case 'error':
+        summary = 'Error: ' + (payload.message || payload.error || '?');
+        break;
+      default:
+        summary = e.summary || e.description || e.message || JSON.stringify(payload);
+        break;
+    }
+
+    var detailsHtml = details.length
+      ? '<div class="event-details" style="margin-top:4px;color:var(--text-muted);font-size:0.82rem;">' +
+          details.map(function(d) { return '<span style="margin-right:12px;">' + esc(d) + '</span>'; }).join('') +
+        '</div>'
+      : '';
 
     return '<div class="timeline-event">' +
       '<div class="event-dot-wrap"><div class="event-dot ' + eventDotClass(type) + '"></div></div>' +
@@ -1035,6 +1127,7 @@ function renderTimeline() {
           '</span>' +
         '</div>' +
         '<div class="event-summary">' + esc(summary) + '</div>' +
+        detailsHtml +
         '<div class="event-ts" style="margin-top:6px;">' + ts + '</div>' +
       '</div>' +
     '</div>';
@@ -1089,8 +1182,14 @@ function renderDecisions() {
   }
 
   tbody.innerHTML = data.map(function(d) {
-    var tags = (d.tags || '').split(',').filter(Boolean).map(function(t) {
-      return '<span class="badge badge-blue" style="font-size:10px;">' + esc(t.trim()) + '</span>';
+    var rawTags = d.tags || '';
+    var tagList = [];
+    try { tagList = JSON.parse(rawTags); } catch(_) {
+      tagList = rawTags.split(',').filter(Boolean);
+    }
+    if (!Array.isArray(tagList)) tagList = [];
+    var tags = tagList.map(function(t) {
+      return '<span class="badge badge-blue" style="font-size:10px;">' + esc(String(t).trim()) + '</span>';
     }).join(' ');
 
     return '<tr class="decision-row" onclick="toggleDecisionRow(' + d.id + ')">' +
@@ -1122,15 +1221,29 @@ function toggleDecisionRow(id) {
 
 /* -- Vista 4: Agentes -- */
 
-/** Definicion estatica de los agentes conocidos del sistema. */
+/**
+ * Definicion estatica de los 15 agentes del sistema Alfred Dev.
+ * 8 agentes principales (requeridos en todo flujo) y 7 opcionales
+ * (activados segun las necesidades del proyecto).
+ */
 var KNOWN_AGENTS = [
-  { id: 'architect',  name: 'Architect',  icon: 'A', role: 'Diseno de arquitectura',   optional: false },
-  { id: 'coder',      name: 'Coder',      icon: 'C', role: 'Implementacion de codigo',  optional: false },
-  { id: 'reviewer',   name: 'Reviewer',   icon: 'R', role: 'Revision y calidad',        optional: false },
-  { id: 'tester',     name: 'Tester',     icon: 'T', role: 'Pruebas automatizadas',     optional: true  },
-  { id: 'devops',     name: 'DevOps',     icon: 'D', role: 'CI/CD y despliegue',        optional: true  },
-  { id: 'documenter', name: 'Documenter', icon: 'X', role: 'Documentacion',             optional: true  },
-  { id: 'alfred',     name: 'Alfred',     icon: 'F', role: 'Coordinacion general',      optional: false },
+  /* --- Agentes principales (8) --- */
+  { id: 'alfred',               name: 'Alfred',               icon: 'AL', role: 'Orquestacion y coordinacion general',        optional: false },
+  { id: 'architect',            name: 'Architect',            icon: 'AR', role: 'Diseno de arquitectura y ADRs',              optional: false },
+  { id: 'product-owner',        name: 'Product Owner',        icon: 'PO', role: 'Requisitos, PRDs e historias de usuario',    optional: false },
+  { id: 'senior-dev',           name: 'Senior Dev',           icon: 'SD', role: 'Implementacion con TDD y refactoring',      optional: false },
+  { id: 'qa-engineer',          name: 'QA Engineer',          icon: 'QA', role: 'Testing, code review y validacion',         optional: false },
+  { id: 'security-officer',     name: 'Security Officer',     icon: 'SO', role: 'Seguridad, OWASP y compliance',             optional: false },
+  { id: 'devops-engineer',      name: 'DevOps Engineer',      icon: 'DE', role: 'CI/CD, Docker y despliegue',                optional: false },
+  { id: 'tech-writer',          name: 'Tech Writer',          icon: 'TW', role: 'Documentacion de API y guias',              optional: false },
+  /* --- Agentes opcionales (7) --- */
+  { id: 'copywriter',           name: 'Copywriter',           icon: 'CW', role: 'Textos publicos, landing y copy',           optional: true  },
+  { id: 'data-engineer',        name: 'Data Engineer',        icon: 'DA', role: 'Modelado de datos, esquemas y ETL',         optional: true  },
+  { id: 'github-manager',       name: 'GitHub Manager',       icon: 'GH', role: 'Gestion de repos, PRs y releases',         optional: true  },
+  { id: 'librarian',            name: 'Librarian',            icon: 'LB', role: 'Memoria persistente del proyecto',          optional: true  },
+  { id: 'performance-engineer', name: 'Performance Engineer', icon: 'PE', role: 'Profiling, benchmarks y optimizacion',      optional: true  },
+  { id: 'seo-specialist',       name: 'SEO Specialist',       icon: 'SE', role: 'SEO, Core Web Vitals y posicionamiento',    optional: true  },
+  { id: 'ux-reviewer',          name: 'UX Reviewer',          icon: 'UX', role: 'Accesibilidad, usabilidad y flujos de UX',  optional: true  },
 ];
 
 /**
@@ -1288,7 +1401,12 @@ function renderCommits() {
   list.innerHTML = state.commits.slice().reverse().map(function(c) {
     var sha     = (c.sha || c.commit_sha || '').slice(0, 7);
     var message = c.message || c.commit_message || 'Sin mensaje';
-    var files   = (c.files || c.changed_files || '').split(',').filter(Boolean);
+    var rawFiles = c.files || c.changed_files || '';
+    var files = [];
+    try { files = JSON.parse(rawFiles); } catch(_) {
+      files = rawFiles.split(',').filter(Boolean);
+    }
+    if (!Array.isArray(files)) files = [];
     var decs    = (c.decision_ids || '').split(',').filter(Boolean);
     var remote  = c.remote_url || '';
 
