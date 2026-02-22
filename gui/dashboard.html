@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alfred Dev — Dashboard</title>
+
+  <!-- Fuentes: Outfit (titulos), DM Sans (cuerpo), JetBrains Mono (codigo) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       VARIABLES DE DISENO
+       Paleta y tipografia extraidas de la landing page del proyecto.
+       Todas las vistas y componentes consumen estas variables para
+       garantizar coherencia visual sin duplicar valores literales.
+    ============================================================ */
+    :root {
+      --bg-deep:        #07080c;
+      --bg-surface:     #0e1017;
+      --bg-card:        #14161e;
+      --bg-card-hover:  #1a1d28;
+      --border:         #1e2130;
+      --border-light:   #2a2d3e;
+      --blue:           #5b9cf5;
+      --blue-dim:       #3d6fbd;
+      --gold:           #c9a96e;
+      --gold-dim:       #8a7348;
+      --red:            #e5564f;
+      --green:          #4ec990;
+      --orange:         #e8a44a;
+      --purple:         #a07ee8;
+      --cyan:           #4ec9c9;
+      --white:          #c8c8d0;
+      --text:           #d8dae3;
+      --text-bright:    #eef0f7;
+      --text-muted:     #8b90a8;
+      --text-dim:       #6b7090;
+      --font-heading:   'Outfit', system-ui, sans-serif;
+      --font-body:      'DM Sans', system-ui, sans-serif;
+      --font-mono:      'JetBrains Mono', 'Fira Code', monospace;
+      --sidebar-width:  240px;
+      --header-height:  52px;
+      --footer-height:  36px;
+      --radius:         6px;
+      --radius-lg:      10px;
+      --transition:     160ms ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg-deep);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button { cursor: pointer; border: none; background: none; font-family: var(--font-body); font-size: 13px; color: var(--text); }
+    input, select, textarea { font-family: var(--font-body); font-size: 13px; color: var(--text); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px; outline: none; transition: border-color var(--transition); }
+    input:focus, select:focus, textarea:focus { border-color: var(--border-light); }
+    table { border-collapse: collapse; width: 100%; }
+    th { font-family: var(--font-body); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-card); z-index: 1; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg-card-hover); }
+
+    /* Layout principal */
+    #app { display: grid; grid-template-rows: var(--header-height) 1fr var(--footer-height); height: 100vh; }
+
+    /* Cabecera */
+    #header { background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; z-index: 10; }
+    .header-logo { font-family: var(--font-heading); font-size: 15px; font-weight: 600; color: var(--text-bright); letter-spacing: -0.01em; white-space: nowrap; }
+    .header-logo span { color: var(--gold); }
+    .header-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .header-project { font-size: 13px; color: var(--text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .header-project strong { color: var(--text); font-weight: 500; }
+    #ws-status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+    .ws-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; transition: background-color var(--transition); }
+    .ws-dot.connected    { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+    .ws-dot.disconnected { background: var(--red); }
+    .ws-dot.reconnecting { background: var(--orange); animation: pulse 1.2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Zona central */
+    #center { display: flex; overflow: hidden; }
+
+    /* Sidebar */
+    #sidebar { width: var(--sidebar-width); min-width: var(--sidebar-width); background: var(--bg-surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 0; display: flex; flex-direction: column; gap: 2px; }
+    .nav-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); padding: 8px 16px 4px; margin-top: 6px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; color: var(--text-muted); font-size: 13px; font-weight: 400; border-left: 2px solid transparent; transition: background var(--transition), color var(--transition); user-select: none; }
+    .nav-item:hover { background: var(--bg-card); color: var(--text); }
+    .nav-item.active { background: var(--bg-card); color: var(--text-bright); border-left-color: var(--blue); font-weight: 500; }
+    .nav-badge { margin-left: auto; background: var(--bg-deep); color: var(--text-dim); font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
+    .nav-item.active .nav-badge { background: var(--blue-dim); color: var(--text-bright); }
+
+    /* Panel principal */
+    #main-panel { flex: 1; overflow-y: auto; overflow-x: hidden; background: var(--bg-deep); }
+    .view { display: none; opacity: 0; animation: fadeIn 200ms ease forwards; padding: 24px; min-height: 100%; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .view-header { margin-bottom: 24px; }
+    .view-title { font-family: var(--font-heading); font-size: 22px; font-weight: 600; color: var(--text-bright); letter-spacing: -0.02em; }
+    .view-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Pie */
+    #footer { background: var(--bg-surface); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; font-size: 11px; color: var(--text-dim); }
+    .footer-sep { width: 1px; height: 14px; background: var(--border); }
+    .footer-right { margin-left: auto; }
+
+    /* Tarjetas */
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+    .card-title { font-family: var(--font-heading); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); margin-bottom: 12px; }
+    .card-grid { display: grid; gap: 16px; }
+    .card-grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .card-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .card-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .badge-green  { background: rgba(78,201,144,0.12);  color: var(--green);       border: 1px solid rgba(78,201,144,0.25); }
+    .badge-yellow { background: rgba(232,164,74,0.12);  color: var(--orange);      border: 1px solid rgba(232,164,74,0.25); }
+    .badge-red    { background: rgba(229,86,79,0.12);   color: var(--red);         border: 1px solid rgba(229,86,79,0.25); }
+    .badge-blue   { background: rgba(91,156,245,0.12);  color: var(--blue);        border: 1px solid rgba(91,156,245,0.25); }
+    .badge-purple { background: rgba(160,126,232,0.12); color: var(--purple);      border: 1px solid rgba(160,126,232,0.25); }
+    .badge-gold   { background: rgba(201,169,110,0.12); color: var(--gold);        border: 1px solid rgba(201,169,110,0.25); }
+    .badge-gray   { background: rgba(107,112,144,0.12); color: var(--text-muted);  border: 1px solid rgba(107,112,144,0.25); }
+
+    /* Botones */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius); font-size: 12px; font-weight: 500; transition: background var(--transition), color var(--transition); }
+    .btn-primary { background: var(--blue-dim); color: var(--text-bright); border: 1px solid var(--blue); }
+    .btn-primary:hover { background: var(--blue); }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg-card-hover); color: var(--text); border-color: var(--border-light); }
+    .btn-danger { background: rgba(229,86,79,0.1); color: var(--red); border: 1px solid rgba(229,86,79,0.3); }
+    .btn-danger:hover { background: rgba(229,86,79,0.2); }
+    .btn-icon { padding: 5px; border-radius: var(--radius); background: transparent; color: var(--text-dim); border: 1px solid transparent; }
+    .btn-icon:hover { background: var(--bg-card-hover); color: var(--text); border-color: var(--border); }
+
+    /* Codigo */
+    .code-block { font-family: var(--font-mono); font-size: 12px; background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; overflow-x: auto; color: var(--text); white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+    .sha { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); background: rgba(78,201,201,0.08); padding: 1px 5px; border-radius: 3px; }
+    .ts { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; margin-bottom: 20px; }
+    .tab { padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: background var(--transition), color var(--transition); border: none; background: none; }
+    .tab.active { background: var(--bg-card); color: var(--text-bright); border: 1px solid var(--border); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* Busqueda */
+    .search-bar { display: flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; width: 100%; max-width: 380px; }
+    .search-bar input { background: none; border: none; padding: 0; flex: 1; color: var(--text); font-size: 13px; }
+    .search-bar input::placeholder { color: var(--text-dim); }
+    .search-icon { color: var(--text-dim); flex-shrink: 0; }
+
+    /* Estado vacio */
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 24px; text-align: center; color: var(--text-dim); gap: 8px; }
+    .empty-state-title { font-size: 15px; color: var(--text-muted); font-weight: 500; }
+
+    /* Metricas */
+    .metric-value { font-family: var(--font-heading); font-size: 32px; font-weight: 600; color: var(--text-bright); letter-spacing: -0.03em; line-height: 1; }
+    .metric-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Barra de fase */
+    .phase-bar-container { margin-bottom: 20px; }
+    .phase-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .phase-bar-label { font-size: 13px; font-weight: 500; color: var(--text); }
+    .phase-bar-pct { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+    .phase-bar { height: 6px; background: var(--bg-deep); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+    .phase-bar-fill { height: 100%; border-radius: 3px; transition: width 500ms ease; background: linear-gradient(90deg, var(--blue-dim), var(--blue)); }
+    .gates-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+    /* Agente activo */
+    .agent-active-card { display: flex; align-items: center; gap: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+    .agent-avatar { width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, var(--blue-dim), var(--purple)); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .agent-name { font-weight: 600; font-size: 14px; color: var(--text-bright); }
+    .agent-role { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .agent-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); margin-left: auto; flex-shrink: 0; }
+
+    /* Pinned mini */
+    .pinned-mini-list { display: flex; flex-direction: column; gap: 8px; }
+    .pinned-mini-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; }
+    .pinned-mini-type { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+    .pinned-mini-text { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Timeline */
+    .timeline-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center; }
+    .timeline-feed { display: flex; flex-direction: column; gap: 0; position: relative; }
+    .timeline-feed::before { content: ''; position: absolute; left: 23px; top: 0; bottom: 0; width: 1px; background: var(--border); z-index: 0; }
+    .timeline-event { display: flex; gap: 16px; padding: 0 0 20px; position: relative; z-index: 1; }
+    .event-dot-wrap { width: 47px; display: flex; align-items: flex-start; justify-content: center; padding-top: 2px; flex-shrink: 0; }
+    .event-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--bg-deep); flex-shrink: 0; }
+    .event-dot.type-decision { background: var(--blue); }
+    .event-dot.type-commit   { background: var(--green); }
+    .event-dot.type-phase    { background: var(--gold); }
+    .event-dot.type-gate     { background: var(--orange); }
+    .event-dot.type-agent    { background: var(--purple); }
+    .event-dot.type-system   { background: var(--text-dim); }
+    .event-dot.type-default  { background: var(--text-dim); }
+    .event-body { flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; transition: border-color var(--transition); }
+    .event-body:hover { border-color: var(--border-light); }
+    .event-header-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+    .event-type-badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; padding: 1px 6px; border-radius: 3px; }
+    .event-type-badge.decision { background: rgba(91,156,245,0.15);  color: var(--blue); }
+    .event-type-badge.commit   { background: rgba(78,201,144,0.15);  color: var(--green); }
+    .event-type-badge.phase    { background: rgba(201,169,110,0.15); color: var(--gold); }
+    .event-type-badge.gate     { background: rgba(232,164,74,0.15);  color: var(--orange); }
+    .event-type-badge.agent    { background: rgba(160,126,232,0.15); color: var(--purple); }
+    .event-type-badge.system   { background: rgba(107,112,144,0.15); color: var(--text-muted); }
+    .event-type-badge.default  { background: rgba(107,112,144,0.15); color: var(--text-muted); }
+    .event-summary { font-size: 13px; color: var(--text); flex: 1; }
+    .event-phase-badge { font-size: 10px; color: var(--text-dim); background: var(--bg-surface); border: 1px solid var(--border); padding: 1px 6px; border-radius: 3px; }
+    .event-actions { display: flex; gap: 4px; margin-left: auto; }
+    .event-ts { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+
+    /* Decisiones */
+    .decisions-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .decisions-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .decision-row { cursor: pointer; }
+    .decision-expand { display: none; padding: 0 !important; }
+    .decision-expand.open { display: table-row; }
+    .decision-expand-inner { padding: 16px 20px; background: var(--bg-deep); border-bottom: 1px solid var(--border); }
+    .decision-expand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .decision-field-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); margin-bottom: 4px; }
+    .decision-field-value { font-size: 12px; color: var(--text); line-height: 1.5; }
+
+    /* Agentes */
+    .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .agent-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; display: flex; flex-direction: column; gap: 12px; transition: border-color var(--transition), background var(--transition); }
+    .agent-card:hover { border-color: var(--border-light); background: var(--bg-card-hover); }
+    .agent-card.active-agent { border-color: var(--blue); }
+    .agent-card-header { display: flex; align-items: center; gap: 12px; }
+    .agent-card-avatar { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--bg-surface), var(--bg-deep)); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .agent-card-name { font-weight: 600; font-size: 14px; color: var(--text-bright); }
+    .agent-card-status { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .agent-card-toggle { margin-left: auto; flex-shrink: 0; }
+    .toggle { position: relative; width: 36px; height: 20px; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--bg-deep); border: 1px solid var(--border); border-radius: 20px; cursor: pointer; transition: background var(--transition); }
+    .toggle-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px; background: var(--text-dim); border-radius: 50%; transition: transform var(--transition), background var(--transition); }
+    .toggle input:checked + .toggle-slider { background: var(--blue-dim); border-color: var(--blue); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); background: var(--blue); }
+    .agent-phases { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* Memoria */
+    .memory-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .memory-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: auto; max-height: calc(100vh - 300px); }
+
+    /* Commits */
+    .commits-list { display: flex; flex-direction: column; gap: 12px; }
+    .commit-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; transition: border-color var(--transition); }
+    .commit-card:hover { border-color: var(--border-light); }
+    .commit-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+    .commit-message { font-size: 14px; font-weight: 500; color: var(--text-bright); flex: 1; }
+    .commit-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .commit-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .commit-file { font-family: var(--font-mono); font-size: 11px; background: var(--bg-deep); border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; color: var(--text-muted); }
+
+    /* Marcados */
+    .pinned-section-title { font-family: var(--font-heading); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); margin-bottom: 12px; margin-top: 24px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .pinned-section-title:first-of-type { margin-top: 0; }
+    .pinned-items-list { display: flex; flex-direction: column; gap: 10px; }
+    .pinned-item-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px; transition: border-color var(--transition); }
+    .pinned-item-card:hover { border-color: var(--border-light); }
+    .pinned-item-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(201,169,110,0.1); border: 1px solid rgba(201,169,110,0.2); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .pinned-item-body { flex: 1; min-width: 0; }
+    .pinned-item-ref { font-size: 13px; font-weight: 500; color: var(--text-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pinned-item-note { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+    .pinned-item-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .pinned-origin { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+    .pinned-priority-select { font-size: 11px; padding: 2px 6px; background: var(--bg-deep); border: 1px solid var(--border); }
+    .pinned-item-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; align-items: flex-end; }
+
+    /* Toast */
+    #toast-container { position: fixed; bottom: 48px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; font-size: 13px; color: var(--text); box-shadow: 0 4px 20px rgba(0,0,0,0.5); animation: slideUp 200ms ease; max-width: 320px; }
+    .toast.ok    { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+    .toast.info  { border-left: 3px solid var(--blue); }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+    @media (max-width: 720px) {
+      #sidebar { display: none; }
+      .card-grid-2, .card-grid-3, .card-grid-4 { grid-template-columns: 1fr; }
+      .decision-expand-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <header id="header">
+    <div class="header-logo">Alfred <span>Dev</span> <span style="color:var(--text-dim);font-size:11px;font-weight:400;">v0.3.0</span></div>
+    <div class="header-sep"></div>
+    <div class="header-project">
+      Proyecto: <strong id="header-project-name">—</strong>
+      &nbsp;&middot;&nbsp;
+      Fase: <strong id="header-phase">—</strong>
+    </div>
+    <div id="ws-status">
+      <div class="ws-dot disconnected" id="ws-dot"></div>
+      <span id="ws-label">Desconectado</span>
+    </div>
+  </header>
+
+  <div id="center">
+
+    <nav id="sidebar">
+      <div class="nav-section-label">General</div>
+      <div class="nav-item active" data-view="dashboard">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Estado
+      </div>
+      <div class="nav-item" data-view="timeline">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><circle cx="4" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><line x1="7" y1="4" x2="15" y2="4"/><line x1="7" y1="8" x2="13" y2="8"/><line x1="7" y1="12" x2="11" y2="12"/></svg>
+        Timeline
+        <span class="nav-badge" id="badge-timeline">0</span>
+      </div>
+      <div class="nav-item" data-view="decisions">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="10" y2="8"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
+        Decisiones
+        <span class="nav-badge" id="badge-decisions">0</span>
+      </div>
+      <div class="nav-section-label">Sistema</div>
+      <div class="nav-item" data-view="agents">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke-linecap="round"/></svg>
+        Agentes
+      </div>
+      <div class="nav-item" data-view="memory">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="3" width="14" height="10" rx="2"/><line x1="5" y1="7" x2="11" y2="7" stroke-linecap="round"/><line x1="5" y1="10" x2="9" y2="10" stroke-linecap="round"/></svg>
+        Memoria
+      </div>
+      <div class="nav-item" data-view="commits">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="2.5"/><line x1="1" y1="8" x2="5.5" y2="8"/><line x1="10.5" y1="8" x2="15" y2="8"/></svg>
+        Commits
+        <span class="nav-badge" id="badge-commits">0</span>
+      </div>
+      <div class="nav-item" data-view="pinned">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M5 1l6 0 1 5-3 2v4l-2 3-2-3V8L2 6z"/></svg>
+        Marcados
+        <span class="nav-badge" id="badge-pinned">0</span>
+      </div>
+    </nav>
+
+    <main id="main-panel">
+
+      <!-- Vista 1: Dashboard -->
+      <section id="view-dashboard" class="view active">
+        <div class="view-header">
+          <div class="view-title">Estado del proyecto</div>
+          <div class="view-subtitle" id="dash-subtitle">Cargando datos...</div>
+        </div>
+        <div class="card-grid card-grid-2" style="margin-bottom:16px;">
+          <div class="card">
+            <div class="card-title">Progreso de fase</div>
+            <div class="phase-bar-container">
+              <div class="phase-bar-header">
+                <span class="phase-bar-label" id="dash-phase-label">—</span>
+                <span class="phase-bar-pct" id="dash-phase-pct">0 %</span>
+              </div>
+              <div class="phase-bar"><div class="phase-bar-fill" id="dash-phase-fill" style="width:0%"></div></div>
+            </div>
+            <div class="gates-grid" id="dash-gates"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Agente activo</div>
+            <div id="dash-agent-wrap"></div>
+          </div>
+        </div>
+        <div class="card-grid card-grid-4" style="margin-bottom:16px;">
+          <div class="card" style="text-align:center;"><div class="metric-value" id="metric-decisions">0</div><div class="metric-label">Decisiones</div></div>
+          <div class="card" style="text-align:center;"><div class="metric-value" id="metric-commits">0</div><div class="metric-label">Commits</div></div>
+          <div class="card" style="text-align:center;"><div class="metric-value" id="metric-events">0</div><div class="metric-label">Eventos</div></div>
+          <div class="card" style="text-align:center;"><div class="metric-value" id="metric-pinned">0</div><div class="metric-label">Marcados</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Marcados recientes</div>
+          <div class="pinned-mini-list" id="dash-pinned-mini"></div>
+        </div>
+      </section>
+
+      <!-- Vista 2: Timeline -->
+      <section id="view-timeline" class="view">
+        <div class="view-header">
+          <div class="view-title">Timeline</div>
+          <div class="view-subtitle">Cronologia de eventos del proyecto</div>
+        </div>
+        <div class="timeline-filters">
+          <button class="tab active" data-filter="all">Todos</button>
+          <button class="tab" data-filter="decision">Decisiones</button>
+          <button class="tab" data-filter="commit">Commits</button>
+          <button class="tab" data-filter="phase">Fases</button>
+          <button class="tab" data-filter="gate">Gates</button>
+          <button class="tab" data-filter="agent">Agentes</button>
+          <button class="tab" data-filter="system">Sistema</button>
+        </div>
+        <div class="timeline-feed" id="timeline-feed"></div>
+      </section>
+
+      <!-- Vista 3: Decisiones -->
+      <section id="view-decisions" class="view">
+        <div class="view-header">
+          <div class="view-title">Decisiones</div>
+          <div class="view-subtitle">Registro de decisiones tecnicas y arquitectonicas</div>
+        </div>
+        <div class="decisions-toolbar">
+          <div class="search-bar">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="text" id="decisions-search" placeholder="Buscar decisiones...">
+          </div>
+          <select id="decisions-filter-phase" style="padding:5px 10px;"><option value="">Todas las fases</option></select>
+          <select id="decisions-filter-status" style="padding:5px 10px;">
+            <option value="">Todos los estados</option>
+            <option value="accepted">Aceptada</option>
+            <option value="pending">Pendiente</option>
+            <option value="rejected">Rechazada</option>
+          </select>
+        </div>
+        <div class="decisions-table-wrap">
+          <table id="decisions-table">
+            <thead>
+              <tr>
+                <th data-sort="title" style="cursor:pointer;">Titulo</th>
+                <th data-sort="phase" style="cursor:pointer;">Fase</th>
+                <th data-sort="status" style="cursor:pointer;">Estado</th>
+                <th>Etiquetas</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody id="decisions-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Vista 4: Agentes -->
+      <section id="view-agents" class="view">
+        <div class="view-header">
+          <div class="view-title">Agentes</div>
+          <div class="view-subtitle">Control y estado de los agentes del sistema</div>
+        </div>
+        <div class="agents-grid" id="agents-grid"></div>
+      </section>
+
+      <!-- Vista 5: Memoria -->
+      <section id="view-memory" class="view">
+        <div class="view-header">
+          <div class="view-title">Memoria</div>
+          <div class="view-subtitle">Explorador de la base de datos del proyecto</div>
+        </div>
+        <div class="memory-toolbar">
+          <div class="search-bar">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="text" id="memory-search" placeholder="Filtrar registros...">
+          </div>
+        </div>
+        <div class="tabs" id="memory-tabs">
+          <button class="tab active" data-table="events">Eventos</button>
+          <button class="tab" data-table="decisions">Decisiones</button>
+          <button class="tab" data-table="commits">Commits</button>
+          <button class="tab" data-table="pinned">Marcados</button>
+        </div>
+        <div class="memory-table-wrap" id="memory-table-wrap"></div>
+      </section>
+
+      <!-- Vista 6: Commits -->
+      <section id="view-commits" class="view">
+        <div class="view-header">
+          <div class="view-title">Commits</div>
+          <div class="view-subtitle">Historial de commits vinculados al proyecto</div>
+        </div>
+        <div class="commits-list" id="commits-list"></div>
+      </section>
+
+      <!-- Vista 7: Marcados -->
+      <section id="view-pinned" class="view">
+        <div class="view-header">
+          <div class="view-title">Marcados</div>
+          <div class="view-subtitle">Elementos importantes marcados manualmente o por el sistema</div>
+        </div>
+        <div id="pinned-content"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer id="footer">
+    <span>Sesion: <code id="footer-session" style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">—</code></span>
+    <div class="footer-sep"></div>
+    <span>Ultima actividad: <span id="footer-activity">—</span></span>
+    <div class="footer-sep"></div>
+    <span>WS puerto <span id="footer-ws-port" style="font-family:var(--font-mono);color:var(--text-muted);">7534</span></span>
+    <span class="footer-right">Alfred Dev v0.3.0</span>
+  </footer>
+
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+/* ============================================================
+   ALFRED DEV DASHBOARD — Script principal
+   Toda la logica del dashboard: estado, WebSocket, renderizado
+   reactivo y controladores de acciones.
+
+   Nota de seguridad: el contenido dinamico que se inserta en el
+   DOM mediante la propiedad innerHTML pasa siempre por la funcion
+   esc() que escapa los caracteres HTML especiales. El servidor es
+   local (127.0.0.1) y los datos provienen de SQLite bajo control
+   del propio usuario, por lo que el riesgo de XSS es minimo y
+   equivalente al de cualquier herramienta de desarrollo local.
+============================================================ */
+'use strict';
+
+/* ----------------------------------------------------------
+   1. CONFIGURACION Y ESTADO GLOBAL
+---------------------------------------------------------- */
+
+/** Puerto WebSocket. Se puede sobreescribir antes de este script
+ *  definiendo window.__ALFRED_WS_PORT. */
+const WS_PORT = (typeof window.__ALFRED_WS_PORT !== 'undefined')
+  ? window.__ALFRED_WS_PORT
+  : 7534;
+
+const WS_URL = 'ws://127.0.0.1:' + WS_PORT;
+
+/**
+ * Estado central de la aplicacion. Todas las vistas leen de aqui.
+ * Las funciones de renderizado son puras respecto a este objeto:
+ * leen y nunca modifican sin pasar por handleMessage o las
+ * funciones de accion del usuario.
+ */
+const state = {
+  currentView: 'dashboard',
+  connected: false,
+  iteration: null,
+  decisions: [],
+  events: [],
+  commits: [],
+  pinned: [],
+  agents: [],
+  lastActivity: null,
+  memoryActiveTable: 'events',
+  memorySearch: '',
+  decisionsSearch: '',
+  decisionsFilterPhase: '',
+  decisionsFilterStatus: '',
+  decisionsSortBy: 'id',
+  decisionsSortDir: 'desc',
+  timelineFilter: 'all',
+};
+
+/* ----------------------------------------------------------
+   2. UTILIDADES
+---------------------------------------------------------- */
+
+/**
+ * Escapa caracteres HTML para insercion segura en el DOM.
+ * Todo contenido proveniente del servidor o del estado debe
+ * pasar por esta funcion antes de asignarse a innerHTML.
+ *
+ * @param {*} str - Valor a escapar.
+ * @returns {string} Cadena segura para insertar como HTML.
+ */
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Formatea un timestamp como texto relativo o absoluto.
+ * Menos de 60 min: "hace X min". Mas de un dia: fecha completa.
+ *
+ * @param {string|number|Date} raw - Timestamp a formatear.
+ * @returns {string} Texto legible para el usuario.
+ */
+function formatTime(raw) {
+  if (!raw) return '—';
+  const d = (raw instanceof Date) ? raw
+          : (typeof raw === 'number') ? new Date(raw * 1000)
+          : new Date(raw);
+  if (isNaN(d.getTime())) return esc(raw);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60)    return 'hace unos segundos';
+  if (diff < 3600)  return 'hace ' + Math.floor(diff / 60) + ' min';
+  if (diff < 86400) return 'hace ' + Math.floor(diff / 3600) + ' h';
+  return d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+/**
+ * Serializa un objeto como JSON indentado para visualizacion.
+ * @param {*} obj - Objeto a serializar.
+ * @returns {string} JSON con indentado de 2 espacios.
+ */
+function prettyJSON(obj) {
+  try { return JSON.stringify(obj, null, 2); }
+  catch (_) { return String(obj); }
+}
+
+/**
+ * Genera el HTML de un badge de estado segun el valor recibido.
+ * @param {string} status - Estado de la entidad.
+ * @returns {string} HTML del badge escapado.
+ */
+function statusBadge(status) {
+  const map = {
+    passed:   ['badge-green',  'Pasado'],
+    accepted: ['badge-green',  'Aceptada'],
+    pending:  ['badge-yellow', 'Pendiente'],
+    failed:   ['badge-red',    'Fallido'],
+    rejected: ['badge-red',    'Rechazada'],
+    active:   ['badge-blue',   'Activo'],
+    optional: ['badge-gray',   'Opcional'],
+    available:['badge-purple', 'Disponible'],
+  };
+  const pair = map[status];
+  if (pair) return '<span class="badge ' + pair[0] + '">' + pair[1] + '</span>';
+  return '<span class="badge badge-gray">' + esc(status || '—') + '</span>';
+}
+
+/**
+ * Clase CSS del punto de timeline segun tipo de evento.
+ * @param {string} type - Tipo de evento.
+ * @returns {string} Clase CSS.
+ */
+function eventDotClass(type) {
+  const valid = ['decision','commit','phase','gate','agent','system'];
+  const t = (type || '').toLowerCase();
+  return valid.includes(t) ? 'type-' + t : 'type-default';
+}
+
+/**
+ * Clase CSS del badge de tipo en el timeline.
+ * @param {string} type - Tipo de evento.
+ * @returns {string} Clase CSS.
+ */
+function eventBadgeClass(type) {
+  const valid = ['decision','commit','phase','gate','agent','system'];
+  const t = (type || '').toLowerCase();
+  return valid.includes(t) ? t : 'default';
+}
+
+/**
+ * Devuelve un caracter simbolico para cada tipo de elemento marcado.
+ * @param {string} type - Tipo de elemento.
+ * @returns {string} Caracter Unicode.
+ */
+function pinnedIcon(type) {
+  const icons = { decision: 'D', commit: 'C', event: 'E', note: 'N' };
+  return icons[(type || '').toLowerCase()] || 'M';
+}
+
+/**
+ * Muestra una notificacion toast temporal en la esquina inferior derecha.
+ * @param {string} msg - Texto del mensaje.
+ * @param {'ok'|'error'|'info'} kind - Tipo de notificacion.
+ */
+function toast(msg, kind) {
+  kind = kind || 'info';
+  var container = document.getElementById('toast-container');
+  var el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(function() { el.remove(); }, 3500);
+}
+
+/**
+ * Infiere la lista de agentes a partir de los eventos registrados.
+ * Se llama cuando el servidor no incluye agentes en el payload init.
+ *
+ * @returns {Array<{name:string, phases:string[], lastSeen:string}>}
+ */
+function buildAgentsFromEvents() {
+  var map = {};
+  state.events.forEach(function(e) {
+    var name = e.agent || e.agent_name;
+    if (!name) return;
+    if (!map[name]) map[name] = { name: name, phases: [], lastSeen: e.created_at };
+    if (e.phase && map[name].phases.indexOf(e.phase) === -1) map[name].phases.push(e.phase);
+    if (e.created_at > map[name].lastSeen) map[name].lastSeen = e.created_at;
+  });
+  return Object.values(map);
+}
+
+/* ----------------------------------------------------------
+   3. WEBSOCKET CON RECONEXION EXPONENCIAL
+
+   Backoff: 1s -> 2s -> 4s -> 8s -> ... -> 30s (maximo).
+   Al reconectar exitosamente, el contador se resetea a 1s.
+---------------------------------------------------------- */
+
+var ws = null;
+var wsReconnectDelay = 1000;
+var WS_MAX_DELAY = 30000;
+var wsReconnectTimer = null;
+
+/** Actualiza el indicador visual de estado de conexion. */
+function setWsStatus(status) {
+  var dot   = document.getElementById('ws-dot');
+  var label = document.getElementById('ws-label');
+  dot.className = 'ws-dot ' + status;
+  var texts = { connected: 'Conectado', disconnected: 'Desconectado', reconnecting: 'Reconectando...' };
+  label.textContent = texts[status] || status;
+  state.connected = (status === 'connected');
+}
+
+/**
+ * Abre la conexion WebSocket y registra todos los manejadores.
+ * Es seguro llamarla multiples veces; cierra la conexion anterior
+ * si existe antes de abrir una nueva.
+ */
+function connectWebSocket() {
+  if (ws) {
+    try { ws.close(); } catch (_) {}
+    ws = null;
+  }
+  setWsStatus('reconnecting');
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (err) {
+    scheduleReconnect();
+    return;
+  }
+  ws.addEventListener('open', function() {
+    wsReconnectDelay = 1000;
+    setWsStatus('connected');
+    document.getElementById('footer-ws-port').textContent = WS_PORT;
+  });
+  ws.addEventListener('message', function(evt) {
+    try { handleMessage(JSON.parse(evt.data)); } catch (_) {}
+  });
+  ws.addEventListener('close', function() {
+    setWsStatus('disconnected');
+    scheduleReconnect();
+  });
+  ws.addEventListener('error', function() {
+    // El evento close se dispara siempre despues del error
+  });
+}
+
+/**
+ * Programa el siguiente intento de reconexion.
+ * El retardo se duplica en cada fallo hasta alcanzar WS_MAX_DELAY.
+ */
+function scheduleReconnect() {
+  clearTimeout(wsReconnectTimer);
+  wsReconnectTimer = setTimeout(function() {
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, WS_MAX_DELAY);
+    connectWebSocket();
+  }, wsReconnectDelay);
+}
+
+/**
+ * Envia una accion al servidor mediante el WebSocket.
+ * Si la conexion no esta disponible, muestra un error al usuario.
+ *
+ * @param {string} actionType - Tipo de la accion (p.ej. 'pin_item').
+ * @param {object} payload - Datos de la accion.
+ */
+function sendAction(actionType, payload) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    toast('Sin conexion con el servidor', 'error');
+    return;
+  }
+  payload.type = actionType;
+  ws.send(JSON.stringify({ type: 'action', payload: payload }));
+}
+
+/* ----------------------------------------------------------
+   4. MANEJADORES DE MENSAJES WEBSOCKET
+---------------------------------------------------------- */
+
+/**
+ * Despacha un mensaje recibido del servidor al manejador apropiado.
+ * Tipos soportados: 'init', 'update', 'action_ack'.
+ *
+ * @param {{type: string, payload: *}} msg - Mensaje parseado.
+ */
+function handleMessage(msg) {
+  state.lastActivity = new Date();
+  updateFooterActivity();
+
+  if (msg.type === 'init') {
+    var p = msg.payload || {};
+    state.iteration = p.iteration  || null;
+    state.decisions = p.decisions  || [];
+    state.events    = p.events     || [];
+    state.pinned    = p.pinned     || [];
+    state.commits   = p.commits    || [];
+    state.agents    = p.agents     || buildAgentsFromEvents();
+    updateHeaderInfo();
+    renderCurrentView();
+    updateBadges();
+
+  } else if (msg.type === 'update') {
+    var u = msg.payload || {};
+    if (u.events    && u.events.length)    state.events    = u.events.concat(state.events);
+    if (u.decisions && u.decisions.length) state.decisions = u.decisions.concat(state.decisions);
+    if (u.commits   && u.commits.length)   state.commits   = u.commits.concat(state.commits);
+    state.agents = buildAgentsFromEvents();
+    renderCurrentView();
+    updateBadges();
+
+  } else if (msg.type === 'action_ack') {
+    var status = (msg.payload || {}).status;
+    toast(status === 'ok' ? 'Accion registrada' : 'Error al procesar la accion',
+          status === 'ok' ? 'ok' : 'error');
+  }
+}
+
+/* ----------------------------------------------------------
+   5. RENDERIZADO REACTIVO POR VISTA
+---------------------------------------------------------- */
+
+/** Dispara el renderizado de la vista activa. */
+function renderCurrentView() {
+  switch (state.currentView) {
+    case 'dashboard': renderDashboard(); break;
+    case 'timeline':  renderTimeline();  break;
+    case 'decisions': renderDecisions(); break;
+    case 'agents':    renderAgents();    break;
+    case 'memory':    renderMemory();    break;
+    case 'commits':   renderCommits();   break;
+    case 'pinned':    renderPinned();    break;
+  }
+}
+
+/** Actualiza el nombre de proyecto y fase en la cabecera. */
+function updateHeaderInfo() {
+  var iter = state.iteration;
+  document.getElementById('header-project-name').textContent = iter ? (iter.project_name || iter.name || 'Iteracion #' + iter.id) : '—';
+  document.getElementById('header-phase').textContent = iter ? (iter.current_phase || iter.phase || '—') : '—';
+  document.getElementById('footer-session').textContent = iter ? '#' + iter.id : '—';
+}
+
+/** Actualiza el timestamp de ultima actividad en el pie. */
+function updateFooterActivity() {
+  if (state.lastActivity) {
+    document.getElementById('footer-activity').textContent = formatTime(state.lastActivity);
+  }
+}
+
+/** Actualiza los contadores en los badges de la barra lateral. */
+function updateBadges() {
+  document.getElementById('badge-timeline').textContent  = state.events.length    || 0;
+  document.getElementById('badge-decisions').textContent = state.decisions.length || 0;
+  document.getElementById('badge-commits').textContent   = state.commits.length   || 0;
+  document.getElementById('badge-pinned').textContent    = state.pinned.length    || 0;
+}
+
+/* -- Vista 1: Dashboard -- */
+
+/** Renderiza el panel de estado general del proyecto. */
+function renderDashboard() {
+  var iter = state.iteration;
+
+  document.getElementById('dash-subtitle').textContent = iter
+    ? 'Iteracion #' + iter.id + ' · ' + formatTime(iter.started_at || iter.created_at)
+    : 'Sin iteracion activa';
+
+  var phase   = iter ? (iter.current_phase || '—') : '—';
+  var phasePct = iter ? (iter.phase_progress || 0) : 0;
+  document.getElementById('dash-phase-label').textContent = phase;
+  document.getElementById('dash-phase-pct').textContent   = phasePct + ' %';
+  document.getElementById('dash-phase-fill').style.width  = phasePct + '%';
+
+  // Gates de la iteracion
+  var gatesEl = document.getElementById('dash-gates');
+  var gates = iter ? (iter.gates || []) : [];
+  if (gates.length === 0) {
+    gatesEl.textContent = '';
+    var noGates = document.createElement('span');
+    noGates.style.cssText = 'font-size:12px;color:var(--text-dim)';
+    noGates.textContent = 'Sin gates definidos';
+    gatesEl.appendChild(noGates);
+  } else {
+    // Construir badges de gates de forma segura usando el DOM
+    gatesEl.textContent = '';
+    gates.forEach(function(g) {
+      var cls = g.status === 'passed' ? 'badge-green' : g.status === 'failed' ? 'badge-red' : 'badge-yellow';
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + cls;
+      badge.textContent = g.name || g.id || '?';
+      gatesEl.appendChild(badge);
+    });
+  }
+
+  // Agente activo
+  var agentWrap = document.getElementById('dash-agent-wrap');
+  var activeAgent = iter ? (iter.active_agent || null) : null;
+  agentWrap.textContent = '';
+  if (activeAgent) {
+    var card = document.createElement('div');
+    card.className = 'agent-active-card';
+    var avatar = document.createElement('div');
+    avatar.className = 'agent-avatar';
+    avatar.textContent = activeAgent[0] ? activeAgent[0].toUpperCase() : 'A';
+    var info = document.createElement('div');
+    var agName = document.createElement('div');
+    agName.className = 'agent-name';
+    agName.textContent = activeAgent;
+    var agRole = document.createElement('div');
+    agRole.className = 'agent-role';
+    agRole.textContent = 'Ejecutando';
+    info.appendChild(agName);
+    info.appendChild(agRole);
+    var dot = document.createElement('div');
+    dot.className = 'agent-status-dot';
+    card.appendChild(avatar);
+    card.appendChild(info);
+    card.appendChild(dot);
+    agentWrap.appendChild(card);
+  } else {
+    var empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.style.padding = '20px 0';
+    var emptyTitle = document.createElement('div');
+    emptyTitle.className = 'empty-state-title';
+    emptyTitle.textContent = 'Sin agente activo';
+    empty.appendChild(emptyTitle);
+    agentWrap.appendChild(empty);
+  }
+
+  // Metricas
+  document.getElementById('metric-decisions').textContent = state.decisions.length;
+  document.getElementById('metric-commits').textContent   = state.commits.length;
+  document.getElementById('metric-events').textContent    = state.events.length;
+  document.getElementById('metric-pinned').textContent    = state.pinned.length;
+
+  // Marcados recientes — construccion segura por DOM
+  var miniList = document.getElementById('dash-pinned-mini');
+  miniList.textContent = '';
+  var recent = state.pinned.slice(0, 5);
+  if (recent.length === 0) {
+    var e2 = document.createElement('div');
+    e2.className = 'empty-state';
+    e2.style.padding = '20px 0';
+    var e2t = document.createElement('div');
+    e2t.className = 'empty-state-title';
+    e2t.textContent = 'Sin elementos marcados';
+    e2.appendChild(e2t);
+    miniList.appendChild(e2);
+  } else {
+    recent.forEach(function(p) {
+      var item = document.createElement('div');
+      item.className = 'pinned-mini-item';
+      var typeSpan = document.createElement('span');
+      typeSpan.className = 'pinned-mini-type';
+      typeSpan.textContent = p.item_type || 'otro';
+      var textSpan = document.createElement('span');
+      textSpan.className = 'pinned-mini-text';
+      textSpan.textContent = p.item_ref || p.note || '#' + p.id;
+      var tsSpan = document.createElement('span');
+      tsSpan.className = 'ts';
+      tsSpan.textContent = formatTime(p.created_at);
+      item.appendChild(typeSpan);
+      item.appendChild(textSpan);
+      item.appendChild(tsSpan);
+      miniList.appendChild(item);
+    });
+  }
+}
+
+/* -- Vista 2: Timeline -- */
+
+/**
+ * Renderiza la cronologia de eventos con el filtro activo.
+ * Usa innerHTML con contenido escapado por esc() para construir
+ * las tarjetas de evento de forma eficiente.
+ */
+function renderTimeline() {
+  var feed = document.getElementById('timeline-feed');
+  var filter = state.timelineFilter;
+  var events = state.events.slice().reverse();
+  if (filter !== 'all') {
+    events = events.filter(function(e) {
+      return (e.event_type || e.type || '').toLowerCase() === filter;
+    });
+  }
+
+  if (events.length === 0) {
+    feed.textContent = '';
+    var es = document.createElement('div');
+    es.className = 'empty-state';
+    var esi = document.createElement('div');
+    esi.style.fontSize = '32px';
+    esi.style.opacity = '0.4';
+    esi.textContent = '+';
+    var est = document.createElement('div');
+    est.className = 'empty-state-title';
+    est.textContent = 'Sin eventos' + (filter !== 'all' ? ' para este filtro' : '');
+    es.appendChild(esi);
+    es.appendChild(est);
+    feed.appendChild(es);
+    return;
+  }
+
+  /* Los datos provienen de SQLite local y pasan por esc() antes
+     de insertarse. El uso de innerHTML aqui es seguro en contexto
+     de herramienta de desarrollo local. */
+  var html = events.map(function(e) {
+    var type    = (e.event_type || e.type || 'system').toLowerCase();
+    var summary = e.summary || e.description || e.message || JSON.stringify(e);
+    var phase   = e.phase || '';
+    var ts      = formatTime(e.created_at || e.timestamp);
+    var id      = e.id || '';
+
+    return '<div class="timeline-event">' +
+      '<div class="event-dot-wrap"><div class="event-dot ' + eventDotClass(type) + '"></div></div>' +
+      '<div class="event-body">' +
+        '<div class="event-header-row">' +
+          '<span class="event-type-badge ' + eventBadgeClass(type) + '">' + esc(type) + '</span>' +
+          (phase ? '<span class="event-phase-badge">' + esc(phase) + '</span>' : '') +
+          '<span class="event-actions">' +
+            '<button class="btn-icon" title="Marcar elemento" onclick="pinEvent(' + esc(id) + ')">[*]</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="event-summary">' + esc(summary) + '</div>' +
+        '<div class="event-ts" style="margin-top:6px;">' + ts + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  feed.innerHTML = html;
+}
+
+/* -- Vista 3: Decisiones -- */
+
+/**
+ * Renderiza la tabla de decisiones con busqueda, filtros y ordenacion.
+ * Usa innerHTML con todo el contenido sanitizado por esc().
+ */
+function renderDecisions() {
+  // Actualizar opciones de fases
+  var phaseSelect = document.getElementById('decisions-filter-phase');
+  var phases = [];
+  state.decisions.forEach(function(d) { if (d.phase && phases.indexOf(d.phase) === -1) phases.push(d.phase); });
+  var currentPhaseVal = phaseSelect.value;
+  var phaseOptions = '<option value="">Todas las fases</option>' +
+    phases.map(function(p) { return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
+  phaseSelect.innerHTML = phaseOptions;
+  if (phases.indexOf(currentPhaseVal) !== -1) phaseSelect.value = currentPhaseVal;
+
+  var data = state.decisions.slice();
+
+  // Filtros
+  if (state.decisionsSearch) {
+    var q = state.decisionsSearch.toLowerCase();
+    data = data.filter(function(d) {
+      return (d.title || '').toLowerCase().includes(q) ||
+             (d.summary || '').toLowerCase().includes(q) ||
+             (d.tags || '').toLowerCase().includes(q);
+    });
+  }
+  if (state.decisionsFilterPhase) {
+    data = data.filter(function(d) { return (d.phase || '') === state.decisionsFilterPhase; });
+  }
+  if (state.decisionsFilterStatus) {
+    data = data.filter(function(d) { return (d.status || '') === state.decisionsFilterStatus; });
+  }
+
+  // Ordenacion
+  var sb = state.decisionsSortBy;
+  var sd = state.decisionsSortDir === 'asc' ? 1 : -1;
+  data.sort(function(a, b) { return String(a[sb] || '').localeCompare(String(b[sb] || '')) * sd; });
+
+  var tbody = document.getElementById('decisions-tbody');
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-title">Sin decisiones para los filtros aplicados</div></div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(function(d) {
+    var tags = (d.tags || '').split(',').filter(Boolean).map(function(t) {
+      return '<span class="badge badge-blue" style="font-size:10px;">' + esc(t.trim()) + '</span>';
+    }).join(' ');
+
+    return '<tr class="decision-row" onclick="toggleDecisionRow(' + d.id + ')">' +
+      '<td style="font-weight:500;color:var(--text-bright);">' + esc(d.title || 'Decision #' + d.id) + '</td>' +
+      '<td><span class="badge badge-gray">' + esc(d.phase || '—') + '</span></td>' +
+      '<td>' + statusBadge(d.status || 'pending') + '</td>' +
+      '<td>' + (tags || '<span style="color:var(--text-dim)">—</span>') + '</td>' +
+      '<td style="text-align:right;"><button class="btn-icon" onclick="event.stopPropagation();pinDecision(' + d.id + ')" title="Marcar">[*]</button></td>' +
+    '</tr>' +
+    '<tr class="decision-expand" id="decision-expand-' + d.id + '">' +
+      '<td colspan="5"><div class="decision-expand-inner"><div class="decision-expand-grid">' +
+        '<div><div class="decision-field-label">Contexto</div><div class="decision-field-value">' + esc(d.context || d.summary || '—') + '</div></div>' +
+        '<div><div class="decision-field-label">Alternativas consideradas</div><div class="decision-field-value">' + esc(d.alternatives || '—') + '</div></div>' +
+        '<div><div class="decision-field-label">Razonamiento</div><div class="decision-field-value">' + esc(d.rationale || d.reasoning || '—') + '</div></div>' +
+        '<div><div class="decision-field-label">Creada</div><div class="decision-field-value">' + formatTime(d.created_at) + '</div></div>' +
+      '</div></div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+/**
+ * Alterna la fila de detalle expandida de una decision.
+ * @param {number} id - ID de la decision.
+ */
+function toggleDecisionRow(id) {
+  var el = document.getElementById('decision-expand-' + id);
+  if (el) el.classList.toggle('open');
+}
+
+/* -- Vista 4: Agentes -- */
+
+/** Definicion estatica de los agentes conocidos del sistema. */
+var KNOWN_AGENTS = [
+  { id: 'architect',  name: 'Architect',  icon: 'A', role: 'Diseno de arquitectura',   optional: false },
+  { id: 'coder',      name: 'Coder',      icon: 'C', role: 'Implementacion de codigo',  optional: false },
+  { id: 'reviewer',   name: 'Reviewer',   icon: 'R', role: 'Revision y calidad',        optional: false },
+  { id: 'tester',     name: 'Tester',     icon: 'T', role: 'Pruebas automatizadas',     optional: true  },
+  { id: 'devops',     name: 'DevOps',     icon: 'D', role: 'CI/CD y despliegue',        optional: true  },
+  { id: 'documenter', name: 'Documenter', icon: 'X', role: 'Documentacion',             optional: true  },
+  { id: 'alfred',     name: 'Alfred',     icon: 'F', role: 'Coordinacion general',      optional: false },
+];
+
+/**
+ * Renderiza la cuadricula de tarjetas de agentes.
+ * Combina los agentes conocidos con los inferidos de los eventos.
+ */
+function renderAgents() {
+  var grid = document.getElementById('agents-grid');
+  var activeAgentName = state.iteration ? state.iteration.active_agent : null;
+
+  var allAgents = KNOWN_AGENTS.slice();
+  state.agents.forEach(function(a) {
+    var found = KNOWN_AGENTS.find(function(k) { return k.name.toLowerCase() === a.name.toLowerCase(); });
+    if (!found) allAgents.push({ id: a.name.toLowerCase(), name: a.name, icon: a.name[0].toUpperCase(), role: 'Agente del sistema', optional: true });
+  });
+
+  if (allAgents.length === 0) {
+    grid.textContent = '';
+    var es = document.createElement('div');
+    es.className = 'empty-state';
+    var est = document.createElement('div');
+    est.className = 'empty-state-title';
+    est.textContent = 'Sin agentes registrados';
+    es.appendChild(est);
+    grid.appendChild(es);
+    return;
+  }
+
+  grid.innerHTML = allAgents.map(function(agent) {
+    var isActive = activeAgentName && activeAgentName.toLowerCase() === agent.id;
+    var dynamicAgent = state.agents.find(function(a) { return a.name.toLowerCase() === agent.id; });
+    var phases = dynamicAgent ? dynamicAgent.phases : [];
+    var statusText = isActive ? 'Activo ahora' : (phases.length ? phases.length + ' fases' : 'Sin actividad');
+    var phaseBadges = phases.slice(0, 4).map(function(p) {
+      return '<span class="badge badge-gray" style="font-size:10px;">' + esc(p) + '</span>';
+    }).join(' ');
+
+    return '<div class="agent-card' + (isActive ? ' active-agent' : '') + '">' +
+      '<div class="agent-card-header">' +
+        '<div class="agent-card-avatar">' + esc(agent.icon) + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div class="agent-card-name">' + esc(agent.name) + '</div>' +
+          '<div class="agent-card-status">' + esc(statusText) + '</div>' +
+        '</div>' +
+        (isActive ? '<div class="agent-status-dot"></div>' : '') +
+        (agent.optional ? '<label class="toggle agent-card-toggle">' +
+          '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="toggleAgent(\'' + esc(agent.id) + '\', this.checked)">' +
+          '<div class="toggle-slider"></div>' +
+        '</label>' : '') +
+      '</div>' +
+      '<div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">' + esc(agent.role) +
+          ' · ' + (agent.optional ? '<span style="color:var(--text-dim)">Opcional</span>' : '<span style="color:var(--text-muted)">Requerido</span>') +
+        '</div>' +
+        (phaseBadges ? '<div class="agent-phases">' + phaseBadges + '</div>' : '<div style="font-size:11px;color:var(--text-dim);">Sin actividad registrada</div>') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+/* -- Vista 5: Memoria -- */
+
+/**
+ * Renderiza el explorador de base de datos con la tabla seleccionada.
+ * Filtra los registros con la cadena de busqueda activa.
+ */
+function renderMemory() {
+  var wrap = document.getElementById('memory-table-wrap');
+  var tableKey = state.memoryActiveTable;
+  var search = state.memorySearch.toLowerCase();
+
+  var data;
+  switch (tableKey) {
+    case 'events':    data = state.events;    break;
+    case 'decisions': data = state.decisions; break;
+    case 'commits':   data = state.commits;   break;
+    case 'pinned':    data = state.pinned;    break;
+    default:          data = [];
+  }
+  if (search) {
+    data = data.filter(function(r) { return JSON.stringify(r).toLowerCase().includes(search); });
+  }
+
+  if (data.length === 0) {
+    wrap.textContent = '';
+    var es = document.createElement('div');
+    es.className = 'empty-state';
+    var est = document.createElement('div');
+    est.className = 'empty-state-title';
+    est.textContent = 'Sin registros' + (search ? ' para la busqueda' : '');
+    es.appendChild(est);
+    wrap.appendChild(es);
+    return;
+  }
+
+  var largeCols = ['context','alternatives','rationale','reasoning','summary','description','metadata','payload'];
+  var columns = Object.keys(data[0]);
+  var tableCols = columns.filter(function(c) { return largeCols.indexOf(c) === -1; }).slice(0, 8);
+
+  var rowsHtml = data.slice(0, 200).map(function(row, idx) {
+    var cells = tableCols.map(function(c) {
+      return '<td class="' + (c === 'id' ? 'sha' : '') + '">' + esc(String(row[c] != null ? row[c] : '—').slice(0, 80)) + '</td>';
+    }).join('');
+    var jsonEscaped = esc(prettyJSON(row));
+    return '<tr onclick="toggleMemoryRow(' + idx + ')" style="cursor:pointer;">' + cells +
+      '<td style="text-align:center;font-size:10px;color:var(--text-dim);">v</td>' +
+    '</tr>' +
+    '<tr id="mem-expand-' + idx + '" style="display:none;">' +
+      '<td colspan="' + (tableCols.length + 1) + '" style="padding:0;">' +
+        '<div style="padding:12px 16px;background:var(--bg-deep);border-bottom:1px solid var(--border);">' +
+          '<pre class="code-block">' + jsonEscaped + '</pre>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+
+  var headCells = tableCols.map(function(c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th style="width:40px;"></th>';
+  wrap.innerHTML = '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rowsHtml + '</tbody></table>';
+}
+
+/**
+ * Muestra u oculta la fila de detalle JSON en la vista de memoria.
+ * @param {number} idx - Indice del registro en el array actual.
+ */
+function toggleMemoryRow(idx) {
+  var el = document.getElementById('mem-expand-' + idx);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+}
+
+/* -- Vista 6: Commits -- */
+
+/**
+ * Renderiza la lista de commits con SHA, mensaje, ficheros y
+ * enlace externo si existe remote_url en el registro.
+ */
+function renderCommits() {
+  var list = document.getElementById('commits-list');
+  if (state.commits.length === 0) {
+    list.textContent = '';
+    var es = document.createElement('div');
+    es.className = 'empty-state';
+    var esi = document.createElement('div');
+    esi.style.cssText = 'font-size:32px;opacity:0.4;';
+    esi.textContent = 'o';
+    var est = document.createElement('div');
+    est.className = 'empty-state-title';
+    est.textContent = 'Sin commits registrados';
+    es.appendChild(esi);
+    es.appendChild(est);
+    list.appendChild(es);
+    return;
+  }
+
+  list.innerHTML = state.commits.slice().reverse().map(function(c) {
+    var sha     = (c.sha || c.commit_sha || '').slice(0, 7);
+    var message = c.message || c.commit_message || 'Sin mensaje';
+    var files   = (c.files || c.changed_files || '').split(',').filter(Boolean);
+    var decs    = (c.decision_ids || '').split(',').filter(Boolean);
+    var remote  = c.remote_url || '';
+
+    var filesBadges = files.slice(0, 10).map(function(f) {
+      return '<span class="commit-file">' + esc(f.trim()) + '</span>';
+    }).join('');
+    var decBadges = decs.map(function(id) {
+      return '<span class="badge badge-blue" style="font-size:10px;">Decision #' + esc(id.trim()) + '</span>';
+    }).join(' ');
+    var ghLink = remote
+      ? '<a href="' + esc(remote) + '/commit/' + esc(c.sha || '') + '" target="_blank" rel="noopener" class="btn btn-ghost" style="font-size:11px;padding:3px 8px;">GitHub</a>'
+      : '';
+
+    return '<div class="commit-card">' +
+      '<div class="commit-header">' +
+        (sha ? '<span class="sha">' + esc(sha) + '</span>' : '') +
+        '<div class="commit-message">' + esc(message) + '</div>' +
+        ghLink +
+      '</div>' +
+      '<div class="commit-meta">' +
+        '<span class="ts">' + formatTime(c.created_at || c.timestamp) + '</span>' +
+        (c.author ? '<span style="font-size:12px;color:var(--text-muted);">' + esc(c.author) + '</span>' : '') +
+        (c.phase  ? '<span class="badge badge-gray" style="font-size:10px;">' + esc(c.phase) + '</span>' : '') +
+        decBadges +
+      '</div>' +
+      (filesBadges ? '<div class="commit-files">' + filesBadges + '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+/* -- Vista 7: Marcados -- */
+
+/**
+ * Renderiza los elementos marcados agrupados por tipo.
+ * Incluye controles para desmarcar y cambiar la prioridad.
+ */
+function renderPinned() {
+  var content = document.getElementById('pinned-content');
+  if (state.pinned.length === 0) {
+    content.textContent = '';
+    var es = document.createElement('div');
+    es.className = 'empty-state';
+    var esi = document.createElement('div');
+    esi.style.cssText = 'font-size:32px;opacity:0.4;';
+    esi.textContent = '*';
+    var est = document.createElement('div');
+    est.className = 'empty-state-title';
+    est.textContent = 'Sin elementos marcados';
+    var esd = document.createElement('div');
+    esd.style.cssText = 'font-size:12px;color:var(--text-dim)';
+    esd.textContent = 'Puedes marcar elementos desde el timeline, las decisiones o los commits';
+    es.appendChild(esi);
+    es.appendChild(est);
+    es.appendChild(esd);
+    content.appendChild(es);
+    return;
+  }
+
+  var groups = {};
+  state.pinned.forEach(function(p) {
+    var type = p.item_type || 'otro';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(p);
+  });
+
+  var typeLabels = { decision: 'Decisiones', commit: 'Commits', event: 'Eventos', note: 'Notas', otro: 'Otros' };
+
+  content.innerHTML = Object.keys(groups).map(function(type) {
+    var items = groups[type];
+    var itemsHtml = items.map(function(p) {
+      return '<div class="pinned-item-card">' +
+        '<div class="pinned-item-icon">' + esc(pinnedIcon(type)) + '</div>' +
+        '<div class="pinned-item-body">' +
+          '<div class="pinned-item-ref">' + esc(p.item_ref || type + ' #' + (p.item_id || p.id)) + '</div>' +
+          (p.note ? '<div class="pinned-item-note">' + esc(p.note) + '</div>' : '') +
+          '<div class="pinned-item-meta">' +
+            '<span class="pinned-origin">' + (p.origin === 'auto' ? 'Auto' : 'Manual') + '</span>' +
+            '<span class="ts">' + formatTime(p.created_at) + '</span>' +
+            '<select class="pinned-priority-select" title="Prioridad" onchange="updatePinnedPriority(' + p.id + ', this.value)">' +
+              '<option value="high"'   + (p.priority === 'high'   ? ' selected' : '') + '>Alta</option>' +
+              '<option value="medium"' + (!p.priority || p.priority === 'medium' ? ' selected' : '') + '>Media</option>' +
+              '<option value="low"'    + (p.priority === 'low'    ? ' selected' : '') + '>Baja</option>' +
+            '</select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pinned-item-actions">' +
+          '<button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" onclick="unpinItem(' + p.id + ')">Desmarcar</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    return '<div class="pinned-section-title">' + esc(typeLabels[type] || type) +
+      ' <span style="color:var(--text-dim);font-size:11px;">(' + items.length + ')</span></div>' +
+      '<div class="pinned-items-list">' + itemsHtml + '</div>';
+  }).join('');
+}
+
+/* ----------------------------------------------------------
+   6. CONTROLADORES DE ACCIONES
+---------------------------------------------------------- */
+
+/**
+ * Marca un evento del timeline como elemento importante.
+ * @param {number} eventId - ID del evento en la base de datos.
+ */
+function pinEvent(eventId) {
+  if (!eventId) return;
+  var ev = state.events.find(function(e) { return e.id === eventId; });
+  sendAction('pin_item', {
+    item_type: 'event',
+    item_id: eventId,
+    item_ref: ev ? (ev.summary || ev.description || 'Evento #' + eventId) : 'Evento #' + eventId,
+  });
+}
+
+/**
+ * Marca una decision como elemento importante.
+ * @param {number} decisionId - ID de la decision.
+ */
+function pinDecision(decisionId) {
+  if (!decisionId) return;
+  var d = state.decisions.find(function(x) { return x.id === decisionId; });
+  sendAction('pin_item', {
+    item_type: 'decision',
+    item_id: decisionId,
+    item_ref: d ? (d.title || 'Decision #' + decisionId) : 'Decision #' + decisionId,
+  });
+}
+
+/**
+ * Elimina el marcado de un elemento. Aplica actualizacion optimista
+ * del estado local para respuesta visual inmediata.
+ * @param {number} pinId - ID del pin en la tabla pinned_items.
+ */
+function unpinItem(pinId) {
+  sendAction('unpin_item', { pin_id: pinId });
+  state.pinned = state.pinned.filter(function(p) { return p.id !== pinId; });
+  renderPinned();
+  updateBadges();
+}
+
+/**
+ * Activa o desactiva un agente opcional del sistema.
+ * @param {string} agentId - Identificador del agente.
+ * @param {boolean} active - true para activar, false para desactivar.
+ */
+function toggleAgent(agentId, active) {
+  sendAction(active ? 'activate_agent' : 'deactivate_agent', { agent_id: agentId });
+}
+
+/**
+ * Actualiza la prioridad de un elemento marcado.
+ * @param {number} pinId - ID del pin.
+ * @param {string} priority - 'high', 'medium' o 'low'.
+ */
+function updatePinnedPriority(pinId, priority) {
+  sendAction('update_pin_priority', { pin_id: pinId, priority: priority });
+  var p = state.pinned.find(function(x) { return x.id === pinId; });
+  if (p) p.priority = priority;
+}
+
+/* ----------------------------------------------------------
+   7. INICIALIZACION Y EVENTOS DE UI
+---------------------------------------------------------- */
+
+/**
+ * Cambia la vista activa, actualiza el sidebar y dispara el renderizado.
+ * @param {string} viewId - Identificador de la vista destino.
+ */
+function switchView(viewId) {
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var viewEl = document.getElementById('view-' + viewId);
+  if (viewEl) viewEl.classList.add('active');
+  var navItem = document.querySelector('.nav-item[data-view="' + viewId + '"]');
+  if (navItem) navItem.classList.add('active');
+  state.currentView = viewId;
+  renderCurrentView();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+
+  // Navegacion lateral
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      var view = item.getAttribute('data-view');
+      if (view) switchView(view);
+    });
+  });
+
+  // Filtros de timeline
+  document.querySelectorAll('[data-filter]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('[data-filter]').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      state.timelineFilter = btn.getAttribute('data-filter');
+      renderTimeline();
+    });
+  });
+
+  // Busqueda de decisiones
+  document.getElementById('decisions-search').addEventListener('input', function(e) {
+    state.decisionsSearch = e.target.value;
+    renderDecisions();
+  });
+  document.getElementById('decisions-filter-phase').addEventListener('change', function(e) {
+    state.decisionsFilterPhase = e.target.value;
+    renderDecisions();
+  });
+  document.getElementById('decisions-filter-status').addEventListener('change', function(e) {
+    state.decisionsFilterStatus = e.target.value;
+    renderDecisions();
+  });
+
+  // Ordenacion de columnas en tabla de decisiones
+  document.querySelectorAll('#decisions-table th[data-sort]').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = th.getAttribute('data-sort');
+      if (state.decisionsSortBy === col) {
+        state.decisionsSortDir = state.decisionsSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.decisionsSortBy  = col;
+        state.decisionsSortDir = 'asc';
+      }
+      renderDecisions();
+    });
+  });
+
+  // Pestanas de memoria
+  document.querySelectorAll('#memory-tabs .tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('#memory-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      state.memoryActiveTable = tab.getAttribute('data-table');
+      renderMemory();
+    });
+  });
+
+  // Busqueda en memoria
+  document.getElementById('memory-search').addEventListener('input', function(e) {
+    state.memorySearch = e.target.value;
+    renderMemory();
+  });
+
+  // Actualizacion periodica de timestamps relativos (cada 30 s)
+  setInterval(function() {
+    updateFooterActivity();
+    renderCurrentView();
+  }, 30000);
+
+  // Arrancar conexion WebSocket
+  connectWebSocket();
+
+  // Renderizado inicial con estado vacio
+  renderCurrentView();
+  updateBadges();
+});
+</script>
+
+</body>
+</html>
