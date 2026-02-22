@@ -263,6 +263,25 @@ def _process_state(db, new_state: dict, db_existed: bool) -> None:
             iteration_id=iteration_id,
         )
 
+    # --- Auto-pinning de elementos relevantes ---
+    # Los cambios de fase y las finalizaciones de iteracion se marcan
+    # automaticamente para que sobrevivan entre sesiones.
+    if fases_completadas and len(fases_completadas) > len(existing_phases):
+        # Nueva fase completada: auto-pin
+        ultima_fase = fases_completadas[-1]
+        nombre = ultima_fase.get("nombre", "") if isinstance(ultima_fase, dict) else str(ultima_fase)
+        if nombre:
+            try:
+                db.pin_item(
+                    item_type="phase",
+                    item_ref=f"phase:{nombre}",
+                    note=f"Fase completada: {nombre}",
+                    auto=True,
+                    priority=5,
+                )
+            except Exception:
+                pass  # Fail-open: no bloquear si el pinning falla
+
 
 if __name__ == "__main__":
     main()

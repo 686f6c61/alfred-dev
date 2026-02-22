@@ -13,6 +13,7 @@ normalmente (exit 0 sin salida).
 
 import json
 import os
+import signal
 import sys
 
 # --- Configuración de rutas ---
@@ -34,6 +35,22 @@ def main():
     """
     # El directorio de trabajo es el proyecto del usuario
     project_dir = os.getcwd()
+
+    # Limpiar servidor GUI si esta corriendo
+    gui_pid_file = os.path.join(project_dir, ".claude", "alfred-gui.pid")
+    if os.path.isfile(gui_pid_file):
+        try:
+            with open(gui_pid_file, "r") as f:
+                gui_pid = int(f.read().strip())
+            os.kill(gui_pid, signal.SIGTERM)
+        except (OSError, ValueError, ProcessLookupError):
+            pass
+        finally:
+            try:
+                os.remove(gui_pid_file)
+            except OSError:
+                pass
+
     state_path = os.path.join(project_dir, ".claude", "alfred-dev-state.json")
 
     # Intentar cargar el estado de sesión

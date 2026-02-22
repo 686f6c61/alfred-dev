@@ -14,37 +14,61 @@ import json
 import os
 import re
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
-def build_compact_context(decisions: List[Dict[str, Any]]) -> str:
+def build_compact_context(
+    decisions: List[Dict[str, Any]],
+    pinned_items: Optional[List[Dict[str, Any]]] = None,
+    pending_actions: Optional[List[Dict[str, Any]]] = None,
+) -> str:
     """Construye el texto de contexto protegido para la compactacion.
 
-    Formatea las decisiones criticas en un bloque Markdown que se inyecta
-    como contexto adicional durante la compactacion. Esto garantiza que
-    las decisiones importantes sobrevivan al recorte del historial.
+    Incluye decisiones criticas, elementos marcados por el usuario y
+    acciones pendientes del dashboard GUI para garantizar continuidad
+    completa entre sesiones.
 
     Args:
-        decisions: lista de diccionarios de decisiones de MemoryDB.
+        decisions: lista de diccionarios de decisiones.
+        pinned_items: elementos marcados (opcionales).
+        pending_actions: acciones pendientes de la GUI (opcionales).
 
     Returns:
-        Texto formateado para inyectar, o cadena vacia si no hay decisiones.
+        Texto formateado para inyectar.
     """
-    if not decisions:
+    if not decisions and not pinned_items and not pending_actions:
         return ""
 
-    lines = [
-        "## Decisiones criticas de la sesion (protegidas contra compactacion)\n"
-    ]
-    for d in decisions:
-        titulo = d.get("title", "sin titulo")
-        elegida = d.get("chosen", "")
-        fecha = d.get("decided_at", "")[:10]
-        lines.append(f"- [{fecha}] **{titulo}**: {elegida}")
+    lines = []
+
+    if decisions:
+        lines.append(
+            "## Decisiones criticas de la sesion (protegidas contra compactacion)\n"
+        )
+        for d in decisions:
+            titulo = d.get("title", "sin titulo")
+            elegida = d.get("chosen", "")
+            fecha = d.get("decided_at", "")[:10]
+            lines.append(f"- [{fecha}] **{titulo}**: {elegida}")
+
+    if pinned_items:
+        lines.append("\n## Elementos marcados por el usuario\n")
+        for item in pinned_items:
+            tipo = item.get("item_type", "?")
+            ref = item.get("item_ref") or f"id:{item.get('item_id', '?')}"
+            nota = item.get("note", "")
+            auto = " (auto)" if item.get("auto_pinned") else ""
+            lines.append(f"- [{tipo}] {ref}: {nota}{auto}")
+
+    if pending_actions:
+        lines.append("\n## Acciones pendientes desde el dashboard\n")
+        for action in pending_actions:
+            tipo = action.get("action_type", "?")
+            payload = action.get("payload", "{}")
+            lines.append(f"- {tipo}: {payload}")
 
     lines.append(
-        "\nEstas decisiones se reinyectan automaticamente por el hook "
-        "memory-compact para mantener coherencia entre sesiones."
+        "\nContexto reinyectado por memory-compact para mantener coherencia."
     )
     return "\n".join(lines)
 
@@ -78,14 +102,17 @@ def main():
     try:
         db = MemoryDB(db_path)
 
-        # Obtener decisiones de la iteracion activa o las ultimas
         active = db.get_active_iteration()
         if active:
             decisions = db.get_decisions(iteration_id=active["id"], limit=10)
         else:
             decisions = db.get_decisions(limit=5)
 
-        context = build_compact_context(decisions)
+        # Recopilar elementos marcados y acciones pendientes
+        pinned_items = db.get_pinned_items()
+        pending_actions = db.get_pending_actions()
+
+        context = build_compact_context(decisions, pinned_items, pending_actions)
         db.close()
 
         if context:

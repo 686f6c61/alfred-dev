@@ -290,6 +290,43 @@ Hay una nueva versión de Alfred Dev: v${LATEST_RELEASE} (actual: v${CURRENT_VER
   fi
 fi
 
+# --- Servidor GUI ---
+
+# Levantar el servidor del dashboard si hay memoria activa.
+# El servidor corre en background y se para con stop-hook.py.
+# Si falla, la sesion continua sin GUI (fail-open).
+GUI_SERVER="${PLUGIN_ROOT}/gui/server.py"
+GUI_PID_FILE="${PROJECT_DIR}/.claude/alfred-gui.pid"
+
+if [[ -f "$MEMORY_DB" && -f "$GUI_SERVER" ]]; then
+  # Matar proceso anterior si existe (sesion previa no limpiada)
+  if [[ -f "$GUI_PID_FILE" ]]; then
+    OLD_PID=$(cat "$GUI_PID_FILE" 2>/dev/null)
+    if [[ -n "$OLD_PID" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
+      kill "$OLD_PID" 2>/dev/null || true
+      sleep 0.5
+    fi
+    rm -f "$GUI_PID_FILE"
+  fi
+
+  # Levantar nuevo servidor
+  PYTHONPATH="${PLUGIN_ROOT}" python3 "$GUI_SERVER" --db "$MEMORY_DB" &
+  GUI_PID=$!
+
+  # Verificar que el proceso arranco (esperar brevemente)
+  sleep 1
+  if kill -0 "$GUI_PID" 2>/dev/null; then
+    echo "$GUI_PID" > "$GUI_PID_FILE"
+    CONTEXT="${CONTEXT}
+
+### Dashboard GUI
+
+El servidor del dashboard esta activo. El usuario puede abrir la GUI con /alfred gui."
+  else
+    echo "[Alfred Dev] Aviso: el servidor GUI no pudo arrancar." >&2
+  fi
+fi
+
 # --- Emisión del JSON de salida ---
 
 ESCAPED_CONTEXT=$(escape_for_json "$CONTEXT")
