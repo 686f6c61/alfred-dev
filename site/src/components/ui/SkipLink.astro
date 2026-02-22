@@ -1,0 +1,23 @@
+---
+/**
+ * Enlace de accesibilidad para saltar directamente al contenido.
+ *
+ * Se renderiza fuera del flujo visual y solo aparece cuando recibe
+ * foco mediante teclado. Los estilos viven en global.css porque el
+ * componente puede instanciarse antes de que Astro inyecte los
+ * scoped styles del layout.
+ *
+ * @example
+ * ```astro
+ * <SkipLink text="Saltar al contenido" />
+ * ```
+ */
+interface Props {
+  /** Texto visible del enlace. */
+  text: string;
+}
+
+const { text } = Astro.props;
+---
+
+<a href="#contenido" class="skip-link">{text}</a>
