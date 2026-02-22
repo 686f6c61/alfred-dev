@@ -602,7 +602,7 @@ function formatTime(raw) {
   if (diff < 60)    return 'hace unos segundos';
   if (diff < 3600)  return 'hace ' + Math.floor(diff / 60) + ' min';
   if (diff < 86400) return 'hace ' + Math.floor(diff / 3600) + ' h';
-  return d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  return esc(d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }));
 }
 
 /**
@@ -764,9 +764,9 @@ function connectWebSocket() {
 function scheduleReconnect() {
   clearTimeout(wsReconnectTimer);
   wsReconnectTimer = setTimeout(function() {
-    wsReconnectDelay = Math.min(wsReconnectDelay * 2, WS_MAX_DELAY);
     connectWebSocket();
   }, wsReconnectDelay);
+  wsReconnectDelay = Math.min(wsReconnectDelay * 2, WS_MAX_DELAY);
 }
 
 /**
@@ -1031,7 +1031,7 @@ function renderTimeline() {
           '<span class="event-type-badge ' + eventBadgeClass(type) + '">' + esc(type) + '</span>' +
           (phase ? '<span class="event-phase-badge">' + esc(phase) + '</span>' : '') +
           '<span class="event-actions">' +
-            '<button class="btn-icon" title="Marcar elemento" onclick="pinEvent(' + esc(id) + ')">[*]</button>' +
+            '<button class="btn-icon" title="Marcar elemento" onclick="pinEvent(' + (parseInt(id,10)||0) + ')">[*]</button>' +
           '</span>' +
         '</div>' +
         '<div class="event-summary">' + esc(summary) + '</div>' +
@@ -1098,7 +1098,7 @@ function renderDecisions() {
       '<td><span class="badge badge-gray">' + esc(d.phase || '—') + '</span></td>' +
       '<td>' + statusBadge(d.status || 'pending') + '</td>' +
       '<td>' + (tags || '<span style="color:var(--text-dim)">—</span>') + '</td>' +
-      '<td style="text-align:right;"><button class="btn-icon" onclick="event.stopPropagation();pinDecision(' + d.id + ')" title="Marcar">[*]</button></td>' +
+      '<td style="text-align:right;"><button class="btn-icon" onclick="event.stopPropagation();pinDecision(' + (parseInt(d.id,10)||0) + ')" title="Marcar">[*]</button></td>' +
     '</tr>' +
     '<tr class="decision-expand" id="decision-expand-' + d.id + '">' +
       '<td colspan="5"><div class="decision-expand-inner"><div class="decision-expand-grid">' +
@@ -1375,7 +1375,7 @@ function renderPinned() {
           '</div>' +
         '</div>' +
         '<div class="pinned-item-actions">' +
-          '<button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" onclick="unpinItem(' + p.id + ')">Desmarcar</button>' +
+          '<button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" onclick="unpinItem(' + (parseInt(p.id,10)||0) + ')">Desmarcar</button>' +
         '</div>' +
       '</div>';
     }).join('');

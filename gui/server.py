@@ -134,6 +134,12 @@ class GUIServer:
         # escrituras de los hooks y agentes.
         self._db = MemoryDB(db_path)
 
+        # Conexion SQLite persistente dedicada al sondeo incremental.
+        # Reutilizarla en poll_new_* evita abrir y cerrar tres conexiones
+        # por cada ciclo de 500 ms. Se cierra con el proceso.
+        self._poll_conn = sqlite3.connect(db_path)
+        self._poll_conn.row_factory = sqlite3.Row
+
         # Checkpoints para detectar cambios incrementales.
         # Se inicializan a 0; el primer poll devuelve todo lo existente.
         self._event_checkpoint = 0
@@ -191,19 +197,14 @@ class GUIServer:
         Returns:
             Lista de diccionarios con los eventos nuevos.
         """
-        conn = sqlite3.connect(self._db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            rows = conn.execute(
-                "SELECT * FROM events WHERE id > ? ORDER BY id ASC",
-                (self._event_checkpoint,),
-            ).fetchall()
-            results = [dict(r) for r in rows]
-            if results:
-                self._event_checkpoint = results[-1]["id"]
-            return results
-        finally:
-            conn.close()
+        rows = self._poll_conn.execute(
+            "SELECT * FROM events WHERE id > ? ORDER BY id ASC",
+            (self._event_checkpoint,),
+        ).fetchall()
+        results = [dict(r) for r in rows]
+        if results:
+            self._event_checkpoint = results[-1]["id"]
+        return results
 
     def poll_new_decisions(self) -> List[Dict[str, Any]]:
         """Obtiene las decisiones creadas desde el ultimo checkpoint.
@@ -214,19 +215,14 @@ class GUIServer:
         Returns:
             Lista de diccionarios con las decisiones nuevas.
         """
-        conn = sqlite3.connect(self._db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            rows = conn.execute(
-                "SELECT * FROM decisions WHERE id > ? ORDER BY id ASC",
-                (self._decision_checkpoint,),
-            ).fetchall()
-            results = [dict(r) for r in rows]
-            if results:
-                self._decision_checkpoint = results[-1]["id"]
-            return results
-        finally:
-            conn.close()
+        rows = self._poll_conn.execute(
+            "SELECT * FROM decisions WHERE id > ? ORDER BY id ASC",
+            (self._decision_checkpoint,),
+        ).fetchall()
+        results = [dict(r) for r in rows]
+        if results:
+            self._decision_checkpoint = results[-1]["id"]
+        return results
 
     def poll_new_commits(self) -> List[Dict[str, Any]]:
         """Obtiene los commits registrados desde el ultimo checkpoint.
@@ -237,19 +233,14 @@ class GUIServer:
         Returns:
             Lista de diccionarios con los commits nuevos.
         """
-        conn = sqlite3.connect(self._db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            rows = conn.execute(
-                "SELECT * FROM commits WHERE id > ? ORDER BY id ASC",
-                (self._commit_checkpoint,),
-            ).fetchall()
-            results = [dict(r) for r in rows]
-            if results:
-                self._commit_checkpoint = results[-1]["id"]
-            return results
-        finally:
-            conn.close()
+        rows = self._poll_conn.execute(
+            "SELECT * FROM commits WHERE id > ? ORDER BY id ASC",
+            (self._commit_checkpoint,),
+        ).fetchall()
+        results = [dict(r) for r in rows]
+        if results:
+            self._commit_checkpoint = results[-1]["id"]
+        return results
 
     # --- Procesamiento de acciones del dashboard ----------------------------
 
@@ -339,6 +330,10 @@ class GUIServer:
 
             # Bucle de recepcion de mensajes
             while True:
+                # LIMITACION: asumimos que cada read() contiene exactamente un frame
+                # WebSocket completo. Valido para mensajes JSON cortos en localhost.
+                # Si un frame llega fragmentado, decode_frame lanzara ValueError y
+                # la conexion se cerrara.
                 data = await reader.read(65536)
                 if not data:
                     break
@@ -432,10 +427,10 @@ class GUIServer:
                     }, ensure_ascii=False, default=str)
                     await self.broadcast(msg)
 
-            except Exception:
-                # No dejar que un error del sondeo pare el watcher.
-                # En produccion se registraria el error en un log.
-                pass
+            except Exception as exc:
+                # No dejar que un error del sondeo pare el watcher,
+                # pero registrarlo en stderr para facilitar el diagnostico.
+                print(f"[Alfred GUI] Error en watch_loop: {exc}", file=sys.stderr)
 
             await asyncio.sleep(_POLL_INTERVAL)
 
