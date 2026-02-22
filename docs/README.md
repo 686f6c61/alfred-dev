@@ -2,7 +2,7 @@
 
 Esta documentacion esta pensada para desarrolladores que necesitan entender como funciona el plugin Alfred Dev por dentro: su arquitectura, sus decisiones de diseno, como se integra en Claude Code y como contribuir. No es documentacion de usuario (eso esta en el [README del proyecto](../README.md) y en la [landing page](https://686f6c61.github.io/alfred-dev/)); es documentacion de ingenieria interna.
 
-Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 15 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integracion) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
+Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 15 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integracion) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente. Desde v0.3.0 incluye un dashboard web en tiempo real que actua como fuente de verdad externa.
 
 El codigo fuente es la referencia definitiva, pero esta documentacion explica el **por que** detras de cada decision: por que Python y no JavaScript, por que SQLite y no JSON, por que 15 agentes y no uno solo, por que quality gates en cada transicion. Un junior debe poder leer esta documentacion de principio a fin y entender el proyecto sin ayuda externa.
 
@@ -28,9 +28,10 @@ mindmap
       7 agentes opcionales
       Motor de personalidad
     Capacidades
-      56 skills en 13 dominios
-      7 hooks del ciclo de vida
+      59 skills en 13 dominios
+      11 hooks del ciclo de vida
       Memoria persistente SQLite
+      Dashboard web en tiempo real
     Operaciones
       Instalacion y carga
       Configuracion por proyecto
@@ -48,9 +49,10 @@ La documentacion se organiza de lo general a lo especifico. Se recomienda leer e
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseno fundamentales |
 | [flows.md](flows.md) | Los 5 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
 | [agents/README.md](agents/README.md) | Vision general del equipo de 15 agentes, modelo de colaboracion, distribucion de modelos |
-| [skills.md](skills.md) | Catalogo de 56 skills organizados en 13 dominios con diagrama mindmap |
-| [hooks.md](hooks.md) | Los 7 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
+| [skills.md](skills.md) | Catalogo de 59 skills organizados en 13 dominios con diagrama mindmap |
+| [hooks.md](hooks.md) | Los 11 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
+| [gui.md](gui.md) | Dashboard web: arquitectura, protocolo WebSocket, vistas, integracion con hooks |
 | [configuration.md](configuration.md) | Deteccion de stack, fichero .local.md, niveles de autonomia, agentes opcionales |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalacion, troubleshooting |
 | [personality.md](personality.md) | Motor de personalidad: frases, sarcasmo, veredictos, distribucion de modelos |

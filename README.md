@@ -2,9 +2,9 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-15 agentes especializados con personalidad propia (8 de nucleo + 7 opcionales), 56 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+15 agentes especializados con personalidad propia (8 de nucleo + 7 opcionales), 59 skills en 13 dominios, memoria persistente de decisiones por proyecto, dashboard web en tiempo real, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
-[Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
+[Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Dashboard](#dashboard-gui) -- [Arquitectura](#arquitectura)
 
 ---
 
@@ -64,6 +64,7 @@ Toda la interfaz se controla desde la línea de comandos de Claude Code con el p
 | `/alfred ship` | Release: auditoria final paralela, changelog, versionado semantico, despliegue. |
 | `/alfred audit` | Auditoria completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentacion. |
 | `/alfred config` | Configurar autonomia, stack, compliance, personalidad, agentes opcionales y memoria persistente. |
+| `/alfred gui` | Lanzar el dashboard web con estado del proyecto en tiempo real. |
 | `/alfred status` | Fase actual, fases completadas con duracion, gate pendiente y agente activo. |
 | `/alfred update` | Comprobar si hay version nueva y actualizar el plugin. |
 | `/alfred help` | Referencia completa de comandos, agentes y flujos. |
@@ -237,6 +238,31 @@ Funcionalidades principales:
 - **Seguridad**: sanitizacion de secretos con los mismos patrones que `secret-guard.sh`, permisos 0600 en el fichero de base de datos.
 - **Migracion automatica**: el esquema se actualiza automaticamente con backup previo al abrir bases de datos de versiones anteriores.
 
+## Dashboard GUI
+
+A partir de v0.3.0, Alfred Dev incluye un dashboard web que muestra el estado completo del proyecto en tiempo real sin intervenir en el terminal de Claude Code. Se lanza con `/alfred gui` y se abre automaticamente en el navegador.
+
+El dashboard actua como fuente de verdad externa: persiste toda la informacion de la sesion independientemente de la compactacion de contexto de Claude Code. Si la conversacion se compacta y se pierde contexto, el dashboard sigue mostrando el historial completo.
+
+**7 vistas disponibles:**
+
+| Vista | Contenido |
+|-------|-----------|
+| Estado | Resumen general: fase activa, progreso de gates, agente activo, contadores y marcados recientes |
+| Timeline | Cronologia de todos los eventos del proyecto con filtros por tipo (fases, agentes, decisiones, commits, gates) |
+| Decisiones | Tabla de decisiones tecnicas con busqueda, filtros por fase/estado y etiquetas |
+| Agentes | Cuadricula de los 15 agentes (8 principales + 7 opcionales) con estado y toggle de activacion |
+| Memoria | Explorador directo de la base de datos SQLite con pestanas por tabla |
+| Commits | Historial de commits con SHA, autor y ficheros afectados |
+| Marcados | Elementos importantes marcados por el usuario o el sistema, con prioridad y nota |
+
+**Arquitectura tecnica:**
+
+- **Servidor:** proceso Python asyncio con HTTP (puerto 7533) + WebSocket RFC 6455 manual (puerto 7534) + polling SQLite cada 500ms. Sin dependencias externas.
+- **Frontend:** fichero HTML unico con CSS y JS vanilla embebidos. Estetica dark mode coherente con la landing page.
+- **Comunicacion:** WebSocket bidireccional con reconexion automatica y backoff exponencial (1s, 2s, 4s, 8s, max 30s).
+- **Principio fail-open:** si la GUI falla, Alfred funciona exactamente igual que sin ella. Los hooks siguen escribiendo en SQLite.
+
 ## Estructura del proyecto
 
 ```
@@ -247,11 +273,15 @@ alfred-dev/
     mcp.json              # Servidor MCP de memoria persistente
   agents/                 # 8 agentes de nucleo
   agents/optional/        # 7 agentes opcionales
-  commands/               # 10 comandos /alfred
-  skills/                 # 56 skills en 13 dominios
+  commands/               # 11 comandos /alfred (incluye gui)
+  skills/                 # 59 skills en 13 dominios
   hooks/                  # 11 hooks del ciclo de vida
     hooks.json            # Configuracion de eventos
   core/                   # Motor de orquestacion y memoria (Python)
+  gui/                    # Dashboard web (servidor + frontend)
+    server.py             # Servidor HTTP + WebSocket + SQLite watcher
+    websocket.py          # Protocolo WebSocket RFC 6455
+    dashboard.html        # Frontend completo (HTML + CSS + JS)
   mcp/                    # Servidor MCP stdio (memoria persistente)
   templates/              # 7 plantillas de artefactos
   tests/                  # Tests unitarios (pytest)
