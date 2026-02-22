@@ -1366,6 +1366,51 @@ footer a {
   .dash-grid { grid-template-columns: 1fr; }
   .dash-features { grid-template-columns: repeat(2, 1fr); }
 }
+.dash-hero-img, .dash-grid-item img { cursor: pointer; }
+
+/* ── Image Lightbox ───────────────────────────── */
+.img-lightbox-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  cursor: zoom-out;
+}
+.img-lightbox-overlay.open { opacity: 1; visibility: visible; }
+.img-lightbox-overlay img {
+  max-width: 92vw; max-height: 90vh;
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  transition: transform 0.25s ease;
+  cursor: default;
+}
+.img-lightbox-caption {
+  position: absolute; bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  color: #ccc; font-size: 14px; font-family: var(--font-display);
+  text-align: center; pointer-events: none;
+  opacity: 0.8;
+}
+.img-lightbox-close {
+  position: absolute; top: 20px; right: 24px;
+  background: none; border: none;
+  color: #aaa; font-size: 32px; line-height: 1;
+  cursor: pointer; transition: color 0.2s;
+  font-family: var(--font-display);
+}
+.img-lightbox-close:hover { color: #fff; }
+.img-lightbox-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+  color: #ccc; font-size: 24px; line-height: 1;
+  width: 44px; height: 44px; border-radius: 50%;
+  cursor: pointer; transition: background 0.2s, color 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.img-lightbox-nav:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.img-lightbox-prev { left: 20px; }
+.img-lightbox-next { right: 20px; }
 </style>
 <script type="application/ld+json">
 {
@@ -3489,6 +3534,15 @@ footer a {
   </div>
 </footer>
 
+<!-- ─── Image Lightbox ─────────────────────────── -->
+<div class="img-lightbox-overlay" id="imgLightbox">
+  <button class="img-lightbox-close" aria-label="Cerrar imagen">&times;</button>
+  <button class="img-lightbox-nav img-lightbox-prev" aria-label="Imagen anterior">&#8249;</button>
+  <img src="" alt="">
+  <button class="img-lightbox-nav img-lightbox-next" aria-label="Imagen siguiente">&#8250;</button>
+  <div class="img-lightbox-caption"></div>
+</div>
+
 <!-- ─── Scroll animations ──────────────────────── -->
 <script>
 const observer = new IntersectionObserver((entries) => {
@@ -3593,6 +3647,77 @@ clOverlay.addEventListener('click', closeChangelog);
 clClose.addEventListener('click', closeChangelog);
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && clModal.classList.contains('open')) closeChangelog();
+});
+
+/* ── Image Lightbox ── */
+const lbOverlay = document.getElementById('imgLightbox');
+const lbImg = lbOverlay.querySelector('img');
+const lbCaption = lbOverlay.querySelector('.img-lightbox-caption');
+const lbClose = lbOverlay.querySelector('.img-lightbox-close');
+const lbPrev = lbOverlay.querySelector('.img-lightbox-prev');
+const lbNext = lbOverlay.querySelector('.img-lightbox-next');
+
+// Recopilar todas las imagenes de la galeria del dashboard
+const galleryImgs = [];
+const heroImg = document.querySelector('.dash-hero-img');
+if (heroImg) {
+  galleryImgs.push({ src: heroImg.src, alt: heroImg.alt, caption: 'Estado del proyecto' });
+}
+document.querySelectorAll('.dash-grid-item').forEach(item => {
+  const img = item.querySelector('img');
+  const span = item.querySelector('span');
+  if (img) {
+    galleryImgs.push({ src: img.src, alt: img.alt, caption: span ? span.textContent : '' });
+  }
+});
+
+let lbIndex = 0;
+
+function openLightbox(index) {
+  lbIndex = index;
+  const data = galleryImgs[lbIndex];
+  lbImg.src = data.src;
+  lbImg.alt = data.alt;
+  lbCaption.textContent = data.caption;
+  lbOverlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  lbClose.focus();
+}
+
+function closeLightbox() {
+  lbOverlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function navigateLightbox(dir) {
+  lbIndex = (lbIndex + dir + galleryImgs.length) % galleryImgs.length;
+  const data = galleryImgs[lbIndex];
+  lbImg.src = data.src;
+  lbImg.alt = data.alt;
+  lbCaption.textContent = data.caption;
+}
+
+// Asignar click a hero
+if (heroImg) {
+  heroImg.addEventListener('click', () => openLightbox(0));
+}
+
+// Asignar click a cada imagen de la cuadricula
+document.querySelectorAll('.dash-grid-item img').forEach((img, i) => {
+  img.addEventListener('click', () => openLightbox(i + 1));
+});
+
+lbClose.addEventListener('click', closeLightbox);
+lbPrev.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(-1); });
+lbNext.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(1); });
+lbOverlay.addEventListener('click', (e) => {
+  if (e.target === lbOverlay) closeLightbox();
+});
+document.addEventListener('keydown', (e) => {
+  if (!lbOverlay.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') navigateLightbox(-1);
+  if (e.key === 'ArrowRight') navigateLightbox(1);
 });
 
 /* ── FAQ acordeon con ARIA ── */
