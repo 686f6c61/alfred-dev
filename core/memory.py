@@ -97,7 +97,7 @@ _SECRET_PATTERNS: List[Tuple[re.Pattern, str]] = [
 
 # Version actual del esquema. Se almacena en la tabla meta y se usa
 # para detectar si es necesario aplicar migraciones en el futuro.
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 # Migraciones de esquema. Cada entrada es una lista de sentencias SQL
 # que transforman la base de datos de la version N a la N+1. Se ejecutan
@@ -118,6 +118,31 @@ _MIGRATIONS: Dict[int, List[str]] = {
             PRIMARY KEY (source_id, target_id)
         )""",
         "CREATE INDEX IF NOT EXISTS idx_decision_links_target ON decision_links(target_id)",
+    ],
+    2: [
+        # v2 -> v3: tablas para el dashboard GUI (acciones y elementos marcados)
+        """CREATE TABLE IF NOT EXISTS gui_actions (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            action_type   TEXT    NOT NULL,
+            payload       TEXT    NOT NULL,
+            status        TEXT    DEFAULT 'pending',
+            created_at    TEXT    NOT NULL,
+            processed_at  TEXT,
+            processed_by  TEXT
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_gui_actions_status ON gui_actions(status)",
+        """CREATE TABLE IF NOT EXISTS pinned_items (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_type     TEXT    NOT NULL,
+            item_id       INTEGER,
+            item_ref      TEXT,
+            note          TEXT,
+            auto_pinned   INTEGER DEFAULT 0,
+            priority      INTEGER DEFAULT 0,
+            pinned_at     TEXT    NOT NULL,
+            session_id    TEXT
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_pinned_items_type ON pinned_items(item_type)",
     ],
 }
 
@@ -241,6 +266,30 @@ CREATE TABLE IF NOT EXISTS decision_links (
     PRIMARY KEY (source_id, target_id)
 );
 CREATE INDEX IF NOT EXISTS idx_decision_links_target ON decision_links(target_id);
+
+CREATE TABLE IF NOT EXISTS gui_actions (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    action_type   TEXT    NOT NULL,
+    payload       TEXT    NOT NULL,
+    status        TEXT    DEFAULT 'pending',
+    created_at    TEXT    NOT NULL,
+    processed_at  TEXT,
+    processed_by  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_gui_actions_status ON gui_actions(status);
+
+CREATE TABLE IF NOT EXISTS pinned_items (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_type     TEXT    NOT NULL,
+    item_id       INTEGER,
+    item_ref      TEXT,
+    note          TEXT,
+    auto_pinned   INTEGER DEFAULT 0,
+    priority      INTEGER DEFAULT 0,
+    pinned_at     TEXT    NOT NULL,
+    session_id    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pinned_items_type ON pinned_items(item_type);
 """
 
 
@@ -1639,6 +1688,157 @@ class MemoryDB:
 
         text = "\n".join(result_lines).strip()
         return text if text else None
+
+    # --- GUI Actions -------------------------------------------------------
+
+    def create_gui_action(
+        self, action_type: str, payload: Dict[str, Any]
+    ) -> int:
+        """Registra una accion enviada desde el dashboard GUI.
+
+        Las acciones quedan en estado 'pending' hasta que un hook las
+        procese e inyecte como contexto en Claude Code.
+
+        Args:
+            action_type: tipo de accion (activate_agent, approve_gate, etc.).
+            payload: datos de la accion como diccionario.
+
+        Returns:
+            ID de la accion creada.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        payload_json = json.dumps(payload, ensure_ascii=False)
+
+        cursor = self._conn.execute(
+            "INSERT INTO gui_actions (action_type, payload, created_at) VALUES (?, ?, ?)",
+            (action_type, payload_json, now),
+        )
+        self._conn.commit()
+        return cursor.lastrowid
+
+    def get_pending_actions(self) -> List[Dict[str, Any]]:
+        """Devuelve las acciones pendientes de procesar, en orden FIFO.
+
+        Returns:
+            Lista de diccionarios con los datos de cada accion pendiente.
+        """
+        rows = self._conn.execute(
+            "SELECT id, action_type, payload, status, created_at "
+            "FROM gui_actions WHERE status = 'pending' ORDER BY id ASC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_action_processed(self, action_id: int, processed_by: str) -> None:
+        """Marca una accion como procesada.
+
+        Args:
+            action_id: ID de la accion.
+            processed_by: identificador del hook que la proceso.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        self._conn.execute(
+            "UPDATE gui_actions SET status = 'processed', processed_at = ?, "
+            "processed_by = ? WHERE id = ?",
+            (now, processed_by, action_id),
+        )
+        self._conn.commit()
+
+    # --- Pinned Items ------------------------------------------------------
+
+    def pin_item(
+        self,
+        item_type: str,
+        item_id: Optional[int] = None,
+        item_ref: Optional[str] = None,
+        note: Optional[str] = None,
+        auto: bool = False,
+        priority: int = 0,
+        session_id: Optional[str] = None,
+    ) -> int:
+        """Marca un elemento como importante para persistir entre sesiones.
+
+        Los elementos marcados se inyectan con prioridad al reanudar una
+        sesion y quedan como memoria permanente del proyecto.
+
+        Args:
+            item_type: tipo de elemento (decision, event, gate, phase, commit).
+            item_id: ID del registro original (opcional si se usa item_ref).
+            item_ref: referencia textual (ej: 'gate:security_review').
+            note: nota explicativa del usuario.
+            auto: True si el sistema lo marco automaticamente.
+            priority: orden de inyeccion (mayor = antes).
+            session_id: identificador de la sesion en que se marco.
+
+        Returns:
+            ID del registro de marcado.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        cursor = self._conn.execute(
+            "INSERT INTO pinned_items "
+            "(item_type, item_id, item_ref, note, auto_pinned, priority, pinned_at, session_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (item_type, item_id, item_ref, note, 1 if auto else 0, priority, now, session_id),
+        )
+        self._conn.commit()
+        return cursor.lastrowid
+
+    def unpin_item(self, pin_id: int) -> None:
+        """Elimina un marcado.
+
+        Args:
+            pin_id: ID del registro en pinned_items.
+        """
+        self._conn.execute("DELETE FROM pinned_items WHERE id = ?", (pin_id,))
+        self._conn.commit()
+
+    def get_pinned_items(
+        self, item_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Devuelve los elementos marcados, ordenados por prioridad descendente.
+
+        Args:
+            item_type: filtrar por tipo (opcional).
+
+        Returns:
+            Lista de diccionarios con los datos de cada elemento marcado.
+        """
+        if item_type:
+            rows = self._conn.execute(
+                "SELECT id, item_type, item_id, item_ref, note, auto_pinned, "
+                "priority, pinned_at, session_id "
+                "FROM pinned_items WHERE item_type = ? ORDER BY priority DESC, id ASC",
+                (item_type,),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT id, item_type, item_id, item_ref, note, auto_pinned, "
+                "priority, pinned_at, session_id "
+                "FROM pinned_items ORDER BY priority DESC, id ASC"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_session_context(self) -> Dict[str, Any]:
+        """Genera el contexto estructurado para inyeccion al reanudar sesion.
+
+        Recopila la iteracion activa, decisiones, elementos marcados y
+        acciones pendientes en un unico diccionario que puede serializarse
+        e inyectarse como contexto en Claude Code.
+
+        Returns:
+            Diccionario con claves: iteration, decisions, pinned_items,
+            pending_actions.
+        """
+        active = self.get_active_iteration()
+        decisions = []
+        if active:
+            decisions = self.get_decisions(iteration_id=active["id"], limit=20)
+
+        return {
+            "iteration": active,
+            "decisions": decisions,
+            "pinned_items": self.get_pinned_items(),
+            "pending_actions": self.get_pending_actions(),
+        }
 
     # --- Ciclo de vida ------------------------------------------------------
 

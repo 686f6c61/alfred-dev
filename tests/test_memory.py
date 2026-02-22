@@ -69,7 +69,7 @@ class TestMemoryDBCreation(unittest.TestCase):
         conn.close()
 
         self.assertIsNotNone(row)
-        self.assertEqual(row[0], "2")
+        self.assertEqual(row[0], "3")
 
     def test_wal_mode_active(self):
         """El modo WAL debe estar activado para mejor concurrencia."""
@@ -113,7 +113,7 @@ class TestMemoryDBCreation(unittest.TestCase):
                          f"Permisos esperados 0600, obtenidos {oct(perms)}")
 
     def test_indices_exist(self):
-        """Los 6 indices definidos en el esquema deben existir."""
+        """Los 8 indices definidos en el esquema deben existir."""
         conn = sqlite3.connect(self._db_path)
         cursor = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='index' "
@@ -129,6 +129,8 @@ class TestMemoryDBCreation(unittest.TestCase):
             "idx_events_iteration",
             "idx_events_type",
             "idx_decision_links_target",
+            "idx_gui_actions_status",
+            "idx_pinned_items_type",
         }
         self.assertEqual(expected, indices)
 
@@ -804,7 +806,7 @@ class TestStats(unittest.TestCase):
         stats = self.db.get_stats()
 
         self.assertIn("schema_version", stats)
-        self.assertEqual(stats["schema_version"], "2")
+        self.assertEqual(stats["schema_version"], "3")
         self.assertIn("fts_enabled", stats)
         self.assertIn("created_at", stats)
 
@@ -858,7 +860,7 @@ class TestReopen(unittest.TestCase):
         stats = db2.get_stats()
         db2.close()
 
-        self.assertEqual(stats["schema_version"], "2")
+        self.assertEqual(stats["schema_version"], "3")
 
 
 # ---------------------------------------------------------------------------
@@ -971,17 +973,17 @@ class TestSchemaMigration(unittest.TestCase):
         stats = db.get_stats()
         db.close()
 
-        self.assertEqual(stats["schema_version"], "2")
+        self.assertEqual(stats["schema_version"], "3")
 
-    def test_v1_db_migrates_to_v2(self):
-        """Una DB con esquema v1 debe migrar automaticamente a v2 al abrirla."""
+    def test_v1_db_migrates_to_v3(self):
+        """Una DB con esquema v1 debe migrar automaticamente a v3 al abrirla."""
         _create_v1_db(self._db_path)
 
         db = MemoryDB(self._db_path)
         stats = db.get_stats()
         db.close()
 
-        self.assertEqual(stats["schema_version"], "2")
+        self.assertEqual(stats["schema_version"], "3")
 
     def test_migration_creates_backup(self):
         """Al migrar, se debe crear una copia de seguridad (.bak) del fichero."""
@@ -1475,9 +1477,9 @@ class TestHealthCheck(unittest.TestCase):
         self.assertEqual(len(health["issues"]), 0)
 
     def test_schema_version_check(self):
-        """La version del esquema debe ser '2'."""
+        """La version del esquema debe ser '3'."""
         health = self.db.check_health()
-        self.assertEqual(health["schema_version"], "2")
+        self.assertEqual(health["schema_version"], "3")
 
     def test_permissions_check(self):
         """Los permisos del fichero deben ser correctos."""
