@@ -1,0 +1,179 @@
+---
+/**
+ * Seccion de preguntas frecuentes (FAQ) con acordeones.
+ *
+ * Renderiza una lista de preguntas expandibles con iconos SVG inline.
+ * Cada pregunta tiene un boton con icono, texto y un indicador +/-
+ * que rota al abrir. Las respuestas pueden contener HTML (strong,
+ * code, a) y se inyectan con set:html para soportar markup.
+ *
+ * El script de cliente gestiona la accesibilidad con atributos ARIA
+ * (aria-expanded, aria-controls, role="region") y la logica de
+ * toggle via la clase .open en el contenedor .faq-item.
+ *
+ * @example
+ * ```astro
+ * <FaqSection items={data.faq.items} label={data.faq.header.label} />
+ * ```
+ */
+
+import type { FaqItem } from '@/types';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+
+interface Props {
+  /** Lista de preguntas frecuentes con icono SVG, pregunta y respuesta HTML. */
+  items: FaqItem[];
+  /** Etiqueta de la seccion (se pasa al SectionHeader). */
+  label: string;
+}
+
+const { items, label } = Astro.props;
+---
+
+<section id="faq">
+  <div class="container">
+    <SectionHeader label={label} title="FAQ" center />
+    <div class="faq-list">
+      {items.map((item) => (
+        <div class="faq-item fade-in">
+          <button class="faq-question" type="button">
+            <svg
+              class="faq-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              set:html={item.svgContent}
+            />
+            <span class="faq-question-text">{item.question}</span>
+          </button>
+          <div class="faq-answer" set:html={item.answerHtml} />
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  /**
+   * Acordeon FAQ con atributos ARIA.
+   *
+   * Para cada boton .faq-question se configuran aria-expanded y
+   * aria-controls enlazados a la respuesta adyacente. Al hacer clic
+   * se alterna la clase .open en el contenedor padre, lo que
+   * muestra u oculta la respuesta via CSS (display: none/block).
+   */
+  document.querySelectorAll('.faq-question').forEach((btn, i) => {
+    const answer = btn.nextElementSibling as HTMLElement;
+    const answerId = `faq-answer-${i}`;
+
+    // Configurar ARIA en la respuesta
+    answer.id = answerId;
+    answer.setAttribute('role', 'region');
+    answer.setAttribute('aria-labelledby', `faq-btn-${i}`);
+
+    // Configurar ARIA en el boton
+    btn.id = `faq-btn-${i}`;
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', answerId);
+
+    btn.addEventListener('click', () => {
+      const isOpen = btn.parentElement!.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(isOpen));
+    });
+  });
+</script>
+
+<style>
+  /* ── Contenedor de la lista ──────────────────────── */
+  .faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* ── Item individual ─────────────────────────────── */
+  .faq-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .faq-item:hover {
+    border-color: var(--border-light);
+  }
+
+  /* ── Boton de pregunta ───────────────────────────── */
+  .faq-question {
+    width: 100%;
+    text-align: left;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-bright);
+    background: none;
+    border: none;
+    padding: 16px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: color 0.2s;
+  }
+
+  .faq-question:hover {
+    color: var(--blue);
+  }
+
+  /* ── Icono SVG ───────────────────────────────────── */
+  .faq-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--blue-dim);
+    transition: color 0.2s;
+  }
+
+  .faq-item:hover .faq-icon {
+    color: var(--blue);
+  }
+
+  /* ── Texto de la pregunta ────────────────────────── */
+  .faq-question-text {
+    flex: 1;
+  }
+
+  /* ── Indicador +/- ──────────────────────────────── */
+  .faq-question::after {
+    content: '+';
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    margin-left: 12px;
+    transition: transform 0.2s;
+  }
+
+  .faq-item.open .faq-question::after {
+    content: '-';
+  }
+
+  /* ── Respuesta (oculta por defecto) ──────────────── */
+  .faq-answer {
+    display: none;
+    padding: 0 20px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  .faq-item.open .faq-answer {
+    display: block;
+  }
+</style>

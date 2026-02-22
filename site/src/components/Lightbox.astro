@@ -1,0 +1,274 @@
+---
+/**
+ * Lightbox de imagenes del dashboard.
+ *
+ * Componente overlay a pantalla completa que muestra las capturas
+ * de pantalla del dashboard en tamaño grande. Incluye navegacion
+ * con botones prev/next, contador de posicion, pie de imagen y
+ * cierre con boton, overlay click o tecla Escape.
+ *
+ * El script de cliente recopila las imagenes de los selectores
+ * .dash-hero-img y .dash-grid-item img del DashboardSection para
+ * construir la galeria automaticamente. La navegacion con flechas
+ * del teclado (ArrowLeft/ArrowRight) tambien esta soportada.
+ *
+ * Los textos de accesibilidad (aria-label de los botones) se pasan
+ * como props y se inyectan con data-* para que el script los lea.
+ *
+ * @example
+ * ```astro
+ * <Lightbox
+ *   closeLabel="Cerrar imagen"
+ *   prevLabel="Imagen anterior"
+ *   nextLabel="Imagen siguiente"
+ * />
+ * ```
+ */
+
+interface Props {
+  /** aria-label del boton de cerrar. */
+  closeLabel: string;
+  /** aria-label del boton de imagen anterior. */
+  prevLabel: string;
+  /** aria-label del boton de imagen siguiente. */
+  nextLabel: string;
+}
+
+const { closeLabel, prevLabel, nextLabel } = Astro.props;
+---
+
+<div class="img-lightbox-overlay" id="imgLightbox">
+  <button class="img-lightbox-close" aria-label={closeLabel}>&times;</button>
+  <button class="img-lightbox-nav img-lightbox-prev" aria-label={prevLabel}>&lsaquo;</button>
+  <img src="" alt="" />
+  <button class="img-lightbox-nav img-lightbox-next" aria-label={nextLabel}>&rsaquo;</button>
+  <div class="img-lightbox-caption"></div>
+  <div class="img-lightbox-counter"></div>
+</div>
+
+<script>
+  /**
+   * Script del lightbox de imagenes del dashboard.
+   *
+   * Recopila las imagenes de la galeria (hero + grid) y asigna
+   * event listeners para abrir, cerrar y navegar. Soporta teclado
+   * (Escape, ArrowLeft, ArrowRight) y clic en overlay para cerrar.
+   */
+  const lbOverlay = document.getElementById('imgLightbox') as HTMLDivElement;
+  const lbImg = lbOverlay.querySelector('img') as HTMLImageElement;
+  const lbCaption = lbOverlay.querySelector('.img-lightbox-caption') as HTMLDivElement;
+  const lbCounter = lbOverlay.querySelector('.img-lightbox-counter') as HTMLDivElement;
+  const lbClose = lbOverlay.querySelector('.img-lightbox-close') as HTMLButtonElement;
+  const lbPrev = lbOverlay.querySelector('.img-lightbox-prev') as HTMLButtonElement;
+  const lbNext = lbOverlay.querySelector('.img-lightbox-next') as HTMLButtonElement;
+
+  /** Datos de cada imagen de la galeria. */
+  interface GalleryItem {
+    src: string;
+    alt: string;
+    caption: string;
+  }
+
+  // Recopilar todas las imagenes del dashboard
+  const galleryImgs: GalleryItem[] = [];
+
+  const heroImg = document.querySelector('.dash-hero-img') as HTMLImageElement | null;
+  if (heroImg) {
+    galleryImgs.push({
+      src: heroImg.src,
+      alt: heroImg.alt,
+      caption: 'Estado del proyecto',
+    });
+  }
+
+  document.querySelectorAll('.dash-grid-item').forEach((item) => {
+    const img = item.querySelector('img') as HTMLImageElement | null;
+    const span = item.querySelector('span');
+    if (img) {
+      galleryImgs.push({
+        src: img.src,
+        alt: img.alt,
+        caption: span ? span.textContent || '' : '',
+      });
+    }
+  });
+
+  let lbIndex = 0;
+
+  /** Actualiza el contador de posicion (ej. "1 / 7"). */
+  function updateCounter(): void {
+    lbCounter.textContent = `${lbIndex + 1} / ${galleryImgs.length}`;
+  }
+
+  /** Abre el lightbox en la imagen indicada por su indice. */
+  function openLightbox(index: number): void {
+    lbIndex = index;
+    const data = galleryImgs[lbIndex];
+    lbImg.src = data.src;
+    lbImg.alt = data.alt;
+    lbCaption.textContent = data.caption;
+    updateCounter();
+    lbOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    lbClose.focus();
+  }
+
+  /** Cierra el lightbox y restaura el scroll del body. */
+  function closeLightbox(): void {
+    lbOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  /** Navega a la imagen anterior (-1) o siguiente (+1). */
+  function navigateLightbox(dir: number): void {
+    lbIndex = (lbIndex + dir + galleryImgs.length) % galleryImgs.length;
+    const data = galleryImgs[lbIndex];
+    lbImg.src = data.src;
+    lbImg.alt = data.alt;
+    lbCaption.textContent = data.caption;
+    updateCounter();
+  }
+
+  // Asignar clic a la imagen hero del dashboard
+  if (heroImg) {
+    heroImg.addEventListener('click', () => openLightbox(0));
+  }
+
+  // Asignar clic a cada item de la cuadricula (contenedor completo)
+  document.querySelectorAll('.dash-grid-item').forEach((item, i) => {
+    item.addEventListener('click', () => openLightbox(i + 1));
+  });
+
+  // Controles del lightbox
+  lbClose.addEventListener('click', closeLightbox);
+  lbPrev.addEventListener('click', (e) => {
+    e.stopPropagation();
+    navigateLightbox(-1);
+  });
+  lbNext.addEventListener('click', (e) => {
+    e.stopPropagation();
+    navigateLightbox(1);
+  });
+  lbOverlay.addEventListener('click', (e) => {
+    if (e.target === lbOverlay) closeLightbox();
+  });
+
+  // Navegacion con teclado
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (!lbOverlay.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') navigateLightbox(-1);
+    if (e.key === 'ArrowRight') navigateLightbox(1);
+  });
+</script>
+
+<style>
+  /* ── Overlay a pantalla completa ─────────────────── */
+  .img-lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    cursor: zoom-out;
+  }
+
+  .img-lightbox-overlay.open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* ── Imagen central ──────────────────────────────── */
+  .img-lightbox-overlay img {
+    max-width: 92vw;
+    max-height: 90vh;
+    border-radius: 10px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+    transition: transform 0.25s ease;
+    cursor: default;
+  }
+
+  /* ── Pie de imagen ───────────────────────────────── */
+  .img-lightbox-caption {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ccc;
+    font-size: 14px;
+    font-family: var(--font-display);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0.8;
+  }
+
+  /* ── Boton cerrar ────────────────────────────────── */
+  .img-lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 32px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+    font-family: var(--font-display);
+  }
+
+  .img-lightbox-close:hover {
+    color: #fff;
+  }
+
+  /* ── Botones de navegacion (prev/next) ───────────── */
+  .img-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ccc;
+    font-size: 24px;
+    line-height: 1;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .img-lightbox-nav:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+  }
+
+  .img-lightbox-prev {
+    left: 20px;
+  }
+
+  .img-lightbox-next {
+    right: 20px;
+  }
+
+  /* ── Contador de posicion ────────────────────────── */
+  .img-lightbox-counter {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #999;
+    font-size: 13px;
+    font-family: var(--font-mono);
+    pointer-events: none;
+    opacity: 0.7;
+  }
+</style>

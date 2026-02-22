@@ -1,0 +1,371 @@
+---
+/**
+ * Modal de changelog con overlay.
+ *
+ * Renderiza un dialogo modal con todas las versiones del changelog,
+ * organizadas por fecha y con secciones Fixed/Added/Changed. Las
+ * entradas pueden contener HTML inline (strong, code) y se inyectan
+ * con set:html.
+ *
+ * El componente incluye:
+ * - Overlay con clic para cerrar
+ * - Cabecera con titulo, enlace al changelog completo y boton cerrar
+ * - Cuerpo scrollable con las versiones
+ * - Script con apertura (conectada a #changelogBtn del Nav), cierre
+ *   con Escape, overlay click y focus trap basico
+ *
+ * Los textos dependientes del idioma se pasan via props.ui y se
+ * inyectan como data-* en el contenedor para que el script de
+ * cliente los lea sin dependencia de modulos de idioma.
+ *
+ * @example
+ * ```astro
+ * <ChangelogModal
+ *   versions={data.changelog}
+ *   ui={{ title: 'Changelog', close: 'Cerrar changelog', fullLink: 'ver completo' }}
+ * />
+ * ```
+ */
+
+import type { ChangelogVersion } from '@/types';
+
+interface Props {
+  /** Lista completa de versiones del changelog. */
+  versions: ChangelogVersion[];
+  /** Literales de UI para titulo, boton cerrar y enlace completo. */
+  ui: {
+    title: string;
+    close: string;
+    fullLink: string;
+  };
+}
+
+const { versions, ui } = Astro.props;
+
+/** URL del fichero CHANGELOG.md completo en GitHub. */
+const CHANGELOG_URL = 'https://github.com/686f6c61/alfred-dev/blob/main/CHANGELOG.md';
+---
+
+<div class="changelog-overlay" id="changelogOverlay"></div>
+<div
+  class="changelog-modal"
+  id="changelogModal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="changelogTitle"
+>
+  <div class="changelog-header">
+    <div class="changelog-header-left">
+      <h2 id="changelogTitle">{ui.title}</h2>
+      <a href={CHANGELOG_URL} target="_blank" rel="noopener noreferrer">{ui.fullLink}</a>
+    </div>
+    <button
+      class="changelog-close"
+      id="changelogClose"
+      aria-label={ui.close}
+    >&times;</button>
+  </div>
+  <div class="changelog-body">
+    {versions.map((v) => (
+      <div class="cl-version">
+        <div class="cl-version-header">
+          <span class="cl-version-tag">{v.version}</span>
+          <span class="cl-version-date">{v.date}</span>
+        </div>
+        {v.fixed && v.fixed.length > 0 && (
+          <>
+            <p class="cl-section-title fixed">Fixed</p>
+            <ul class="cl-list">
+              {v.fixed.map((entry) => (
+                <li set:html={entry} />
+              ))}
+            </ul>
+          </>
+        )}
+        {v.added && v.added.length > 0 && (
+          <>
+            <p class="cl-section-title added">Added</p>
+            <ul class="cl-list">
+              {v.added.map((entry) => (
+                <li set:html={entry} />
+              ))}
+            </ul>
+          </>
+        )}
+        {v.changed && v.changed.length > 0 && (
+          <>
+            <p class="cl-section-title changed">Changed</p>
+            <ul class="cl-list">
+              {v.changed.map((entry) => (
+                <li set:html={entry} />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    ))}
+  </div>
+</div>
+
+<script>
+  /**
+   * Script de apertura y cierre del modal de changelog.
+   *
+   * - Se conecta al boton #changelogBtn del componente Nav.
+   * - Cierra con Escape, clic en overlay y boton de cerrar.
+   * - Focus trap basico: al abrir, el foco va al boton de cerrar;
+   *   al cerrar, vuelve al boton que abrio el modal.
+   */
+  const clBtn = document.getElementById('changelogBtn');
+  const clOverlay = document.getElementById('changelogOverlay');
+  const clModal = document.getElementById('changelogModal');
+  const clClose = document.getElementById('changelogClose');
+
+  /** Abre el modal y bloquea el scroll del body. */
+  function openChangelog(): void {
+    clOverlay?.classList.add('open');
+    clModal?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    clClose?.focus();
+  }
+
+  /** Cierra el modal y restaura el scroll. */
+  function closeChangelog(): void {
+    clOverlay?.classList.remove('open');
+    clModal?.classList.remove('open');
+    document.body.style.overflow = '';
+    clBtn?.focus();
+  }
+
+  clBtn?.addEventListener('click', openChangelog);
+  clOverlay?.addEventListener('click', closeChangelog);
+  clClose?.addEventListener('click', closeChangelog);
+
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && clModal?.classList.contains('open')) {
+      closeChangelog();
+    }
+  });
+</script>
+
+<style>
+  /* ── Overlay ─────────────────────────────────────── */
+  .changelog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 9998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .changelog-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ── Modal ───────────────────────────────────────── */
+  .changelog-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.96);
+    width: min(720px, 92vw);
+    max-height: 80vh;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  .changelog-modal.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* ── Cabecera ────────────────────────────────────── */
+  .changelog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .changelog-header-left {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .changelog-header h2 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin: 0;
+  }
+
+  .changelog-header a {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    margin-left: 12px;
+  }
+
+  .changelog-header a:hover {
+    color: var(--blue);
+  }
+
+  /* ── Boton cerrar ────────────────────────────────── */
+  .changelog-close {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .changelog-close:hover {
+    border-color: var(--border-light);
+    color: var(--text);
+  }
+
+  /* ── Cuerpo scrollable ───────────────────────────── */
+  .changelog-body {
+    overflow-y: auto;
+    padding: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+  }
+
+  .changelog-body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .changelog-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .changelog-body::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 3px;
+  }
+
+  /* ── Version ─────────────────────────────────────── */
+  .cl-version {
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cl-version:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  /* ── Cabecera de version ─────────────────────────── */
+  .cl-version-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .cl-version-tag {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--blue);
+  }
+
+  .cl-version-date {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* ── Titulo de seccion (Fixed/Added/Changed) ────── */
+  .cl-section-title {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin: 12px 0 8px;
+  }
+
+  .cl-section-title.added {
+    color: var(--green);
+  }
+
+  .cl-section-title.changed {
+    color: var(--orange);
+  }
+
+  .cl-section-title.fixed {
+    color: var(--cyan);
+  }
+
+  /* ── Lista de entradas ───────────────────────────── */
+  .cl-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .cl-list li {
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    padding-left: 16px;
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  /* Punto decorativo antes de cada entrada */
+  .cl-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--border-light);
+  }
+
+  .cl-list li :global(strong) {
+    color: var(--text-bright);
+    font-weight: 600;
+  }
+
+  .cl-list li :global(code) {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg-card);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--blue);
+  }
+</style>

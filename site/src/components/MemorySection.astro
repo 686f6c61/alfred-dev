@@ -1,0 +1,482 @@
+---
+/**
+ * Seccion de memoria persistente de Alfred Dev.
+ *
+ * Es la seccion mas compleja de la landing. Contiene cuatro bloques
+ * diferenciados que se renderizan secuencialmente:
+ *
+ * 1. **Diagrama de trazabilidad** -- nodos conectados visualmente
+ *    (Problema -> Decision -> Commit -> Validacion) con colores
+ *    individuales y flechas tipograficas.
+ *
+ * 2. **Tarjetas de memoria** -- 6 tarjetas en cuadricula responsive
+ *    que describen los componentes del sistema de memoria (SQLite,
+ *    busqueda FTS5, captura automatica, MCP, contexto, seguridad).
+ *
+ * 3. **El Bibliotecario** -- bloque especial con icono, titulo,
+ *    parrafos descriptivos, ejemplo de consulta interactiva y nota
+ *    de activacion. Borde dorado para diferenciarlo visualmente.
+ *
+ * 4. **FAQ inline** -- acordeon con ARIA independiente del FAQ
+ *    principal de la landing. Usa la misma estructura visual
+ *    (faq-item, faq-question, faq-answer) pero con max-width: none.
+ *
+ * El fondo de la seccion es alterno (--bg-surface) con bordes,
+ * manteniendo el ritmo visual de la landing.
+ *
+ * @example
+ * ```astro
+ * <MemorySection memory={data.memory} />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { MemorySection as MemorySectionType } from '@/types';
+
+interface Props {
+  /** Datos completos de la seccion de memoria. */
+  memory: MemorySectionType;
+}
+
+const { memory } = Astro.props;
+---
+
+<section id="memoria" class="memory-section">
+  <div class="container">
+    <SectionHeader
+      label={memory.sectionLabel}
+      labelColor="var(--gold)"
+      title={memory.title}
+      description={memory.descriptionHtml}
+    />
+
+    {/* ── Diagrama de trazabilidad ──────────────────── */}
+    <div class="trace-container fade-in">
+      <h3 class="trace-title">{memory.traceability.title}</h3>
+      <p class="trace-desc" set:html={memory.traceability.descriptionHtml} />
+      <div class="trace-nodes">
+        {memory.traceability.nodes.map((node, i) => (
+          <Fragment>
+            <span
+              class="trace-node"
+              style={`color: ${node.color}; background: ${node.background}; border-color: ${node.borderColor};`}
+            >
+              {node.label}
+            </span>
+            {/* Flecha entre nodos (excepto despues del ultimo) */}
+            {i < memory.traceability.nodes.length - 1 && (
+              <span class="trace-arrow">&rarr;</span>
+            )}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+
+    {/* ── Tarjetas de componentes de memoria ────────── */}
+    <div class="memory-grid agents-grid">
+      {memory.cards.map((card) => (
+        <div class="memory-card fade-in">
+          <h4 class="memory-card-title">{card.title}</h4>
+          <p class="memory-card-desc" set:html={card.descriptionHtml} />
+        </div>
+      ))}
+    </div>
+
+    {/* ── El Bibliotecario ──────────────────────────── */}
+    <div class="librarian-container fade-in">
+      <div class="librarian-header">
+        <div class="librarian-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c9a96e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <line x1="8" y1="7" x2="16" y2="7" />
+            <line x1="8" y1="11" x2="13" y2="11" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="librarian-title">{memory.librarian.title}</h3>
+          <p class="librarian-subtitle">{memory.librarian.subtitle}</p>
+        </div>
+      </div>
+
+      {memory.librarian.descriptionHtml.map((paragraph) => (
+        <p class="librarian-desc" set:html={paragraph} />
+      ))}
+
+      {/* Ejemplo de consulta interactiva */}
+      <div class="librarian-example">
+        <div class="librarian-example-label">{memory.librarian.example.label}</div>
+        <div class="librarian-example-question">{memory.librarian.example.question}</div>
+        <div class="librarian-example-answer" set:html={memory.librarian.example.answerHtml} />
+      </div>
+
+      {/* Nota de activacion */}
+      <div class="librarian-activation">
+        <p class="librarian-activation-text" set:html={memory.librarian.activationHtml} />
+      </div>
+    </div>
+
+    {/* ── FAQ inline de memoria ─────────────────────── */}
+    <div class="memory-faq fade-in">
+      <h3 class="memory-faq-title">Preguntas sobre la memoria</h3>
+      <div class="memory-faq-list">
+        {memory.faq.map((item) => (
+          <div class="memory-faq-item">
+            <button class="memory-faq-question" type="button">
+              <span class="memory-faq-question-text">{item.question}</span>
+            </button>
+            <div class="memory-faq-answer" set:html={item.answerHtml} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+{/* ── Script de acordeon con ARIA ───────────────────── */}
+<script>
+  /**
+   * Acordeon ARIA para el FAQ inline de la seccion de memoria.
+   *
+   * Asigna atributos ARIA dinamicamente (aria-expanded, aria-controls,
+   * role="region") y gestiona la apertura/cierre de cada item con
+   * la clase .open. Independiente del FAQ principal de la landing.
+   */
+  document.querySelectorAll('.memory-faq-question').forEach((btn, i) => {
+    const answer = btn.nextElementSibling;
+    if (!answer) return;
+
+    const answerId = `memory-faq-answer-${i}`;
+    const btnId = `memory-faq-btn-${i}`;
+
+    answer.id = answerId;
+    answer.setAttribute('role', 'region');
+    answer.setAttribute('aria-labelledby', btnId);
+
+    btn.id = btnId;
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', answerId);
+
+    btn.addEventListener('click', () => {
+      const parent = btn.parentElement;
+      if (!parent) return;
+      const isOpen = parent.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(isOpen));
+    });
+  });
+</script>
+
+<style>
+  /*
+   * Seccion de memoria persistente.
+   * Fondo alterno con bordes para el ritmo visual de la landing.
+   */
+  .memory-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Diagrama de trazabilidad ──────────────────────── */
+  .trace-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    margin-bottom: 32px;
+  }
+
+  .trace-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 20px;
+  }
+
+  .trace-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  /* Contenedor flex para los nodos y flechas */
+  .trace-nodes {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px 0;
+  }
+
+  /* Nodo individual del diagrama */
+  .trace-node {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid;
+  }
+
+  /* Flecha tipografica entre nodos */
+  .trace-arrow {
+    color: var(--text-dim);
+    font-size: 18px;
+  }
+
+  /* ── Cuadricula de tarjetas de memoria ─────────────── */
+  .memory-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  .memory-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .memory-card-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 12px;
+  }
+
+  .memory-card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* Estilos para <code> dentro de las tarjetas de memoria */
+  .memory-card-desc :global(code) {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--blue);
+  }
+
+  /* ── El Bibliotecario ──────────────────────────────── */
+  .librarian-container {
+    margin-top: 48px;
+    background: var(--bg-card);
+    border: 1px solid rgba(201, 169, 110, 0.25);
+    border-radius: 10px;
+    padding: 32px;
+  }
+
+  .librarian-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  /* Icono circular con borde dorado */
+  .librarian-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(201, 169, 110, 0.1);
+    border: 2px solid var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .librarian-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-bright);
+  }
+
+  .librarian-subtitle {
+    font-size: 13px;
+    color: var(--gold);
+  }
+
+  /* Parrafos descriptivos del Bibliotecario */
+  .librarian-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.8;
+    margin-bottom: 20px;
+  }
+
+  .librarian-desc:last-of-type {
+    margin-bottom: 24px;
+  }
+
+  /* Estilos para <code>, <strong> y <em> dentro del Bibliotecario */
+  .librarian-desc :global(strong) {
+    color: var(--text-bright);
+  }
+
+  .librarian-desc :global(code) {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--gold);
+  }
+
+  .librarian-desc :global(code:nth-of-type(2)) {
+    color: var(--green);
+  }
+
+  .librarian-desc :global(code:nth-of-type(3)) {
+    color: var(--blue);
+  }
+
+  /* ── Ejemplo de consulta interactiva ───────────────── */
+  .librarian-example {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    line-height: 1.8;
+  }
+
+  .librarian-example-label {
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .librarian-example-question {
+    color: var(--blue);
+    margin-bottom: 12px;
+  }
+
+  .librarian-example-answer {
+    color: var(--text);
+  }
+
+  /* ── Nota de activacion ────────────────────────────── */
+  .librarian-activation {
+    margin-top: 24px;
+  }
+
+  .librarian-activation-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  .librarian-activation-text :global(strong) {
+    color: var(--text-muted);
+  }
+
+  .librarian-activation-text :global(strong:nth-of-type(2)) {
+    color: var(--blue);
+  }
+
+  /* ── FAQ inline de memoria ─────────────────────────── */
+  .memory-faq {
+    margin-top: 32px;
+  }
+
+  .memory-faq-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 16px;
+  }
+
+  .memory-faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: none;
+  }
+
+  /* Item del acordeon */
+  .memory-faq-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .memory-faq-item:hover {
+    border-color: var(--border-light);
+  }
+
+  /* Boton de pregunta */
+  .memory-faq-question {
+    width: 100%;
+    text-align: left;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-bright);
+    background: none;
+    border: none;
+    padding: 16px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: color 0.2s;
+  }
+
+  .memory-faq-question-text {
+    flex: 1;
+  }
+
+  .memory-faq-question:hover {
+    color: var(--blue);
+  }
+
+  /* Indicador +/- del acordeon */
+  .memory-faq-question::after {
+    content: '+';
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    margin-left: 12px;
+    transition: transform 0.2s;
+  }
+
+  .memory-faq-item.open .memory-faq-question::after {
+    content: '-';
+  }
+
+  /* Respuesta oculta por defecto */
+  .memory-faq-answer {
+    display: none;
+    padding: 0 20px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  .memory-faq-item.open .memory-faq-answer {
+    display: block;
+  }
+
+  /* Estilos para <code> y <strong> dentro de las respuestas */
+  .memory-faq-answer :global(code) {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--blue);
+  }
+
+  .memory-faq-answer :global(strong) {
+    color: var(--text-bright);
+  }
+
+  /* ── Responsive 768px ──────────────────────────────── */
+  @media (max-width: 768px) {
+    .memory-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

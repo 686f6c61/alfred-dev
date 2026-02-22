@@ -1,0 +1,85 @@
+---
+/**
+ * Footer de la landing page de Alfred Dev.
+ *
+ * Renderiza la informacion institucional del proyecto: nombre, version,
+ * licencia, enlaces a GitHub y documentacion tecnica, tagline
+ * descriptivo y slogan final.
+ *
+ * Los datos se reciben como props tipadas desde FooterData, lo que
+ * permite reutilizar el componente en distintos idiomas sin cambiar
+ * la estructura HTML.
+ *
+ * @example
+ * ```astro
+ * <Footer {...data.footer} />
+ * ```
+ */
+
+import type { FooterData } from '@/types';
+
+interface Props extends FooterData {}
+
+const { version, license, githubUrl, docsUrl, tagline, slogan } = Astro.props;
+---
+
+<footer>
+  <div class="container">
+    <p>
+      <strong class="footer-name">Alfred Dev</strong> {version}
+      <span class="footer-sep">|</span>
+      {license}
+      <span class="footer-sep">|</span>
+      <a href={githubUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
+      <span class="footer-sep">|</span>
+      <a href={docsUrl} target="_blank" rel="noopener noreferrer">Documentacion tecnica</a>
+    </p>
+    <p class="footer-tagline">
+      Plugin de <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer">Claude Code</a>.
+      {' '}{tagline.replace('Plugin de Claude Code. ', '')}
+    </p>
+    <p class="footer-slogan">{slogan}</p>
+  </div>
+</footer>
+
+<style>
+  /* ── Footer ──────────────────────────────────────── */
+  footer {
+    padding: 48px 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  footer p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+
+  footer a {
+    color: var(--text-muted);
+  }
+
+  /* ── Nombre del proyecto ─────────────────────────── */
+  .footer-name {
+    color: var(--text);
+  }
+
+  /* ── Separador visual ────────────────────────────── */
+  .footer-sep {
+    margin: 0 8px;
+    color: var(--border-light);
+  }
+
+  /* ── Tagline descriptivo ─────────────────────────── */
+  .footer-tagline {
+    margin-top: 8px;
+  }
+
+  /* ── Slogan final ────────────────────────────────── */
+  .footer-slogan {
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+</style>

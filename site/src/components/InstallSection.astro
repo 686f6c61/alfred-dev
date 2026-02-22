@@ -1,0 +1,358 @@
+---
+/**
+ * Seccion de instalacion con tabs por plataforma.
+ *
+ * Contiene tres bloques principales:
+ *
+ * 1. **Tabs de instalacion** -- 3 pestanas (macOS, Linux, Windows)
+ *    con atributos ARIA completos (role="tablist", role="tab",
+ *    aria-selected, aria-controls). Cada panel muestra el comando
+ *    de instalacion copiable y los requisitos de la plataforma.
+ *
+ * 2. **Desinstalacion** -- cuadricula de tarjetas con comandos
+ *    de desinstalacion copiables, estilizados en rojo para
+ *    diferenciarlos visualmente de los de instalacion.
+ *
+ * 3. **Actualizacion** -- nota informativa sobre como actualizar
+ *    el plugin con /alfred update o reinstalando.
+ *
+ * Los textos de feedback del copy-to-clipboard usan data-*
+ * attributes para facilitar la i18n futura.
+ *
+ * CSS scoped: `.install-*`, `.uninstall-*`, `.update-*`.
+ *
+ * @example
+ * ```astro
+ * <InstallSection install={data.install} />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { InstallSection as InstallSectionType } from '@/types';
+
+interface Props {
+  /** Datos completos de la seccion de instalacion. */
+  install: InstallSectionType;
+}
+
+const { install } = Astro.props;
+---
+
+<section id="instalar" class="install-section">
+  <div class="container">
+    <SectionHeader
+      label={install.sectionLabel}
+      labelColor="var(--green)"
+      title={install.title}
+      description={install.description}
+    />
+
+    {/* ── Tabs de plataforma ───────────────────────── */}
+    <div class="fade-in">
+      <div class="install-tabs" role="tablist" aria-label="Plataformas de instalación">
+        {install.tabs.map((tab, i) => (
+          <button
+            class:list={['install-tab', { active: i === 0 }]}
+            data-tab={tab.id}
+            role="tab"
+            aria-selected={i === 0 ? 'true' : 'false'}
+            aria-controls={`panel-${tab.id}`}
+            id={`tab-${tab.id}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {install.tabs.map((tab, i) => (
+        <div
+          class:list={['install-panel', { active: i === 0 }]}
+          data-tab={tab.id}
+          role="tabpanel"
+          id={`panel-${tab.id}`}
+          aria-labelledby={`tab-${tab.id}`}
+        >
+          <code
+            class="install-cmd"
+            role="button"
+            tabindex="0"
+            aria-label={`Copiar comando de instalación para ${tab.label}`}
+            data-copy-feedback="Copiado al portapapeles"
+          >
+            {tab.command}
+          </code>
+          <div class="install-reqs" set:html={tab.requirementsHtml} />
+        </div>
+      ))}
+    </div>
+
+    {/* ── Desinstalacion ───────────────────────────── */}
+    <div class="fade-in uninstall-block">
+      <h3 class="uninstall-title">{install.uninstall.title}</h3>
+      <p class="uninstall-desc">{install.uninstall.description}</p>
+      <div class="uninstall-grid">
+        {install.uninstall.cards.map((card) => (
+          <div class="uninstall-card">
+            <h4>{card.title}</h4>
+            <code
+              role="button"
+              tabindex="0"
+              aria-label={card.ariaLabel}
+              data-copy-feedback="Copiado al portapapeles"
+            >
+              {card.command}
+            </code>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* ── Actualizacion ────────────────────────────── */}
+    <div class="fade-in update-block">
+      <h3 class="update-title">{install.update.title}</h3>
+      <p class="update-desc" set:html={install.update.descriptionHtml} />
+    </div>
+  </div>
+</section>
+
+{/* ── Scripts de cliente ───────────────────────────── */}
+<script>
+  /**
+   * Tabs de instalacion con ARIA.
+   *
+   * Gestiona el cambio de panel activo, actualizando las clases
+   * CSS (.active) y los atributos ARIA (aria-selected) de forma
+   * sincronizada. Solo un panel y un tab estan activos a la vez.
+   */
+  document.querySelectorAll('.install-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const target = (tab as HTMLElement).dataset.tab;
+      if (!target) return;
+
+      // Desactivar todos los tabs
+      document.querySelectorAll('.install-tab').forEach((t) => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+
+      // Desactivar todos los paneles
+      document.querySelectorAll('.install-panel').forEach((p) => {
+        p.classList.remove('active');
+      });
+
+      // Activar el tab y panel seleccionados
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      const panel = document.querySelector(`.install-panel[data-tab="${target}"]`);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  /**
+   * Copy-to-clipboard para bloques de codigo.
+   *
+   * Funciona tanto con clic como con teclado (Enter/Space).
+   * El texto de feedback se lee del atributo data-copy-feedback
+   * para facilitar la i18n.
+   */
+  document.querySelectorAll('.install-cmd, .uninstall-card code').forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    htmlEl.title = 'Clic para copiar';
+
+    function doCopy() {
+      const text = htmlEl.textContent?.trim() ?? '';
+      const feedback = htmlEl.dataset.copyFeedback ?? 'Copiado al portapapeles';
+      const original = htmlEl.textContent ?? '';
+
+      navigator.clipboard.writeText(text).then(() => {
+        htmlEl.textContent = feedback;
+        setTimeout(() => {
+          htmlEl.textContent = original;
+        }, 1500);
+      });
+    }
+
+    htmlEl.addEventListener('click', doCopy);
+    htmlEl.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        doCopy();
+      }
+    });
+  });
+</script>
+
+<style>
+  /*
+   * Seccion de instalacion.
+   * Fondo alterno con bordes, igual que memoria y stack.
+   */
+  .install-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Tabs de plataforma ────────────────────────────── */
+  .install-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .install-tab {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .install-tab:hover {
+    color: var(--text-bright);
+  }
+
+  .install-tab.active {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+  }
+
+  /* ── Paneles de instalacion ────────────────────────── */
+  .install-panel {
+    display: none;
+  }
+
+  .install-panel.active {
+    display: block;
+  }
+
+  /* ── Bloque de comando copiable ────────────────────── */
+  .install-cmd {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--blue);
+    background: rgba(91, 156, 245, 0.06);
+    border: 1px solid rgba(91, 156, 245, 0.12);
+    border-radius: 6px;
+    padding: 14px 20px;
+    margin: 16px 0;
+    display: block;
+    word-break: break-all;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .install-cmd:hover {
+    border-color: var(--blue-dim);
+  }
+
+  /* ── Requisitos de plataforma ──────────────────────── */
+  .install-reqs {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-top: 12px;
+  }
+
+  .install-reqs :global(strong) {
+    color: var(--text);
+  }
+
+  /* ── Bloque de desinstalacion ──────────────────────── */
+  .uninstall-block {
+    margin-top: 48px;
+  }
+
+  .uninstall-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+
+  .uninstall-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  .uninstall-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .uninstall-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .uninstall-card h4 {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 10px;
+  }
+
+  /* Comando de desinstalacion en rojo */
+  .uninstall-card code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--red);
+    background: rgba(229, 86, 79, 0.06);
+    border: 1px solid rgba(229, 86, 79, 0.12);
+    border-radius: 4px;
+    padding: 8px 12px;
+    display: block;
+    word-break: break-all;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .uninstall-card code:hover {
+    border-color: var(--red);
+  }
+
+  /* ── Bloque de actualizacion ───────────────────────── */
+  .update-block {
+    margin-top: 48px;
+  }
+
+  .update-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+
+  .update-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .update-desc :global(strong) {
+    color: var(--blue);
+  }
+
+  /* ── Responsive 768px ──────────────────────────────── */
+  @media (max-width: 768px) {
+    .install-tabs {
+      flex-wrap: wrap;
+    }
+
+    .uninstall-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

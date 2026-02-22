@@ -1,0 +1,222 @@
+---
+/**
+ * Seccion "Como se usa" con tarjetas de casos de uso.
+ *
+ * Cada tarjeta representa un escenario real paso a paso, desde la
+ * invocacion del comando hasta el resultado final. Las tarjetas
+ * muestran una etiqueta de categoria coloreada, un titulo, un bloque
+ * de comando en fuente monoespaciada y una lista de pasos ordenados.
+ *
+ * El caso especial "wide" ocupa todo el ancho de la cuadricula
+ * (grid-column: 1 / -1) y puede usar un campo `description` libre
+ * en lugar de la lista de pasos con titulo/separador.
+ *
+ * CSS scoped: todos los estilos de `.use-case-*` y `.protection-grid`
+ * provienen del HTML original y estan encapsulados en este componente.
+ *
+ * @example
+ * ```astro
+ * <UseCasesSection
+ *   header={data.useCases.header}
+ *   cases={data.useCases.cases}
+ * />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { SectionHeader as SectionHeaderType, UseCase } from '@/types';
+
+interface Props {
+  /** Datos del header de la seccion (etiqueta, titulo, descripcion). */
+  header: SectionHeaderType;
+  /** Lista de casos de uso con categoria, comando, pasos y variante wide. */
+  cases: UseCase[];
+}
+
+const { header, cases } = Astro.props;
+---
+
+<section id="uso" class="use-cases-section">
+  <div class="container">
+    <SectionHeader
+      label={header.label}
+      labelColor={header.labelColor}
+      title={header.title}
+      description={header.description}
+    />
+
+    <div class="use-cases-grid">
+      {cases.map((useCase) => (
+        <div class:list={['use-case-card', 'fade-in', { 'use-case-wide': useCase.wide }]}>
+          <div
+            class="use-case-label"
+            style={`color: ${useCase.color}; background: ${useCase.background};`}
+          >
+            {useCase.category}
+          </div>
+          <div class="use-case-title">{useCase.title}</div>
+
+          {/* Comando monoespaciado (opcional, el caso automatico no tiene) */}
+          {useCase.command && (
+            <code class="use-case-cmd">{useCase.command}</code>
+          )}
+
+          {/* Descripcion libre para casos sin pasos ordenados (ej. wide) */}
+          {useCase.description && (
+            <p class="use-case-description">{useCase.description}</p>
+          )}
+
+          {/* Lista de pasos del flujo */}
+          {useCase.steps && useCase.steps.length > 0 && (
+            <ul class:list={['use-case-steps', { 'protection-grid': useCase.wide }]}>
+              {useCase.steps.map((step) => {
+                /*
+                 * En la tarjeta wide (proteccion automatica), cada paso tiene
+                 * formato "Titulo -- descripcion". Se separa por el doble guion
+                 * para resaltar el titulo en negrita con color --text.
+                 */
+                if (useCase.wide && step.includes(' -- ')) {
+                  const [title, ...rest] = step.split(' -- ');
+                  const desc = rest.join(' -- ');
+                  return (
+                    <li>
+                      <strong class="protection-title">{title}</strong> -- {desc}
+                    </li>
+                  );
+                }
+                return <li>{step}</li>;
+              })}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Contenedor de la seccion ──────────────────────── */
+  .use-cases-section {
+    padding: 100px 0;
+  }
+
+  /* ── Cuadricula de tarjetas (2 columnas) ───────────── */
+  .use-cases-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 48px;
+  }
+
+  /* ── Tarjeta individual ────────────────────────────── */
+  .use-case-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    transition: all 0.25s;
+  }
+
+  .use-case-card:hover {
+    border-color: var(--border-light);
+    background: var(--bg-card-hover);
+  }
+
+  /* Tarjeta wide: ocupa todo el ancho de la cuadricula */
+  .use-case-wide {
+    grid-column: 1 / -1;
+  }
+
+  /* ── Etiqueta de categoria coloreada ───────────────── */
+  .use-case-label {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+
+  /* ── Titulo del caso de uso ────────────────────────── */
+  .use-case-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+
+  /* ── Bloque de comando monoespaciado ───────────────── */
+  .use-case-cmd {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--blue);
+    background: rgba(91, 156, 245, 0.06);
+    border: 1px solid rgba(91, 156, 245, 0.12);
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin: 14px 0;
+    display: block;
+  }
+
+  /* ── Descripcion libre (tarjeta wide) ──────────────── */
+  .use-case-description {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 10px 0 14px;
+  }
+
+  /* ── Lista de pasos ────────────────────────────────── */
+  .use-case-steps {
+    list-style: none;
+    padding: 0;
+  }
+
+  .use-case-steps li {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 4px 0;
+    padding-left: 18px;
+    position: relative;
+  }
+
+  /* Viñeta circular antes de cada paso */
+  .use-case-steps li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border-light);
+  }
+
+  /* ── Titulo en negrita para elementos de proteccion ── */
+  .protection-title {
+    color: var(--text);
+  }
+
+  /*
+   * Cuadricula de proteccion: en la tarjeta wide, los pasos se
+   * distribuyen en 2 columnas para aprovechar el espacio.
+   */
+  .protection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 24px;
+  }
+
+  /* ── Responsive 768px ──────────────────────────────── */
+  @media (max-width: 768px) {
+    .use-cases-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .protection-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
