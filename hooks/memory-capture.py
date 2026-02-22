@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+from typing import Optional
 
 
 def main():
@@ -136,7 +137,7 @@ def _is_memory_enabled() -> bool:
     return bool(re.search(pattern, content))
 
 
-def _load_state_file(file_path: str) -> dict | None:
+def _load_state_file(file_path: str) -> Optional[dict]:
     """Lee y parsea el fichero de estado de sesion.
 
     Args:
