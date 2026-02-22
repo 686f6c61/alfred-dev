@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://alfred-dev.com/sitemap-index.xml

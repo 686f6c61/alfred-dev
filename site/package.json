@@ -1,0 +1,17 @@
+{
+  "name": "alfred-dev-site",
+  "type": "module",
+  "version": "0.3.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "astro": "^5.15.8",
+    "@astrojs/sitemap": "^3.2.1",
+    "@astrojs/check": "^0.9.0",
+    "typescript": "^5.7.0"
+  }
+}
