@@ -1,0 +1,136 @@
+---
+/**
+ * Tarjeta individual de agente del equipo Alfred Dev.
+ *
+ * Muestra la informacion de un agente en formato tarjeta: nombre,
+ * modelo de LLM, alias del rol, descripcion de responsabilidades
+ * y frase caracteristica. El color personalizado de cada agente
+ * se inyecta como custom property CSS (--agent-color) y se utiliza
+ * en la linea superior decorativa, el alias y el borde de la frase.
+ *
+ * La clase .fade-in se aplica para integrarse con el observer
+ * global de animaciones de scroll.
+ *
+ * @example
+ * ```astro
+ * <AgentCard agent={{
+ *   name: "Alfred",
+ *   model: "opus",
+ *   alias: "Mayordomo jefe",
+ *   role: "Orquestador del equipo...",
+ *   phrase: '"Muy bien, señor. Permitame organizar eso."',
+ *   color: "var(--blue)"
+ * }} />
+ * ```
+ */
+import type { Agent } from '@/types';
+
+interface Props {
+  /** Datos completos del agente a renderizar. */
+  agent: Agent;
+}
+
+const { agent } = Astro.props;
+---
+
+<div class="agent-card fade-in" style={`--agent-color: ${agent.color}`}>
+  <div class="agent-header">
+    <span class="agent-name">{agent.name}</span>
+    <span class="agent-model">{agent.model}</span>
+  </div>
+  <div class="agent-alias">{agent.alias}</div>
+  <div class="agent-role">{agent.role}</div>
+  <div class="agent-phrase">{agent.phrase}</div>
+</div>
+
+<style>
+  /* ── Tarjeta de agente ──────────────────────────────── */
+  .agent-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /*
+   * Linea decorativa superior: usa el color del agente para
+   * reforzar visualmente la identidad de cada tarjeta.
+   */
+  .agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--agent-color, var(--blue));
+    opacity: 0.6;
+    transition: opacity 0.25s;
+  }
+
+  .agent-card:hover {
+    border-color: var(--border-light);
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+  }
+
+  .agent-card:hover::before {
+    opacity: 1;
+  }
+
+  /* ── Cabecera: nombre + badge de modelo ─────────────── */
+  .agent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .agent-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-bright);
+  }
+
+  .agent-model {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--bg-deep);
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  /* ── Alias del rol ──────────────────────────────────── */
+  .agent-alias {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--agent-color, var(--blue));
+    margin-bottom: 8px;
+  }
+
+  /* ── Descripcion de responsabilidades ───────────────── */
+  .agent-role {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  /* ── Frase caracteristica con borde lateral ─────────── */
+  .agent-phrase {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    border-left: 2px solid var(--agent-color, var(--border));
+    padding-left: 12px;
+    line-height: 1.5;
+  }
+</style>

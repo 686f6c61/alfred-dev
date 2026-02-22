@@ -1,0 +1,133 @@
+---
+/**
+ * Seccion de deteccion automatica de stack tecnologico.
+ *
+ * Muestra una cuadricula de stacks que Alfred Dev es capaz de
+ * detectar automaticamente al analizar el directorio de trabajo.
+ * Cada item reutiliza el patron visual de gate-item del HTML
+ * original: un icono circular verde (indicando deteccion activa)
+ * seguido del nombre del lenguaje/plataforma y sus gestores de
+ * paquetes y frameworks asociados.
+ *
+ * La seccion tiene fondo alterno (--bg-surface) con bordes,
+ * igual que la de infraestructura, para mantener el ritmo visual
+ * de secciones intercaladas en la landing.
+ *
+ * @example
+ * ```astro
+ * <StackSection
+ *   header={data.stacks.header}
+ *   stacks={data.stacks.list}
+ * />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { SectionHeader as SectionHeaderType, DetectableStack } from '@/types';
+
+interface Props {
+  /** Datos del header de la seccion. */
+  header: SectionHeaderType;
+  /** Lista de stacks detectables con nombre y descripcion. */
+  stacks: DetectableStack[];
+}
+
+const { header, stacks } = Astro.props;
+---
+
+<section class="stack-section">
+  <div class="container">
+    <SectionHeader
+      label={header.label}
+      labelColor={header.labelColor}
+      title={header.title}
+      description={header.description}
+    />
+
+    <div class="stack-grid">
+      {stacks.map((stack) => (
+        <div class="stack-item fade-in">
+          <div class="stack-icon">
+            <div class="stack-dot" />
+          </div>
+          <div class="stack-text">
+            <strong>{stack.name}</strong> -- {stack.description}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /*
+   * Fondo alterno con bordes para distinguir visualmente la seccion.
+   * Sigue el mismo patron que infra y gates.
+   */
+  .stack-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Cuadricula responsive de stacks ────────────────── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  /*
+   * Cada item reutiliza el patron visual de gate-item:
+   * tarjeta con icono circular + texto descriptivo.
+   */
+  .stack-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /*
+   * Icono circular con borde verde que contiene un punto
+   * solido verde, indicando que el stack es detectable.
+   */
+  .stack-icon {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--green);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .stack-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+  }
+
+  /* ── Texto del stack ────────────────────────────────── */
+  .stack-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .stack-text strong {
+    color: var(--text-bright);
+  }
+
+  /* ── Responsive 768px ───────────────────────────────── */
+  @media (max-width: 768px) {
+    .stack-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

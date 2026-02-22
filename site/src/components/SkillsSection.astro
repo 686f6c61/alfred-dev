@@ -1,0 +1,171 @@
+---
+/**
+ * Seccion de skills agrupados por dominio.
+ *
+ * Renderiza una cuadricula de tarjetas donde cada tarjeta representa
+ * un dominio tematico (Producto, Arquitectura, Seguridad...) con su
+ * lista de skills individuales. Los dominios marcados como opcionales
+ * se distinguen visualmente con un borde dorado, indicando que
+ * pertenecen a agentes que se activan bajo demanda.
+ *
+ * La estructura sigue el patron del HTML original: un SectionHeader
+ * centrado seguido de una cuadricula responsive de domain-cards.
+ * Cada tarjeta contiene una cabecera con nombre y conteo, mas una
+ * lista de skills con nombre tecnico y descripcion breve.
+ *
+ * @example
+ * ```astro
+ * <SkillsSection
+ *   header={data.skills.header}
+ *   domains={data.skills.domains}
+ * />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { SectionHeader as SectionHeaderType, SkillDomain } from '@/types';
+
+interface Props {
+  /** Datos del header de la seccion (etiqueta, titulo, descripcion). */
+  header: SectionHeaderType;
+  /** Lista de dominios con sus skills. */
+  domains: SkillDomain[];
+}
+
+const { header, domains } = Astro.props;
+---
+
+<section id="skills">
+  <div class="container">
+    <SectionHeader
+      label={header.label}
+      labelColor={header.labelColor}
+      title={header.title}
+      description={header.description}
+    />
+
+    <div class="skills-domains">
+      {domains.map((domain) => (
+        <div
+          class:list={['domain-card', 'fade-in', { 'domain-card--optional': domain.optional }]}
+        >
+          <div class="domain-header">
+            <span class="domain-name">{domain.name}</span>
+            <span class:list={['domain-count', { 'domain-count--optional': domain.optional }]}>
+              {domain.skills.length} skills
+            </span>
+          </div>
+          <ul class="domain-skills">
+            {domain.skills.map((skill) => (
+              <li>
+                <span class="skill-name">{skill.name}</span> {skill.description}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Cuadricula de dominios ──────────────────────────── */
+  .skills-domains {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Tarjeta de dominio ─────────────────────────────── */
+  .domain-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  /*
+   * Los dominios opcionales se distinguen con un borde dorado
+   * semitransparente, indicando que pertenecen a agentes que el
+   * usuario activa manualmente con /alfred config.
+   */
+  .domain-card--optional {
+    border-color: rgba(201, 169, 110, 0.25);
+  }
+
+  /* ── Cabecera: nombre del dominio + badge de conteo ──── */
+  .domain-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .domain-name {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+  }
+
+  .domain-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--bg-deep);
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  /*
+   * El badge de conteo de dominios opcionales usa dorado
+   * para mantener coherencia visual con el borde de la tarjeta.
+   */
+  .domain-count--optional {
+    color: var(--gold);
+    border-color: rgba(201, 169, 110, 0.3);
+  }
+
+  /* ── Lista de skills ────────────────────────────────── */
+  .domain-skills {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .domain-skills li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* Punto decorativo antes de cada skill */
+  .domain-skills li::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--border-light);
+    flex-shrink: 0;
+    margin-top: 7px;
+  }
+
+  .skill-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--blue);
+  }
+
+  /* ── Responsive 768px ───────────────────────────────── */
+  @media (max-width: 768px) {
+    .skills-domains {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

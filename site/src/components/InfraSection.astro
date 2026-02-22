@@ -1,0 +1,178 @@
+---
+/**
+ * Seccion de infraestructura: hooks, templates y modulos core.
+ *
+ * Muestra la arquitectura interna de Alfred Dev organizada en una
+ * cuadricula de tres columnas. Cada columna (InfraGroup) contiene
+ * un titulo, una lista de items con nombre y etiqueta/descripcion,
+ * y una nota opcional al pie (por ejemplo, el numero de tests).
+ *
+ * Los hooks usan un tag con estilo mono (SessionStart, PreToolUse...),
+ * mientras que templates y core usan una descripcion breve en texto
+ * muted. Esta distincion se refleja en los estilos .infra-item-tag
+ * vs .infra-item-desc, que el componente selecciona automaticamente
+ * segun la presencia de la propiedad `label` del item.
+ *
+ * La seccion tiene fondo diferenciado (--bg-surface) con bordes
+ * superior e inferior, siguiendo el patron del HTML original para
+ * secciones alternas.
+ *
+ * @example
+ * ```astro
+ * <InfraSection
+ *   header={data.infra.header}
+ *   groups={data.infra.groups}
+ * />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { SectionHeader as SectionHeaderType, InfraGroup } from '@/types';
+
+interface Props {
+  /** Datos del header de la seccion. */
+  header: SectionHeaderType;
+  /** Grupos de infraestructura (hooks, templates, core). */
+  groups: InfraGroup[];
+}
+
+const { header, groups } = Astro.props;
+---
+
+<section
+  id="infra"
+  class="infra-section"
+>
+  <div class="container">
+    <SectionHeader
+      label={header.label}
+      labelColor={header.labelColor}
+      title={header.title}
+      description={header.description}
+    />
+
+    <div class="infra-grid">
+      {groups.map((group) => (
+        <div class="infra-card fade-in">
+          <h3>{group.title}</h3>
+
+          {group.items.map((item) => (
+            <div class="infra-item">
+              <span class="infra-item-name">{item.name}</span>
+              <span class="infra-item-label">{item.label}</span>
+            </div>
+          ))}
+
+          {group.footnote && (
+            <div class="infra-footnote">
+              <div class="infra-item">
+                <span class="infra-footnote-label">Tests</span>
+                <span class="infra-item-name">{group.footnote}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /*
+   * Fondo alterno para distinguir visualmente esta seccion del
+   * resto de contenido. El patron de bg-surface con bordes es
+   * comun en secciones intercaladas de la landing.
+   */
+  .infra-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Cuadricula de tarjetas ─────────────────────────── */
+  .infra-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Tarjeta de grupo ───────────────────────────────── */
+  .infra-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .infra-card h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Item individual (fila nombre + etiqueta) ────────── */
+  .infra-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  /*
+   * Separador sutil entre items consecutivos. Se usa un selector
+   * de hermano adyacente para que el primer item no tenga borde superior.
+   */
+  .infra-item + .infra-item {
+    border-top: 1px solid rgba(30, 33, 48, 0.5);
+  }
+
+  .infra-item-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  /*
+   * Etiqueta a la derecha del item. En hooks es un tag mono (SessionStart,
+   * PreToolUse...), en templates y core es una descripcion breve.
+   * Ambos comparten este estilo base; el fichero de datos controla
+   * el contenido.
+   */
+  .infra-item-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: right;
+    max-width: 200px;
+  }
+
+  /* ── Nota al pie (tests, etc.) ──────────────────────── */
+  .infra-footnote {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .infra-footnote-label {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /*
+   * Dentro del footnote el separador entre items no aplica,
+   * porque solo hay un item (el de tests).
+   */
+  .infra-footnote .infra-item + .infra-item {
+    border-top: none;
+  }
+
+  /* ── Responsive 768px ───────────────────────────────── */
+  @media (max-width: 768px) {
+    .infra-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

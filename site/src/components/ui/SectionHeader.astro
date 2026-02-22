@@ -1,0 +1,100 @@
+---
+/**
+ * Cabecera reutilizable de seccion.
+ *
+ * Renderiza la estructura estandar de cabecera que se repite en todas
+ * las secciones de la landing: una etiqueta superior (section-label),
+ * un titulo principal (section-title) y una descripcion opcional
+ * (section-desc). Las clases CSS principales estan definidas en
+ * global.css; este componente solo añade estilos scoped para las
+ * variaciones controladas por props (color de etiqueta, centrado,
+ * margin-top personalizado).
+ *
+ * La clase .fade-in se aplica automaticamente al contenedor para
+ * integrarse con el IntersectionObserver global de animaciones.
+ *
+ * @example
+ * ```astro
+ * <SectionHeader
+ *   label="El equipo"
+ *   title="8 agentes de nucleo"
+ *   description="Cada agente tiene un rol definido..."
+ * />
+ * ```
+ *
+ * @example
+ * ```astro
+ * <!-- Variante con color dorado y margin-top personalizado -->
+ * <SectionHeader
+ *   label="Ampliables"
+ *   labelColor="var(--gold)"
+ *   title="7 agentes opcionales"
+ *   description="Roles especializados que activas..."
+ *   marginTop="64px"
+ * />
+ * ```
+ */
+
+interface Props {
+  /** Etiqueta superior de la seccion (section-label). */
+  label: string;
+  /** Color CSS de la etiqueta. Por defecto hereda de global.css (--blue). */
+  labelColor?: string;
+  /** Titulo principal de la seccion (section-title). */
+  title: string;
+  /** Descripcion opcional bajo el titulo (section-desc). */
+  description?: string;
+  /** Si true, centra el texto y la descripcion horizontalmente. */
+  center?: boolean;
+  /** Margin-top personalizado del contenedor (ej. "64px"). */
+  marginTop?: string;
+}
+
+const { label, labelColor, title, description, center = false, marginTop } = Astro.props;
+
+/**
+ * Construimos el atributo style inline solo cuando hay propiedades
+ * que no se pueden resolver con clases globales. Esto evita ensuciar
+ * el HTML con style="" vacios.
+ */
+const inlineStyles = [
+  labelColor ? `--label-color: ${labelColor}` : '',
+  marginTop ? `margin-top: ${marginTop}` : '',
+].filter(Boolean).join('; ') || undefined;
+---
+
+<div
+  class:list={['section-header', 'fade-in', { 'section-header--center': center }]}
+  style={inlineStyles}
+>
+  <div class:list={['section-label', { 'section-label--custom': !!labelColor }]}>
+    {label}
+  </div>
+  <h2 class="section-title">{title}</h2>
+  {description && (
+    <p class="section-desc" set:html={description} />
+  )}
+</div>
+
+<style>
+  /*
+   * Estilos scoped para variaciones del SectionHeader.
+   * Los estilos base (.section-header, .section-label, .section-title,
+   * .section-desc) estan definidos en global.css y se aplican sin
+   * necesidad de redeclararlos aqui.
+   */
+
+  /* Variante centrada: alinea textos y centra la descripcion */
+  .section-header--center {
+    text-align: center;
+  }
+
+  .section-header--center .section-desc {
+    margin-inline: auto;
+  }
+
+  /* Color personalizado de la etiqueta via custom property */
+  .section-label--custom {
+    color: var(--label-color);
+  }
+</style>
