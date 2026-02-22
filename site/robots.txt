@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://686f6c61.github.io/alfred-dev/sitemap.xml
+Sitemap: https://alfred-dev.com/sitemap.xml

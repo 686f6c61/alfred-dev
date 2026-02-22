@@ -1,20 +1,26 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-ES">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alfred Dev - Plugin de Claude Code con 15 agentes de ingeniería</title>
 <meta name="description" content="Plugin de Claude Code: 15 agentes especializados, 56 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.">
-<link rel="canonical" href="https://686f6c61.github.io/alfred-dev/">
+<link rel="canonical" href="https://alfred-dev.com/">
+<link rel="alternate" hreflang="es-ES" href="https://alfred-dev.com/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Alfred Dev - Plugin de Claude Code con 15 agentes de ingeniería">
 <meta property="og:description" content="15 agentes especializados, 56 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.">
-<meta property="og:url" content="https://686f6c61.github.io/alfred-dev/">
+<meta property="og:url" content="https://alfred-dev.com/">
 <meta property="og:site_name" content="Alfred Dev">
 <meta property="og:locale" content="es_ES">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://alfred-dev.com/screenshots/dashboard-estado.png">
+<meta property="og:image:width" content="1470">
+<meta property="og:image:height" content="759">
+<meta property="og:image:type" content="image/png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Alfred Dev - Plugin de Claude Code con 15 agentes de ingeniería">
 <meta name="twitter:description" content="15 agentes especializados, 56 skills, memoria persistente y quality gates. De la idea a producción.">
+<meta name="twitter:image" content="https://alfred-dev.com/screenshots/dashboard-estado.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>A</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1371,8 +1377,137 @@ footer a {
   "operatingSystem": "macOS, Linux, Windows",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
   "license": "https://opensource.org/licenses/MIT",
-  "url": "https://686f6c61.github.io/alfred-dev/",
-  "softwareVersion": "0.2.3"
+  "url": "https://alfred-dev.com/",
+  "softwareVersion": "0.3.0",
+  "screenshot": "https://alfred-dev.com/screenshots/dashboard-estado.png"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Funciona en Windows?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Alfred Dev tiene un instalador nativo en PowerShell para Windows 10/11. También puedes usar el instalador bash a través de WSL o Git Bash. La única dependencia en Windows es git; no necesita python3."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Qué dependencias necesita?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "En macOS y Linux: git y python3. Ambas suelen estar preinstaladas. En Windows: solo git. PowerShell maneja el JSON de forma nativa, así que python3 no es necesario."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Cómo actualizo el plugin?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ejecuta /alfred update dentro de Claude Code. El comando consulta GitHub, compara versiones y te muestra las notas de la release si hay versión nueva. También puedes volver a ejecutar el instalador."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Es compatible con otros plugins de Claude Code?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Alfred Dev convive sin conflictos con otros plugins instalados. Usa su propio namespace (alfred-dev) y no interfiere con la configuración de otros plugins."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Qué son los agentes opcionales?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Son 7 agentes especializados que puedes activar según las necesidades de tu proyecto: data-engineer, ux-reviewer, performance-engineer, github-manager, seo-specialist, copywriter y El Bibliotecario. Se activan o desactivan sin reinstalar nada."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Cuántos skills tiene en total?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "56 skills distribuidos en 13 dominios. Los 7 dominios originales cubren el ciclo de vida estándar y los 6 nuevos corresponden a los agentes opcionales."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Qué es la memoria persistente?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Es una base de datos SQLite local que almacena las decisiones, commits e iteraciones de cada proyecto. Se activa opcionalmente desde /alfred config. Los datos no salen del proyecto."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Cuánto cuesta?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nada. Alfred Dev es software libre bajo licencia MIT. Puedes usarlo, modificarlo y distribuirlo sin restricciones."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "En qué idioma responde Alfred?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Castellano de España por defecto: tanto las respuestas como los comentarios de código, commits y documentación generada. Puedes ajustar este comportamiento con /alfred config."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Qué versiones de Claude Code soporta?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cualquier versión de Claude Code que soporte el sistema de plugins. Si puedes instalar plugins desde la línea de comandos, Alfred Dev funcionará."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Puedo contribuir al proyecto?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Alfred Dev es software libre bajo licencia MIT. Puedes reportar bugs, proponer mejoras o enviar pull requests en el repositorio de GitHub."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Los agentes consumen tokens adicionales?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, como cualquier interacción con Claude. Los system prompts de los agentes están optimizados para ocupar el mínimo posible. Los agentes opcionales solo se cargan si los activas."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Puedo usar Alfred en un monorepo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Alfred detecta el stack del directorio de trabajo actual. La memoria persistente es por directorio de trabajo, así que cada paquete puede tener su propia base de datos de decisiones."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Qué pasa si una quality gate falla?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "El flujo se detiene en la fase actual y Alfred te explica qué no se cumple. Puedes corregir el problema, pedir ayuda a Alfred o continuar manualmente. Alfred nunca avanza en silencio si una gate no se supera."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Funciona con OpenCode?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Está en desarrollo. OpenCode es un editor de código basado en terminal que comparte la arquitectura de plugins con Claude Code. La versión para OpenCode se anunciará cuando esté lista."
+      }
+    }
+  ]
 }
 </script>
 </head>
@@ -1406,7 +1541,8 @@ footer a {
 </nav>
 
 <!-- ─── Hero ───────────────────────────────────── -->
-<header class="hero" id="contenido">
+<main id="contenido">
+<header class="hero">
   <div class="container">
     <h1>Tus compañeros de<br>desarrollo en un <em>plugin</em></h1>
     <p style="font-family: 'Libre Baskerville', Georgia, serif; font-size: 17px; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.01em;">
@@ -1665,6 +1801,8 @@ footer a {
         src="screenshots/dashboard-estado.png"
         alt="Vista de estado del proyecto en el dashboard de Alfred Dev"
         class="dash-hero-img"
+        width="1470"
+        height="759"
         loading="lazy"
       >
       <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-top: 10px;">Estado del proyecto</p>
@@ -1672,27 +1810,27 @@ footer a {
       <!-- Cuadricula de 3 columnas con las 6 vistas restantes -->
       <div class="dash-grid">
         <div class="dash-grid-item">
-          <img src="screenshots/dashboard-timeline.png" alt="Timeline de eventos en el dashboard de Alfred Dev" loading="lazy">
+          <img src="screenshots/dashboard-timeline.png" alt="Timeline de eventos en el dashboard de Alfred Dev" width="1470" height="759" loading="lazy">
           <span>Timeline de eventos</span>
         </div>
         <div class="dash-grid-item">
-          <img src="screenshots/dashboard-decisiones.png" alt="Decisiones tecnicas en el dashboard de Alfred Dev" loading="lazy">
-          <span>Decisiones tecnicas</span>
+          <img src="screenshots/dashboard-decisiones.png" alt="Decisiones técnicas en el dashboard de Alfred Dev" width="1470" height="759" loading="lazy">
+          <span>Decisiones técnicas</span>
         </div>
         <div class="dash-grid-item">
-          <img src="screenshots/dashboard-agentes.png" alt="Control de agentes en el dashboard de Alfred Dev" loading="lazy">
+          <img src="screenshots/dashboard-agentes.png" alt="Control de agentes en el dashboard de Alfred Dev" width="1470" height="759" loading="lazy">
           <span>Control de agentes</span>
         </div>
         <div class="dash-grid-item">
-          <img src="screenshots/dashboard-memoria.png" alt="Explorador de memoria en el dashboard de Alfred Dev" loading="lazy">
+          <img src="screenshots/dashboard-memoria.png" alt="Explorador de memoria en el dashboard de Alfred Dev" width="1470" height="759" loading="lazy">
           <span>Explorador de memoria</span>
         </div>
         <div class="dash-grid-item">
-          <img src="screenshots/dashboard-commits.png" alt="Historial de commits en el dashboard de Alfred Dev" loading="lazy">
+          <img src="screenshots/dashboard-commits.png" alt="Historial de commits en el dashboard de Alfred Dev" width="1470" height="759" loading="lazy">
           <span>Historial de commits</span>
         </div>
         <div class="dash-grid-item">
-          <img src="screenshots/dashboard-marcados.png" alt="Elementos marcados en el dashboard de Alfred Dev" loading="lazy">
+          <img src="screenshots/dashboard-marcados.png" alt="Elementos marcados en el dashboard de Alfred Dev" width="1470" height="759" loading="lazy">
           <span>Elementos marcados</span>
         </div>
       </div>
@@ -3129,7 +3267,7 @@ footer a {
   <div class="changelog-header">
     <div style="display:flex;align-items:baseline;gap:10px;">
       <h2 id="changelogTitle">Changelog</h2>
-      <a href="https://github.com/686f6c61/alfred-dev/blob/main/CHANGELOG.md" target="_blank" rel="noopener">ver completo</a>
+      <a href="https://github.com/686f6c61/alfred-dev/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">ver completo</a>
     </div>
     <button class="changelog-close" id="changelogClose" aria-label="Cerrar changelog">&times;</button>
   </div>
@@ -3301,6 +3439,8 @@ footer a {
   </div>
 </div>
 
+</main>
+
 <!-- ─── Footer ─────────────────────────────────── -->
 <footer>
   <div class="container">
@@ -3309,12 +3449,12 @@ footer a {
       <span style="margin: 0 8px; color: var(--border-light);">|</span>
       MIT License
       <span style="margin: 0 8px; color: var(--border-light);">|</span>
-      <a href="https://github.com/686f6c61/alfred-dev">GitHub</a>
+      <a href="https://github.com/686f6c61/alfred-dev" target="_blank" rel="noopener noreferrer">GitHub</a>
       <span style="margin: 0 8px; color: var(--border-light);">|</span>
-      <a href="https://github.com/686f6c61/alfred-dev/tree/main/docs">Documentación técnica</a>
+      <a href="https://github.com/686f6c61/alfred-dev/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentación técnica</a>
     </p>
     <p style="margin-top: 8px;">
-      Plugin de <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a>.
+      Plugin de <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer">Claude Code</a>.
       15 agentes. 56 skills. 10 comandos. Memoria persistente. De la idea a producción.
     </p>
     <p style="margin-top: 24px; font-size: 12px; color: var(--text-dim);">
