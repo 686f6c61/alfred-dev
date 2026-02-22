@@ -37,9 +37,13 @@ function Read-JsonFile {
     }
 }
 
+# Escribir JSON de forma atomica (fichero temporal en mismo directorio + mover).
+# Crear el temporal junto al destino garantiza que Move-Item sea un rename
+# atomico del sistema de ficheros, sin copias entre discos.
 function Write-JsonFileAtomic {
     param([string]$Path, [object]$Data)
-    $tmpFile = [System.IO.Path]::GetTempFileName()
+    $targetDir = Split-Path $Path -Parent
+    $tmpFile = Join-Path $targetDir ".tmp-$([System.IO.Path]::GetRandomFileName())"
     try {
         $Data | ConvertTo-Json -Depth 10 | Set-Content $tmpFile -Encoding UTF8
         Move-Item -Path $tmpFile -Destination $Path -Force
@@ -106,6 +110,9 @@ if (Test-Path $SettingsFile) {
         Write-JsonFileAtomic $SettingsFile $settings
         Write-Ok "Plugin deshabilitado en settings.json"
     }
+}
+else {
+    Write-Info "No se encontro settings.json (nada que deshabilitar)"
 }
 
 Write-Host ""

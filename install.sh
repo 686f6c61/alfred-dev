@@ -155,6 +155,15 @@ mkdir -p "${MARKETPLACE_DIR}/.claude-plugin"
 # Clonar en un directorio temporal para extraer los ficheros del marketplace
 TEMP_DIR=$(mktemp -d)
 git clone --quiet --depth 1 "https://github.com/${REPO}.git" "${TEMP_DIR}"
+
+# Verificar integridad del clone antes de continuar.
+# Si falta plugin.json el repositorio está corrupto o incompleto.
+if [ ! -f "${TEMP_DIR}/.claude-plugin/plugin.json" ]; then
+    error "El repositorio clonado no contiene .claude-plugin/plugin.json"
+    error "La clonación puede estar corrupta. Reintenta la instalación."
+    exit 1
+fi
+
 GIT_SHA=$(git -C "${TEMP_DIR}" rev-parse HEAD)
 
 # Copiar la estructura completa del plugin al marketplace
@@ -186,7 +195,7 @@ cp -r "${TEMP_DIR}" "${INSTALL_DIR}"
 
 # Limpiar artefactos innecesarios para runtime.
 # Se comprueba existencia antes de borrar para detectar rutas inesperadas.
-for artifact in .git site install.sh tests .pytest_cache; do
+for artifact in .git site install.sh install.ps1 tests .pytest_cache; do
     target="${INSTALL_DIR}/${artifact}"
     if [ -e "${target}" ]; then
         rm -rf "${target}" || echo "[Alfred Dev] Aviso: no se pudo eliminar ${target}" >&2

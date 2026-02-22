@@ -15,6 +15,15 @@
 
 $ErrorActionPreference = 'Stop'
 
+# -- Validar entorno ----------------------------------------------------------
+
+# Verificar que USERPROFILE apunta a un directorio real para evitar que
+# las rutas derivadas (ClaudeDir, PluginsDir) apunten a ubicaciones inesperadas.
+if (-not $env:USERPROFILE -or -not (Test-Path $env:USERPROFILE -PathType Container)) {
+    Write-Host "x USERPROFILE no esta definido o no apunta a un directorio valido" -ForegroundColor Red
+    exit 1
+}
+
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
 $Version = "0.3.0"
@@ -51,10 +60,16 @@ function Read-JsonFile {
     }
 }
 
-# Escribir JSON de forma atomica (fichero temporal + mover)
+# Escribir JSON de forma atomica (fichero temporal en mismo directorio + mover).
+# Crear el temporal junto al destino garantiza que Move-Item sea un rename
+# atomico del sistema de ficheros, sin copias entre discos.
 function Write-JsonFileAtomic {
     param([string]$Path, [object]$Data)
-    $tmpFile = [System.IO.Path]::GetTempFileName()
+    $targetDir = Split-Path $Path -Parent
+    if (-not (Test-Path $targetDir)) {
+        New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+    }
+    $tmpFile = Join-Path $targetDir ".tmp-$([System.IO.Path]::GetRandomFileName())"
     try {
         $Data | ConvertTo-Json -Depth 10 | Set-Content $tmpFile -Encoding UTF8
         Move-Item -Path $tmpFile -Destination $Path -Force
@@ -134,56 +149,72 @@ if (Test-Path $MarketplaceDir) {
 $marketplacePluginDir = Join-Path $MarketplaceDir ".claude-plugin"
 New-Item -ItemType Directory -Path $marketplacePluginDir -Force | Out-Null
 
-# Clonar en directorio temporal
+# Clonar en directorio temporal.
+# El bloque try/finally garantiza la limpieza del temporal incluso si el
+# script aborta por error o interrupcion (equivalente al trap EXIT de bash).
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "alfred-dev-install-$(Get-Random)"
-git clone --quiet --depth 1 "https://github.com/$Repo.git" $TempDir
+try {
+    git clone --quiet --depth 1 "https://github.com/$Repo.git" "$TempDir"
 
-$GitSha = (git -C $TempDir rev-parse HEAD).Trim()
+    # Verificar integridad del clone antes de continuar.
+    # Si falta plugin.json el repositorio esta corrupto o incompleto.
+    $pluginJsonCheck = Join-Path $TempDir ".claude-plugin" "plugin.json"
+    if (-not (Test-Path $pluginJsonCheck)) {
+        Write-Err "El repositorio clonado no contiene .claude-plugin/plugin.json"
+        Write-Err "La clonacion puede estar corrupta. Reintenta la instalacion."
+        exit 1
+    }
 
-# Copiar ficheros del plugin al marketplace
-Copy-Item (Join-Path $TempDir ".claude-plugin" "marketplace.json") $marketplacePluginDir -Force
-Copy-Item (Join-Path $TempDir ".claude-plugin" "plugin.json") $marketplacePluginDir -Force
+    $GitSha = (git -C "$TempDir" rev-parse HEAD).Trim()
 
-foreach ($dir in @("agents", "commands", "skills", "hooks", "core", "templates")) {
-    $srcDir = Join-Path $TempDir $dir
-    if (Test-Path $srcDir) {
-        Copy-Item $srcDir (Join-Path $MarketplaceDir $dir) -Recurse -Force
+    # Copiar ficheros del plugin al marketplace
+    Copy-Item (Join-Path $TempDir ".claude-plugin" "marketplace.json") $marketplacePluginDir -Force
+    Copy-Item (Join-Path $TempDir ".claude-plugin" "plugin.json") $marketplacePluginDir -Force
+
+    foreach ($dir in @("agents", "commands", "skills", "hooks", "core", "templates")) {
+        $srcDir = Join-Path $TempDir $dir
+        if (Test-Path $srcDir) {
+            Copy-Item $srcDir (Join-Path $MarketplaceDir $dir) -Recurse -Force
+        }
+    }
+
+    foreach ($file in @("README.md", "package.json", ".gitignore", "uninstall.sh", "uninstall.ps1")) {
+        $srcFile = Join-Path $TempDir $file
+        if (Test-Path $srcFile) {
+            Copy-Item $srcFile $MarketplaceDir -Force
+        }
+    }
+
+    Write-Ok "Marketplace configurado en $MarketplaceDir"
+
+    # -- 3. Instalar plugin en cache -------------------------------------------
+
+    Write-Info "Instalando plugin en cache..."
+
+    if (Test-Path $InstallDir) {
+        Remove-Item $InstallDir -Recurse -Force
+    }
+
+    if (-not (Test-Path $CacheDir)) {
+        New-Item -ItemType Directory -Path $CacheDir -Force | Out-Null
+    }
+
+    Copy-Item "$TempDir" $InstallDir -Recurse -Force
+
+    # Limpiar artefactos innecesarios para runtime
+    foreach ($artifact in @(".git", "site", "install.sh", "install.ps1", "tests", ".pytest_cache")) {
+        $target = Join-Path $InstallDir $artifact
+        if (Test-Path $target) {
+            Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
-
-foreach ($file in @("README.md", "package.json", ".gitignore", "uninstall.sh", "uninstall.ps1")) {
-    $srcFile = Join-Path $TempDir $file
-    if (Test-Path $srcFile) {
-        Copy-Item $srcFile $MarketplaceDir -Force
+finally {
+    # Limpiar directorio temporal pase lo que pase
+    if ($TempDir -and (Test-Path $TempDir)) {
+        Remove-Item "$TempDir" -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
-
-Write-Ok "Marketplace configurado en $MarketplaceDir"
-
-# -- 3. Instalar plugin en cache -------------------------------------------
-
-Write-Info "Instalando plugin en cache..."
-
-if (Test-Path $InstallDir) {
-    Remove-Item $InstallDir -Recurse -Force
-}
-
-if (-not (Test-Path $CacheDir)) {
-    New-Item -ItemType Directory -Path $CacheDir -Force | Out-Null
-}
-
-Copy-Item $TempDir $InstallDir -Recurse -Force
-
-# Limpiar artefactos innecesarios para runtime
-foreach ($artifact in @(".git", "site", "install.sh", "install.ps1", "tests", ".pytest_cache")) {
-    $target = Join-Path $InstallDir $artifact
-    if (Test-Path $target) {
-        Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-
-# Limpiar directorio temporal
-Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
 
 # Eliminar versiones anteriores de la cache para que los usuarios siempre
 # usen la version recien instalada.

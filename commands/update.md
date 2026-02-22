@@ -39,9 +39,15 @@ curl -s --max-time 10 "https://api.github.com/repos/686f6c61/alfred-dev/releases
 
 Extrae del JSON: `tag_name` (version), `name` (titulo), `body` (notas de la release), `published_at` (fecha).
 
-Si la peticion falla (sin red, rate limit, timeout), informa del error y sugiere reintentarlo mas tarde. No sigas adelante.
+Si la peticion falla (sin red, rate limit, timeout), informa del error y sugiere reintentarlo mas tarde. No sigas adelante. En concreto:
+
+- Si el JSON contiene `"message": "API rate limit exceeded"`, informa al usuario de que ha superado el limite de peticiones de GitHub y que puede reintentar en unos minutos o pasar un token con `-H "Authorization: token ..."`.
+- Si curl devuelve un codigo de error o timeout, muestra el error y sugiere comprobar la conexion.
+- Si el JSON no contiene `tag_name`, es una respuesta inesperada. Muestra el contenido raw y aborta.
 
 ## Paso 3: comparar versiones
+
+Valida que `tag_name` tiene formato semver valido: debe coincidir con el patron `v?X.Y.Z` donde X, Y, Z son numeros (por ejemplo `v0.3.0` o `0.3.0`). Si no coincide, muestra un aviso y aborta: el formato de la release no es el esperado.
 
 Compara `tag_name` (sin la `v` inicial) con la version instalada del paso 1.
 

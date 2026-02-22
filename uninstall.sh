@@ -11,8 +11,6 @@ set -euo pipefail
 PLUGIN_NAME="alfred-dev"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGINS_DIR="${CLAUDE_DIR}/plugins"
-# La ruta de caché sigue la convención de Claude Code: cache/<marketplace>/<plugin>/<version>.
-CACHE_DIR="${PLUGINS_DIR}/cache/${PLUGIN_NAME}/${PLUGIN_NAME}"
 MARKETPLACE_DIR="${PLUGINS_DIR}/marketplaces/${PLUGIN_NAME}"
 INSTALLED_FILE="${PLUGINS_DIR}/installed_plugins.json"
 KNOWN_MARKETPLACES="${PLUGINS_DIR}/known_marketplaces.json"
@@ -32,6 +30,11 @@ error() { printf "${RED}x${NC} %s\n" "$1" >&2; }
 # Validar que HOME apunta a un directorio real
 if [[ -z "${HOME:-}" ]] || [[ ! -d "${HOME}" ]]; then
     error "La variable HOME no está definida o no apunta a un directorio válido"
+    exit 1
+fi
+
+if ! command -v python3 &>/dev/null; then
+    error "python3 no está instalado (necesario para actualizar los ficheros JSON)"
     exit 1
 fi
 
@@ -166,6 +169,8 @@ except OSError as e:
     sys.exit(1)
 PYEOF
     ok "Plugin deshabilitado en settings.json"
+else
+    info "No se encontró settings.json (nada que deshabilitar)"
 fi
 
 printf "\n${GREEN}${BOLD}Alfred Dev desinstalado${NC}\n"
