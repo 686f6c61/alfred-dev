@@ -240,9 +240,13 @@ Funcionalidades principales:
 
 ## Dashboard GUI
 
+> **Fase Alpha** -- Funcionalidad en desarrollo activo. La interfaz y el protocolo pueden cambiar entre versiones menores.
+
 A partir de v0.3.0, Alfred Dev incluye un dashboard web que muestra el estado completo del proyecto en tiempo real sin intervenir en el terminal de Claude Code. Se lanza con `/alfred gui` y se abre automaticamente en el navegador.
 
 El dashboard actua como fuente de verdad externa: persiste toda la informacion de la sesion independientemente de la compactacion de contexto de Claude Code. Si la conversacion se compacta y se pierde contexto, el dashboard sigue mostrando el historial completo.
+
+![Vista de estado del dashboard de Alfred Dev](site/screenshots/dashboard-estado.png)
 
 **7 vistas disponibles:**
 
@@ -255,6 +259,15 @@ El dashboard actua como fuente de verdad externa: persiste toda la informacion d
 | Memoria | Explorador directo de la base de datos SQLite con pestanas por tabla |
 | Commits | Historial de commits con SHA, autor y ficheros afectados |
 | Marcados | Elementos importantes marcados por el usuario o el sistema, con prioridad y nota |
+
+| | | |
+|---|---|---|
+| ![Timeline](site/screenshots/dashboard-timeline.png) | ![Decisiones](site/screenshots/dashboard-decisiones.png) | ![Agentes](site/screenshots/dashboard-agentes.png) |
+| Timeline | Decisiones | Agentes |
+| ![Memoria](site/screenshots/dashboard-memoria.png) | ![Commits](site/screenshots/dashboard-commits.png) | ![Marcados](site/screenshots/dashboard-marcados.png) |
+| Memoria | Commits | Marcados |
+
+Para la documentacion completa del protocolo WebSocket, las tablas SQLite del dashboard y la guia de desarrollo, consulta [docs/gui.md](docs/gui.md).
 
 **Arquitectura tecnica:**
 

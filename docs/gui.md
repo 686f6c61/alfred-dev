@@ -1,14 +1,21 @@
 # Dashboard GUI de Alfred Dev
 
+> **Fase Alpha** -- Esta funcionalidad se encuentra en fase de desarrollo activo. La interfaz, el
+> protocolo y las vistas pueden cambiar entre versiones menores sin garantia de compatibilidad hacia
+> atras. El servidor y el frontend son completamente funcionales, pero se esperan mejoras y ajustes
+> antes de considerarlos estables.
+
 El dashboard es una aplicacion web local que ofrece una vista externa y persistente del estado del
-proyecto. Su razón de existir es doble: por un lado, proporciona al desarrollador una interfaz
+proyecto. Su razon de existir es doble: por un lado, proporciona al desarrollador una interfaz
 visual en tiempo real con la actividad de la sesion; por otro, actua como fuente de verdad
 independiente de la memoria de Claude Code. Cuando Claude compacta el contexto y pierde informacion,
-el dashboard —y la base de datos SQLite que lo sustenta— siguen intactos.
+el dashboard --y la base de datos SQLite que lo sustenta-- siguen intactos.
 
 A diferencia de los mensajes que aparecen en el terminal, el dashboard sobrevive a la compactacion,
 a los reinicios de sesion y a cualquier interrupcion del CLI. Es la capa de observabilidad del
 sistema Alfred Dev.
+
+![Vista general del dashboard -- estado del proyecto](../site/screenshots/dashboard-estado.png)
 
 ---
 
@@ -27,15 +34,39 @@ Cuando detecta cambios, emite un mensaje `update` a todos los clientes conectado
 cada cliente recibe un mensaje `init` con el estado completo para renderizar el dashboard sin
 esperar al siguiente ciclo.
 
-Flujo de datos:
+### Flujo de datos
 
 ```
-Claude Code --[hooks]--> SQLite <--[read/write]--> gui/server.py --[WebSocket]--> Navegador
+Hooks de Claude Code           Servidor GUI              Navegador
+       |                            |                        |
+       |--- write SQLite ---------->|                        |
+       |                            |--- poll cada 500ms --->|
+       |                            |                        |
+       |                            |<-- cambios detectados  |
+       |                            |                        |
+       |                            |--- WebSocket update -->|
+       |                            |                        |
+       |                            |<-- WebSocket action ---|
+       |                            |--- write SQLite ------>|
+       |                            |--- action_ack -------->|
 ```
 
-Los hooks escriben en SQLite de forma asíncrona; el servidor lee y propaga los cambios al navegador.
+Los hooks escriben en SQLite de forma asincrona; el servidor lee y propaga los cambios al navegador.
 El navegador puede enviar acciones al servidor (marcar elementos, activar agentes) que el servidor
 materializa en SQLite, cerrando el ciclo.
+
+### Ficheros del modulo
+
+| Fichero | Lineas | Responsabilidad |
+|---------|--------|-----------------|
+| `gui/server.py` | ~480 | Servidor HTTP, WebSocket, watcher SQLite, procesamiento de acciones |
+| `gui/websocket.py` | ~175 | Implementacion RFC 6455: handshake, encode/decode de frames, opcodes |
+| `gui/dashboard.html` | ~1600 | Frontend completo: HTML, CSS (dark mode) y JavaScript vanilla |
+
+La decision de implementar WebSocket a mano (en lugar de usar `websockets` o `aiohttp`) responde
+al principio de cero dependencias externas. El modulo `gui.websocket` cubre el subconjunto necesario
+del RFC 6455: handshake HTTP Upgrade, frames de texto, ping/pong y close. No implementa
+fragmentacion ni extensiones (innecesarias para JSON corto en localhost).
 
 ---
 
@@ -69,22 +100,261 @@ puertos reales se imprimen en stderr al arrancar el servidor.
 
 ---
 
+## Protocolo WebSocket
+
+La comunicacion entre el navegador y el servidor usa un protocolo JSON sobre WebSocket con cuatro
+tipos de mensaje. Todos los mensajes siguen la misma estructura: un objeto con las claves `type`
+(cadena que identifica el tipo) y `payload` (contenido especifico del mensaje).
+
+### Conexion y handshake
+
+El cliente se conecta al puerto WebSocket (por defecto 7534) con una peticion HTTP Upgrade estandar.
+El servidor responde con `101 Switching Protocols` usando la clave `Sec-WebSocket-Accept` calculada
+segun el RFC 6455 (SHA-1 del nonce + GUID magico, codificado en base64).
+
+### Mensaje `init` (servidor -> cliente)
+
+Se envia inmediatamente tras completar el handshake. Contiene el estado completo del proyecto para
+que el cliente pueda renderizar todas las vistas sin esperar al siguiente ciclo de sondeo.
+
+```json
+{
+  "type": "init",
+  "payload": {
+    "iteration": {
+      "id": 1,
+      "command": "feature",
+      "description": "Implementar sistema de autenticacion OAuth2",
+      "current_phase": "desarrollo",
+      "started_at": "2026-02-22T10:00:00.000Z",
+      "status": "active"
+    },
+    "decisions": [
+      {
+        "id": 1,
+        "title": "Usar JWT con refresh tokens",
+        "rationale": "...",
+        "phase": "arquitectura",
+        "status": "active",
+        "tags": "seguridad,auth",
+        "created_at": "2026-02-22T10:15:00.000Z"
+      }
+    ],
+    "events": [
+      {
+        "id": 1,
+        "event_type": "phase_start",
+        "payload": "{\"phase\": \"desarrollo\"}",
+        "created_at": "2026-02-22T10:30:00.000Z"
+      }
+    ],
+    "commits": [
+      {
+        "id": 1,
+        "sha": "a1b2c3d",
+        "message": "feat: anadir middleware de autenticacion",
+        "author": "usuario",
+        "files_changed": "src/auth/middleware.py,tests/test_auth.py",
+        "created_at": "2026-02-22T11:00:00.000Z"
+      }
+    ],
+    "pinned": [
+      {
+        "id": 1,
+        "item_type": "decision",
+        "item_id": 1,
+        "note": "Critica para la fase de seguridad",
+        "pinned_by": "user",
+        "created_at": "2026-02-22T10:20:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+Los campos de `payload` pueden ser listas vacias si no hay datos. `iteration` es `null` cuando no
+hay ninguna iteracion activa.
+
+### Mensaje `update` (servidor -> cliente)
+
+Se emite cada vez que el watcher detecta cambios en SQLite (ciclo de 500 ms). Solo incluye los
+elementos nuevos desde el ultimo checkpoint, no el estado completo.
+
+```json
+{
+  "type": "update",
+  "payload": {
+    "events": [],
+    "decisions": [
+      {
+        "id": 2,
+        "title": "Patron repositorio para acceso a datos",
+        "rationale": "...",
+        "phase": "arquitectura"
+      }
+    ],
+    "commits": []
+  }
+}
+```
+
+El cliente fusiona los datos incrementales con su estado local. Las listas vacias indican que no hay
+novedades en esa tabla.
+
+### Mensaje `action` (cliente -> servidor)
+
+El navegador envia acciones para modificar el estado de SQLite. Todas siguen la misma estructura
+envolvente; el campo `payload.type` determina que accion ejecutar.
+
+```json
+{
+  "type": "action",
+  "payload": {
+    "type": "pin_item",
+    "item_type": "decision",
+    "item_id": 1,
+    "note": "Decisión clave para el sprint"
+  }
+}
+```
+
+Acciones soportadas:
+
+| `payload.type` | Campos adicionales | Efecto |
+|----------------|-------------------|--------|
+| `pin_item` | `item_type`, `item_id`, `item_ref`, `note` | Marca un elemento como importante en la tabla `pinned_items` |
+| `unpin_item` | `pin_id` | Elimina un marcado existente |
+| `activate_agent` | `agent` (ID del agente) | Registra la activacion en `gui_actions` para que los hooks la procesen |
+| `deactivate_agent` | `agent` (ID del agente) | Registra la desactivacion en `gui_actions` |
+| `approve_gate` | Datos de la gate | Registra la aprobacion en `gui_actions` |
+
+Las acciones desconocidas se registran igualmente en `gui_actions` para trazabilidad.
+
+### Mensaje `action_ack` (servidor -> cliente)
+
+Confirmacion de que una accion se ha procesado correctamente.
+
+```json
+{
+  "type": "action_ack",
+  "payload": {
+    "status": "ok"
+  }
+}
+```
+
+### Reconexion automatica
+
+El cliente implementa reconexion con backoff exponencial. Cuando la conexion WebSocket se pierde:
+
+1. Primer intento inmediato tras 1 segundo.
+2. Si falla, duplica el intervalo: 2s, 4s, 8s, 16s.
+3. Tope maximo en 30 segundos entre intentos.
+4. Al reconectar, el servidor envia `init` con el estado completo actualizado.
+
+Durante la desconexion, el indicador de estado en la cabecera del dashboard cambia a naranja
+parpadeante. Al reconectar vuelve a verde fijo.
+
+---
+
 ## Vistas disponibles
 
-El dashboard tiene 7 vistas accesibles desde la barra lateral:
+El dashboard tiene 7 vistas accesibles desde la barra lateral izquierda. Cada vista se renderiza
+a partir del objeto `state` global que el cliente mantiene en memoria, actualizandolo con cada
+mensaje `init` o `update` recibido por WebSocket.
 
-| Vista | Descripcion |
-|-------|-------------|
-| **Dashboard** | Resumen del estado actual: iteracion activa, fase, agentes, metricas y elementos marcados recientes. |
-| **Timeline** | Cronologia de eventos de la iteracion activa, en orden cronologico inverso. |
-| **Decisiones** | Tabla ordenable de decisiones tecnicas y arquitectonicas con busqueda textual. |
-| **Agentes** | Tarjetas por agente con su estado (activo/inactivo) y un toggle para activar o desactivar. |
-| **Memoria** | Explorador de la base de datos SQLite con busqueda sobre decisiones y eventos. |
-| **Commits** | Historial de commits vinculados al proyecto y a las decisiones correspondientes. |
-| **Marcados** | Elementos marcados manualmente o por el sistema, agrupados por tipo. |
+### Estado (Dashboard)
 
-Cuando no hay ninguna iteracion activa, las vistas de Timeline y Decisiones muestran los datos de
-la iteracion mas reciente para que el historial siga siendo consultable.
+![Vista de estado del proyecto](../site/screenshots/dashboard-estado.png)
+
+La vista principal muestra un resumen ejecutivo de la iteracion activa. Incluye:
+
+- **Cabecera:** nombre del proyecto, tipo de iteracion (feature, fix, spike...) con su ID, y fase
+  activa actual.
+- **Tarjetas de metricas:** contadores de decisiones, eventos, commits y elementos marcados.
+- **Progreso de gates:** barra visual con las fases completadas y la fase activa.
+- **Agente activo:** indica que agente esta trabajando en ese momento.
+- **Marcados recientes:** lista de los ultimos elementos marcados como importantes.
+
+### Timeline
+
+![Timeline de eventos del proyecto](../site/screenshots/dashboard-timeline.png)
+
+Cronologia completa de eventos de la iteracion activa en orden cronologico inverso (mas reciente
+primero). Cada evento muestra su tipo, timestamp humanizado (hace X minutos/horas) y el payload
+relevante.
+
+Los eventos se agrupan visualmente por tipo con iconos y colores diferenciados:
+
+- **phase_start / phase_end:** transiciones de fase (verde).
+- **agent_start / agent_end:** activaciones de agentes (azul).
+- **gate_result:** resultados de quality gates (amarillo/rojo segun veredicto).
+- **decision:** registro de decisiones tecnicas (cyan).
+- **commit:** commits capturados automaticamente (gris).
+
+### Decisiones
+
+![Tabla de decisiones tecnicas](../site/screenshots/dashboard-decisiones.png)
+
+Tabla ordenable con todas las decisiones tecnicas y arquitectonicas registradas en la iteracion.
+Cada fila muestra el titulo, la fase en la que se tomo, el estado (`active`, `superseded`,
+`deprecated`), las etiquetas y la fecha.
+
+La vista incluye un campo de busqueda textual que filtra en tiempo real sobre titulo y razonamiento.
+Las decisiones marcadas como importantes aparecen resaltadas con un indicador visual.
+
+### Agentes
+
+![Cuadricula de los 15 agentes de Alfred Dev](../site/screenshots/dashboard-agentes.png)
+
+Cuadricula con los 15 agentes del sistema (8 de nucleo + 7 opcionales). Cada tarjeta muestra:
+
+- **Icono de 2 letras:** identificador visual del agente (AL, AR, PO, SD...).
+- **Nombre y rol:** descripcion breve de la responsabilidad del agente.
+- **Estado:** activo (verde), inactivo (gris) u opcional desactivado (tenue).
+- **Toggle:** boton para activar o desactivar agentes opcionales desde el propio dashboard.
+
+Los agentes de nucleo siempre aparecen activos y no se pueden desactivar. Los opcionales reflejan
+la configuracion del fichero `.claude/alfred-dev.local.md` y se pueden modificar en tiempo real
+desde esta vista.
+
+### Memoria
+
+![Explorador de memoria persistente](../site/screenshots/dashboard-memoria.png)
+
+Explorador directo de la base de datos SQLite con pestanas por tabla: decisiones, eventos, commits
+e iteraciones. Cada pestana muestra una tabla con todas las filas de la tabla correspondiente,
+ordenadas por ID descendente.
+
+La vista incluye busqueda textual sobre el contenido de las filas. Es util para depuracion y para
+verificar que los hooks estan capturando eventos correctamente.
+
+### Commits
+
+![Historial de commits del proyecto](../site/screenshots/dashboard-commits.png)
+
+Historial de commits registrados en la iteracion activa. Cada entrada muestra:
+
+- **SHA abreviado:** los primeros 7 caracteres del hash del commit.
+- **Mensaje:** descripcion del commit.
+- **Autor:** nombre del autor del commit.
+- **Ficheros afectados:** lista de ficheros modificados.
+- **Timestamp:** fecha y hora del commit.
+
+Los commits se capturan automaticamente por el hook `commit-capture.py` cada vez que detecta una
+ejecucion de `git commit` en el terminal de Claude Code.
+
+### Marcados
+
+![Elementos marcados como importantes](../site/screenshots/dashboard-marcados.png)
+
+Lista de todos los elementos marcados como importantes, agrupados por tipo (decision, evento,
+commit, accion). Cada marcado muestra el tipo del elemento, su referencia, la nota asociada,
+quien lo marco (usuario o sistema) y la fecha.
+
+Los marcados automaticos --generados por transiciones de fase o decisiones de alto impacto-- se
+distinguen con la etiqueta `(auto)`. Los marcados manuales muestran la nota que el usuario
+introdujo al marcarlos.
 
 ---
 
@@ -153,15 +423,53 @@ El formato del contexto inyectado es:
 
 ---
 
+## Tablas SQLite del dashboard
+
+El dashboard utiliza dos tablas adicionales que se crean durante la migracion del esquema v3
+(ejecutada automaticamente por `core/memory.py`):
+
+### `gui_actions`
+
+Almacena acciones enviadas desde el navegador que deben ser procesadas por los hooks en el
+siguiente ciclo. Funciona como cola de mensajes entre el dashboard y los hooks.
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| `id` | INTEGER PK | Identificador autoincremental |
+| `action_type` | TEXT | Tipo de accion (`activate_agent`, `deactivate_agent`, `approve_gate`) |
+| `payload` | TEXT | JSON con los datos completos de la accion |
+| `status` | TEXT | Estado de procesamiento (`pending`, `processed`, `failed`) |
+| `created_at` | TEXT | Timestamp ISO 8601 |
+| `processed_at` | TEXT | Timestamp de procesamiento (null si pendiente) |
+
+### `pinned_items`
+
+Almacena elementos marcados como importantes por el usuario o por el sistema.
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| `id` | INTEGER PK | Identificador autoincremental |
+| `item_type` | TEXT | Tipo del elemento (`decision`, `event`, `commit`, `action`) |
+| `item_id` | INTEGER | ID del elemento en su tabla de origen |
+| `item_ref` | TEXT | Referencia legible (`D#42`, `C#a1b2c3d`) |
+| `note` | TEXT | Nota explicativa del usuario |
+| `priority` | INTEGER | Prioridad (1 = alta, 2 = media, 3 = baja). Por defecto 2 |
+| `pinned_by` | TEXT | Quien lo marco (`user`, `system`) |
+| `created_at` | TEXT | Timestamp ISO 8601 |
+
+---
+
 ## Solucion de problemas
 
 | Escenario | Comportamiento |
 |-----------|----------------|
 | Puerto 7533 ocupado | El servidor busca automaticamente puertos alternativos (7534, 7535...). Los puertos reales se imprimen en stderr al arrancar. |
-| Servidor caido durante la sesion | Los hooks siguen escribiendo en SQLite. El navegador muestra el indicador de reconexion (punto naranja parpadeante) y reintenta la conexion WebSocket. Cuando el servidor vuelve, el navegador recibe el estado completo. |
+| Servidor caido durante la sesion | Los hooks siguen escribiendo en SQLite. El navegador muestra el indicador de reconexion (punto naranja parpadeante) y reintenta la conexion WebSocket con backoff exponencial. Cuando el servidor vuelve, el navegador recibe el estado completo via mensaje `init`. |
 | Sin iteracion activa | Las vistas muestran el historial de la ultima iteracion cerrada. El dashboard indica que no hay sesion activa en curso. |
 | Multiples pestanas abiertas | Todas las pestanas reciben los mismos mensajes WebSocket simultaneamente. El estado es identico en todas porque se lee de la misma fuente SQLite. |
 | Instancia anterior no terminada | `session-start.sh` lee el PID guardado, envia SIGTERM y arranca una instancia nueva. Si el proceso ya no existe, ignora el error y continua. |
+| Base de datos bloqueada | SQLite con modo WAL permite lecturas concurrentes. El servidor usa una conexion de solo lectura para el polling, separada de la conexion de escritura para acciones del dashboard. |
+| El dashboard no muestra datos nuevos | Verificar que los hooks estan activos (`/alfred status`) y que la base de datos existe en `.claude/alfred-memory.db`. Usar la vista Memoria para inspeccionar directamente las tablas. |
 
 ---
 
@@ -180,7 +488,7 @@ Una vista nueva requiere cuatro cambios en `dashboard.html`:
 case 'mi-vista': renderMiVista(); break;
 ```
 
-3. Añadir el elemento de seccion HTML en el area de contenido principal:
+3. Anadir el elemento de seccion HTML en el area de contenido principal:
 
 ```html
 <section id="view-mi-vista" class="view">
@@ -191,7 +499,7 @@ case 'mi-vista': renderMiVista(); break;
 </section>
 ```
 
-4. Añadir la entrada al sidebar con un icono SVG y el atributo `data-view`:
+4. Anadir la entrada al sidebar con un icono SVG y el atributo `data-view`:
 
 ```html
 <div class="nav-item" data-view="mi-vista">
@@ -226,6 +534,20 @@ ws.send(JSON.stringify({
 
 El watcher detectara el cambio en SQLite en el siguiente ciclo de 500 ms y lo propagara a todos los
 clientes conectados mediante un mensaje `update`.
+
+### Anadir un campo al protocolo WebSocket
+
+Si es necesario incluir mas datos en los mensajes `init` o `update`:
+
+1. Anadir la consulta SQL en el metodo correspondiente de `server.py` (`get_full_state()` para
+   `init`, o `poll_new_*()` para `update`).
+
+2. Incluir el resultado en el diccionario `payload` del mensaje.
+
+3. En el frontend, actualizar la funcion de procesamiento (`processInit()` o `processUpdate()`)
+   para que almacene los nuevos datos en el objeto `state` global.
+
+4. Actualizar las funciones de renderizado que deban mostrar los datos nuevos.
 
 ---
 
