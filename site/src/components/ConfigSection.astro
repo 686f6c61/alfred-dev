@@ -108,7 +108,7 @@ const yamlHtml = highlightYaml(config.yamlExample);
       <div class="config-blocks">
         {config.blocks.map((block) => (
           <div class="config-block">
-            <h4 class="config-block-title">{block.title}</h4>
+            <h3 class="config-block-title">{block.title}</h3>
             <p class="config-block-desc" set:html={block.descriptionHtml} />
           </div>
         ))}

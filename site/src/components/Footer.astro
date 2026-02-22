@@ -52,12 +52,20 @@ const { version, license, githubUrl, docsUrl, tagline, slogan } = Astro.props;
 
   footer p {
     font-size: 13px;
-    color: var(--text-dim);
+    color: var(--text-muted);
     line-height: 1.8;
   }
 
   footer a {
-    color: var(--text-muted);
+    color: var(--blue);
+    text-decoration: underline;
+    text-decoration-color: var(--border-light);
+    text-underline-offset: 2px;
+  }
+
+  footer a:hover {
+    color: var(--text-bright);
+    text-decoration-color: var(--text-bright);
   }
 
   /* ── Nombre del proyecto ─────────────────────────── */
@@ -80,6 +88,6 @@ const { version, license, githubUrl, docsUrl, tagline, slogan } = Astro.props;
   .footer-slogan {
     margin-top: 24px;
     font-size: 12px;
-    color: var(--text-dim);
+    color: var(--text-muted);
   }
 </style>
