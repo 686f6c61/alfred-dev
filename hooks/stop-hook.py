@@ -39,17 +39,26 @@ def main():
     # Limpiar servidor GUI si esta corriendo
     gui_pid_file = os.path.join(project_dir, ".claude", "alfred-gui.pid")
     if os.path.isfile(gui_pid_file):
+        killed = False
         try:
             with open(gui_pid_file, "r") as f:
                 gui_pid = int(f.read().strip())
             os.kill(gui_pid, signal.SIGTERM)
-        except (OSError, ValueError, ProcessLookupError):
-            pass
+            killed = True
+        except ProcessLookupError:
+            # El proceso ya no existe, seguro borrar el PID
+            killed = True
+        except (OSError, ValueError) as exc:
+            print(
+                f"[Alfred Dev] No se pudo detener el servidor GUI: {exc}",
+                file=sys.stderr,
+            )
         finally:
-            try:
-                os.remove(gui_pid_file)
-            except OSError:
-                pass
+            if killed:
+                try:
+                    os.remove(gui_pid_file)
+                except OSError:
+                    pass
 
     state_path = os.path.join(project_dir, ".claude", "alfred-dev-state.json")
 

@@ -118,7 +118,7 @@ Agentes predefinidos que el usuario activa segun las necesidades de su proyecto 
 | **Copywriter** | Copywriter | Proyectos con textos publicos: landing, emails, onboarding |
 | **El Bibliotecario** | Consultas historicas | Proyectos con memoria persistente activa |
 
-### Skills (56)
+### Skills (59)
 
 Cada skill es una habilidad concreta que un agente ejecuta. Estan organizados por dominio:
 

@@ -1791,6 +1791,19 @@ class MemoryDB:
         self._conn.execute("DELETE FROM pinned_items WHERE id = ?", (pin_id,))
         self._conn.commit()
 
+    def update_pin_priority(self, pin_id: int, priority: int) -> None:
+        """Actualiza la prioridad de un elemento marcado.
+
+        Args:
+            pin_id: ID del registro en pinned_items.
+            priority: nueva prioridad (0 = alta, 1 = media, 2 = baja).
+        """
+        self._conn.execute(
+            "UPDATE pinned_items SET priority = ? WHERE id = ?",
+            (priority, pin_id),
+        )
+        self._conn.commit()
+
     def get_pinned_items(
         self, item_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:

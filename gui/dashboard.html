@@ -614,7 +614,7 @@ function formatTime(raw) {
  */
 function prettyJSON(obj) {
   try { return JSON.stringify(obj, null, 2); }
-  catch (_) { return String(obj); }
+  catch (err) { console.debug('[Alfred GUI] prettyJSON fallback:', err.message); return String(obj); }
 }
 
 /**
@@ -732,13 +732,14 @@ function setWsStatus(status) {
  */
 function connectWebSocket() {
   if (ws) {
-    try { ws.close(); } catch (_) {}
+    try { ws.close(); } catch (err) { console.debug('[Alfred GUI] Error cerrando WebSocket previo:', err.message); }
     ws = null;
   }
   setWsStatus('reconnecting');
   try {
     ws = new WebSocket(WS_URL);
   } catch (err) {
+    console.error('[Alfred GUI] No se pudo crear conexion WebSocket:', err);
     scheduleReconnect();
     return;
   }
@@ -748,7 +749,7 @@ function connectWebSocket() {
     document.getElementById('footer-ws-port').textContent = WS_PORT;
   });
   ws.addEventListener('message', function(evt) {
-    try { handleMessage(JSON.parse(evt.data)); } catch (_) {}
+    try { handleMessage(JSON.parse(evt.data)); } catch (err) { console.error('[Alfred GUI] Error procesando mensaje WebSocket:', err); }
   });
   ws.addEventListener('close', function() {
     setWsStatus('disconnected');
@@ -867,7 +868,7 @@ function updateHeaderInfo() {
         try {
           var p = typeof ev.payload === 'string' ? JSON.parse(ev.payload) : (ev.payload || {});
           if (p.phase) { phaseName = p.phase; break; }
-        } catch(_) {}
+        } catch(err) { console.debug('[Alfred GUI] Payload de fase no parseable:', ev.id, err.message); }
       }
     }
   }
@@ -1001,7 +1002,7 @@ function renderDashboard() {
       textSpan.textContent = p.item_ref || p.note || '#' + p.id;
       var tsSpan = document.createElement('span');
       tsSpan.className = 'ts';
-      tsSpan.textContent = formatTime(p.created_at);
+      tsSpan.textContent = formatTime(p.pinned_at);
       item.appendChild(typeSpan);
       item.appendChild(textSpan);
       item.appendChild(tsSpan);
@@ -1058,7 +1059,7 @@ function renderTimeline() {
     var payload = {};
     try {
       payload = typeof e.payload === 'string' ? JSON.parse(e.payload) : (e.payload || {});
-    } catch(_) { payload = {}; }
+    } catch(err) { console.debug('[Alfred GUI] Payload de evento no parseable:', e.id, err.message); payload = {}; }
 
     // Fase: del campo directo o del payload
     var phase = e.phase || payload.phase || '';
@@ -1184,7 +1185,8 @@ function renderDecisions() {
   tbody.innerHTML = data.map(function(d) {
     var rawTags = d.tags || '';
     var tagList = [];
-    try { tagList = JSON.parse(rawTags); } catch(_) {
+    try { tagList = JSON.parse(rawTags); } catch(err) {
+      console.debug('[Alfred GUI] Tags no son JSON, parseando como CSV:', err.message);
       tagList = rawTags.split(',').filter(Boolean);
     }
     if (!Array.isArray(tagList)) tagList = [];
@@ -1403,7 +1405,8 @@ function renderCommits() {
     var message = c.message || c.commit_message || 'Sin mensaje';
     var rawFiles = c.files || c.changed_files || '';
     var files = [];
-    try { files = JSON.parse(rawFiles); } catch(_) {
+    try { files = JSON.parse(rawFiles); } catch(err) {
+      console.debug('[Alfred GUI] Files no son JSON, parseando como CSV:', err.message);
       files = rawFiles.split(',').filter(Boolean);
     }
     if (!Array.isArray(files)) files = [];
@@ -1483,12 +1486,12 @@ function renderPinned() {
           '<div class="pinned-item-ref">' + esc(p.item_ref || type + ' #' + (p.item_id || p.id)) + '</div>' +
           (p.note ? '<div class="pinned-item-note">' + esc(p.note) + '</div>' : '') +
           '<div class="pinned-item-meta">' +
-            '<span class="pinned-origin">' + (p.origin === 'auto' ? 'Auto' : 'Manual') + '</span>' +
-            '<span class="ts">' + formatTime(p.created_at) + '</span>' +
+            '<span class="pinned-origin">' + (p.auto_pinned ? 'Auto' : 'Manual') + '</span>' +
+            '<span class="ts">' + formatTime(p.pinned_at) + '</span>' +
             '<select class="pinned-priority-select" title="Prioridad" onchange="updatePinnedPriority(' + p.id + ', this.value)">' +
-              '<option value="high"'   + (p.priority === 'high'   ? ' selected' : '') + '>Alta</option>' +
-              '<option value="medium"' + (!p.priority || p.priority === 'medium' ? ' selected' : '') + '>Media</option>' +
-              '<option value="low"'    + (p.priority === 'low'    ? ' selected' : '') + '>Baja</option>' +
+              '<option value="0"' + (p.priority === 0 ? ' selected' : '') + '>Alta</option>' +
+              '<option value="1"' + (p.priority === 1 || p.priority == null ? ' selected' : '') + '>Media</option>' +
+              '<option value="2"' + (p.priority === 2 ? ' selected' : '') + '>Baja</option>' +
             '</select>' +
           '</div>' +
         '</div>' +
@@ -1559,9 +1562,10 @@ function toggleAgent(agentId, active) {
 /**
  * Actualiza la prioridad de un elemento marcado.
  * @param {number} pinId - ID del pin.
- * @param {string} priority - 'high', 'medium' o 'low'.
+ * @param {string} priorityStr - Valor del select ('0', '1', '2').
  */
-function updatePinnedPriority(pinId, priority) {
+function updatePinnedPriority(pinId, priorityStr) {
+  var priority = parseInt(priorityStr, 10) || 0;
   sendAction('update_pin_priority', { pin_id: pinId, priority: priority });
   var p = state.pinned.find(function(x) { return x.id === pinId; });
   if (p) p.priority = priority;

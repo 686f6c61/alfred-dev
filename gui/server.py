@@ -176,18 +176,14 @@ class GUIServer:
                 iteration_id=active["id"], limit=50
             )
             events = self._db.get_timeline(active["id"], limit=100)
-            # Obtener commits de la iteracion activa
-            conn = sqlite3.connect(self._db_path)
-            conn.row_factory = sqlite3.Row
-            try:
-                rows = conn.execute(
-                    "SELECT * FROM commits WHERE iteration_id = ? "
-                    "ORDER BY id DESC LIMIT 50",
-                    (active["id"],),
-                ).fetchall()
-                commits = [dict(r) for r in rows]
-            finally:
-                conn.close()
+            # Obtener commits de la iteracion activa reutilizando
+            # la conexion persistente del watcher (_poll_conn).
+            rows = self._poll_conn.execute(
+                "SELECT * FROM commits WHERE iteration_id = ? "
+                "ORDER BY id DESC LIMIT 50",
+                (active["id"],),
+            ).fetchall()
+            commits = [dict(r) for r in rows]
 
         pinned = self._db.get_pinned_items()
 
@@ -289,6 +285,12 @@ class GUIServer:
             if pin_id is not None:
                 self._db.unpin_item(pin_id)
 
+        elif action_type == "update_pin_priority":
+            pin_id = action.get("pin_id")
+            priority = action.get("priority")
+            if pin_id is not None and priority is not None:
+                self._db.update_pin_priority(pin_id, int(priority))
+
         elif action_type in ("activate_agent", "deactivate_agent", "approve_gate"):
             # Estas acciones se registran como gui_actions para que los
             # hooks las procesen en el siguiente ciclo.
@@ -354,7 +356,11 @@ class GUIServer:
 
                 try:
                     opcode, payload = decode_frame(data)
-                except ValueError:
+                except ValueError as exc:
+                    print(
+                        f"[Alfred GUI] Frame malformado, cerrando conexion: {exc}",
+                        file=sys.stderr,
+                    )
                     break
 
                 if opcode == OPCODE_CLOSE:
@@ -379,17 +385,25 @@ class GUIServer:
                             })
                             writer.write(encode_frame(ack))
                             await writer.drain()
-                    except (json.JSONDecodeError, UnicodeDecodeError):
-                        pass
+                    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                        print(
+                            f"[Alfred GUI] Mensaje malformado del cliente: {exc}",
+                            file=sys.stderr,
+                        )
 
         except (ConnectionResetError, BrokenPipeError, asyncio.IncompleteReadError):
+            # Desconexion normal del cliente: no es un error que requiera
+            # atencion, pero se registra para facilitar el diagnostico.
             pass
         finally:
             self._ws_clients.discard(writer)
             try:
                 writer.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                print(
+                    f"[Alfred GUI] Error cerrando writer: {exc}",
+                    file=sys.stderr,
+                )
 
     async def broadcast(self, message: str) -> None:
         """Envia un mensaje a todos los clientes WebSocket conectados.
@@ -441,10 +455,15 @@ class GUIServer:
                     }, ensure_ascii=False, default=str)
                     await self.broadcast(msg)
 
+            except sqlite3.OperationalError as exc:
+                # Bloqueo temporal de la BD u otro error operativo de SQLite.
+                # Esperado en escrituras concurrentes; se reintenta en el
+                # siguiente ciclo sin contaminar stderr con falsos positivos.
+                print(f"[Alfred GUI] BD ocupada, reintentando: {exc}", file=sys.stderr)
             except Exception as exc:
-                # No dejar que un error del sondeo pare el watcher,
-                # pero registrarlo en stderr para facilitar el diagnostico.
-                print(f"[Alfred GUI] Error en watch_loop: {exc}", file=sys.stderr)
+                # Error inesperado de logica; registrar con detalle para
+                # distinguirlo de bloqueos temporales de SQLite.
+                print(f"[Alfred GUI] Error inesperado en watch_loop: {exc}", file=sys.stderr)
 
             await asyncio.sleep(_POLL_INTERVAL)
 
@@ -510,7 +529,7 @@ class GUIServer:
         except KeyboardInterrupt:
             print("\nDeteniendo servidor...")
         finally:
-            self._running = False
+            self.close()
             loop.close()
 
     def stop(self) -> None:
@@ -521,6 +540,22 @@ class GUIServer:
         siguiente ciclo de sondeo.
         """
         self._running = False
+
+    def close(self) -> None:
+        """Libera los recursos del servidor: conexiones SQLite y watcher.
+
+        Debe llamarse al terminar el proceso para evitar fugas de
+        conexiones SQLite. Se invoca automaticamente en ``run()``.
+        """
+        self._running = False
+        try:
+            self._poll_conn.close()
+        except Exception:
+            pass
+        try:
+            self._db.close()
+        except Exception:
+            pass
 
 
 def main() -> None:

@@ -298,19 +298,30 @@ fi
 GUI_SERVER="${PLUGIN_ROOT}/gui/server.py"
 GUI_PID_FILE="${PROJECT_DIR}/.claude/alfred-gui.pid"
 
+GUI_LOG="${PROJECT_DIR}/.claude/alfred-gui.log"
+
 if [[ -f "$MEMORY_DB" && -f "$GUI_SERVER" ]]; then
   # Matar proceso anterior si existe (sesion previa no limpiada)
   if [[ -f "$GUI_PID_FILE" ]]; then
     OLD_PID=$(cat "$GUI_PID_FILE" 2>/dev/null)
     if [[ -n "$OLD_PID" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
-      kill "$OLD_PID" 2>/dev/null || true
-      sleep 0.5
+      # Verificar que el proceso pertenece realmente al servidor GUI
+      # antes de matarlo para no afectar a procesos ajenos si el SO
+      # reutilizo el PID.
+      if ps -p "$OLD_PID" -o args= 2>/dev/null | grep -q "gui/server.py"; then
+        kill "$OLD_PID" 2>/dev/null || true
+        sleep 0.5
+      else
+        echo "[Alfred Dev] Aviso: PID $OLD_PID ya no pertenece al servidor GUI, ignorando." >&2
+      fi
     fi
     rm -f "$GUI_PID_FILE"
   fi
 
-  # Levantar nuevo servidor
-  PYTHONPATH="${PLUGIN_ROOT}" python3 "$GUI_SERVER" --db "$MEMORY_DB" &
+  # Levantar nuevo servidor redirigiendo stderr a un fichero de log
+  # para facilitar el diagnostico si algo falla.
+  PYTHONPATH="${PLUGIN_ROOT}" python3 "$GUI_SERVER" --db "$MEMORY_DB" \
+    >> "$GUI_LOG" 2>&1 &
   GUI_PID=$!
 
   # Verificar que el proceso arranco (esperar brevemente)
@@ -323,7 +334,7 @@ if [[ -f "$MEMORY_DB" && -f "$GUI_SERVER" ]]; then
 
 El servidor del dashboard esta activo. El usuario puede abrir la GUI con /alfred gui."
   else
-    echo "[Alfred Dev] Aviso: el servidor GUI no pudo arrancar." >&2
+    echo "[Alfred Dev] Aviso: el servidor GUI no pudo arrancar. Revisa ${GUI_LOG}" >&2
   fi
 fi
 

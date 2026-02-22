@@ -163,9 +163,12 @@ que el cliente pueda renderizar todas las vistas sin esperar al siguiente ciclo 
         "id": 1,
         "item_type": "decision",
         "item_id": 1,
+        "item_ref": "D#1",
         "note": "Critica para la fase de seguridad",
-        "pinned_by": "user",
-        "created_at": "2026-02-22T10:20:00.000Z"
+        "auto_pinned": 0,
+        "priority": 0,
+        "pinned_at": "2026-02-22T10:20:00.000Z",
+        "session_id": null
       }
     ]
   }
@@ -454,8 +457,9 @@ Almacena elementos marcados como importantes por el usuario o por el sistema.
 | `item_ref` | TEXT | Referencia legible (`D#42`, `C#a1b2c3d`) |
 | `note` | TEXT | Nota explicativa del usuario |
 | `priority` | INTEGER | Prioridad (1 = alta, 2 = media, 3 = baja). Por defecto 2 |
-| `pinned_by` | TEXT | Quien lo marco (`user`, `system`) |
-| `created_at` | TEXT | Timestamp ISO 8601 |
+| `auto_pinned` | INTEGER | 0 = marcado manual, 1 = marcado automatico |
+| `pinned_at` | TEXT | Timestamp ISO 8601 |
+| `session_id` | TEXT | ID de la sesion que creo el marcado |
 
 ---
 
