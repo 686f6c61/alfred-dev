@@ -15,6 +15,7 @@
     "./commands/config.md",
     "./commands/feature.md",
     "./commands/fix.md",
+    "./commands/gui.md",
     "./commands/help.md",
     "./commands/ship.md",
     "./commands/spike.md",
