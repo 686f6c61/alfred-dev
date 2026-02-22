@@ -20,14 +20,14 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   meta: {
-    title: 'Alfred Dev - Plugin de Claude Code con 15 agentes de ingeniería',
-    description: 'Plugin de Claude Code: 15 agentes especializados, 56 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
+    title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
+    description: 'Plugin de Claude Code: 15 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
     canonical: 'https://alfred-dev.com/',
     locale: 'es_ES',
     og: {
       type: 'website',
-      title: 'Alfred Dev - Plugin de Claude Code con 15 agentes de ingeniería',
-      description: '15 agentes especializados, 56 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
+      title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
+      description: '15 agentes especializados, 59 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
       url: 'https://alfred-dev.com/',
       siteName: 'Alfred Dev',
       locale: 'es_ES',
@@ -38,8 +38,8 @@ const data: PageData = {
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Alfred Dev - Plugin de Claude Code con 15 agentes de ingeniería',
-      description: '15 agentes especializados, 56 skills, memoria persistente y quality gates. De la idea a producción.',
+      title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
+      description: '15 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción.',
       image: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
     },
   },
@@ -108,7 +108,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '15 agentes especializados con personalidad propia. 8 de núcleo, 7 opcionales que activas según tu proyecto. Memoria persistente, quality gates, 56 skills, de la idea a producción.',
+    subtitle: '15 agentes especializados con personalidad propia. 8 de núcleo, 7 opcionales que activas según tu proyecto. Memoria persistente, quality gates, 59 skills, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -438,7 +438,7 @@ const data: PageData = {
   skills: {
     header: {
       label: 'Capacidades',
-      title: '56 skills en 13 dominios',
+      title: '59 skills en 13 dominios',
       description: 'Cada skill es una habilidad concreta que los agentes ejecutan. Los 7 dominios originales se amplían con 6 nuevos para los agentes opcionales.',
     },
     domains: [
@@ -631,7 +631,7 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interfaz',
-      title: '10 comandos',
+      title: '11 comandos',
       description: 'Todo se controla desde la línea de comandos de Claude Code. Un prefijo, un verbo, una descripción.',
     },
     list: [
@@ -1116,7 +1116,7 @@ personalidad:
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         question: 'Cuántos skills tiene en total?',
-        answerHtml: '56 skills distribuidos en 13 dominios. Los 7 dominios originales (producto, arquitectura, desarrollo, seguridad, calidad, DevOps, documentación) cubren el ciclo de vida estándar. Los 6 nuevos (datos, UX, rendimiento, GitHub, SEO, marketing) corresponden a los agentes opcionales. Los dominios existentes también se han ampliado: documentación pasó de 4 a 9 skills, seguridad de 5 a 6, y calidad de 4 a 6.',
+        answerHtml: '59 skills distribuidos en 13 dominios. Los 7 dominios originales (producto, arquitectura, desarrollo, seguridad, calidad, DevOps, documentación) cubren el ciclo de vida estándar. Los 6 nuevos (datos, UX, rendimiento, GitHub, SEO, marketing) corresponden a los agentes opcionales. Los dominios existentes también se han ampliado: documentación pasó de 4 a 9 skills, seguridad de 5 a 6, y calidad de 4 a 6.',
       },
       {
         svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
@@ -1322,7 +1322,7 @@ personalidad:
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 15 agentes. 56 skills. 10 comandos. Memoria persistente. De la idea a producción.',
+    tagline: 'Plugin de Claude Code. 15 agentes. 59 skills. 11 comandos. Memoria persistente. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
   },
 };
