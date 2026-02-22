@@ -292,38 +292,38 @@ const data: PageData = {
     title: 'Real-time dashboard',
     descriptionHtml: 'The web dashboard shows the full project status without interfering with the terminal. Phases, agents, decisions, commits and timeline updated via WebSocket. Launched with <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred gui</code> and works in any browser.',
     heroImage: {
-      src: 'screenshots/dashboard-estado.png',
+      src: '/screenshots/dashboard-estado.png',
       alt: 'Project status view in the Alfred Dev dashboard',
       caption: 'Project status',
     },
     gridImages: [
       {
-        src: 'screenshots/dashboard-timeline.png',
+        src: '/screenshots/dashboard-timeline.png',
         alt: 'Event timeline in the Alfred Dev dashboard',
         caption: 'Event timeline',
       },
       {
-        src: 'screenshots/dashboard-decisiones.png',
+        src: '/screenshots/dashboard-decisiones.png',
         alt: 'Technical decisions in the Alfred Dev dashboard',
         caption: 'Technical decisions',
       },
       {
-        src: 'screenshots/dashboard-agentes.png',
+        src: '/screenshots/dashboard-agentes.png',
         alt: 'Agent control in the Alfred Dev dashboard',
         caption: 'Agent control',
       },
       {
-        src: 'screenshots/dashboard-memoria.png',
+        src: '/screenshots/dashboard-memoria.png',
         alt: 'Memory explorer in the Alfred Dev dashboard',
         caption: 'Memory explorer',
       },
       {
-        src: 'screenshots/dashboard-commits.png',
+        src: '/screenshots/dashboard-commits.png',
         alt: 'Commit history in the Alfred Dev dashboard',
         caption: 'Commit history',
       },
       {
-        src: 'screenshots/dashboard-marcados.png',
+        src: '/screenshots/dashboard-marcados.png',
         alt: 'Pinned items in the Alfred Dev dashboard',
         caption: 'Pinned items',
       },

@@ -34,32 +34,13 @@ const langHref = ui.langSwitcherHref[locale];
 ---
 
 <nav aria-label={navAriaLabel}>
-  <div class="container">
-    <a href="#" class="nav-brand">Alfred <span>Dev</span></a>
+  <!-- Fila superior: marca, controles y hamburger -->
+  <div class="nav-top">
+    <div class="container">
+      <a href="#" class="nav-brand">Alfred <span>Dev</span></a>
 
-    <ul class="nav-links" id="navLinks">
-      {nav.map((link) => (
-        <li>
-          <a href={link.href}>
-            <svg
-              class="nav-icon"
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <Fragment set:html={link.svgContent} />
-            </svg>
-            {link.label}
-          </a>
-        </li>
-      ))}
-      <!-- Selector de idioma como ultimo enlace -->
-      <li>
-        <a href={langHref}>
+      <div class="nav-controls">
+        <a href={langHref} class="nav-lang">
           <svg
             class="nav-icon"
             aria-hidden="true"
@@ -76,45 +57,74 @@ const langHref = ui.langSwitcherHref[locale];
           </svg>
           {langLabel}
         </a>
-      </li>
-    </ul>
 
-    <button
-      class="nav-hamburger"
-      id="navHamburger"
-      aria-label={hamburgerAriaLabel}
-      aria-expanded="false"
-      aria-controls="navLinks"
-    >
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
+        <button
+          class="nav-version"
+          id="changelogBtn"
+          title={changelogTitle}
+        >
+          v0.3.1
+        </button>
 
-    <button
-      class="nav-version"
-      id="changelogBtn"
-      title={changelogTitle}
-    >
-      v0.3.1
-    </button>
+        <button
+          class="nav-hamburger"
+          id="navHamburger"
+          aria-label={hamburgerAriaLabel}
+          aria-expanded="false"
+          aria-controls="navLinks"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fila inferior: enlaces de navegacion -->
+  <div class="nav-bottom">
+    <div class="container">
+      <ul class="nav-links" id="navLinks">
+        {nav.map((link) => (
+          <li>
+            <a href={link.href}>
+              <svg
+                class="nav-icon"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <Fragment set:html={link.svgContent} />
+              </svg>
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   </div>
 </nav>
 
-<!-- Script de hamburger: toggle sidebar, cierre al clicar enlace -->
+<!-- Script de hamburger: toggle overlay movil, cierre al clicar enlace -->
 <script>
   document.addEventListener('astro:page-load', () => {
     const hamburger = document.getElementById('navHamburger');
     const navLinks = document.getElementById('navLinks');
-    if (!hamburger || !navLinks) return;
+    const navBottom = document.querySelector('.nav-bottom') as HTMLElement | null;
+    if (!hamburger || !navLinks || !navBottom) return;
 
     /**
      * Alterna el estado abierto/cerrado del menu movil.
-     * Gestiona la clase 'open', el atributo ARIA y el overflow del body
-     * para evitar scroll de fondo cuando el menu esta desplegado.
+     * En movil, .nav-bottom esta oculto por CSS. Al abrir el hamburger
+     * se muestra .nav-bottom y .nav-links como overlay a pantalla completa.
      */
     function toggleMenu(): void {
       const isOpen = hamburger!.classList.toggle('open');
+      navBottom!.classList.toggle('open');
       navLinks!.classList.toggle('open');
       hamburger!.setAttribute('aria-expanded', String(isOpen));
       document.body.style.overflow = isOpen ? 'hidden' : '';
@@ -146,59 +156,51 @@ const langHref = ui.langSwitcherHref[locale];
     border-bottom: 1px solid var(--border);
   }
 
-  nav .container {
+  /* ── Fila superior: marca + controles ──────────────── */
+  .nav-top .container {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 56px;
+    height: 44px;
   }
 
   .nav-brand {
     font-family: var(--font-display);
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--text-bright);
-    letter-spacing: 0.02em;
-    z-index: 102;
+    letter-spacing: -0.01em;
     text-decoration: none;
+    white-space: nowrap;
+    z-index: 102;
   }
 
   .nav-brand span {
     color: var(--blue);
+    font-weight: 600;
   }
 
-  .nav-links {
+  .nav-controls {
     display: flex;
-    gap: 20px;
-    list-style: none;
+    align-items: center;
+    gap: 12px;
+    z-index: 102;
   }
 
-  .nav-links a {
+  .nav-lang {
     display: inline-flex;
     align-items: center;
     gap: 5px;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.03em;
     text-transform: uppercase;
     transition: color 0.2s;
   }
 
-  .nav-links a:hover {
+  .nav-lang:hover {
     color: var(--text-bright);
-  }
-
-  .nav-icon {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-  }
-
-  .nav-links a:hover .nav-icon {
-    opacity: 1;
   }
 
   .nav-version {
@@ -209,8 +211,58 @@ const langHref = ui.langSwitcherHref[locale];
     border: 1px solid var(--border);
     padding: 3px 10px;
     border-radius: 4px;
-    z-index: 102;
     cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* ── Fila inferior: enlaces de navegacion ───────────── */
+  .nav-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .nav-bottom .container {
+    display: flex;
+    justify-content: center;
+    height: 36px;
+    align-items: center;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 20px;
+    list-style: none;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+
+  .nav-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+
+  .nav-links a:hover {
+    color: var(--text-bright);
+  }
+
+  .nav-icon {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+
+  .nav-links a:hover .nav-icon,
+  .nav-lang:hover .nav-icon {
+    opacity: 1;
   }
 
   /* ── Hamburger ───────────────────────────────────── */
@@ -222,7 +274,6 @@ const langHref = ui.langSwitcherHref[locale];
     padding: 12px;
     min-width: 44px;
     min-height: 44px;
-    z-index: 102;
   }
 
   .nav-hamburger span {
@@ -250,24 +301,31 @@ const langHref = ui.langSwitcherHref[locale];
     transform: rotate(-45deg) translate(3.5px, -3.5px);
   }
 
-  /* ── Responsive 900px ────────────────────────────── */
-  @media (max-width: 900px) {
+  /* ── Responsive 1100px ───────────────────────────── */
+  @media (max-width: 1100px) {
     .nav-links {
-      gap: 12px;
+      gap: 14px;
     }
 
     .nav-links a {
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .nav-icon {
-      width: 12px;
-      height: 12px;
+      display: none;
     }
   }
 
   /* ── Responsive 768px ────────────────────────────── */
   @media (max-width: 768px) {
+    .nav-bottom {
+      display: none;
+    }
+
+    .nav-bottom.open {
+      display: block;
+    }
+
     .nav-hamburger {
       display: block;
     }
@@ -313,6 +371,7 @@ const langHref = ui.langSwitcherHref[locale];
     }
 
     .nav-icon {
+      display: block;
       width: 18px;
       height: 18px;
       opacity: 0.8;

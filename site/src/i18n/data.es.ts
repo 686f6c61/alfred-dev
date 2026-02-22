@@ -295,38 +295,38 @@ const data: PageData = {
     title: 'Dashboard en tiempo real',
     descriptionHtml: 'El dashboard web muestra el estado completo del proyecto sin intervenir en el terminal. Fases, agentes, decisiones, commits y timeline actualizados por WebSocket. Se lanza con <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred gui</code> y funciona en cualquier navegador.',
     heroImage: {
-      src: 'screenshots/dashboard-estado.png',
+      src: '/screenshots/dashboard-estado.png',
       alt: 'Vista de estado del proyecto en el dashboard de Alfred Dev',
       caption: 'Estado del proyecto',
     },
     gridImages: [
       {
-        src: 'screenshots/dashboard-timeline.png',
+        src: '/screenshots/dashboard-timeline.png',
         alt: 'Timeline de eventos en el dashboard de Alfred Dev',
         caption: 'Timeline de eventos',
       },
       {
-        src: 'screenshots/dashboard-decisiones.png',
+        src: '/screenshots/dashboard-decisiones.png',
         alt: 'Decisiones técnicas en el dashboard de Alfred Dev',
         caption: 'Decisiones técnicas',
       },
       {
-        src: 'screenshots/dashboard-agentes.png',
+        src: '/screenshots/dashboard-agentes.png',
         alt: 'Control de agentes en el dashboard de Alfred Dev',
         caption: 'Control de agentes',
       },
       {
-        src: 'screenshots/dashboard-memoria.png',
+        src: '/screenshots/dashboard-memoria.png',
         alt: 'Explorador de memoria en el dashboard de Alfred Dev',
         caption: 'Explorador de memoria',
       },
       {
-        src: 'screenshots/dashboard-commits.png',
+        src: '/screenshots/dashboard-commits.png',
         alt: 'Historial de commits en el dashboard de Alfred Dev',
         caption: 'Historial de commits',
       },
       {
-        src: 'screenshots/dashboard-marcados.png',
+        src: '/screenshots/dashboard-marcados.png',
         alt: 'Elementos marcados en el dashboard de Alfred Dev',
         caption: 'Elementos marcados',
       },

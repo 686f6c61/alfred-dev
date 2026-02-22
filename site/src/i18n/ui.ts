@@ -92,7 +92,7 @@ export const ui: Record<string, Record<Locale, string>> = {
   // ── Selector de idioma ──────────────────────────────────────
   langSwitcher: {
     es: 'English',
-    en: 'Espanol',
+    en: 'Español',
   },
   langSwitcherHref: {
     es: '/en/',
