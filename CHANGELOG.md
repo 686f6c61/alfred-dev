@@ -7,6 +7,29 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.0] - 2026-02-22
+
+### Added
+
+- **Dashboard GUI** (Fase Alpha): dashboard web en tiempo real que muestra el estado completo del proyecto sin intervenir en el terminal. 7 vistas: estado, timeline, decisiones, agentes, memoria, commits y marcados. Se lanza con `/alfred gui` y se abre automáticamente en el navegador.
+- **Servidor monolítico Python**: HTTP estático (puerto 7533) + WebSocket RFC 6455 manual (puerto 7534) + SQLite watcher (polling 500 ms). Sin dependencias externas.
+- **Protocolo WebSocket bidireccional**: mensajes `init` (estado completo al conectar), `update` (cambios incrementales), `action` (acciones del usuario) y `action_ack` (confirmación). Reconexión automática con backoff exponencial (1s a 30s).
+- **Sistema de marcado** (pinning): elementos marcados manual o automáticamente sobreviven a la compactación del contexto. Se inyectan como `additionalContext` vía `memory-compact.py`.
+- **Tablas SQLite nuevas**: `gui_actions` (cola de acciones del dashboard) y `pinned_items` (elementos marcados). Migración automática a esquema v3.
+- **Comando `/alfred gui`**: abre el dashboard en el navegador por defecto. Si el servidor no está corriendo, lo arranca automáticamente.
+- **Arranque automático**: `session-start.sh` levanta el servidor GUI en background al inicio de cada sesión si existe la base de datos de memoria. `stop-hook.py` lo para al cerrar.
+- **Principio fail-open**: si la GUI falla, Alfred funciona exactamente igual que sin ella. Los hooks siguen escribiendo en SQLite.
+- **Landing page**: sección Dashboard con galería de 7 capturas, etiqueta Fase Alpha, situada entre Agentes y Quality gates.
+- **Documentación completa**: `docs/gui.md` con arquitectura, protocolo WebSocket, esquema de tablas, guía de desarrollo y solución de problemas.
+- 29 tests nuevos para el módulo GUI. Total: 297 tests.
+
+### Changed
+
+- Versión bumpeada de 0.2.3 a 0.3.0 en plugin.json, marketplace.json, package.json, install.sh, install.ps1 y memory_server.py.
+- README.md ampliado con capturas del dashboard y enlace a documentación técnica.
+- `docs/README.md` actualizado con entrada para gui.md en la navegación.
+
+
 ## [0.2.3] - 2026-02-21
 
 ### Added

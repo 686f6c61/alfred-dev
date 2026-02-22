@@ -3137,6 +3137,27 @@ footer a {
 
     <div class="cl-version">
       <div class="cl-version-header">
+        <span class="cl-version-tag">0.3.0</span>
+        <span class="cl-version-date">2026-02-22</span>
+      </div>
+      <p class="cl-section-title added">Added</p>
+      <ul class="cl-list">
+        <li><strong>Dashboard GUI</strong> (Fase Alpha) -- dashboard web en tiempo real con 7 vistas: estado, timeline, decisiones, agentes, memoria, commits y marcados. Se lanza con <code>/alfred gui</code>.</li>
+        <li><strong>Servidor monol&iacute;tico Python</strong> -- HTTP + WebSocket RFC 6455 manual + SQLite watcher. Sin dependencias externas.</li>
+        <li><strong>Protocolo WebSocket bidireccional</strong> -- mensajes <code>init</code>, <code>update</code>, <code>action</code> y <code>action_ack</code>. Reconexi&oacute;n con backoff exponencial.</li>
+        <li><strong>Sistema de marcado</strong> -- elementos marcados sobreviven a la compactaci&oacute;n del contexto.</li>
+        <li><strong>Tablas SQLite nuevas</strong> -- <code>gui_actions</code> y <code>pinned_items</code>. Migraci&oacute;n autom&aacute;tica a esquema v3.</li>
+        <li><strong>Arranque autom&aacute;tico</strong> -- el servidor GUI se levanta con cada sesi&oacute;n y se para al cerrar.</li>
+        <li>Principio fail-open: si la GUI falla, Alfred funciona igual. 297 tests.</li>
+      </ul>
+      <p class="cl-section-title changed">Changed</p>
+      <ul class="cl-list">
+        <li>README y documentaci&oacute;n ampliados con capturas del dashboard y gu&iacute;a del protocolo WebSocket.</li>
+      </ul>
+    </div>
+
+    <div class="cl-version">
+      <div class="cl-version-header">
         <span class="cl-version-tag">0.2.3</span>
         <span class="cl-version-date">2026-02-21</span>
       </div>
