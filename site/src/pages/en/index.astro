@@ -33,6 +33,7 @@ import FaqSection from '@/components/FaqSection.astro';
 import Footer from '@/components/Footer.astro';
 import ChangelogModal from '@/components/ChangelogModal.astro';
 import Lightbox from '@/components/Lightbox.astro';
+import ScrollSpy from '@/components/ScrollSpy.astro';
 
 const locale: Locale = 'en';
 const canonicalUrl = 'https://alfred-dev.com/en/';
@@ -47,6 +48,10 @@ const softwareApplicationLd = JSON.stringify({
   url: data.meta.canonical,
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'macOS, Linux, Windows',
+  inLanguage: 'en-US',
+  softwareVersion: '0.3.1',
+  datePublished: '2025-02-22',
+  screenshot: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
   offers: {
     '@type': 'Offer',
     price: '0',
@@ -97,6 +102,9 @@ const faqPageLd = JSON.stringify({
 
   {/* Main navigation */}
   <Nav nav={data.nav} locale={locale} />
+
+  {/* Lateral scroll progress indicator */}
+  <ScrollSpy sections={data.nav} />
 
   {/* Main content */}
   <main id="contenido">
