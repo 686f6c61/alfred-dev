@@ -198,6 +198,18 @@ done
 rm -rf "${TEMP_DIR}"
 TEMP_DIR=""
 
+# Eliminar versiones anteriores de la cache para que los usuarios siempre
+# usen la version recien instalada. Solo se borran directorios hermanos
+# del directorio de instalacion cuyo nombre difiera de la version actual.
+for old_version_dir in "${CACHE_DIR}"/*/; do
+    old_version_dir="${old_version_dir%/}"
+    if [ -d "${old_version_dir}" ] && [ "${old_version_dir}" != "${INSTALL_DIR}" ]; then
+        rm -rf "${old_version_dir}" \
+            && info "Eliminada version anterior: $(basename "${old_version_dir}")" \
+            || echo "[Alfred Dev] Aviso: no se pudo eliminar ${old_version_dir}" >&2
+    fi
+done
+
 ok "Plugin instalado en ${INSTALL_DIR}"
 
 # -- 4. Registrar en installed_plugins.json --------------------------------

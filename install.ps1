@@ -185,6 +185,15 @@ foreach ($artifact in @(".git", "site", "install.sh", "install.ps1", "tests", ".
 # Limpiar directorio temporal
 Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
 
+# Eliminar versiones anteriores de la cache para que los usuarios siempre
+# usen la version recien instalada.
+Get-ChildItem -Path $CacheDir -Directory | Where-Object {
+    $_.FullName -ne $InstallDir
+} | ForEach-Object {
+    Write-Info "Eliminando version anterior: $($_.Name)"
+    Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 Write-Ok "Plugin instalado en $InstallDir"
 
 # -- 4. Registrar en installed_plugins.json --------------------------------

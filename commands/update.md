@@ -15,7 +15,7 @@ python3 -c "
 import json, os, glob, sys
 
 candidates = sorted(
-    glob.glob(os.path.expanduser('~/.claude/plugins/cache/alfred-dev/*/.claude-plugin/plugin.json')),
+    glob.glob(os.path.expanduser('~/.claude/plugins/cache/alfred-dev/**/.claude-plugin/plugin.json'), recursive=True),
     key=os.path.getmtime,
     reverse=True
 )
