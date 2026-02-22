@@ -242,7 +242,7 @@ Funcionalidades principales:
 
 > **Fase Alpha** -- Funcionalidad en desarrollo activo. La interfaz y el protocolo pueden cambiar entre versiones menores.
 
-A partir de v0.3.0, Alfred Dev incluye un dashboard web que muestra el estado completo del proyecto en tiempo real sin intervenir en el terminal de Claude Code. Se lanza con `/alfred gui` y se abre automaticamente en el navegador.
+A partir de v0.3.0, Alfred Dev incluye un dashboard web que muestra el estado completo del proyecto en tiempo real sin intervenir en el terminal de Claude Code. La v0.3.1 refuerza la estabilidad del servidor (lectura robusta de frames WebSocket, cabeceras de seguridad HTTP, soporte movil) y anade inyeccion dinamica de version y puerto. Se lanza con `/alfred gui` y se abre automaticamente en el navegador.
 
 El dashboard actua como fuente de verdad externa: persiste toda la informacion de la sesion independientemente de la compactacion de contexto de Claude Code. Si la conversacion se compacta y se pierde contexto, el dashboard sigue mostrando el historial completo.
 

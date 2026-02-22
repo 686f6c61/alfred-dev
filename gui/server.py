@@ -32,13 +32,14 @@ import json
 import os
 import socket
 import sqlite3
+import struct
 import sys
 import threading
 import time
 from datetime import datetime, timezone
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Asegurar que el directorio raiz del proyecto esta en el path
 # para poder importar core.memory y gui.websocket
@@ -137,7 +138,7 @@ class GUIServer:
         # Conexion SQLite persistente dedicada al sondeo incremental.
         # Reutilizarla en poll_new_* evita abrir y cerrar tres conexiones
         # por cada ciclo de 500 ms. Se cierra con el proceso.
-        self._poll_conn = sqlite3.connect(db_path)
+        self._poll_conn = sqlite3.connect(db_path, check_same_thread=False)
         self._poll_conn.row_factory = sqlite3.Row
 
         # Checkpoints para detectar cambios incrementales.
@@ -145,6 +146,7 @@ class GUIServer:
         self._event_checkpoint = 0
         self._decision_checkpoint = 0
         self._commit_checkpoint = 0
+        self._pinned_checkpoint = 0
 
         # Clientes WebSocket conectados (asyncio.StreamWriter)
         self._ws_clients: Set[asyncio.StreamWriter] = set()
@@ -162,30 +164,52 @@ class GUIServer:
         sondeo. Incluye la iteracion activa, decisiones recientes,
         eventos, commits y elementos marcados.
 
+        Todas las consultas usan ``_poll_conn`` para garantizar un
+        snapshot consistente dentro de la misma conexion SQLite.
+
         Returns:
             Diccionario con las claves: ``iteration``, ``decisions``,
             ``events``, ``commits``, ``pinned``.
         """
-        active = self._db.get_active_iteration()
+        conn = self._poll_conn
+
+        # Iteracion activa
+        row = conn.execute(
+            "SELECT * FROM iterations WHERE status = 'active' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        active = dict(row) if row else None
 
         decisions = []
         events = []
         commits = []
         if active:
-            decisions = self._db.get_decisions(
-                iteration_id=active["id"], limit=50
-            )
-            events = self._db.get_timeline(active["id"], limit=100)
-            # Obtener commits de la iteracion activa reutilizando
-            # la conexion persistente del watcher (_poll_conn).
-            rows = self._poll_conn.execute(
+            rows = conn.execute(
+                "SELECT * FROM decisions WHERE iteration_id = ? "
+                "ORDER BY id DESC LIMIT 50",
+                (active["id"],),
+            ).fetchall()
+            decisions = [dict(r) for r in rows]
+
+            rows = conn.execute(
+                "SELECT * FROM events WHERE iteration_id = ? "
+                "ORDER BY id DESC LIMIT 100",
+                (active["id"],),
+            ).fetchall()
+            events = [dict(r) for r in rows]
+
+            rows = conn.execute(
                 "SELECT * FROM commits WHERE iteration_id = ? "
                 "ORDER BY id DESC LIMIT 50",
                 (active["id"],),
             ).fetchall()
             commits = [dict(r) for r in rows]
 
-        pinned = self._db.get_pinned_items()
+        # Marcados: no dependen de la iteracion
+        rows = conn.execute(
+            "SELECT * FROM pinned_items ORDER BY priority ASC, id DESC"
+        ).fetchall()
+        pinned = [dict(r) for r in rows]
 
         return {
             "iteration": active,
@@ -252,6 +276,24 @@ class GUIServer:
             self._commit_checkpoint = results[-1]["id"]
         return results
 
+    def poll_new_pinned(self) -> List[Dict[str, Any]]:
+        """Obtiene los elementos marcados desde el ultimo checkpoint.
+
+        Funciona igual que ``poll_new_events`` pero sobre la tabla
+        ``pinned_items``.
+
+        Returns:
+            Lista de diccionarios con los marcados nuevos.
+        """
+        rows = self._poll_conn.execute(
+            "SELECT * FROM pinned_items WHERE id > ? ORDER BY id ASC",
+            (self._pinned_checkpoint,),
+        ).fetchall()
+        results = [dict(r) for r in rows]
+        if results:
+            self._pinned_checkpoint = results[-1]["id"]
+        return results
+
     # --- Procesamiento de acciones del dashboard ----------------------------
 
     def process_gui_action(self, action: Dict[str, Any]) -> None:
@@ -273,23 +315,24 @@ class GUIServer:
         action_type = action.get("type", "")
 
         if action_type == "pin_item":
+            item_id = action.get("item_id")
             self._db.pin_item(
-                item_type=action.get("item_type", "unknown"),
-                item_id=action.get("item_id"),
-                item_ref=action.get("item_ref"),
-                note=action.get("note"),
+                item_type=str(action.get("item_type", "unknown")),
+                item_id=int(item_id) if item_id is not None else None,
+                item_ref=str(action.get("item_ref", "")) or None,
+                note=str(action.get("note", "")) or None,
             )
 
         elif action_type == "unpin_item":
             pin_id = action.get("pin_id")
             if pin_id is not None:
-                self._db.unpin_item(pin_id)
+                self._db.unpin_item(int(pin_id))
 
         elif action_type == "update_pin_priority":
             pin_id = action.get("pin_id")
             priority = action.get("priority")
             if pin_id is not None and priority is not None:
-                self._db.update_pin_priority(pin_id, int(priority))
+                self._db.update_pin_priority(int(pin_id), int(priority))
 
         elif action_type in ("activate_agent", "deactivate_agent", "approve_gate"):
             # Estas acciones se registran como gui_actions para que los
@@ -302,6 +345,50 @@ class GUIServer:
             self._db.create_gui_action(action_type, action)
 
     # --- Gestion de clientes WebSocket --------------------------------------
+
+    @staticmethod
+    async def _read_ws_frame(
+        reader: asyncio.StreamReader,
+    ) -> Tuple[int, bytes]:
+        """Lee un frame WebSocket completo manejando fragmentacion TCP.
+
+        Usa ``readexactly`` para leer la cantidad exacta de bytes que
+        indica la cabecera del frame, independientemente de como TCP
+        segmente los datos. Esto evita el problema de recibir frames
+        partidos o multiples frames en un solo ``read()``.
+
+        Args:
+            reader: stream de lectura del socket.
+
+        Returns:
+            Tupla (opcode, payload) con el contenido del frame.
+
+        Raises:
+            asyncio.IncompleteReadError: si la conexion se cierra a mitad
+                de frame.
+        """
+        header = await reader.readexactly(2)
+        opcode = header[0] & 0x0F
+        masked = bool(header[1] & 0x80)
+        length = header[1] & 0x7F
+
+        if length == 126:
+            raw = await reader.readexactly(2)
+            length = struct.unpack("!H", raw)[0]
+        elif length == 127:
+            raw = await reader.readexactly(8)
+            length = struct.unpack("!Q", raw)[0]
+
+        mask_key = None
+        if masked:
+            mask_key = await reader.readexactly(4)
+
+        payload = await reader.readexactly(length) if length > 0 else b""
+
+        if mask_key:
+            payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
+
+        return opcode, payload
 
     async def handle_ws_client(
         self,
@@ -319,8 +406,9 @@ class GUIServer:
             writer: stream de escritura del socket.
         """
         try:
-            # Leer la peticion de handshake
-            request_data = await reader.read(4096)
+            # Leer la peticion de handshake (8 KB para cubrir headers
+            # extensos de navegadores modernos)
+            request_data = await reader.read(8192)
             client_key = parse_handshake_request(request_data)
 
             if client_key is None:
@@ -336,49 +424,31 @@ class GUIServer:
             self._ws_clients.add(writer)
 
             # Enviar estado completo como mensaje de inicializacion
-            state = self.get_full_state()
+            full_state = self.get_full_state()
             init_msg = json.dumps({
                 "type": "init",
-                "payload": state,
+                "payload": full_state,
             }, ensure_ascii=False, default=str)
             writer.write(encode_frame(init_msg))
             await writer.drain()
 
-            # Bucle de recepcion de mensajes
+            # Bucle de recepcion de mensajes usando lector con buffer
             while True:
-                # LIMITACION: asumimos que cada read() contiene exactamente un frame
-                # WebSocket completo. Valido para mensajes JSON cortos en localhost.
-                # Si un frame llega fragmentado, decode_frame lanzara ValueError y
-                # la conexion se cerrara.
-                data = await reader.read(65536)
-                if not data:
-                    break
-
-                try:
-                    opcode, payload = decode_frame(data)
-                except ValueError as exc:
-                    print(
-                        f"[Alfred GUI] Frame malformado, cerrando conexion: {exc}",
-                        file=sys.stderr,
-                    )
-                    break
+                opcode, payload = await self._read_ws_frame(reader)
 
                 if opcode == OPCODE_CLOSE:
                     break
                 elif opcode == OPCODE_PING:
-                    # Responder con pong usando el mismo payload
                     writer.write(encode_frame(
                         payload.decode("utf-8", errors="replace"),
                         opcode=OPCODE_PONG,
                     ))
                     await writer.drain()
                 elif opcode == OPCODE_TEXT:
-                    # Intentar parsear como accion del dashboard
                     try:
                         msg = json.loads(payload.decode("utf-8"))
                         if msg.get("type") == "action":
                             self.process_gui_action(msg.get("payload", {}))
-                            # Confirmar la accion procesada
                             ack = json.dumps({
                                 "type": "action_ack",
                                 "payload": {"status": "ok"},
@@ -391,19 +461,18 @@ class GUIServer:
                             file=sys.stderr,
                         )
 
-        except (ConnectionResetError, BrokenPipeError, asyncio.IncompleteReadError):
-            # Desconexion normal del cliente: no es un error que requiera
-            # atencion, pero se registra para facilitar el diagnostico.
+        except (
+            ConnectionResetError,
+            BrokenPipeError,
+            asyncio.IncompleteReadError,
+        ):
             pass
         finally:
             self._ws_clients.discard(writer)
             try:
                 writer.close()
-            except Exception as exc:
-                print(
-                    f"[Alfred GUI] Error cerrando writer: {exc}",
-                    file=sys.stderr,
-                )
+            except Exception:
+                pass
 
     async def broadcast(self, message: str) -> None:
         """Envia un mensaje a todos los clientes WebSocket conectados.
@@ -443,14 +512,16 @@ class GUIServer:
                 new_events = self.poll_new_events()
                 new_decisions = self.poll_new_decisions()
                 new_commits = self.poll_new_commits()
+                new_pinned = self.poll_new_pinned()
 
-                if new_events or new_decisions or new_commits:
+                if new_events or new_decisions or new_commits or new_pinned:
                     msg = json.dumps({
                         "type": "update",
                         "payload": {
                             "events": new_events,
                             "decisions": new_decisions,
                             "commits": new_commits,
+                            "pinned": new_pinned,
                         },
                     }, ensure_ascii=False, default=str)
                     await self.broadcast(msg)
@@ -472,14 +543,73 @@ class GUIServer:
     def serve_http(self) -> None:
         """Arranca el servidor HTTP en un hilo separado.
 
-        Sirve los ficheros estaticos del directorio ``gui/``. El dashboard
-        queda disponible en ``http://127.0.0.1:<http_port>/dashboard.html``.
+        Sirve los ficheros estaticos del directorio ``gui/`` con headers
+        de seguridad adicionales. Para ``dashboard.html`` inyecta el
+        puerto WebSocket y la version como variables JS para que el
+        cliente se conecte al puerto correcto sin hardcodear valores.
+
+        El dashboard queda disponible en
+        ``http://127.0.0.1:<http_port>/dashboard.html``.
         """
-        handler = partial(
-            SimpleHTTPRequestHandler,
-            directory=self._gui_dir,
-        )
-        server = HTTPServer(("127.0.0.1", self._http_port), handler)
+        gui_dir = self._gui_dir
+        ws_port = self._ws_port
+
+        # Leer version del package.json (una sola vez al arrancar)
+        pkg_version = "0.0.0"
+        pkg_path = os.path.join(_PROJECT_ROOT, "package.json")
+        try:
+            with open(pkg_path, "r", encoding="utf-8") as f:
+                pkg_version = json.load(f).get("version", pkg_version)
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            pass
+
+        class _Handler(SimpleHTTPRequestHandler):
+            """Handler HTTP con headers de seguridad e inyeccion de config."""
+
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                super().__init__(*args, directory=gui_dir, **kwargs)
+
+            def end_headers(self) -> None:
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header(
+                    "Content-Security-Policy",
+                    "default-src 'self' 'unsafe-inline' ws://127.0.0.1:* "
+                    "https://fonts.googleapis.com https://fonts.gstatic.com",
+                )
+                super().end_headers()
+
+            def do_GET(self) -> None:
+                # Inyectar configuracion JS en dashboard.html
+                if self.path in ("/", "/dashboard.html"):
+                    html_path = os.path.join(gui_dir, "dashboard.html")
+                    try:
+                        with open(html_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+                        # Inyectar puerto WS antes del script principal
+                        inject = (
+                            f"<script>"
+                            f"window.__ALFRED_WS_PORT={ws_port};"
+                            f"window.__ALFRED_VERSION='{pkg_version}';"
+                            f"</script>\n"
+                        )
+                        content = content.replace("</head>", inject + "</head>", 1)
+                        data = content.encode("utf-8")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/html; charset=utf-8")
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
+                    except FileNotFoundError:
+                        self.send_error(404, "dashboard.html no encontrado")
+                    return
+                super().do_GET()
+
+            def log_message(self, fmt: str, *args: Any) -> None:
+                # Silenciar logs HTTP en produccion
+                pass
+
+        server = HTTPServer(("127.0.0.1", self._http_port), _Handler)
         server.serve_forever()
 
     # --- Ciclo de vida completo ---------------------------------------------
@@ -542,12 +672,20 @@ class GUIServer:
         self._running = False
 
     def close(self) -> None:
-        """Libera los recursos del servidor: conexiones SQLite y watcher.
+        """Libera los recursos del servidor: WebSocket, SQLite y watcher.
 
-        Debe llamarse al terminar el proceso para evitar fugas de
-        conexiones SQLite. Se invoca automaticamente en ``run()``.
+        Cierra todas las conexiones WebSocket activas, las conexiones
+        SQLite y detiene el watcher. Se invoca automaticamente en
+        ``run()``.
         """
         self._running = False
+        # Cerrar clientes WebSocket activos
+        for writer in list(self._ws_clients):
+            try:
+                writer.close()
+            except Exception:
+                pass
+        self._ws_clients.clear()
         try:
             self._poll_conn.close()
         except Exception:

@@ -1378,7 +1378,7 @@ footer a {
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
   "license": "https://opensource.org/licenses/MIT",
   "url": "https://alfred-dev.com/",
-  "softwareVersion": "0.3.0",
+  "softwareVersion": "0.3.1",
   "screenshot": "https://alfred-dev.com/screenshots/dashboard-estado.png"
 }
 </script>
@@ -1536,7 +1536,7 @@ footer a {
       <span></span>
       <span></span>
     </button>
-    <button class="nav-version" id="changelogBtn" title="Ver changelog" style="cursor: pointer;">v0.3.0</button>
+    <button class="nav-version" id="changelogBtn" title="Ver changelog" style="cursor: pointer;">v0.3.1</button>
   </div>
 </nav>
 
@@ -3275,6 +3275,32 @@ footer a {
 
     <div class="cl-version">
       <div class="cl-version-header">
+        <span class="cl-version-tag">0.3.1</span>
+        <span class="cl-version-date">2026-02-23</span>
+      </div>
+      <p class="cl-section-title fixed">Fixed</p>
+      <ul class="cl-list">
+        <li><strong>Lectura robusta de frames WebSocket</strong> -- reescrito con <code>readexactly()</code> para eliminar desconexiones por fragmentaci&oacute;n TCP.</li>
+        <li><strong>Conexi&oacute;n SQLite cross-thread</strong> -- a&ntilde;adido <code>check_same_thread=False</code> para evitar errores en Python 3.12+.</li>
+        <li><strong>Consistencia en get_full_state()</strong> -- todas las consultas usan la misma conexi&oacute;n de polling.</li>
+        <li><strong>Polling de marcados</strong> -- los elementos marcados ahora se propagan en tiempo real.</li>
+        <li><strong>Formato de timestamps</strong> -- detecci&oacute;n autom&aacute;tica de epoch (s/ms) y cadenas ISO sin zona horaria.</li>
+        <li><strong>Validaci&oacute;n de tipos en acciones GUI</strong> -- casts expl&iacute;citos para prevenir inyecci&oacute;n de tipos.</li>
+        <li><strong>Buffer de handshake WebSocket</strong> -- ampliado a 8192 bytes.</li>
+        <li><strong>Limpieza de writers WebSocket</strong> -- cierre expl&iacute;cito de sockets al parar el servidor.</li>
+      </ul>
+      <p class="cl-section-title added">Added</p>
+      <ul class="cl-list">
+        <li><strong>Soporte m&oacute;vil</strong> -- men&uacute; hamburguesa con sidebar deslizante para pantallas estrechas.</li>
+        <li><strong>Cabeceras de seguridad HTTP</strong> -- X-Content-Type-Options, Cache-Control y Content-Security-Policy.</li>
+        <li><strong>Inyecci&oacute;n din&aacute;mica</strong> -- versi&oacute;n y puerto WebSocket inyectados desde el servidor, sin valores hardcodeados.</li>
+        <li><strong>Icono SVG de marcado</strong> -- sustituido <code>[*]</code> por icono de pin en timeline y decisiones.</li>
+        <li><strong>Auditor&iacute;a SEO</strong> -- canonical, og:image, FAQPage schema, hreflang, dimensiones de im&aacute;genes (CLS).</li>
+      </ul>
+    </div>
+
+    <div class="cl-version">
+      <div class="cl-version-header">
         <span class="cl-version-tag">0.3.0</span>
         <span class="cl-version-date">2026-02-22</span>
       </div>
@@ -3445,7 +3471,7 @@ footer a {
 <footer>
   <div class="container">
     <p>
-      <strong style="color: var(--text);">Alfred Dev</strong> v0.3.0
+      <strong style="color: var(--text);">Alfred Dev</strong> v0.3.1
       <span style="margin: 0 8px; color: var(--border-light);">|</span>
       MIT License
       <span style="margin: 0 8px; color: var(--border-light);">|</span>

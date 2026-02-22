@@ -292,8 +292,17 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
+    /* Hamburguesa movil */
+    .mobile-toggle { display: none; padding: 6px; border-radius: var(--radius); color: var(--text-muted); }
+    .mobile-toggle:hover { background: var(--bg-card); color: var(--text); }
+    .mobile-toggle svg { display: block; }
+
     @media (max-width: 720px) {
-      #sidebar { display: none; }
+      .mobile-toggle { display: block; }
+      #sidebar { position: fixed; left: 0; top: var(--header-height); bottom: var(--footer-height); z-index: 50; transform: translateX(-100%); transition: transform 200ms ease; box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
+      #sidebar.open { transform: translateX(0); }
+      .sidebar-overlay { display: none; position: fixed; inset: 0; z-index: 49; background: rgba(0,0,0,0.4); }
+      .sidebar-overlay.open { display: block; }
       .card-grid-2, .card-grid-3, .card-grid-4 { grid-template-columns: 1fr; }
       .decision-expand-grid { grid-template-columns: 1fr; }
     }
@@ -304,7 +313,10 @@
 <div id="app">
 
   <header id="header">
-    <div class="header-logo">Alfred <span>Dev</span> <span style="color:var(--text-dim);font-size:11px;font-weight:400;">v0.3.0</span></div>
+    <button class="mobile-toggle" id="mobile-toggle" aria-label="Menu de navegacion">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="5" x2="15" y2="5"/><line x1="3" y1="9" x2="15" y2="9"/><line x1="3" y1="13" x2="15" y2="13"/></svg>
+    </button>
+    <div class="header-logo">Alfred <span>Dev</span> <span class="header-version" style="color:var(--text-dim);font-size:11px;font-weight:400;">v0.3.1</span></div>
     <div class="header-sep"></div>
     <div class="header-project">
       Proyecto: <strong id="header-project-name">—</strong>
@@ -357,6 +369,8 @@
         <span class="nav-badge" id="badge-pinned">0</span>
       </div>
     </nav>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
     <main id="main-panel">
 
@@ -505,7 +519,7 @@
     <span>Ultima actividad: <span id="footer-activity">—</span></span>
     <div class="footer-sep"></div>
     <span>WS puerto <span id="footer-ws-port" style="font-family:var(--font-mono);color:var(--text-muted);">7534</span></span>
-    <span class="footer-right">Alfred Dev v0.3.0</span>
+    <span class="footer-right">Alfred Dev v0.3.1</span>
   </footer>
 
 </div>
@@ -596,11 +610,24 @@ function esc(str) {
  */
 function formatTime(raw) {
   if (!raw) return '—';
-  const d = (raw instanceof Date) ? raw
-          : (typeof raw === 'number') ? new Date(raw * 1000)
-          : new Date(raw);
+  var d;
+  if (raw instanceof Date) {
+    d = raw;
+  } else if (typeof raw === 'number') {
+    // Epoch Unix: si es menor de 1e12 asumimos segundos, sino milisegundos.
+    // SQLite puede almacenar ambos formatos dependiendo de la fuente.
+    d = new Date(raw < 1e12 ? raw * 1000 : raw);
+  } else {
+    // String ISO: si no contiene zona horaria, asumir UTC para
+    // coherencia con los timestamps de SQLite (datetime('now')).
+    var s = String(raw);
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(s) && !/[Z+-]\d{2}/.test(s)) {
+      s = s.replace(' ', 'T') + 'Z';
+    }
+    d = new Date(s);
+  }
   if (isNaN(d.getTime())) return esc(raw);
-  const diff = (Date.now() - d.getTime()) / 1000;
+  var diff = (Date.now() - d.getTime()) / 1000;
   if (diff < 60)    return 'hace unos segundos';
   if (diff < 3600)  return 'hace ' + Math.floor(diff / 60) + ' min';
   if (diff < 86400) return 'hace ' + Math.floor(diff / 3600) + ' h';
@@ -819,6 +846,7 @@ function handleMessage(msg) {
     if (u.events    && u.events.length)    state.events    = u.events.concat(state.events);
     if (u.decisions && u.decisions.length) state.decisions = u.decisions.concat(state.decisions);
     if (u.commits   && u.commits.length)   state.commits   = u.commits.concat(state.commits);
+    if (u.pinned    && u.pinned.length)    state.pinned    = u.pinned.concat(state.pinned);
     state.agents = buildAgentsFromEvents();
     renderCurrentView();
     updateBadges();
@@ -1124,7 +1152,7 @@ function renderTimeline() {
           '<span class="event-type-badge ' + eventBadgeClass(type) + '">' + esc(type) + '</span>' +
           (phase ? '<span class="event-phase-badge">' + esc(phase) + '</span>' : '') +
           '<span class="event-actions">' +
-            '<button class="btn-icon" title="Marcar elemento" onclick="pinEvent(' + (parseInt(id,10)||0) + ')">[*]</button>' +
+            '<button class="btn-icon" title="Marcar elemento" onclick="pinEvent(' + (parseInt(id,10)||0) + ')"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 1l6 0 1 5-3 2v4l-2 3-2-3V8L2 6z"/></svg></button>' +
           '</span>' +
         '</div>' +
         '<div class="event-summary">' + esc(summary) + '</div>' +
@@ -1199,7 +1227,7 @@ function renderDecisions() {
       '<td><span class="badge badge-gray">' + esc(d.phase || '—') + '</span></td>' +
       '<td>' + statusBadge(d.status || 'pending') + '</td>' +
       '<td>' + (tags || '<span style="color:var(--text-dim)">—</span>') + '</td>' +
-      '<td style="text-align:right;"><button class="btn-icon" onclick="event.stopPropagation();pinDecision(' + (parseInt(d.id,10)||0) + ')" title="Marcar">[*]</button></td>' +
+      '<td style="text-align:right;"><button class="btn-icon" onclick="event.stopPropagation();pinDecision(' + (parseInt(d.id,10)||0) + ')" title="Marcar"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 1l6 0 1 5-3 2v4l-2 3-2-3V8L2 6z"/></svg></button></td>' +
     '</tr>' +
     '<tr class="decision-expand" id="decision-expand-' + d.id + '">' +
       '<td colspan="5"><div class="decision-expand-inner"><div class="decision-expand-grid">' +
@@ -1659,6 +1687,35 @@ document.addEventListener('DOMContentLoaded', function() {
     updateFooterActivity();
     renderCurrentView();
   }, 30000);
+
+  // Version dinamica: usar la inyectada por el servidor si existe
+  if (typeof window.__ALFRED_VERSION === 'string') {
+    document.querySelectorAll('.header-version').forEach(function(el) {
+      el.textContent = 'v' + window.__ALFRED_VERSION;
+    });
+    document.querySelector('.footer-right').textContent = 'Alfred Dev v' + window.__ALFRED_VERSION;
+  }
+
+  // Hamburguesa movil
+  var mobileToggle = document.getElementById('mobile-toggle');
+  var sidebar = document.getElementById('sidebar');
+  var sidebarOverlay = document.getElementById('sidebar-overlay');
+
+  mobileToggle.addEventListener('click', function() {
+    sidebar.classList.toggle('open');
+    sidebarOverlay.classList.toggle('open');
+  });
+  sidebarOverlay.addEventListener('click', function() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('open');
+  });
+  // Cerrar sidebar al seleccionar vista en movil
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('open');
+    });
+  });
 
   // Arrancar conexion WebSocket
   connectWebSocket();

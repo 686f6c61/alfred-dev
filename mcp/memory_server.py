@@ -743,7 +743,7 @@ class MemoryMCPServer:
             "protocolVersion": "2024-11-05",
             "serverInfo": {
                 "name": "alfred-memory",
-                "version": "0.3.0",
+                "version": "0.3.1",
             },
             "capabilities": {
                 "tools": {},

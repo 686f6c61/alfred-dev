@@ -59,14 +59,19 @@ materializa en SQLite, cerrando el ciclo.
 
 | Fichero | Lineas | Responsabilidad |
 |---------|--------|-----------------|
-| `gui/server.py` | ~480 | Servidor HTTP, WebSocket, watcher SQLite, procesamiento de acciones |
+| `gui/server.py` | ~605 | Servidor HTTP con cabeceras de seguridad, WebSocket con lectura robusta de frames, watcher SQLite con polling de marcados, inyeccion dinamica de version y puerto |
 | `gui/websocket.py` | ~175 | Implementacion RFC 6455: handshake, encode/decode de frames, opcodes |
-| `gui/dashboard.html` | ~1600 | Frontend completo: HTML, CSS (dark mode) y JavaScript vanilla |
+| `gui/dashboard.html` | ~1700 | Frontend completo: HTML, CSS (dark mode, responsive movil) y JavaScript vanilla |
 
 La decision de implementar WebSocket a mano (en lugar de usar `websockets` o `aiohttp`) responde
 al principio de cero dependencias externas. El modulo `gui.websocket` cubre el subconjunto necesario
 del RFC 6455: handshake HTTP Upgrade, frames de texto, ping/pong y close. No implementa
 fragmentacion ni extensiones (innecesarias para JSON corto en localhost).
+
+A partir de v0.3.1, el servidor lee frames WebSocket con `readexactly()` en lugar de `reader.read()`.
+Esto garantiza que cada frame se reciba completo incluso cuando TCP fragmenta los paquetes en
+multiples segmentos, lo que ocurre con mas frecuencia en conexiones lentas o bajo carga. El buffer
+de handshake se amplio a 8192 bytes para acomodar navegadores con cabeceras extensas.
 
 ---
 
@@ -472,7 +477,7 @@ Almacena elementos marcados como importantes por el usuario o por el sistema.
 | Sin iteracion activa | Las vistas muestran el historial de la ultima iteracion cerrada. El dashboard indica que no hay sesion activa en curso. |
 | Multiples pestanas abiertas | Todas las pestanas reciben los mismos mensajes WebSocket simultaneamente. El estado es identico en todas porque se lee de la misma fuente SQLite. |
 | Instancia anterior no terminada | `session-start.sh` lee el PID guardado, envia SIGTERM y arranca una instancia nueva. Si el proceso ya no existe, ignora el error y continua. |
-| Base de datos bloqueada | SQLite con modo WAL permite lecturas concurrentes. El servidor usa una conexion de solo lectura para el polling, separada de la conexion de escritura para acciones del dashboard. |
+| Base de datos bloqueada | SQLite con modo WAL permite lecturas concurrentes. El servidor usa una conexion con `check_same_thread=False` para el polling, separada de la conexion de escritura para acciones del dashboard. |
 | El dashboard no muestra datos nuevos | Verificar que los hooks estan activos (`/alfred status`) y que la base de datos existe en `.claude/alfred-memory.db`. Usar la vista Memoria para inspeccionar directamente las tablas. |
 
 ---
@@ -552,6 +557,46 @@ Si es necesario incluir mas datos en los mensajes `init` o `update`:
    para que almacene los nuevos datos en el objeto `state` global.
 
 4. Actualizar las funciones de renderizado que deban mostrar los datos nuevos.
+
+---
+
+## Seguridad
+
+El servidor HTTP incluye cabeceras de seguridad en todas las respuestas desde v0.3.1:
+
+| Cabecera | Valor | Proposito |
+|----------|-------|-----------|
+| `X-Content-Type-Options` | `nosniff` | Impide que el navegador interprete ficheros con MIME incorrecto |
+| `Cache-Control` | `no-store` | Evita que datos de sesion se almacenen en cache del navegador |
+| `Content-Security-Policy` | `default-src 'self'; ...` | Restringe las fuentes de recursos a localhost, bloqueando inyecciones externas |
+
+Las acciones recibidas por WebSocket validan los tipos de los campos criticos (`item_id` como entero,
+`note` como cadena) antes de ejecutarse, previniendo inyeccion de tipos inesperados.
+
+---
+
+## Soporte movil
+
+Desde v0.3.1, el dashboard es funcional en pantallas estrechas (moviles y tablets). En viewports
+inferiores a 768px, la barra lateral se oculta y aparece un boton hamburguesa en la cabecera. Al
+pulsarlo, la sidebar se desliza desde la izquierda con una animacion suave y un overlay semitransparente
+cubre el contenido principal. Al seleccionar una vista o pulsar el overlay, la sidebar se cierra
+automaticamente.
+
+---
+
+## Inyeccion dinamica de configuracion
+
+El servidor inyecta dos variables JavaScript en el HTML del dashboard al servirlo:
+
+```javascript
+window.__ALFRED_WS_PORT = 7534;  // Puerto WebSocket real (no hardcodeado)
+window.__ALFRED_VERSION = "0.3.1"; // Version leida de package.json
+```
+
+Esto permite que el dashboard se conecte al puerto WebSocket correcto incluso cuando el puerto por
+defecto (7534) esta ocupado, y que la version mostrada en cabecera y pie de pagina refleje siempre
+la version real instalada sin necesidad de editar el HTML.
 
 ---
 

@@ -7,6 +7,35 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.1] - 2026-02-23
+
+### Fixed
+
+- **Lectura robusta de frames WebSocket**: el servidor usaba `reader.read()` que puede devolver frames parciales por fragmentacion TCP. Reescrito con `readexactly()` para leer bytes exactos segun la cabecera del frame RFC 6455. Esto elimina desconexiones aleatorias y corrupcion de mensajes bajo carga.
+- **Conexion SQLite cross-thread**: la conexion de polling se creaba en un hilo y se usaba en el bucle asyncio de otro. Anadido `check_same_thread=False` para evitar `ProgrammingError` en Python 3.12+.
+- **Consistencia en `get_full_state()`**: el metodo mezclaba dos conexiones SQLite (la del modulo `MemoryDB` y la de polling). Reescrito para usar exclusivamente la conexion de polling, eliminando posibles inconsistencias entre vistas.
+- **Polling de elementos marcados**: el watcher solo monitorizaba eventos, decisiones y commits. Anadido `poll_new_pinned()` y checkpoint de marcados para que las acciones de pin/unpin se propaguen en tiempo real.
+- **Formato de timestamps**: `formatTime()` no distinguia entre epoch en segundos y milisegundos, y no gestionaba cadenas ISO sin zona horaria. Corregido con umbral automatico y append de `Z` para UTC.
+- **Validacion de tipos en acciones GUI**: los campos `item_id` y `pin_id` se pasaban sin validar. Anadidos casts a `int()` y `str()` para prevenir inyeccion de tipos inesperados.
+- **Buffer de handshake WebSocket**: ampliado de 4096 a 8192 bytes para soportar navegadores que envian cabeceras extensas (extensiones, cookies).
+- **Limpieza de writers WebSocket**: al cerrar el servidor, los writers de clientes conectados no se cerraban. Anadida limpieza explicita en `close()` para liberar sockets.
+
+### Added
+
+- **Soporte movil**: menu hamburguesa con sidebar deslizante y overlay para pantallas estrechas. La navegacion es completamente funcional en movil.
+- **Cabeceras de seguridad HTTP**: `X-Content-Type-Options: nosniff`, `Cache-Control: no-store` y `Content-Security-Policy` restrictiva para prevenir ataques de inyeccion.
+- **Inyeccion dinamica de version**: el servidor lee la version de `package.json` y la inyecta como variable JavaScript en el dashboard. La cabecera y el pie muestran la version real sin hardcodear.
+- **Inyeccion dinamica de puerto WebSocket**: el servidor inyecta el puerto WS real en el HTML, eliminando el puerto 7534 hardcodeado que fallaba cuando el puerto por defecto estaba ocupado.
+- **Icono SVG de marcado**: sustituido el texto `[*]` por un icono SVG de pin en timeline y decisiones para una interfaz mas limpia.
+
+### Changed
+
+- Version bumpeada de 0.3.0 a 0.3.1 en plugin.json, marketplace.json, package.json, install.sh, install.ps1, memory_server.py, dashboard.html y site/index.html.
+- `docs/gui.md` actualizado con las mejoras de estabilidad y las nuevas funcionalidades.
+- README.md actualizado con referencia a las mejoras de v0.3.1.
+- Landing page actualizada con entrada de changelog v0.3.1 y auditoria SEO completa (canonical, og:image, FAQPage schema, hreflang, CLS).
+
+
 ## [0.3.0] - 2026-02-22
 
 ### Added
@@ -176,6 +205,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.3.1]: https://github.com/686f6c61/alfred-dev/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/686f6c61/alfred-dev/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/686f6c61/alfred-dev/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/686f6c61/alfred-dev/compare/v0.2.1...v0.2.2

@@ -26,7 +26,7 @@ if (-not $env:USERPROFILE -or -not (Test-Path $env:USERPROFILE -PathType Contain
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.3.0"
+$Version = "0.3.1"
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
 $PluginsDir = Join-Path $ClaudeDir "plugins"
 # La ruta de cache sigue la convencion de Claude Code: cache/<marketplace>/<plugin>/<version>.
