@@ -111,12 +111,11 @@ const langHref = ui.langSwitcherHref[locale];
 
 <!-- Script de hamburger: toggle overlay movil, cierre al clicar enlace -->
 <script>
-  document.addEventListener('astro:page-load', () => {
-    const hamburger = document.getElementById('navHamburger');
-    const navLinks = document.getElementById('navLinks');
-    const navBottom = document.querySelector('.nav-bottom') as HTMLElement | null;
-    if (!hamburger || !navLinks || !navBottom) return;
+  const hamburger = document.getElementById('navHamburger');
+  const navLinks = document.getElementById('navLinks');
+  const navBottom = document.querySelector('.nav-bottom') as HTMLElement | null;
 
+  if (hamburger && navLinks && navBottom) {
     /**
      * Alterna el estado abierto/cerrado del menu movil.
      * En movil, .nav-bottom esta oculto por CSS. Al abrir el hamburger
@@ -135,12 +134,12 @@ const langHref = ui.langSwitcherHref[locale];
     /* Cerrar al clicar cualquier enlace del menu */
     navLinks.querySelectorAll('a').forEach((link) => {
       link.addEventListener('click', () => {
-        if (hamburger.classList.contains('open')) {
+        if (hamburger!.classList.contains('open')) {
           toggleMenu();
         }
       });
     });
-  });
+  }
 </script>
 
 <style>

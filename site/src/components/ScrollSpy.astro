@@ -121,9 +121,7 @@ const { sections } = Astro.props;
     updateVisibility();
   }
 
-  /* Ejecutar en carga inicial y en navegacion Astro. */
   initScrollSpy();
-  document.addEventListener('astro:page-load', initScrollSpy);
 </script>
 
 <style>

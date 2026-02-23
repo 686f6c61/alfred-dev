@@ -58,43 +58,41 @@ const { hero, copyHint, copiedHint } = Astro.props;
 
 <!-- Script de copy-to-clipboard -->
 <script>
-  document.addEventListener('astro:page-load', () => {
-    /**
-     * Copia el comando al portapapeles y muestra feedback visual.
-     * Lee los textos de hint desde data attributes para no depender
-     * del idioma en tiempo de build.
-     */
-    document.querySelectorAll<HTMLButtonElement>('.hero-cta').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const cmd = btn.dataset.cmd;
-        const hintCopy = btn.dataset.hintCopy ?? '';
-        const hintCopied = btn.dataset.hintCopied ?? '';
+  /**
+   * Copia el comando al portapapeles y muestra feedback visual.
+   * Lee los textos de hint desde data attributes para no depender
+   * del idioma en tiempo de build.
+   */
+  document.querySelectorAll<HTMLButtonElement>('.hero-cta').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const cmd = btn.dataset.cmd;
+      const hintCopy = btn.dataset.hintCopy ?? '';
+      const hintCopied = btn.dataset.hintCopied ?? '';
 
-        if (!cmd) return;
+      if (!cmd) return;
 
-        try {
-          await navigator.clipboard.writeText(cmd);
-        } catch {
-          /* Fallback para navegadores sin Clipboard API */
-          const textarea = document.createElement('textarea');
-          textarea.value = cmd;
-          textarea.style.position = 'fixed';
-          textarea.style.opacity = '0';
-          document.body.appendChild(textarea);
-          textarea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textarea);
-        }
+      try {
+        await navigator.clipboard.writeText(cmd);
+      } catch {
+        /* Fallback para navegadores sin Clipboard API */
+        const textarea = document.createElement('textarea');
+        textarea.value = cmd;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
 
-        const hint = btn.querySelector('.copy-hint');
-        if (hint) hint.textContent = hintCopied;
-        btn.classList.add('copied');
+      const hint = btn.querySelector('.copy-hint');
+      if (hint) hint.textContent = hintCopied;
+      btn.classList.add('copied');
 
-        setTimeout(() => {
-          if (hint) hint.textContent = hintCopy;
-          btn.classList.remove('copied');
-        }, 2000);
-      });
+      setTimeout(() => {
+        if (hint) hint.textContent = hintCopy;
+        btn.classList.remove('copied');
+      }, 2000);
     });
   });
 </script>
@@ -218,6 +216,11 @@ const { hero, copyHint, copiedHint } = Astro.props;
     .hero-cta {
       font-size: 11px;
       padding: 10px 16px;
+      max-width: 100%;
+    }
+
+    .hero-cta-text {
+      white-space: nowrap;
     }
 
     .hero-cta-label {
