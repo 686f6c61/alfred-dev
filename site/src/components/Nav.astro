@@ -321,10 +321,15 @@ const langHref = ui.langSwitcherHref[locale];
 
   /* ── Responsive 768px ────────────────────────────── */
   @media (max-width: 768px) {
-    /* Fondo opaco cuando el menu esta abierto para que la barra
-       superior no deje ver el contenido de la pagina detras. */
+    /*
+     * Fondo opaco y sin backdrop-filter cuando el menu esta abierto.
+     * backdrop-filter crea un containing block (spec CSS) que atrapa
+     * a .nav-links (position: fixed) dentro del <nav> en vez del
+     * viewport. Desactivarlo permite que el overlay cubra la pantalla.
+     */
     nav.open {
       background: var(--bg-deep);
+      backdrop-filter: none;
     }
 
     .nav-bottom {
