@@ -111,18 +111,22 @@ const langHref = ui.langSwitcherHref[locale];
 
 <!-- Script de hamburger: toggle overlay movil, cierre al clicar enlace -->
 <script>
+  const navEl = document.querySelector('nav');
   const hamburger = document.getElementById('navHamburger');
   const navLinks = document.getElementById('navLinks');
   const navBottom = document.querySelector('.nav-bottom') as HTMLElement | null;
 
-  if (hamburger && navLinks && navBottom) {
+  if (navEl && hamburger && navLinks && navBottom) {
     /**
      * Alterna el estado abierto/cerrado del menu movil.
      * En movil, .nav-bottom esta oculto por CSS. Al abrir el hamburger
      * se muestra .nav-bottom y .nav-links como overlay a pantalla completa.
+     * Tambien se aplica .open al <nav> para que el fondo pase a ser opaco
+     * y no deje ver el contenido de la pagina tras la barra superior.
      */
     function toggleMenu(): void {
       const isOpen = hamburger!.classList.toggle('open');
+      navEl!.classList.toggle('open');
       navBottom!.classList.toggle('open');
       navLinks!.classList.toggle('open');
       hamburger!.setAttribute('aria-expanded', String(isOpen));
@@ -317,6 +321,12 @@ const langHref = ui.langSwitcherHref[locale];
 
   /* ── Responsive 768px ────────────────────────────── */
   @media (max-width: 768px) {
+    /* Fondo opaco cuando el menu esta abierto para que la barra
+       superior no deje ver el contenido de la pagina detras. */
+    nav.open {
+      background: var(--bg-deep);
+    }
+
     .nav-bottom {
       display: none;
     }
