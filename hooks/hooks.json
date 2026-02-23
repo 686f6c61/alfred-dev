@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh && ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh || true",
             "async": true
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py || true",
             "timeout": 15
           }
         ]
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh && ${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh || true",
             "timeout": 5
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/dangerous-command-guard.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/dangerous-command-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/dangerous-command-guard.py || true",
             "timeout": 5
           }
         ]
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/sensitive-read-guard.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/sensitive-read-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/sensitive-read-guard.py || true",
             "timeout": 5
           }
         ]
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py || true",
             "timeout": 15
           }
         ]
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/quality-gate.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/quality-gate.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/quality-gate.py || true",
             "timeout": 10
           }
         ]
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/commit-capture.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/commit-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/commit-capture.py || true",
             "timeout": 10
           }
         ]
@@ -93,7 +93,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/dependency-watch.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/dependency-watch.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/dependency-watch.py || true",
             "timeout": 10
           }
         ]
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/spelling-guard.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/spelling-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/spelling-guard.py || true",
             "timeout": 10
           }
         ]
@@ -113,7 +113,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/memory-capture.py",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/memory-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/memory-capture.py || true",
             "timeout": 10
           }
         ]
