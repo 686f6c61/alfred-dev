@@ -1,0 +1,101 @@
+---
+/**
+ * Seccion completa de agentes de la landing page.
+ *
+ * Renderiza dos bloques diferenciados dentro de la misma seccion:
+ * los agentes de nucleo (siempre activos) y los agentes opcionales
+ * (activables con /alfred config). Cada bloque tiene su propia
+ * cabecera (SectionHeader) y cuadricula de tarjetas (AgentCard).
+ *
+ * La separacion visual entre ambos bloques se consigue con un
+ * margin-top en la cabecera del segundo grupo, y la etiqueta de
+ * opcionales usa un color dorado para diferenciarse del azul
+ * estandar de las secciones principales.
+ *
+ * @example
+ * ```astro
+ * <AgentsSection
+ *   coreAgents={data.coreAgents.agents}
+ *   optionalAgents={data.optionalAgents.agents}
+ *   coreTitle="8 agentes de nucleo"
+ *   coreLabel="El equipo"
+ *   coreDescription="Cada agente tiene un rol definido..."
+ *   optionalTitle="7 agentes opcionales"
+ *   optionalLabel="Ampliables"
+ *   optionalDescription="Roles especializados que activas..."
+ * />
+ * ```
+ */
+import type { Agent } from '@/types';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import AgentCard from '@/components/AgentCard.astro';
+
+interface Props {
+  /** Lista de agentes de nucleo (siempre activos). */
+  coreAgents: Agent[];
+  /** Lista de agentes opcionales (activables por configuracion). */
+  optionalAgents: Agent[];
+  /** Titulo de la seccion de nucleo (ej. "8 agentes de nucleo"). */
+  coreTitle: string;
+  /** Etiqueta de la seccion de nucleo (ej. "El equipo"). */
+  coreLabel: string;
+  /** Descripcion de la seccion de nucleo. */
+  coreDescription: string;
+  /** Titulo de la seccion de opcionales (ej. "7 agentes opcionales"). */
+  optionalTitle: string;
+  /** Etiqueta de la seccion de opcionales (ej. "Ampliables"). */
+  optionalLabel: string;
+  /** Descripcion de la seccion de opcionales. Soporta HTML inline. */
+  optionalDescription: string;
+}
+
+const {
+  coreAgents,
+  optionalAgents,
+  coreTitle,
+  coreLabel,
+  coreDescription,
+  optionalTitle,
+  optionalLabel,
+  optionalDescription,
+} = Astro.props;
+---
+
+<section id="agentes">
+  <div class="container">
+    <!-- Bloque de agentes de nucleo -->
+    <SectionHeader
+      label={coreLabel}
+      title={coreTitle}
+      description={coreDescription}
+    />
+    <div class="agents-grid">
+      {coreAgents.map((agent) => (
+        <AgentCard agent={agent} />
+      ))}
+    </div>
+
+    <!-- Bloque de agentes opcionales -->
+    <SectionHeader
+      label={optionalLabel}
+      labelColor="var(--gold)"
+      title={optionalTitle}
+      description={optionalDescription}
+      marginTop="64px"
+    />
+    <div class="agents-grid">
+      {optionalAgents.map((agent) => (
+        <AgentCard agent={agent} />
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Cuadricula de tarjetas de agente ───────────────── */
+  .agents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+</style>

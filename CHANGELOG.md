@@ -7,6 +7,29 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.2] - 2026-02-23
+
+### Added
+
+- **Composición dinámica de equipo**: sistema de 4 capas (heurística, razonamiento, presentación, ejecución) que sugiere agentes opcionales según la descripción de la tarea. `match_task_keywords()` puntúa 7 agentes con keywords contextuales y combina señales de proyecto, tarea y configuración activa. La selección es efímera (solo para esa sesión) y no modifica la configuración persistente.
+- **Función `run_flow()`**: punto de entrada para flujos con equipo de sesión efímero. Valida la estructura, inyecta el equipo y registra diagnósticos de error en `equipo_sesion_error` para que los consumidores downstream informen al usuario.
+- **Tabla `TASK_KEYWORDS`**: mapa de 7 agentes opcionales con listas de keywords y pesos base para la composición dinámica.
+
+### Fixed
+
+- **Matching por palabra completa**: `match_task_keywords()` usa `\b` word boundary en vez de subcadena, eliminando falsos positivos para keywords cortas ("ui", "ci", "pr", "form", "orm", "bd", "cd", "copy").
+- **Retroalimentación de validación**: `run_flow()` registra el motivo del descarte en `equipo_sesion_error` cuando el equipo no pasa la validación.
+- **Aviso al truncar**: descripciones de tarea mayores de 10 000 caracteres emiten aviso a stderr en vez de truncarse silenciosamente.
+- **Tipos no-str**: `match_task_keywords()` avisa cuando recibe tipos inesperados en vez de convertirlos silenciosamente a cadena vacía.
+
+### Changed
+
+- `_KNOWN_OPTIONAL_AGENTS` derivado de `TASK_KEYWORDS` (fuente única de verdad) en vez de duplicar la lista de agentes.
+- Los 6 skills de comandos (alfred, feature, fix, spike, ship, audit) incluyen instrucciones de composición dinámica con checkboxes para el usuario.
+- Documentación actualizada: `docs/configuration.md` con sección completa de composición dinámica, `docs/architecture.md` y `README.md` con referencias.
+- 326 tests (29 nuevos para composición dinámica y validación de equipo).
+
+
 ## [0.3.1] - 2026-02-23
 
 ### Fixed
@@ -205,6 +228,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.3.2]: https://github.com/686f6c61/alfred-dev/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/686f6c61/alfred-dev/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/686f6c61/alfred-dev/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/686f6c61/alfred-dev/compare/v0.2.2...v0.2.3

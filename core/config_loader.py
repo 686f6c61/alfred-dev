@@ -19,6 +19,7 @@ import os
 import re
 import copy
 import sys
+from typing import Any, Dict, List, Optional, Tuple
 
 # Se intenta importar PyYAML; si no está disponible, se usa el parser básico
 try:
@@ -666,6 +667,74 @@ _FRONTEND_FRAMEWORKS = {
     "solid-js", "qwik", "vue", "react", "angular",
 }
 
+# Palabras clave que vinculan tareas del usuario con agentes opcionales.
+# Cada agente tiene una lista de keywords (se buscan con \b word boundary
+# en la descripción de la tarea) y un peso_base que determina la puntuación
+# mínima cuando hay al menos una coincidencia. Esta tabla es el corazón de
+# la composición dinámica de equipo: permite que Alfred sugiera agentes sin
+# que el usuario tenga que conocerlos de antemano.
+TASK_KEYWORDS: Dict[str, Dict[str, Any]] = {
+    "data-engineer": {
+        "keywords": [
+            "bd", "base de datos", "database", "migracion", "migración",
+            "esquema", "orm", "prisma", "sql", "mysql", "postgres",
+            "postgresql", "mongodb", "redis", "pagos", "pago",
+            "facturacion", "facturación", "stripe", "tabla", "tablas",
+            "modelo de datos", "relacion", "relación",
+        ],
+        "peso_base": 0.6,
+    },
+    "ux-reviewer": {
+        "keywords": [
+            "interfaz", "ui", "ux", "formulario", "form", "accesibilidad",
+            "responsive", "onboarding", "flujo de usuario", "checkout",
+            "navegacion", "navegación", "componente", "componentes",
+            "pantalla", "vista", "layout", "diseño", "experiencia",
+        ],
+        "peso_base": 0.6,
+    },
+    "performance-engineer": {
+        "keywords": [
+            "rendimiento", "lento", "lentitud", "optimizar", "optimización",
+            "cache", "caché", "latencia", "benchmark", "bundle", "profiling",
+            "memoria", "cpu", "carga", "escalabilidad", "throughput",
+        ],
+        "peso_base": 0.7,
+    },
+    "github-manager": {
+        "keywords": [
+            "release", "pr", "pull request", "deploy", "desplegar",
+            "publicar", "tag", "version", "versión", "changelog",
+            "rama", "branch", "merge", "ci", "cd", "pipeline",
+        ],
+        "peso_base": 0.5,
+    },
+    "seo-specialist": {
+        "keywords": [
+            "seo", "meta tags", "lighthouse", "posicionamiento", "sitemap",
+            "json-ld", "schema", "indexacion", "indexación", "crawl",
+            "landing", "organico", "orgánico", "buscador", "google",
+        ],
+        "peso_base": 0.7,
+    },
+    "copywriter": {
+        "keywords": [
+            "textos", "copy", "landing", "cta", "tono", "redaccion",
+            "redacción", "marketing", "contenido", "mensaje", "comunicacion",
+            "comunicación", "email", "newsletter", "blog", "articulo",
+        ],
+        "peso_base": 0.6,
+    },
+    "librarian": {
+        "keywords": [
+            "historial", "decision", "decisión", "por que", "por qué",
+            "antecedente", "contexto historico", "contexto histórico",
+            "arquitectura anterior", "que se decidio", "qué se decidió",
+        ],
+        "peso_base": 0.5,
+    },
+}
+
 
 def _has_git_remote(project_dir):
     """Comprueba si el proyecto tiene un remote Git configurado.
@@ -880,3 +949,137 @@ def suggest_optional_agents(project_dir, current_config=None):
         ))
 
     return suggestions
+
+
+# Límite de seguridad para la descripción de tarea. Las descripciones más
+# largas se truncan con un aviso a stderr para evitar consumo excesivo de
+# memoria durante el matching de keywords.
+_MAX_TASK_DESCRIPTION_LENGTH = 10_000
+
+
+def match_task_keywords(
+    task_description: str,
+    project_suggestions: Optional[List[Tuple[str, str]]] = None,
+    active_config: Optional[Dict[str, bool]] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Puntúa agentes opcionales según la descripción de una tarea del usuario.
+
+    Analiza el texto libre de la tarea buscando keywords asociadas a cada
+    agente opcional. Combina esa señal textual con el contexto del proyecto
+    (sugerencias de ``suggest_optional_agents``) y la configuración activa
+    para producir una puntuación compuesta que determina si el agente debe
+    sugerirse al equipo dinámico.
+
+    El algoritmo de puntuación funciona así:
+        - **peso_base** se suma si al menos una keyword coincide.
+        - **+0.1** adicional si coinciden 2 o más keywords.
+        - **+0.4** si el agente aparece en ``project_suggestions``.
+        - **+0.3** si el agente está activado en ``active_config``.
+        - Un agente se marca como ``sugerido=True`` si su score >= 0.5.
+
+    Args:
+        task_description: texto libre que describe la tarea. Se acepta None
+            (se trata como cadena vacía). Tipos no-str se convierten a cadena
+            vacía con aviso a stderr. Se trunca a 10 000 caracteres con aviso.
+        project_suggestions: lista de tuplas ``(nombre_agente, razon)``
+            generada por ``suggest_optional_agents``. Opcional.
+        active_config: diccionario ``{nombre_agente: bool}`` con los agentes
+            ya activados en la configuración del usuario. Opcional.
+
+    Returns:
+        Diccionario con una entrada por cada agente de ``TASK_KEYWORDS``.
+        Cada valor es un dict con las claves:
+            - ``score`` (float): puntuación compuesta.
+            - ``sugerido`` (bool): True si score >= 0.5.
+            - ``razones`` (list[str]): explicaciones en castellano de cada
+              componente que contribuyó a la puntuación.
+
+    Ejemplo:
+        >>> result = match_task_keywords("Hay que migrar la base de datos a Postgres")
+        >>> result["data-engineer"]["sugerido"]
+        True
+        >>> result["data-engineer"]["score"]
+        0.7
+    """
+    # --- Normalización de la entrada ---
+    # Se acepta None explícitamente (caso de uso documentado). Tipos no-str
+    # se tratan como cadena vacía pero emitiendo un aviso para facilitar
+    # la depuración de bugs en el código llamante.
+    if task_description is None:
+        task_description = ""
+    elif not isinstance(task_description, str):
+        print(
+            f"[Alfred Dev] Aviso: match_task_keywords recibió task_description "
+            f"de tipo {type(task_description).__name__} en lugar de str. "
+            f"Se tratará como cadena vacía.",
+            file=sys.stderr,
+        )
+        task_description = ""
+
+    # Truncar con aviso si supera el límite de seguridad.
+    if len(task_description) > _MAX_TASK_DESCRIPTION_LENGTH:
+        print(
+            f"[Alfred Dev] Aviso: la descripción de la tarea tiene "
+            f"{len(task_description)} caracteres y se truncará a "
+            f"{_MAX_TASK_DESCRIPTION_LENGTH}. Las keywords al final del "
+            f"texto no se analizarán.",
+            file=sys.stderr,
+        )
+        task_description = task_description[:_MAX_TASK_DESCRIPTION_LENGTH]
+
+    task_description = task_description.lower()
+
+    # Se convierten las sugerencias de proyecto a un set para búsqueda O(1)
+    project_agent_names = set()
+    if project_suggestions:
+        project_agent_names = {name for name, _reason in project_suggestions}
+
+    if active_config is None:
+        active_config = {}
+
+    result: Dict[str, Dict[str, Any]] = {}
+
+    for agent_name, agent_data in TASK_KEYWORDS.items():
+        score = 0.0
+        razones: List[str] = []
+
+        # --- Señal textual: keywords encontradas ---
+        keywords = agent_data["keywords"]
+        peso_base = agent_data["peso_base"]
+
+        matched_keywords = [
+            kw for kw in keywords
+            if re.search(r'\b' + re.escape(kw) + r'\b', task_description)
+        ]
+        match_count = len(matched_keywords)
+
+        if match_count >= 1:
+            score += peso_base
+            razones.append(
+                f"Keyword detectada en la tarea: {', '.join(matched_keywords[:3])}"
+            )
+
+        if match_count >= 2:
+            score += 0.1
+            razones.append("Coincidencia múltiple de keywords (+0.1)")
+
+        # --- Señal de proyecto: suggest_optional_agents lo recomienda ---
+        if agent_name in project_agent_names:
+            score += 0.4
+            razones.append("Sugerido por el análisis del proyecto (+0.4)")
+
+        # --- Señal de configuración: ya activado por el usuario ---
+        if active_config.get(agent_name):
+            score += 0.3
+            razones.append("Activado en la configuración del usuario (+0.3)")
+
+        # Se redondea para evitar artefactos de coma flotante (0.6+0.1=0.7000...01)
+        score = round(score, 2)
+
+        result[agent_name] = {
+            "score": score,
+            "sugerido": score >= 0.5,
+            "razones": razones,
+        }
+
+    return result

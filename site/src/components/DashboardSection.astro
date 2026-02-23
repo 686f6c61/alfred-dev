@@ -1,0 +1,187 @@
+---
+/**
+ * Seccion del dashboard GUI de Alfred Dev.
+ *
+ * Muestra una galeria completa del dashboard web: imagen hero a pantalla
+ * completa, cuadricula de 6 vistas con captions descriptivos y 4 tarjetas
+ * de features. Las imagenes apuntan a /screenshots/*.png (directorio public/)
+ * y se cargan con lazy loading para optimizar el rendimiento inicial.
+ *
+ * Todas las imagenes son clicables; la interactividad del lightbox se
+ * gestiona desde el script global (no esta en este componente).
+ *
+ * @example
+ * ```astro
+ * <DashboardSection dashboard={data.dashboard} />
+ * ```
+ */
+import type { DashboardSection as DashboardSectionType } from '@/types';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+
+interface Props {
+  /** Datos completos de la seccion del dashboard. */
+  dashboard: DashboardSectionType;
+}
+
+const { dashboard } = Astro.props;
+---
+
+<section id="dashboard">
+  <div class="container">
+    <SectionHeader
+      label={dashboard.sectionLabel}
+      labelColor="var(--cyan)"
+      title={dashboard.title}
+      description={dashboard.descriptionHtml}
+    />
+
+    <div class="fade-in">
+      <!-- Imagen hero: vista principal a todo el ancho -->
+      <img
+        src={dashboard.heroImage.src}
+        alt={dashboard.heroImage.alt}
+        class="dash-hero-img"
+        width="1470"
+        height="759"
+        loading="lazy"
+      />
+      <p class="dash-hero-caption">{dashboard.heroImage.caption}</p>
+
+      <!-- Cuadricula de vistas del dashboard -->
+      <div class="dash-grid">
+        {dashboard.gridImages.map((img) => (
+          <div class="dash-grid-item">
+            <img
+              src={img.src}
+              alt={img.alt}
+              width="1470"
+              height="759"
+              loading="lazy"
+            />
+            <span>{img.caption}</span>
+          </div>
+        ))}
+      </div>
+
+      <!-- Tarjetas de features del dashboard -->
+      <div class="dash-features">
+        {dashboard.features.map((feat) => (
+          <div class="dash-feat">
+            <strong>{feat.title}</strong>
+            <p>{feat.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Imagen hero del dashboard ──────────────────────── */
+  .dash-hero-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  .dash-hero-caption {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  /* ── Cuadricula de vistas ───────────────────────────── */
+  .dash-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 28px;
+  }
+
+  .dash-grid-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  .dash-grid-item:hover {
+    border-color: var(--cyan);
+    box-shadow: 0 4px 20px rgba(0, 200, 255, 0.08);
+  }
+
+  .dash-grid-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 6px;
+    transition: transform 0.2s;
+  }
+
+  .dash-grid-item:hover img {
+    transform: scale(1.01);
+  }
+
+  .dash-grid-item span {
+    display: block;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 8px;
+    padding-bottom: 2px;
+  }
+
+  /* ── Tarjetas de features ───────────────────────────── */
+  .dash-features {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .dash-feat {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .dash-feat strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 6px;
+  }
+
+  .dash-feat p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ── Responsive ─────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .dash-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dash-features {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .dash-features {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

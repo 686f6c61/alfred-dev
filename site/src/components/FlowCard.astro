@@ -1,0 +1,151 @@
+---
+/**
+ * Tarjeta individual de flujo de trabajo.
+ *
+ * Renderiza un flujo orquestado por Alfred: comando que lo inicia,
+ * subtitulo breve, descripcion, dots indicadores del numero de fases
+ * y etiquetas con el nombre y numero de cada fase.
+ *
+ * Los dots se generan dinamicamente a partir de stages.length, lo que
+ * permite representar flujos de 1 a N fases sin hardcodear el layout.
+ * Las etiquetas de fase muestran el numero ordinal seguido del nombre.
+ *
+ * La clase .fade-in se aplica al contenedor para integrarse con el
+ * observer global de animaciones de scroll.
+ *
+ * @example
+ * ```astro
+ * <FlowCard flow={{
+ *   command: "/alfred feature",
+ *   subtitle: "Ciclo completo o parcial",
+ *   description: "6 fases: producto, arquitectura...",
+ *   stages: ["Producto", "Arquitectura", "Desarrollo", "Calidad + Seguridad", "Documentacion", "Entrega"]
+ * }} />
+ * ```
+ */
+import type { WorkflowFlow } from '@/types';
+
+interface Props {
+  /** Datos del flujo de trabajo a renderizar. */
+  flow: WorkflowFlow;
+}
+
+const { flow } = Astro.props;
+---
+
+<div class="flow-card fade-in">
+  <div>
+    <div class="flow-cmd">{flow.command}</div>
+    <div class="flow-subtitle">{flow.subtitle}</div>
+  </div>
+  <div class="flow-desc">{flow.description}</div>
+  <div class="flow-phases">
+    {flow.stages.map(() => (
+      <div class="flow-dot active" />
+    ))}
+  </div>
+  <div class="flow-stages">
+    {flow.stages.map((stage, i) => (
+      <span class="flow-stage">
+        <span class="flow-stage-num">{i + 1}</span>{stage}
+      </span>
+    ))}
+  </div>
+</div>
+
+<style>
+  /* ── Tarjeta de flujo ───────────────────────────────── */
+  .flow-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 200px 1fr auto;
+    align-items: center;
+    gap: 32px;
+    transition: all 0.25s;
+  }
+
+  .flow-card:hover {
+    border-color: var(--border-light);
+    background: var(--bg-card-hover);
+  }
+
+  /* ── Comando del flujo ──────────────────────────────── */
+  .flow-cmd {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--blue);
+  }
+
+  /* ── Subtitulo bajo el comando ──────────────────────── */
+  .flow-subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* ── Descripcion del flujo ──────────────────────────── */
+  .flow-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ── Dots indicadores de fases ──────────────────────── */
+  .flow-phases {
+    display: flex;
+    gap: 4px;
+  }
+
+  .flow-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-light);
+  }
+
+  .flow-dot.active {
+    background: var(--blue);
+  }
+
+  /* ── Etiquetas de fases ─────────────────────────────── */
+  .flow-stages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+    grid-column: 1 / -1;
+  }
+
+  .flow-stage {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .flow-stage-num {
+    color: var(--blue-dim);
+    margin-right: 4px;
+  }
+
+  /* ── Responsive ─────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .flow-card {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .flow-phases {
+      display: none;
+    }
+  }
+</style>

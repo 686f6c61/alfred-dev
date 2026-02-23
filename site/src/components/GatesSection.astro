@@ -1,0 +1,211 @@
+---
+/**
+ * Seccion de quality gates de Alfred Dev.
+ *
+ * Renderiza las gates (controles de calidad) que Alfred aplica en cada
+ * flujo de trabajo. Se divide en dos grupos: gates de nucleo (siempre
+ * activas) y gates opcionales (activables con /alfred config).
+ *
+ * Las gates de nucleo muestran un indicador rojo (--red) y las
+ * opcionales usan borde dorado (--gold) para reforzar visualmente
+ * que pertenecen a agentes opcionales.
+ *
+ * Si los datos incluyen badges de compliance, se renderizan al final
+ * de la seccion con el nombre del estandar y una descripcion breve.
+ *
+ * @example
+ * ```astro
+ * <GatesSection
+ *   header={data.gates.header}
+ *   coreLabel={data.gates.coreLabel}
+ *   core={data.gates.core}
+ *   optionalLabel={data.gates.optionalLabel}
+ *   optional={data.gates.optional}
+ * />
+ * ```
+ */
+import type { SectionHeader as SectionHeaderType, Gate } from '@/types';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+
+interface Props {
+  /** Datos de la cabecera de la seccion. */
+  header: SectionHeaderType;
+  /** Etiqueta del grupo de gates de nucleo. */
+  coreLabel: string;
+  /** Gates de nucleo (siempre activas). */
+  core: Gate[];
+  /** Etiqueta del grupo de gates opcionales. */
+  optionalLabel: string;
+  /** Gates opcionales (agentes ampliables). */
+  optional: Gate[];
+}
+
+const { header, coreLabel, core, optionalLabel, optional } = Astro.props;
+---
+
+<section id="gates" class="gates-section">
+  <div class="container">
+    <SectionHeader
+      label={header.label}
+      labelColor={header.labelColor}
+      title={header.title}
+      description={header.description}
+    />
+
+    <!-- Gates del nucleo -->
+    <h3 class="gates-group-label fade-in">{coreLabel}</h3>
+    <div class="gates-grid">
+      {core.map((gate) => (
+        <div class="gate-item fade-in">
+          <div class="gate-icon" />
+          <div class="gate-text">{gate.text}</div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Gates de agentes opcionales -->
+    <h3 class="gates-group-label gates-group-label--optional fade-in">{optionalLabel}</h3>
+    <div class="gates-grid">
+      {optional.map((gate) => (
+        <div class="gate-item gate-item--optional fade-in">
+          <div class="gate-icon gate-icon--optional">
+            <div class="gate-icon-dot gate-icon-dot--optional" />
+          </div>
+          <div class="gate-text">{gate.text}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Seccion con fondo diferenciado ─────────────────── */
+  .gates-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Etiqueta de grupo de gates ─────────────────────── */
+  .gates-group-label {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+
+  .gates-group-label--optional {
+    color: var(--gold);
+    margin-top: 40px;
+  }
+
+  /* ── Cuadricula de gates ────────────────────────────── */
+  .gates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  /* ── Tarjeta individual de gate ─────────────────────── */
+  .gate-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* Variante dorada para gates opcionales */
+  .gate-item--optional {
+    border-color: rgba(201, 169, 110, 0.2);
+  }
+
+  /* ── Icono indicador de gate ────────────────────────── */
+  .gate-icon {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--red);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /*
+   * Dot interno del icono: las gates de nucleo lo generan
+   * con ::after (rojo), las opcionales con un div hijo (dorado).
+   */
+  .gate-icon::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--red);
+    border-radius: 50%;
+  }
+
+  .gate-icon--optional {
+    border-color: var(--gold);
+  }
+
+  /* Ocultar el ::after en gates opcionales (se usa el dot hijo) */
+  .gate-icon--optional::after {
+    display: none;
+  }
+
+  .gate-icon-dot--optional {
+    width: 8px;
+    height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+  }
+
+  /* ── Texto de la gate ───────────────────────────────── */
+  .gate-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* ── Badges de compliance ───────────────────────────── */
+  .compliance-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .compliance-badge {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 24px;
+    text-align: center;
+  }
+
+  .compliance-badge :global(strong) {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .compliance-badge :global(span) {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* ── Responsive ─────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .gates-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

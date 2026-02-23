@@ -1,0 +1,393 @@
+---
+/**
+ * Barra de navegacion principal de la landing.
+ *
+ * Renderiza la marca, los enlaces con iconos SVG, un selector de
+ * idioma, el boton hamburger para movil y el boton de version que
+ * abre el modal de changelog. Todos los textos llegan como props
+ * o se resuelven via UI_STRINGS segun el locale activo.
+ *
+ * @example
+ * ```astro
+ * <Nav nav={data.nav} locale="es" />
+ * ```
+ */
+import type { NavLink } from '@/types';
+import type { Locale } from '@/i18n/ui';
+import { ui } from '@/i18n/ui';
+
+interface Props {
+  /** Array de enlaces de navegacion con iconos SVG. */
+  nav: NavLink[];
+  /** Idioma activo de la pagina. */
+  locale: Locale;
+}
+
+const { nav, locale } = Astro.props;
+
+/* Literales de UI resueltos para el locale actual. */
+const navAriaLabel = ui.navAriaLabel[locale];
+const hamburgerAriaLabel = ui.navHamburgerAriaLabel[locale];
+const changelogTitle = ui.changelogBtn[locale];
+const langLabel = ui.langSwitcher[locale];
+const langHref = ui.langSwitcherHref[locale];
+---
+
+<nav aria-label={navAriaLabel}>
+  <!-- Fila superior: marca, controles y hamburger -->
+  <div class="nav-top">
+    <div class="container">
+      <a href="#" class="nav-brand">Alfred <span>Dev</span></a>
+
+      <div class="nav-controls">
+        <a href={langHref} class="nav-lang">
+          <svg
+            class="nav-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+          {langLabel}
+        </a>
+
+        <button
+          class="nav-version"
+          id="changelogBtn"
+          title={changelogTitle}
+        >
+          v0.3.2
+        </button>
+
+        <button
+          class="nav-hamburger"
+          id="navHamburger"
+          aria-label={hamburgerAriaLabel}
+          aria-expanded="false"
+          aria-controls="navLinks"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fila inferior: enlaces de navegacion -->
+  <div class="nav-bottom">
+    <div class="container">
+      <ul class="nav-links" id="navLinks">
+        {nav.map((link) => (
+          <li>
+            <a href={link.href}>
+              <svg
+                class="nav-icon"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <Fragment set:html={link.svgContent} />
+              </svg>
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Script de hamburger: toggle overlay movil, cierre al clicar enlace -->
+<script>
+  const navEl = document.querySelector('nav');
+  const hamburger = document.getElementById('navHamburger');
+  const navLinks = document.getElementById('navLinks');
+  const navBottom = document.querySelector('.nav-bottom') as HTMLElement | null;
+
+  if (navEl && hamburger && navLinks && navBottom) {
+    /**
+     * Alterna el estado abierto/cerrado del menu movil.
+     * En movil, .nav-bottom esta oculto por CSS. Al abrir el hamburger
+     * se muestra .nav-bottom y .nav-links como overlay a pantalla completa.
+     * Tambien se aplica .open al <nav> para que el fondo pase a ser opaco
+     * y no deje ver el contenido de la pagina tras la barra superior.
+     */
+    function toggleMenu(): void {
+      const isOpen = hamburger!.classList.toggle('open');
+      navEl!.classList.toggle('open');
+      navBottom!.classList.toggle('open');
+      navLinks!.classList.toggle('open');
+      hamburger!.setAttribute('aria-expanded', String(isOpen));
+      document.body.style.overflow = isOpen ? 'hidden' : '';
+    }
+
+    hamburger.addEventListener('click', toggleMenu);
+
+    /* Cerrar al clicar cualquier enlace del menu */
+    navLinks.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        if (hamburger!.classList.contains('open')) {
+          toggleMenu();
+        }
+      });
+    });
+  }
+</script>
+
+<style>
+  /* ── Nav principal ─────────────────────────────────── */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(7, 8, 12, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Fila superior: marca + controles ──────────────── */
+  .nav-top .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 44px;
+  }
+
+  .nav-brand {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    white-space: nowrap;
+    z-index: 102;
+  }
+
+  .nav-brand span {
+    color: var(--blue);
+    font-weight: 600;
+  }
+
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 102;
+  }
+
+  .nav-lang {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-lang:hover {
+    color: var(--text-bright);
+  }
+
+  .nav-version {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* ── Fila inferior: enlaces de navegacion ───────────── */
+  .nav-bottom {
+    border-top: none;
+  }
+
+  .nav-bottom .container {
+    display: flex;
+    justify-content: center;
+    height: 36px;
+    align-items: center;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 20px;
+    list-style: none;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+
+  .nav-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+
+  .nav-links a:hover {
+    color: var(--text-bright);
+  }
+
+  .nav-icon {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+
+  .nav-links a:hover .nav-icon,
+  .nav-lang:hover .nav-icon {
+    opacity: 1;
+  }
+
+  /* ── Hamburger ───────────────────────────────────── */
+  .nav-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 12px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .nav-hamburger span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--text-muted);
+    border-radius: 1px;
+    transition: all 0.3s;
+  }
+
+  .nav-hamburger span + span {
+    margin-top: 5px;
+  }
+
+  .nav-hamburger.open span:nth-child(1) {
+    transform: rotate(45deg) translate(3.5px, 3.5px);
+  }
+
+  .nav-hamburger.open span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .nav-hamburger.open span:nth-child(3) {
+    transform: rotate(-45deg) translate(3.5px, -3.5px);
+  }
+
+  /* ── Responsive 1100px ───────────────────────────── */
+  @media (max-width: 1100px) {
+    .nav-links {
+      gap: 14px;
+    }
+
+    .nav-links a {
+      font-size: 10px;
+    }
+
+    .nav-icon {
+      display: none;
+    }
+  }
+
+  /* ── Responsive 768px ────────────────────────────── */
+  @media (max-width: 768px) {
+    /*
+     * Fondo opaco y sin backdrop-filter cuando el menu esta abierto.
+     * backdrop-filter crea un containing block (spec CSS) que atrapa
+     * a .nav-links (position: fixed) dentro del <nav> en vez del
+     * viewport. Desactivarlo permite que el overlay cubra la pantalla.
+     */
+    nav.open {
+      background: var(--bg-deep);
+      backdrop-filter: none;
+    }
+
+    .nav-bottom {
+      display: none;
+    }
+
+    .nav-bottom.open {
+      display: block;
+    }
+
+    .nav-hamburger {
+      display: block;
+    }
+
+    .nav-links {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-deep);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 80px 32px 40px;
+      z-index: 101;
+    }
+
+    .nav-links.open {
+      display: flex;
+    }
+
+    .nav-links li {
+      width: 100%;
+      max-width: 300px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-links li:last-child {
+      border-bottom: none;
+    }
+
+    .nav-links a {
+      font-size: 15px;
+      letter-spacing: 0.05em;
+      padding: 16px 0;
+      width: 100%;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .nav-icon {
+      display: block;
+      width: 18px;
+      height: 18px;
+      opacity: 0.8;
+    }
+  }
+</style>

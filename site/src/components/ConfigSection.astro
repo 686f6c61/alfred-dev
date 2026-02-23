@@ -1,0 +1,221 @@
+---
+/**
+ * Seccion de configuracion por proyecto.
+ *
+ * Muestra una cuadricula de dos columnas con:
+ *
+ * 1. **Bloque YAML** -- ejemplo del fichero alfred-dev.local.md
+ *    con syntax highlighting inline (colores para claves, valores
+ *    booleanos y delimitadores). Se renderiza en un <pre> con
+ *    fuente monoespaciada.
+ *
+ * 2. **Columna explicativa** -- bloques descriptivos apilados
+ *    que explican cada seccion del fichero de configuracion
+ *    (autonomia por fase, agentes opcionales, memoria, personalidad).
+ *
+ * La seccion no tiene fondo alterno (transparente sobre --bg-deep),
+ * rompiendo el ritmo visual para marcar el cierre del bloque
+ * tecnico antes del FAQ.
+ *
+ * @example
+ * ```astro
+ * <ConfigSection config={data.config} />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { ConfigSection as ConfigSectionType } from '@/types';
+
+interface Props {
+  /** Datos completos de la seccion de configuracion. */
+  config: ConfigSectionType;
+}
+
+const { config } = Astro.props;
+
+/**
+ * Transforma el YAML plano en HTML con syntax highlighting inline.
+ *
+ * Aplica colores diferenciados a cada tipo de token:
+ * - Delimitadores (---): --text-dim
+ * - Claves de seccion (autonomia:, agentes_opcionales:): --blue
+ * - Subclaves (producto:, arquitectura:): --text-muted
+ * - Valores booleanos true: --green
+ * - Valores booleanos false: --red
+ * - Valores numericos y de texto: --text (sin cambio)
+ *
+ * Se procesa linea a linea para mantener el whitespace original.
+ */
+function highlightYaml(yaml: string): string {
+  return yaml
+    .split('\n')
+    .map((line) => {
+      // Delimitadores YAML
+      if (line.trim() === '---') {
+        return `<span class="yaml-delimiter">${line}</span>`;
+      }
+      // Claves de seccion (sin indentacion)
+      if (/^[a-z_]+:/.test(line)) {
+        return line.replace(
+          /^([a-z_]+:)(.*)/,
+          '<span class="yaml-key">$1</span>$2'
+        );
+      }
+      // Subclaves con valor booleano true
+      if (/:\s+true\s*$/.test(line)) {
+        return line.replace(
+          /^(\s+)([a-z_-]+:)(\s+)(true)/,
+          '$1<span class="yaml-subkey">$2</span>$3<span class="yaml-true">$4</span>'
+        );
+      }
+      // Subclaves con valor booleano false
+      if (/:\s+false\s*$/.test(line)) {
+        return line.replace(
+          /^(\s+)([a-z_-]+:)(\s+)(false)/,
+          '$1<span class="yaml-subkey">$2</span>$3<span class="yaml-false">$4</span>'
+        );
+      }
+      // Subclaves con cualquier otro valor
+      if (/^\s+[a-z_-]+:/.test(line)) {
+        return line.replace(
+          /^(\s+)([a-z_-]+:)/,
+          '$1<span class="yaml-subkey">$2</span>'
+        );
+      }
+      return line;
+    })
+    .join('\n');
+}
+
+const yamlHtml = highlightYaml(config.yamlExample);
+---
+
+<section id="configuracion" class="config-section">
+  <div class="container">
+    <SectionHeader
+      label={config.sectionLabel}
+      title={config.title}
+      description={config.descriptionHtml}
+    />
+
+    <div class="config-grid fade-in">
+      {/* ── Bloque YAML ──────────────────────────────── */}
+      <div class="config-yaml-container">
+        <div class="config-yaml-label">alfred-dev.local.md</div>
+        <pre class="config-yaml" set:html={yamlHtml} />
+      </div>
+
+      {/* ── Columna explicativa ──────────────────────── */}
+      <div class="config-blocks">
+        {config.blocks.map((block) => (
+          <div class="config-block">
+            <h3 class="config-block-title">{block.title}</h3>
+            <p class="config-block-desc" set:html={block.descriptionHtml} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /*
+   * Seccion de configuracion.
+   * Sin fondo alterno, sobre --bg-deep directamente.
+   */
+
+  /* ── Cuadricula de dos columnas ────────────────────── */
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  /* ── Bloque YAML ───────────────────────────────────── */
+  .config-yaml-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+
+  .config-yaml-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+
+  .config-yaml {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+    margin: 0;
+    white-space: pre;
+  }
+
+  /* Syntax highlighting para el YAML */
+  .config-yaml :global(.yaml-delimiter) {
+    color: var(--text-dim);
+  }
+
+  .config-yaml :global(.yaml-key) {
+    color: var(--blue);
+  }
+
+  .config-yaml :global(.yaml-subkey) {
+    color: var(--text-muted);
+  }
+
+  .config-yaml :global(.yaml-true) {
+    color: var(--green);
+  }
+
+  .config-yaml :global(.yaml-false) {
+    color: var(--red);
+  }
+
+  /* ── Columna explicativa ───────────────────────────── */
+  .config-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .config-block {
+    margin-bottom: 24px;
+  }
+
+  .config-block:last-child {
+    margin-bottom: 0;
+  }
+
+  .config-block-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+
+  .config-block-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  .config-block-desc :global(strong) {
+    color: var(--text-bright);
+  }
+
+  /* ── Responsive 768px ──────────────────────────────── */
+  @media (max-width: 768px) {
+    .config-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+</style>

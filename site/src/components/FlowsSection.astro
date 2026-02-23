@@ -1,0 +1,65 @@
+---
+/**
+ * Seccion de flujos de trabajo de Alfred Dev.
+ *
+ * Muestra la lista de flujos orquestados por Alfred, cada uno con su
+ * comando de invocacion, fases secuenciales y dots indicadores. La
+ * seccion tiene fondo diferenciado (--bg-surface) con bordes superior
+ * e inferior para separarse visualmente del resto del contenido.
+ *
+ * Delega la renderizacion de cada flujo individual al componente
+ * FlowCard, y utiliza SectionHeader para la cabecera estandar.
+ *
+ * @example
+ * ```astro
+ * <FlowsSection
+ *   header={data.workflows.header}
+ *   flows={data.workflows.flows}
+ * />
+ * ```
+ */
+import type { SectionHeader as SectionHeaderType, WorkflowFlow } from '@/types';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import FlowCard from '@/components/FlowCard.astro';
+
+interface Props {
+  /** Datos de la cabecera de la seccion. */
+  header: SectionHeaderType;
+  /** Lista de flujos de trabajo a renderizar. */
+  flows: WorkflowFlow[];
+}
+
+const { header, flows } = Astro.props;
+---
+
+<section id="flujos" class="flows-section">
+  <div class="container">
+    <SectionHeader
+      label={header.label}
+      labelColor={header.labelColor}
+      title={header.title}
+      description={header.description}
+    />
+    <div class="flows-list">
+      {flows.map((flow) => (
+        <FlowCard flow={flow} />
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Seccion con fondo diferenciado ─────────────────── */
+  .flows-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Lista vertical de tarjetas de flujo ────────────── */
+  .flows-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+</style>

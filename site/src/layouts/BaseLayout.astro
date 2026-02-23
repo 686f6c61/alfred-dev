@@ -1,0 +1,115 @@
+---
+/**
+ * Layout base de la landing de Alfred Dev.
+ *
+ * Proporciona la estructura HTML comun a todas las paginas:
+ * head con meta tags SEO, Open Graph, Twitter Card, favicon,
+ * Google Fonts, CSP y cabeceras de seguridad. El body incluye
+ * un slot por defecto para el contenido y un slot con nombre
+ * "head" para inyectar JSON-LD u otros bloques especificos.
+ *
+ * El script global del IntersectionObserver se encarga de
+ * activar las animaciones de scroll (.fade-in -> .visible).
+ */
+import '../styles/global.css';
+
+interface Props {
+  /** Titulo del documento (<title>). */
+  title: string;
+  /** Meta description para motores de busqueda. */
+  description: string;
+  /** URL canonica de la pagina. */
+  canonical: string;
+  /** Idioma principal del documento (es-ES, en-US...). */
+  locale: string;
+  /** Locale para Open Graph (es_ES, en_US...). */
+  ogLocale: string;
+  /** Enlaces hreflang alternativos para SEO multiidioma. */
+  alternates: Array<{ hreflang: string; href: string }>;
+  /** Titulo para Open Graph. */
+  ogTitle: string;
+  /** Descripcion para Open Graph. */
+  ogDescription: string;
+}
+
+const {
+  title,
+  description,
+  canonical,
+  locale,
+  ogLocale,
+  alternates,
+  ogTitle,
+  ogDescription,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang={locale}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  <link rel="canonical" href={canonical}>
+  {alternates.map((alt) => (
+    <link rel="alternate" hreflang={alt.hreflang} href={alt.href}>
+  ))}
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content={ogTitle}>
+  <meta property="og:description" content={ogDescription}>
+  <meta property="og:url" content={canonical}>
+  <meta property="og:site_name" content="Alfred Dev">
+  <meta property="og:locale" content={ogLocale}>
+  <meta property="og:image" content="https://alfred-dev.com/screenshots/dashboard-estado.webp">
+  <meta property="og:image:width" content="1470">
+  <meta property="og:image:height" content="759">
+  <meta property="og:image:type" content="image/webp">
+  <meta property="og:image:alt" content="Dashboard de Alfred Dev mostrando el estado del proyecto">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content={ogTitle}>
+  <meta name="twitter:description" content={ogDescription}>
+  <meta name="twitter:image" content="https://alfred-dev.com/screenshots/dashboard-estado.webp">
+  <meta name="twitter:image:alt" content="Dashboard de Alfred Dev mostrando el estado del proyecto">
+
+  <!-- Favicon (SVG data-URI) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>A</text></svg>">
+
+  <!-- Google Fonts (carga no bloqueante con preload + swap) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
+
+  <!-- Seguridad -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <!-- Slot para JSON-LD y otros bloques especificos del head -->
+  <slot name="head" />
+</head>
+<body>
+  <slot />
+
+  <!-- Observador de scroll para animaciones .fade-in -->
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => {
+            entry.target.classList.add('visible');
+          }, i * 60);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>

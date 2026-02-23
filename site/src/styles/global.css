@@ -1,0 +1,174 @@
+/**
+ * Estilos globales de Alfred Dev.
+ *
+ * Contiene el reset CSS, variables de diseno, utilidades de layout,
+ * estilos de secciones reutilizables, animaciones de scroll y reglas
+ * de accesibilidad. Todo lo que aplica a mas de un componente vive
+ * aqui; el CSS especifico de cada componente va scoped en su fichero
+ * Astro correspondiente.
+ */
+
+/* ── Reset ────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ── Variables de diseno ──────────────────────────── */
+:root {
+  --bg-deep: #07080c;
+  --bg-surface: #0e1017;
+  --bg-card: #14161e;
+  --bg-card-hover: #1a1d28;
+  --border: #1e2130;
+  --border-light: #2a2d3e;
+  --blue: #5b9cf5;
+  --blue-dim: #3d6fbd;
+  --blue-glow: rgba(91, 156, 245, 0.08);
+  --gold: #c9a96e;
+  --gold-dim: #8a7348;
+  --text: #d8dae3;
+  --text-bright: #eef0f7;
+  --text-muted: #8b90a8;
+  --text-dim: #6b7090;
+  --red: #e5564f;
+  --green: #4ec990;
+  --orange: #e8a44a;
+  --purple: #a07ee8;
+  --cyan: #4ec9c9;
+  --white: #c8c8d0;
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* ── Base ─────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Utilidades de layout ─────────────────────────── */
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* ── Enlaces ──────────────────────────────────────── */
+a {
+  color: var(--blue);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--text-bright);
+}
+
+/* ── Secciones ────────────────────────────────────── */
+section {
+  padding: 80px 0;
+}
+
+.section-header {
+  margin-bottom: 48px;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  color: var(--text-bright);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.section-desc {
+  font-size: 15px;
+  color: var(--text-muted);
+  max-width: 600px;
+  line-height: 1.7;
+}
+
+/* ── Animaciones de scroll ────────────────────────── */
+.fade-in {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Accesibilidad ────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 200;
+  background: var(--blue);
+  color: var(--bg-deep);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .fade-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}

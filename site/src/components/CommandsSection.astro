@@ -1,0 +1,134 @@
+---
+/**
+ * Seccion de comandos de la interfaz de Alfred Dev.
+ *
+ * Renderiza la lista completa de comandos disponibles (/alfred,
+ * /alfred feature, /alfred fix...) en formato de tarjetas apiladas
+ * verticalmente. Cada tarjeta muestra el comando en fuente mono
+ * y su descripcion a la derecha, siguiendo el patron visual de
+ * flow-card del HTML original pero con estructura simplificada
+ * (sin fases ni dots).
+ *
+ * Al final de la lista se incluye una nota informativa sobre como
+ * los agentes opcionales se integran automaticamente en los flujos
+ * existentes, sin necesidad de comandos propios.
+ *
+ * @example
+ * ```astro
+ * <CommandsSection
+ *   header={data.commands.header}
+ *   commands={data.commands.list}
+ *   optionalNote={data.commands.optionalNote}
+ * />
+ * ```
+ */
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+import type { SectionHeader as SectionHeaderType, Command } from '@/types';
+
+interface Props {
+  /** Datos del header de la seccion. */
+  header: SectionHeaderType;
+  /** Lista de comandos con texto y descripcion. */
+  commands: Command[];
+  /** Nota HTML sobre la integracion de agentes opcionales en flujos. */
+  optionalNote: string;
+}
+
+const { header, commands, optionalNote } = Astro.props;
+---
+
+<section id="commands">
+  <div class="container">
+    <SectionHeader
+      label={header.label}
+      labelColor={header.labelColor}
+      title={header.title}
+      description={header.description}
+    />
+
+    <div class="commands-list">
+      {commands.map((cmd) => (
+        <div class="command-card fade-in">
+          <div>
+            <div class="command-name">{cmd.command}</div>
+          </div>
+          <div class="command-desc" set:html={cmd.description} />
+        </div>
+      ))}
+    </div>
+
+    {/* Nota sobre agentes opcionales en los flujos */}
+    <div class="optional-note fade-in" set:html={optionalNote} />
+  </div>
+</section>
+
+<style>
+  /* ── Lista vertical de comandos ─────────────────────── */
+  .commands-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /*
+   * Tarjeta de comando: grid de dos columnas con el nombre
+   * a la izquierda (ancho fijo) y la descripcion a la derecha.
+   * Sigue el patron visual de flow-card pero simplificado
+   * (sin tercera columna de fases).
+   */
+  .command-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    align-items: center;
+    gap: 32px;
+    transition: all 0.25s;
+  }
+
+  .command-card:hover {
+    border-color: var(--border-light);
+    background: var(--bg-card-hover);
+  }
+
+  /* ── Nombre del comando en fuente mono ──────────────── */
+  .command-name {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--blue);
+  }
+
+  /* ── Descripcion del comando ────────────────────────── */
+  .command-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /*
+   * Nota informativa al pie de la seccion. Explica que los agentes
+   * opcionales no tienen comandos propios, sino que se integran
+   * automaticamente en los flujos existentes.
+   */
+  .optional-note {
+    margin-top: 32px;
+    background: var(--bg-card);
+    border: 1px solid rgba(201, 169, 110, 0.2);
+    border-radius: 10px;
+    padding: 24px 28px;
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ── Responsive 768px ───────────────────────────────── */
+  @media (max-width: 768px) {
+    .command-card {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+</style>

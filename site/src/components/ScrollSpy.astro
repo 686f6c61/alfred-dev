@@ -1,0 +1,216 @@
+---
+/**
+ * Indicador lateral de progreso de scroll.
+ *
+ * Muestra un rail vertical fijo en el margen izquierdo con puntos
+ * que representan cada seccion de la landing. La seccion activa se
+ * resalta con su nombre visible; la siguiente se muestra en tono
+ * tenue. Solo aparece en pantallas >= 1024px para no interferir
+ * con el contenido en viewports mas estrechos.
+ *
+ * Usa IntersectionObserver para detectar la seccion visible sin
+ * penalizar el rendimiento del scroll.
+ *
+ * @example
+ * ```astro
+ * <ScrollSpy sections={data.nav} />
+ * ```
+ */
+import type { NavLink } from '@/types';
+
+interface Props {
+  /** Enlaces de navegacion con href (#seccion) y label. */
+  sections: NavLink[];
+}
+
+const { sections } = Astro.props;
+---
+
+<aside class="scroll-spy" id="scrollSpy" aria-label="Progreso de lectura" aria-hidden="true">
+  <ul>
+    {sections.map((section, i) => (
+      <li>
+        <a
+          href={section.href}
+          class="spy-dot"
+          data-index={i}
+          data-section={section.href.replace('#', '')}
+          tabindex={-1}
+        >
+          <span class="spy-pip"></span>
+          <span class="spy-label">{section.label}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</aside>
+
+<script>
+  function initScrollSpy(): void {
+    const spy = document.getElementById('scrollSpy');
+    if (!spy) return;
+
+    const dots = spy.querySelectorAll<HTMLAnchorElement>('.spy-dot');
+    if (dots.length === 0) return;
+
+    let activeIndex = -1;
+
+    function setActive(index: number): void {
+      if (index === activeIndex) return;
+      activeIndex = index;
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+        dot.classList.toggle('next', i === index + 1);
+      });
+    }
+
+    function updateVisibility(): void {
+      const scrollY = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight;
+      const viewHeight = window.innerHeight;
+      const nearBottom = scrollY + viewHeight > docHeight - 300;
+      const nearTop = scrollY < 200;
+      const shouldShow = !nearTop && !nearBottom;
+
+      spy!.style.opacity = shouldShow ? '1' : '0';
+      spy!.style.pointerEvents = shouldShow ? 'auto' : 'none';
+      spy!.setAttribute('aria-hidden', String(!shouldShow));
+      dots.forEach((dot) => {
+        dot.tabIndex = shouldShow ? 0 : -1;
+      });
+    }
+
+    const sectionEls: Element[] = [];
+    dots.forEach((dot) => {
+      const id = dot.dataset.section;
+      if (id) {
+        const el = document.getElementById(id);
+        if (el) sectionEls.push(el);
+      }
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = sectionEls.indexOf(entry.target);
+            if (idx !== -1) setActive(idx);
+          }
+        });
+      },
+      { rootMargin: '-20% 0px -60% 0px' },
+    );
+
+    sectionEls.forEach((el) => observer.observe(el));
+
+    let ticking = false;
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            updateVisibility();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      },
+      { passive: true },
+    );
+
+    updateVisibility();
+  }
+
+  initScrollSpy();
+</script>
+
+<style>
+  .scroll-spy {
+    position: fixed;
+    left: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .scroll-spy ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .spy-dot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .spy-pip {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border-light);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .spy-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: transparent;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    max-width: 0;
+    overflow: hidden;
+  }
+
+  /* ── Seccion activa ───────────────────────────────── */
+  .spy-dot.active .spy-pip {
+    width: 9px;
+    height: 9px;
+    background: var(--blue);
+    box-shadow: 0 0 8px rgba(91, 156, 245, 0.4);
+  }
+
+  .spy-dot.active .spy-label {
+    color: var(--text-bright);
+    max-width: 120px;
+  }
+
+  /* ── Siguiente seccion ────────────────────────────── */
+  .spy-dot.next .spy-pip {
+    background: var(--text-dim);
+  }
+
+  .spy-dot.next .spy-label {
+    color: var(--text-dim);
+    max-width: 120px;
+    font-size: 8px;
+  }
+
+  /* ── Hover ────────────────────────────────────────── */
+  .spy-dot:hover .spy-pip {
+    background: var(--blue-dim);
+  }
+
+  .spy-dot:hover .spy-label {
+    color: var(--text-muted);
+    max-width: 120px;
+  }
+
+  /* Solo visible en pantallas anchas donde hay margen. */
+  @media (max-width: 1023px) {
+    .scroll-spy {
+      display: none;
+    }
+  }
+</style>

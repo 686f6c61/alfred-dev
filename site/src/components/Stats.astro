@@ -1,0 +1,76 @@
+---
+/**
+ * Barra de cifras destacadas de la landing.
+ *
+ * Muestra una cuadricula con los numeros clave del plugin
+ * (agentes, skills, flujos, etc.) en formato numero + etiqueta.
+ * Cada elemento usa la clase .fade-in para animar su entrada
+ * cuando entra en el viewport (gestionado por el observer global).
+ *
+ * @example
+ * ```astro
+ * <Stats stats={data.stats} />
+ * ```
+ */
+import type { Stat } from '@/types';
+
+interface Props {
+  /** Array de estadisticas con numero y etiqueta. */
+  stats: Stat[];
+}
+
+const { stats } = Astro.props;
+---
+
+<div class="stats">
+  <div class="container">
+    <div class="stats-grid">
+      {stats.map((stat) => (
+        <div class="fade-in">
+          <div class="stat-number">{stat.number}</div>
+          <div class="stat-label">{stat.label}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ── Stats ────────────────────────────────────────── */
+  .stats {
+    padding: 48px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 24px;
+    text-align: center;
+  }
+
+  .stat-number {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+
+  /* ── Responsive 768px ────────────────────────────── */
+  @media (max-width: 768px) {
+    .stats-grid {
+      gap: 16px;
+    }
+  }
+</style>

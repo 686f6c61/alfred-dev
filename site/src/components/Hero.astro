@@ -1,0 +1,230 @@
+---
+/**
+ * Seccion hero de la landing page.
+ *
+ * Muestra el titulo principal con HTML inline, la linea de plataformas,
+ * el subtitulo descriptivo y dos botones CTA con funcionalidad de
+ * copy-to-clipboard. Los textos dependientes del idioma (hints de copia)
+ * se pasan como props y se inyectan via data-* attributes para que el
+ * script de cliente los consuma sin necesidad de importar modulos i18n.
+ *
+ * @example
+ * ```astro
+ * <Hero
+ *   hero={data.hero}
+ *   copyHint={t('copyHint', locale)}
+ *   copiedHint={t('copiedHint', locale)}
+ * />
+ * ```
+ */
+import type { HeroData } from '@/types';
+
+interface Props {
+  /** Datos del hero: titulo, plataforma, subtitulo y CTAs. */
+  hero: HeroData;
+  /** Texto del hint antes de copiar (ej. "clic para copiar"). */
+  copyHint: string;
+  /** Texto del hint despues de copiar (ej. "copiado"). */
+  copiedHint: string;
+}
+
+const { hero, copyHint, copiedHint } = Astro.props;
+---
+
+<header class="hero">
+  <div class="container">
+    <h1 set:html={hero.titleHtml} />
+
+    <p class="hero-platform" set:html={hero.platformHtml} />
+
+    <p class="hero-subtitle">{hero.subtitle}</p>
+
+    {hero.ctas.map((cta, index) => (
+      <button
+        type="button"
+        class="hero-cta"
+        style={index > 0 ? 'margin-top: 10px;' : undefined}
+        data-cmd={cta.command}
+        data-hint-copy={copyHint}
+        data-hint-copied={copiedHint}
+      >
+        <span class="hero-cta-label">{cta.label}</span>
+        <span class="hero-cta-text">{cta.command}</span>
+        <span class="copy-hint">{copyHint}</span>
+      </button>
+    ))}
+  </div>
+</header>
+
+<!-- Script de copy-to-clipboard -->
+<script>
+  /**
+   * Copia el comando al portapapeles y muestra feedback visual.
+   * Lee los textos de hint desde data attributes para no depender
+   * del idioma en tiempo de build.
+   */
+  document.querySelectorAll<HTMLButtonElement>('.hero-cta').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const cmd = btn.dataset.cmd;
+      const hintCopy = btn.dataset.hintCopy ?? '';
+      const hintCopied = btn.dataset.hintCopied ?? '';
+
+      if (!cmd) return;
+
+      try {
+        await navigator.clipboard.writeText(cmd);
+      } catch {
+        /* Fallback para navegadores sin Clipboard API */
+        const textarea = document.createElement('textarea');
+        textarea.value = cmd;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+
+      const hint = btn.querySelector('.copy-hint');
+      if (hint) hint.textContent = hintCopied;
+      btn.classList.add('copied');
+
+      setTimeout(() => {
+        if (hint) hint.textContent = hintCopy;
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+</script>
+
+<style>
+  /* ── Hero ─────────────────────────────────────────── */
+  .hero {
+    padding: 160px 0 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(91, 156, 245, 0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(44px, 6.5vw, 72px);
+    font-weight: 800;
+    color: var(--text-bright);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 :global(em) {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    color: var(--blue);
+    letter-spacing: -0.01em;
+  }
+
+  .hero-platform {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    letter-spacing: 0.01em;
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--text-muted);
+    max-width: 560px;
+    margin: 0 auto 40px;
+    line-height: 1.7;
+  }
+
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .hero-cta:hover {
+    border-color: var(--blue-dim);
+    background: var(--bg-card-hover);
+  }
+
+  .hero-cta-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hero-cta .copy-hint {
+    color: var(--text-dim);
+    font-size: 11px;
+    flex-shrink: 0;
+    transition: color 0.2s;
+  }
+
+  .hero-cta.copied .copy-hint {
+    color: var(--green);
+  }
+
+  .hero-cta-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Responsive 768px ────────────────────────────── */
+  @media (max-width: 768px) {
+    .hero {
+      padding: 120px 0 60px;
+    }
+
+    .hero-subtitle {
+      font-size: 16px;
+    }
+
+    .hero-cta {
+      font-size: 11px;
+      padding: 10px 16px;
+      max-width: 100%;
+    }
+
+    .hero-cta-text {
+      white-space: nowrap;
+    }
+
+    .hero-cta-label {
+      font-size: 10px;
+    }
+  }
+</style>

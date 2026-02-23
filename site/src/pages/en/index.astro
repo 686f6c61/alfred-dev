@@ -1,0 +1,205 @@
+---
+/**
+ * English landing page for Alfred Dev.
+ *
+ * Assembles all landing components with EN data,
+ * injects structured JSON-LD (SoftwareApplication and FAQPage)
+ * into the head via slots, and defines multilingual SEO metadata
+ * with canonical and hreflang alternates.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import data from '@/i18n/data.en';
+import { t } from '@/i18n/ui';
+import type { Locale } from '@/i18n/ui';
+
+// Componentes de la landing
+import Nav from '@/components/Nav.astro';
+import SkipLink from '@/components/ui/SkipLink.astro';
+import Hero from '@/components/Hero.astro';
+import Stats from '@/components/Stats.astro';
+import AgentsSection from '@/components/AgentsSection.astro';
+import CompositionSection from '@/components/CompositionSection.astro';
+import DashboardSection from '@/components/DashboardSection.astro';
+import FlowsSection from '@/components/FlowsSection.astro';
+import GatesSection from '@/components/GatesSection.astro';
+import SkillsSection from '@/components/SkillsSection.astro';
+import InfraSection from '@/components/InfraSection.astro';
+import CommandsSection from '@/components/CommandsSection.astro';
+import StackSection from '@/components/StackSection.astro';
+import UseCasesSection from '@/components/UseCasesSection.astro';
+import MemorySection from '@/components/MemorySection.astro';
+import InstallSection from '@/components/InstallSection.astro';
+import ConfigSection from '@/components/ConfigSection.astro';
+import FaqSection from '@/components/FaqSection.astro';
+import Footer from '@/components/Footer.astro';
+import ChangelogModal from '@/components/ChangelogModal.astro';
+import Lightbox from '@/components/Lightbox.astro';
+import ScrollSpy from '@/components/ScrollSpy.astro';
+
+const locale: Locale = 'en';
+const canonicalUrl = 'https://alfred-dev.com/en/';
+const alternateUrl = 'https://alfred-dev.com/';
+
+// ── JSON-LD: SoftwareApplication ────────────────────────────────
+const softwareApplicationLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: data.meta.og.siteName,
+  description: data.meta.description,
+  url: data.meta.canonical,
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'macOS, Linux, Windows',
+  inLanguage: 'en-US',
+  softwareVersion: '0.3.2',
+  datePublished: '2025-02-22',
+  screenshot: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'EUR',
+  },
+  author: {
+    '@type': 'Organization',
+    name: data.meta.og.siteName,
+    url: data.footer.githubUrl,
+  },
+});
+
+// ── JSON-LD: FAQPage ────────────────────────────────────────────
+const faqPageLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: data.faq.items.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answerHtml.replace(/<[^>]*>/g, ''),
+    },
+  })),
+});
+---
+
+<BaseLayout
+  title={data.meta.title}
+  description={data.meta.description}
+  canonical={canonicalUrl}
+  locale="en-US"
+  ogLocale={data.meta.locale}
+  alternates={[
+    { hreflang: 'en', href: canonicalUrl },
+    { hreflang: 'es', href: alternateUrl },
+    { hreflang: 'x-default', href: alternateUrl },
+  ]}
+  ogTitle={data.meta.og.title}
+  ogDescription={data.meta.og.description}
+>
+  {/* JSON-LD injected into head via named slot */}
+  <script slot="head" type="application/ld+json" set:html={softwareApplicationLd} />
+  <script slot="head" type="application/ld+json" set:html={faqPageLd} />
+
+  {/* Accessibility skip link */}
+  <SkipLink text={t('skipLink', locale)} />
+
+  {/* Main navigation */}
+  <Nav nav={data.nav} locale={locale} />
+
+  {/* Lateral scroll progress indicator */}
+  <ScrollSpy sections={data.nav} />
+
+  {/* Main content */}
+  <main id="contenido">
+    <Hero
+      hero={data.hero}
+      copyHint={t('copyHint', locale)}
+      copiedHint={t('copiedHint', locale)}
+    />
+
+    <Stats stats={data.stats} />
+
+    <AgentsSection
+      coreAgents={data.coreAgents.agents}
+      optionalAgents={data.optionalAgents.agents}
+      coreTitle={data.coreAgents.header.title}
+      coreLabel={data.coreAgents.header.label}
+      coreDescription={data.coreAgents.header.description!}
+      optionalTitle={data.optionalAgents.header.title}
+      optionalLabel={data.optionalAgents.header.label}
+      optionalDescription={data.optionalAgents.header.description!}
+    />
+
+    <CompositionSection composition={data.composition} />
+
+    <DashboardSection dashboard={data.dashboard} />
+
+    <FlowsSection
+      header={data.workflows.header}
+      flows={data.workflows.flows}
+    />
+
+    <GatesSection
+      header={data.gates.header}
+      coreLabel={data.gates.coreLabel}
+      core={data.gates.core}
+      optionalLabel={data.gates.optionalLabel}
+      optional={data.gates.optional}
+    />
+
+    <SkillsSection
+      header={data.skills.header}
+      domains={data.skills.domains}
+    />
+
+    <InfraSection
+      header={data.infra.header}
+      groups={data.infra.groups}
+    />
+
+    <CommandsSection
+      header={data.commands.header}
+      commands={data.commands.list}
+      optionalNote={data.commands.optionalNote}
+    />
+
+    <StackSection
+      header={data.stacks.header}
+      stacks={data.stacks.list}
+    />
+
+    <UseCasesSection
+      header={data.useCases.header}
+      cases={data.useCases.cases}
+    />
+
+    <MemorySection memory={data.memory} />
+
+    <InstallSection install={data.install} />
+
+    <ConfigSection config={data.config} />
+
+    <FaqSection
+      items={data.faq.items}
+      label={data.faq.header.label}
+    />
+  </main>
+
+  {/* Footer */}
+  <Footer {...data.footer} />
+
+  {/* Changelog modal */}
+  <ChangelogModal
+    versions={data.changelog}
+    ui={{
+      title: t('changelogTitle', locale),
+      close: t('changelogClose', locale),
+      fullLink: t('changelogFullLink', locale),
+    }}
+  />
+
+  {/* Dashboard image lightbox */}
+  <Lightbox
+    closeLabel={t('lightboxClose', locale)}
+    prevLabel={t('lightboxPrev', locale)}
+    nextLabel={t('lightboxNext', locale)}
+  />
+</BaseLayout>
