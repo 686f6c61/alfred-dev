@@ -18,6 +18,7 @@ import SkipLink from '@/components/ui/SkipLink.astro';
 import Hero from '@/components/Hero.astro';
 import Stats from '@/components/Stats.astro';
 import AgentsSection from '@/components/AgentsSection.astro';
+import CompositionSection from '@/components/CompositionSection.astro';
 import DashboardSection from '@/components/DashboardSection.astro';
 import FlowsSection from '@/components/FlowsSection.astro';
 import GatesSection from '@/components/GatesSection.astro';
@@ -49,7 +50,7 @@ const softwareApplicationLd = JSON.stringify({
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'macOS, Linux, Windows',
   inLanguage: 'es-ES',
-  softwareVersion: '0.3.1',
+  softwareVersion: '0.3.2',
   datePublished: '2025-02-22',
   screenshot: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
   offers: {
@@ -126,6 +127,8 @@ const faqPageLd = JSON.stringify({
       optionalLabel={data.optionalAgents.header.label}
       optionalDescription={data.optionalAgents.header.description!}
     />
+
+    <CompositionSection composition={data.composition} />
 
     <DashboardSection dashboard={data.dashboard} />
 

@@ -1,0 +1,867 @@
+---
+/**
+ * Seccion interactiva de composicion dinamica de equipo.
+ *
+ * Muestra una demo visual del flujo completo de composicion dinamica
+ * de Alfred: como analiza una tarea, puntua agentes opcionales y
+ * presenta un selector con checkboxes para que el usuario confirme
+ * o ajuste el equipo antes de arrancar.
+ *
+ * La animacion tiene tres fases:
+ *
+ * 1. Terminal con efecto typing que escribe la descripcion de la tarea
+ *    caracter a caracter y resalta keywords con el color del agente.
+ * 2. Tarjetas de agentes que reaccionan cuando sus keywords aparecen:
+ *    su checkbox se marca, la barra de puntuacion crece y la tarjeta
+ *    se ilumina.
+ * 3. Fase de selector: aparece el titulo "Equipo propuesto" y un
+ *    boton "Confirmar equipo" que replica el flujo real del plugin.
+ *
+ * La animacion se lanza una sola vez al entrar en viewport
+ * (IntersectionObserver). Respeta prefers-reduced-motion mostrando
+ * el estado final directamente sin animacion.
+ *
+ * @example
+ * ```astro
+ * <CompositionSection composition={data.composition} />
+ * ```
+ */
+import type { CompositionSection } from '@/types';
+import SectionHeader from '@/components/ui/SectionHeader.astro';
+
+interface Props {
+  /** Datos completos de la seccion de composicion. */
+  composition: CompositionSection;
+}
+
+const { composition } = Astro.props;
+
+/** Path SVG del icono de check, reutilizado en checkboxes y boton de confirmacion. */
+const CHECK_PATH = 'M3.5 8.5L6.5 11.5L12.5 4.5';
+
+/**
+ * Serializa los datos de agentes y keywords como JSON para que
+ * el script del cliente pueda construir el mapa de activacion
+ * sin depender del DOM.
+ */
+const agentsJson = JSON.stringify(
+  composition.agents.map((a) => ({
+    id: a.id,
+    score: a.score,
+    keywords: a.keywords,
+    color: a.color,
+  }))
+);
+---
+
+<section id="composicion" class="composition-section">
+  <div class="container">
+    <SectionHeader
+      label={composition.header.label}
+      labelColor={composition.header.labelColor}
+      title={composition.header.title}
+      description={composition.header.description}
+    />
+
+    <p class="composition-intro fade-in" set:html={composition.introHtml} />
+
+    <!-- Terminal de la demo -->
+    <div class="composition-demo fade-in">
+      <div class="demo-layout">
+        <!-- Bloque terminal -->
+        <div class="terminal" aria-label="Terminal demo">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot--red"></span>
+            <span class="terminal-dot terminal-dot--yellow"></span>
+            <span class="terminal-dot terminal-dot--green"></span>
+            <span class="terminal-title">terminal</span>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-line">
+              <span class="terminal-prompt">{composition.terminalPrompt}</span>
+            </div>
+            <div class="terminal-line terminal-task">
+              <span
+                class="terminal-text"
+                id="compositionText"
+                data-full-text={composition.terminalText}
+              ></span>
+              <span class="terminal-cursor" id="compositionCursor">|</span>
+            </div>
+          </div>
+
+          <!-- Agentes de nucleo integrados en el terminal -->
+          <div class="terminal-team">
+            <div class="terminal-team-header">
+              <span class="terminal-team-label">{composition.coreAgentsLabel}</span>
+              <span class="terminal-team-status">{composition.coreAgentsActiveLabel}</span>
+            </div>
+            <div class="terminal-team-grid">
+              {composition.coreAgents.map((agent) => (
+                <div class="core-chip" style={`--agent-color: ${agent.color}`}>
+                  <span class="core-dot" aria-hidden="true"></span>
+                  <span class="core-name">{agent.name}</span>
+                  <span class="core-role">{agent.role}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel de agentes con selector -->
+        <div class="agents-panel">
+          <div class="agents-label">{composition.agentsPanelLabel}</div>
+          <div class="agents-grid" id="compositionAgents">
+            {composition.agents.map((agent) => (
+              <div
+                class="agent-card"
+                data-agent-id={agent.id}
+                style={`--agent-color: ${agent.color}`}
+              >
+                <div class="agent-header">
+                  <div class="agent-check-row">
+                    <span class="agent-checkbox" aria-hidden="true">
+                      <svg class="check-icon" viewBox="0 0 16 16" fill="none">
+                        <path d={CHECK_PATH} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                    <span class="agent-name">{agent.name}</span>
+                  </div>
+                  <span class="agent-score" data-target-score={agent.score}>
+                    0%
+                  </span>
+                </div>
+                <div class="agent-bar">
+                  <div class="agent-bar-fill"></div>
+                </div>
+                <div class="agent-status">
+                  {agent.score > 0
+                    ? composition.suggestedLabel
+                    : composition.notSuggestedLabel}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <!-- Fase final: selector con boton de confirmacion -->
+          <div class="selector-footer" id="selectorFooter">
+            <div class="selector-title">{composition.selectorTitle}</div>
+            <span class="selector-confirm" id="selectorConfirm" role="presentation" aria-hidden="true">
+              <svg class="confirm-icon" viewBox="0 0 16 16" fill="none">
+                <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              {composition.confirmLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Datos serializados para el script del cliente -->
+<script
+  id="compositionData"
+  type="application/json"
+  set:html={agentsJson}
+/>
+
+<script>
+  /**
+   * Animacion de la demo de composicion dinamica.
+   *
+   * Tres fases:
+   * 1. Typing: escribe caracter a caracter, resalta keywords, activa agentes.
+   * 2. Scoring: las tarjetas muestran barras y checkboxes se marcan.
+   * 3. Selector: aparece el titulo "Equipo propuesto" y el boton "Confirmar".
+   */
+
+  interface AgentData {
+    id: string;
+    score: number;
+    keywords: string[];
+    color: string;
+  }
+
+  interface KeywordRange {
+    agentId: string;
+    start: number;
+    end: number;
+    color: string;
+  }
+
+  const textEl = document.getElementById('compositionText') as HTMLSpanElement | null;
+  const cursorEl = document.getElementById('compositionCursor') as HTMLSpanElement | null;
+  const dataEl = document.getElementById('compositionData') as HTMLScriptElement | null;
+  const sectionEl = document.getElementById('composicion') as HTMLElement | null;
+  const selectorFooter = document.getElementById('selectorFooter') as HTMLElement | null;
+  const selectorConfirm = document.getElementById('selectorConfirm') as HTMLButtonElement | null;
+
+  if (textEl && cursorEl && dataEl && sectionEl && selectorFooter) {
+    const fullText = textEl.dataset.fullText || '';
+    if (!fullText) {
+      console.warn('[CompositionSection] data-full-text esta vacio. La animacion de typing no mostrara texto.');
+    }
+
+    let agents: AgentData[];
+    try {
+      agents = JSON.parse(dataEl.textContent || '[]');
+    } catch {
+      console.warn('[CompositionSection] Error al parsear datos de agentes, se usa array vacio.');
+      agents = [];
+    }
+
+    /* Construir mapa de rangos de keywords */
+    const ranges: KeywordRange[] = [];
+    const textLower = fullText.toLowerCase();
+    for (const agent of agents) {
+      for (const kw of agent.keywords) {
+        const kwLower = kw.toLowerCase();
+        let searchFrom = 0;
+        let idx: number;
+        while ((idx = textLower.indexOf(kwLower, searchFrom)) !== -1) {
+          ranges.push({
+            agentId: agent.id,
+            start: idx,
+            end: idx + kw.length,
+            color: agent.color,
+          });
+          searchFrom = idx + 1;
+        }
+      }
+    }
+    /* Ordenar por posicion de inicio */
+    ranges.sort((a, b) => a.start - b.start);
+
+    /** Conjunto de agentes ya activados. */
+    const activatedAgents = new Set<string>();
+
+    /**
+     * Renderiza el texto hasta `charIndex` con keywords resaltadas.
+     * Construye nodos de texto y spans sin innerHTML.
+     */
+    function renderText(charIndex: number): void {
+      textEl!.textContent = '';
+      const visibleText = fullText.slice(0, charIndex);
+
+      const completedRanges = ranges.filter((r) => r.end <= charIndex);
+
+      if (completedRanges.length === 0) {
+        textEl!.textContent = visibleText;
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      let lastEnd = 0;
+
+      for (const range of completedRanges) {
+        if (range.start < lastEnd) continue;
+
+        if (range.start > lastEnd) {
+          fragment.appendChild(
+            document.createTextNode(fullText.slice(lastEnd, range.start))
+          );
+        }
+
+        const span = document.createElement('span');
+        span.className = 'keyword-highlight';
+        span.style.setProperty('--kw-color', range.color);
+        span.textContent = fullText.slice(range.start, range.end);
+        fragment.appendChild(span);
+
+        lastEnd = range.end;
+      }
+
+      if (lastEnd < charIndex) {
+        fragment.appendChild(
+          document.createTextNode(fullText.slice(lastEnd, charIndex))
+        );
+      }
+
+      textEl!.appendChild(fragment);
+    }
+
+    /**
+     * Activa un agente: marca el checkbox, anima la barra y cambia el estilo.
+     */
+    function activateAgent(agentId: string): void {
+      if (activatedAgents.has(agentId)) return;
+      activatedAgents.add(agentId);
+
+      const card = document.querySelector(
+        `[data-agent-id="${CSS.escape(agentId)}"]`
+      ) as HTMLElement | null;
+      if (!card) return;
+
+      const agent = agents.find((a) => a.id === agentId);
+      if (!agent || agent.score === 0) return;
+
+      card.classList.add('active');
+
+      /* Animar barra y porcentaje */
+      const barFill = card.querySelector('.agent-bar-fill') as HTMLElement | null;
+      const scoreEl = card.querySelector('.agent-score') as HTMLElement | null;
+      if (barFill) {
+        barFill.style.width = `${agent.score * 100}%`;
+        barFill.style.background = agent.color;
+      }
+      if (scoreEl) {
+        animateScore(scoreEl, agent.score);
+      }
+    }
+
+    /**
+     * Anima el porcentaje de puntuacion de 0% a targetScore%.
+     */
+    function animateScore(el: HTMLElement, targetScore: number): void {
+      const target = Math.round(targetScore * 100);
+      let current = 0;
+      const step = Math.max(1, Math.floor(target / 20));
+      const interval = setInterval(() => {
+        current = Math.min(current + step, target);
+        el.textContent = `${current}%`;
+        if (current >= target) clearInterval(interval);
+      }, 30);
+    }
+
+    /**
+     * Muestra la fase de selector: titulo y boton de confirmacion.
+     */
+    function showSelector(): void {
+      selectorFooter!.classList.add('visible');
+
+      /* Efecto de pulsacion en el boton tras un breve retardo */
+      if (selectorConfirm) {
+        setTimeout(() => {
+          selectorConfirm.classList.add('pulse');
+        }, 600);
+      }
+    }
+
+    /**
+     * Bucle principal de la animacion de escritura.
+     * Escribe un caracter cada ~30ms y comprueba activaciones.
+     */
+    function startTyping(): void {
+      let charIndex = 0;
+      const speed = 30;
+
+      function typeNext(): void {
+        if (charIndex > fullText.length) {
+          cursorEl!.classList.add('blink');
+          /* Mostrar selector tras completar el typing */
+          setTimeout(showSelector, 500);
+          return;
+        }
+
+        renderText(charIndex);
+
+        /* Comprobar si completamos alguna keyword */
+        for (const range of ranges) {
+          if (range.end === charIndex) {
+            activateAgent(range.agentId);
+          }
+        }
+
+        charIndex++;
+        setTimeout(typeNext, speed);
+      }
+
+      typeNext();
+    }
+
+    /**
+     * Muestra el estado final sin animacion (prefers-reduced-motion).
+     */
+    function showFinalState(): void {
+      renderText(fullText.length);
+      cursorEl!.classList.add('blink');
+
+      for (const agent of agents) {
+        if (agent.score > 0) {
+          activateAgent(agent.id);
+        }
+      }
+
+      showSelector();
+    }
+
+    /* Detectar preferencia de movimiento reducido */
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+
+    /* Lanzar animacion al entrar en viewport */
+    let hasPlayed = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && !hasPlayed) {
+            hasPlayed = true;
+            observer.disconnect();
+
+            if (prefersReducedMotion) {
+              showFinalState();
+            } else {
+              startTyping();
+            }
+          }
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(sectionEl);
+  } else {
+    console.warn(
+      '[CompositionSection] Elementos DOM no encontrados. La animacion no se ejecutara.',
+      { textEl: !!textEl, cursorEl: !!cursorEl, dataEl: !!dataEl, sectionEl: !!sectionEl, selectorFooter: !!selectorFooter }
+    );
+  }
+</script>
+
+<style>
+  /* ── Seccion ────────────────────────────────────── */
+  .composition-section {
+    padding: 80px 0 40px;
+  }
+
+  .composition-intro {
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.7;
+    max-width: 720px;
+    margin-bottom: 40px;
+  }
+
+  /* ── Layout de la demo ──────────────────────────── */
+  .composition-demo {
+    margin-top: 8px;
+  }
+
+  .demo-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* ── Terminal ───────────────────────────────────── */
+  .terminal {
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-family: var(--font-mono);
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    background: #12141c;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .terminal-dot--red { background: #e5564f; }
+  .terminal-dot--yellow { background: #e8a44a; }
+  .terminal-dot--green { background: #4ec990; }
+
+  .terminal-title {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+
+  .terminal-body {
+    padding: 28px 24px;
+    min-height: 160px;
+  }
+
+  .terminal-line {
+    line-height: 1.9;
+  }
+
+  .terminal-prompt {
+    color: var(--green);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .terminal-task {
+    margin-top: 8px;
+  }
+
+  .terminal-text {
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.9;
+    word-break: break-word;
+  }
+
+  .terminal-cursor {
+    color: var(--blue);
+    font-weight: 700;
+    font-size: 16px;
+    opacity: 1;
+  }
+
+  .terminal-cursor.blink {
+    animation: cursorBlink 1s step-end infinite;
+  }
+
+  @keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ── Keywords resaltadas ────────────────────────── */
+  :global(.keyword-highlight) {
+    color: var(--kw-color, var(--blue));
+    font-weight: 600;
+    border-bottom: 1px solid var(--kw-color, var(--blue));
+    padding-bottom: 1px;
+    transition: color 0.3s, border-color 0.3s;
+  }
+
+  /* ── Panel de agentes ───────────────────────────── */
+  .agents-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .agents-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .agents-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ── Tarjeta de agente ──────────────────────────── */
+  .agent-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: border-color 0.4s, box-shadow 0.4s;
+  }
+
+  .agent-card.active {
+    border-color: var(--agent-color);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.3), inset 0 0 0 1px var(--agent-color);
+  }
+
+  .agent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  /* ── Checkbox del agente ─────────────────────────── */
+  .agent-check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .agent-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    transition: background 0.3s, border-color 0.3s;
+    flex-shrink: 0;
+  }
+
+  .check-icon {
+    width: 12px;
+    height: 12px;
+    color: transparent;
+    transition: color 0.3s;
+  }
+
+  .agent-card.active .agent-checkbox {
+    background: var(--agent-color);
+    border-color: var(--agent-color);
+  }
+
+  .agent-card.active .check-icon {
+    color: #fff;
+  }
+
+  .agent-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: -0.01em;
+  }
+
+  .agent-score {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* ── Barra de puntuacion ────────────────────────── */
+  .agent-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .agent-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* ── Estado de sugerencia ───────────────────────── */
+  .agent-status {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+
+  .agent-card.active .agent-name,
+  .agent-card.active .agent-score,
+  .agent-card.active .agent-status {
+    color: var(--agent-color);
+  }
+
+  /* ── Selector footer (fase 3) ───────────────────── */
+  .selector-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.5s, transform 0.5s;
+    pointer-events: none;
+  }
+
+  .selector-footer.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .selector-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .selector-confirm {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--green);
+    border-radius: 5px;
+    color: var(--green);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: default;
+    transition: box-shadow 0.4s, background 0.4s;
+  }
+
+  .selector-confirm.pulse {
+    box-shadow: 0 0 12px rgba(78, 201, 144, 0.25);
+    background: rgba(78, 201, 144, 0.08);
+  }
+
+  .confirm-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* ── Agentes de nucleo dentro del terminal ────────── */
+  .terminal-team {
+    padding: 12px 20px 14px;
+    border-top: 1px solid var(--border);
+    background: #0f111a;
+  }
+
+  .terminal-team-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .terminal-team-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .terminal-team-status {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--green);
+  }
+
+  .terminal-team-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+
+  .core-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    border-left: 2px solid var(--agent-color);
+  }
+
+  .core-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--agent-color);
+    flex-shrink: 0;
+  }
+
+  .core-name {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+
+  .core-role {
+    font-size: 8px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    margin-left: auto;
+  }
+
+  /* ── Responsive 1100px ──────────────────────────── */
+  @media (max-width: 1100px) {
+    .demo-layout {
+      grid-template-columns: 1fr 260px;
+      gap: 14px;
+    }
+
+    .terminal-team-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .core-role {
+      display: none;
+    }
+  }
+
+  /* ── Responsive 768px ───────────────────────────── */
+  @media (max-width: 768px) {
+    .composition-section {
+      padding: 60px 0 32px;
+    }
+
+    .demo-layout {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .terminal-body {
+      padding: 20px 16px;
+      min-height: 120px;
+    }
+
+    .terminal-prompt,
+    .terminal-text {
+      font-size: 14px;
+    }
+
+    .terminal-team {
+      padding: 10px 16px 12px;
+    }
+
+    .terminal-team-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .core-role {
+      display: block;
+    }
+
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+  }
+
+  /* ── Responsive 480px ───────────────────────────── */
+  @media (max-width: 480px) {
+    .terminal-team-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .core-role {
+      display: none;
+    }
+
+    .agents-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .terminal-body {
+      padding: 16px 12px;
+    }
+
+    .terminal-prompt,
+    .terminal-text {
+      font-size: 13px;
+    }
+  }
+</style>

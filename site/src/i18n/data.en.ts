@@ -284,6 +284,90 @@ const data: PageData = {
   },
 
   // ----------------------------------------------------------------
+  // Dynamic team composition
+  // ----------------------------------------------------------------
+
+  composition: {
+    header: {
+      label: 'Dynamic composition',
+      labelColor: 'var(--gold)',
+      title: 'The team you need, when you need it',
+      description: 'Alfred analyzes your task in real time and suggests the most relevant optional agents. No manual configuration: describe what you want to do and the system proposes the ideal team.',
+    },
+    introHtml: 'When you run <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred feature</code> with a task description, the composition engine extracts relevant keywords and scores each optional agent based on its affinity with the work to be done. Then it presents a selector so you can confirm or adjust the team before starting.',
+    terminalPrompt: '$ /alfred feature',
+    terminalText: 'I need to migrate the database from SQLite to PostgreSQL, check previous decisions about the data schema to avoid repeating mistakes, completely redesign the checkout interface with accessibility testing, write all the launch landing page copy and optimize load performance on mobile devices',
+    coreAgentsLabel: 'Core team',
+    coreAgentsActiveLabel: 'Always active',
+    coreAgents: [
+      { id: 'alfred', name: 'Alfred', color: '#e8a44a', role: 'Orchestrator' },
+      { id: 'product-owner', name: 'Product Owner', color: '#5b9cf5', role: 'Product' },
+      { id: 'architect', name: 'Architect', color: '#a07ee8', role: 'Architecture' },
+      { id: 'senior-dev', name: 'Senior Dev', color: '#4ec990', role: 'Development' },
+      { id: 'security-officer', name: 'Security Officer', color: '#e5564f', role: 'Security' },
+      { id: 'qa-engineer', name: 'QA Engineer', color: '#41b9c3', role: 'Quality' },
+      { id: 'tech-writer', name: 'Tech Writer', color: '#e89a4a', role: 'Documentation' },
+      { id: 'devops-engineer', name: 'DevOps Engineer', color: '#6ec4e8', role: 'Delivery' },
+    ],
+    agentsPanelLabel: 'Optional agents',
+    suggestedLabel: 'Suggested',
+    notSuggestedLabel: 'Not needed',
+    selectorTitle: 'Proposed team',
+    confirmLabel: 'Confirm team',
+    agents: [
+      {
+        id: 'data-engineer',
+        name: 'Data Engineer',
+        color: '#5b9cf5',
+        score: 0.85,
+        keywords: ['database', 'PostgreSQL'],
+      },
+      {
+        id: 'ux-reviewer',
+        name: 'UX Reviewer',
+        color: '#a07ee8',
+        score: 0.75,
+        keywords: ['interface', 'redesign'],
+      },
+      {
+        id: 'performance-engineer',
+        name: 'Performance Engineer',
+        color: '#4ec990',
+        score: 0.80,
+        keywords: ['performance', 'optimize'],
+      },
+      {
+        id: 'copywriter',
+        name: 'Copywriter',
+        color: '#e8a44a',
+        score: 0.70,
+        keywords: ['copy', 'landing'],
+      },
+      {
+        id: 'librarian',
+        name: 'Librarian',
+        color: '#c9a96e',
+        score: 0.65,
+        keywords: ['previous decisions', 'schema'],
+      },
+      {
+        id: 'github-manager',
+        name: 'GitHub Manager',
+        color: '#8b90a8',
+        score: 0.0,
+        keywords: [],
+      },
+      {
+        id: 'seo-specialist',
+        name: 'SEO Specialist',
+        color: '#8b90a8',
+        score: 0.0,
+        keywords: [],
+      },
+    ],
+  },
+
+  // ----------------------------------------------------------------
   // Dashboard
   // ----------------------------------------------------------------
 
@@ -673,9 +757,7 @@ const data: PageData = {
         description: 'Full help for all available commands.',
       },
     ],
-    optionalNote: {
-      html: '<strong style="color: var(--gold);">Optional agents in workflows:</strong> the 7 optional agents don\'t have their own commands. They are activated with <strong style="color: var(--blue);">/alfred config</strong> and from then on integrate automatically into existing workflows. For example, if you activate the <em>data-engineer</em>, it will participate in the architecture phase of <strong style="color: var(--blue);">/alfred feature</strong>; if you activate the <em>seo-specialist</em>, it will intervene in the quality phase of <strong style="color: var(--blue);">/alfred ship</strong>; if you activate <em>The Librarian</em>, Alfred will consult the decision history before each workflow. Alfred decides when to invoke each agent based on the workflow context.',
-    },
+    optionalNote: '<strong style="color: var(--gold);">Optional agents in workflows:</strong> the 7 optional agents don\'t have their own commands. They are activated with <strong style="color: var(--blue);">/alfred config</strong> and from then on integrate automatically into existing workflows. For example, if you activate the <em>data-engineer</em>, it will participate in the architecture phase of <strong style="color: var(--blue);">/alfred feature</strong>; if you activate the <em>seo-specialist</em>, it will intervene in the quality phase of <strong style="color: var(--blue);">/alfred ship</strong>; if you activate <em>The Librarian</em>, Alfred will consult the decision history before each workflow. Alfred decides when to invoke each agent based on the workflow context.',
   },
 
   // ----------------------------------------------------------------
@@ -1169,6 +1251,23 @@ personality:
 
   changelog: [
     {
+      version: '0.3.2',
+      date: '2026-02-23',
+      added: [
+        '<strong>Dynamic team composition</strong> -- 4-layer system (heuristic, reasoning, presentation, execution) that suggests optional agents based on the task description. The selection is ephemeral and does not modify persistent configuration.',
+        '<strong>run_flow() function</strong> -- entry point for flows with ephemeral session team. Validates structure, injects team and records error diagnostics.',
+        '<strong>TASK_KEYWORDS table</strong> -- map of 7 optional agents with contextual keywords and base weights for dynamic composition.',
+      ],
+      fixed: [
+        '<strong>Whole-word matching</strong> -- <code>match_task_keywords()</code> uses word boundaries instead of substrings, eliminating false positives for short keywords.',
+        '<strong>Validation feedback</strong> -- the reason for team rejection is recorded in the session for downstream diagnostics.',
+        '<strong>Truncation warning</strong> -- task descriptions longer than 10,000 characters emit a warning instead of being silently truncated.',
+      ],
+      changed: [
+        '<code>_KNOWN_OPTIONAL_AGENTS</code> derived from <code>TASK_KEYWORDS</code> (single source of truth). 6 command skills updated. 326 tests.',
+      ],
+    },
+    {
       version: '0.3.1',
       date: '2026-02-23',
       fixed: [
@@ -1315,7 +1414,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.1',
+    version: 'v0.3.2',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

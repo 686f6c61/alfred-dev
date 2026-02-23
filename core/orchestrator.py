@@ -27,6 +27,8 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from core.config_loader import TASK_KEYWORDS
+
 
 # --- Constantes de tipos de gate -------------------------------------------
 # Se extraen como constantes para evitar la duplicación de literales
@@ -42,6 +44,13 @@ _KNOWN_GATE_TYPES = {
     GATE_LIBRE, GATE_USUARIO, GATE_AUTOMATICO,
     GATE_USUARIO_SEGURIDAD, GATE_AUTOMATICO_SEGURIDAD,
 }
+
+# --- Agentes opcionales conocidos -------------------------------------------
+# Derivado de TASK_KEYWORDS (fuente única de verdad) para evitar que añadir
+# un nuevo agente en config_loader obligue a actualizar también este fichero.
+# Se usa para validar la estructura del equipo de sesión.
+
+_KNOWN_OPTIONAL_AGENTS = frozenset(TASK_KEYWORDS.keys())
 
 # --- Definición de flujos ---------------------------------------------------
 # Cada flujo describe una secuencia de fases que el orquestador recorre.
@@ -344,6 +353,202 @@ def get_effective_agents(
             paralelo.append(agent_name)
 
     return {"paralelo": paralelo, "secuencial": secuencial}
+
+
+def _validate_equipo_sesion(equipo_sesion: Any) -> bool:
+    """Valida la estructura del equipo de sesión generado por composición dinámica.
+
+    Comprueba que el diccionario tenga las claves esperadas en cada nivel y que
+    los valores sean del tipo correcto. Si algo falla, imprime un aviso
+    descriptivo a stderr y devuelve False. Esto permite que el orquestador
+    descarte equipos mal formados sin romper el flujo.
+
+    Las reglas de validación por nivel son:
+
+        - **Primer nivel**: exige exactamente las claves ``"opcionales_activos"``,
+          ``"infra"`` y ``"fuente"``. Claves extra o ausentes provocan rechazo.
+        - **``opcionales_activos``**: exige como mínimo las claves de
+          ``_KNOWN_OPTIONAL_AGENTS`` (derivadas de ``TASK_KEYWORDS``). Acepta
+          claves extra con aviso a stderr (tolerancia ante extensiones futuras),
+          pero no las valida. Todos los valores deben ser ``bool``.
+        - **``infra``**: exige exactamente ``"memoria"`` y ``"gui"``, ambos ``bool``.
+        - **``fuente``**: debe ser la cadena ``"composicion_dinamica"``.
+
+    Args:
+        equipo_sesion: valor a validar. Se espera un dict con las claves
+            ``"opcionales_activos"``, ``"infra"`` y ``"fuente"``.
+
+    Returns:
+        True si la estructura es válida, False en caso contrario.
+
+    Ejemplo:
+        >>> _validate_equipo_sesion({"opcionales_activos": {...}, "infra": {...}, "fuente": "composicion_dinamica"})
+        True
+    """
+    # --- 1. Debe ser un dict ---
+    if not isinstance(equipo_sesion, dict):
+        print(
+            "[Alfred Dev] Aviso: equipo_sesion no es un diccionario.",
+            file=sys.stderr,
+        )
+        return False
+
+    # --- 2. Claves de primer nivel ---
+    expected_top_keys = {"opcionales_activos", "infra", "fuente"}
+    if set(equipo_sesion.keys()) != expected_top_keys:
+        print(
+            f"[Alfred Dev] Aviso: equipo_sesion tiene claves inesperadas. "
+            f"Esperadas: {sorted(expected_top_keys)}, "
+            f"recibidas: {sorted(equipo_sesion.keys())}.",
+            file=sys.stderr,
+        )
+        return False
+
+    # --- 3. opcionales_activos: dict con al menos las claves conocidas, valores bool ---
+    opcionales = equipo_sesion["opcionales_activos"]
+    if not isinstance(opcionales, dict):
+        print(
+            "[Alfred Dev] Aviso: opcionales_activos no es un diccionario.",
+            file=sys.stderr,
+        )
+        return False
+
+    # Las claves conocidas deben estar presentes. Claves extra se aceptan
+    # con aviso (tolerancia ante extensiones futuras).
+    missing = _KNOWN_OPTIONAL_AGENTS - set(opcionales.keys())
+    if missing:
+        print(
+            f"[Alfred Dev] Aviso: opcionales_activos no incluye los agentes "
+            f"requeridos: {sorted(missing)}.",
+            file=sys.stderr,
+        )
+        return False
+
+    extra = set(opcionales.keys()) - _KNOWN_OPTIONAL_AGENTS
+    if extra:
+        print(
+            f"[Alfred Dev] Aviso: opcionales_activos incluye agentes "
+            f"desconocidos que se ignorarán: {sorted(extra)}.",
+            file=sys.stderr,
+        )
+
+    for agent_name, value in opcionales.items():
+        if not isinstance(value, bool):
+            print(
+                f"[Alfred Dev] Aviso: opcionales_activos['{agent_name}'] no es bool "
+                f"(tipo: {type(value).__name__}, valor: {value!r}).",
+                file=sys.stderr,
+            )
+            return False
+
+    # --- 4. infra: dict con exactamente "memoria" y "gui", valores bool ---
+    infra = equipo_sesion["infra"]
+    if not isinstance(infra, dict):
+        print(
+            "[Alfred Dev] Aviso: infra no es un diccionario.",
+            file=sys.stderr,
+        )
+        return False
+
+    expected_infra_keys = {"memoria", "gui"}
+    if set(infra.keys()) != expected_infra_keys:
+        print(
+            f"[Alfred Dev] Aviso: infra tiene claves inesperadas. "
+            f"Esperadas: {sorted(expected_infra_keys)}, "
+            f"recibidas: {sorted(infra.keys())}.",
+            file=sys.stderr,
+        )
+        return False
+
+    for infra_key, value in infra.items():
+        if not isinstance(value, bool):
+            print(
+                f"[Alfred Dev] Aviso: infra['{infra_key}'] no es bool "
+                f"(tipo: {type(value).__name__}, valor: {value!r}).",
+                file=sys.stderr,
+            )
+            return False
+
+    # --- 5. fuente: debe ser el string "composicion_dinamica" ---
+    if equipo_sesion["fuente"] != "composicion_dinamica":
+        print(
+            f"[Alfred Dev] Aviso: fuente debe ser 'composicion_dinamica', "
+            f"recibido: {equipo_sesion['fuente']!r}.",
+            file=sys.stderr,
+        )
+        return False
+
+    return True
+
+
+def run_flow(
+    command: str,
+    description: str,
+    equipo_sesion: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Crea una sesión de flujo con composición dinámica de equipo opcional.
+
+    Combina la creación de sesión estándar con la inyección del equipo de
+    sesión generado por la composición dinámica. Si el equipo proporcionado
+    no pasa la validación, se descarta con aviso a stderr y se registra el
+    motivo en ``session["equipo_sesion_error"]`` para que los consumidores
+    downstream puedan informar al usuario.
+
+    Este es el punto de entrada principal para iniciar un flujo cuando se
+    dispone de información sobre qué agentes opcionales deben participar.
+
+    Args:
+        command: identificador del flujo (feature, fix, spike, ship, audit).
+        description: descripción en lenguaje natural de la tarea.
+        equipo_sesion: diccionario con la composición del equipo generada
+            por el módulo de composición dinámica. Si es None, la sesión
+            se crea sin equipo. Si es inválido, se descarta con aviso y
+            se registra el motivo en "equipo_sesion_error".
+
+    Returns:
+        Diccionario con el estado de la sesión, incluyendo las claves:
+        - "equipo_sesion" (dict válido o None).
+        - "equipo_sesion_error" (str o None): motivo del descarte.
+
+    Raises:
+        ValueError: si el comando no corresponde a ningún flujo definido.
+
+    Ejemplo:
+        >>> session = run_flow("feature", "Login con OAuth", equipo_sesion={...})
+        >>> session["equipo_sesion"]["opcionales_activos"]["github-manager"]
+        True
+    """
+    # --- 1. Validar que el comando existe ---
+    if command not in FLOWS:
+        raise ValueError(
+            f"Flujo '{command}' no reconocido. "
+            f"Flujos disponibles: {', '.join(FLOWS.keys())}"
+        )
+
+    # --- 2. Validar equipo_sesion si se proporcionó ---
+    equipo_error = None
+    if equipo_sesion is not None:
+        if not _validate_equipo_sesion(equipo_sesion):
+            print(
+                "[Alfred Dev] Error: el equipo de sesión no pasó la validación. "
+                "La sesión se creará sin agentes opcionales. Revisa la estructura "
+                "del diccionario equipo_sesion.",
+                file=sys.stderr,
+            )
+            equipo_error = (
+                "El equipo de sesión proporcionado no pasó la validación "
+                "y fue descartado. La sesión se ejecutará sin agentes opcionales."
+            )
+            equipo_sesion = None
+
+    # --- 3. Crear sesión base ---
+    session = create_session(command, description)
+
+    # --- 4. Inyectar equipo_sesion y diagnóstico ---
+    session["equipo_sesion"] = equipo_sesion
+    session["equipo_sesion_error"] = equipo_error
+
+    return session
 
 
 def create_session(command: str, description: str) -> Dict[str, Any]:

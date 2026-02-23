@@ -23,7 +23,7 @@
  * ```
  */
 import SectionHeader from '@/components/ui/SectionHeader.astro';
-import type { SectionHeader as SectionHeaderType, Command, OptionalAgentsNote } from '@/types';
+import type { SectionHeader as SectionHeaderType, Command } from '@/types';
 
 interface Props {
   /** Datos del header de la seccion. */
@@ -31,7 +31,7 @@ interface Props {
   /** Lista de comandos con texto y descripcion. */
   commands: Command[];
   /** Nota HTML sobre la integracion de agentes opcionales en flujos. */
-  optionalNote: OptionalAgentsNote;
+  optionalNote: string;
 }
 
 const { header, commands, optionalNote } = Astro.props;
@@ -58,7 +58,7 @@ const { header, commands, optionalNote } = Astro.props;
     </div>
 
     {/* Nota sobre agentes opcionales en los flujos */}
-    <div class="optional-note fade-in" set:html={optionalNote.html} />
+    <div class="optional-note fade-in" set:html={optionalNote} />
   </div>
 </section>
 

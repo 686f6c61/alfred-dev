@@ -485,6 +485,74 @@ export interface DashboardSection {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// Composicion dinamica de equipo
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Agente que reacciona a keywords en la demo de composicion.
+ *
+ * Cada agente tiene un conjunto de keywords que lo activan y una
+ * puntuacion final que se muestra cuando todas sus keywords han
+ * sido escritas en el terminal. El JS del componente localiza
+ * las keywords en el texto de la demo en tiempo de ejecucion,
+ * evitando asi calcular offsets manualmente en los datos i18n.
+ */
+export interface CompositionAgent {
+  /** Identificador del agente (data-engineer, ux-reviewer...). */
+  id: string;
+  /** Nombre visible del agente. */
+  name: string;
+  /** Color CSS del agente (variable o valor directo). */
+  color: string;
+  /** Puntuacion final (0.0 - 1.0) que muestra la barra al completar. */
+  score: number;
+  /** Keywords del texto que activan este agente (coincidencia por subcadena, case-insensitive). */
+  keywords: string[];
+}
+
+/** Agente de nucleo (siempre activo en cada sesion). */
+export interface CoreAgent {
+  /** Identificador unico del agente. */
+  id: string;
+  /** Nombre visible del agente. */
+  name: string;
+  /** Color CSS del agente. */
+  color: string;
+  /** Rol breve del agente (ej. "Orquestador", "Arquitectura"). */
+  role: string;
+}
+
+/** Datos completos de la seccion de composicion dinamica. */
+export interface CompositionSection {
+  /** Header estandar de la seccion. */
+  header: SectionHeader;
+  /** Texto descriptivo bajo el header con HTML inline. */
+  introHtml: string;
+  /** Texto completo que se escribe en el terminal. */
+  terminalText: string;
+  /** Prefijo del prompt del terminal (ej. "$ /alfred feature"). */
+  terminalPrompt: string;
+  /** Agentes que reaccionan al texto. */
+  agents: CompositionAgent[];
+  /** Titulo del panel lateral de agentes (ej. "Agentes opcionales"). */
+  agentsPanelLabel: string;
+  /** Etiqueta del indicador de sugerencia (ej. "Sugerido"). */
+  suggestedLabel: string;
+  /** Etiqueta del indicador de no sugerido. */
+  notSuggestedLabel: string;
+  /** Titulo de la fase de seleccion (ej. "Equipo propuesto"). */
+  selectorTitle: string;
+  /** Texto del boton de confirmacion (ej. "Confirmar equipo"). */
+  confirmLabel: string;
+  /** Agentes de nucleo que siempre forman parte del equipo. */
+  coreAgents: CoreAgent[];
+  /** Etiqueta del bloque de agentes de nucleo (ej. "Equipo base"). */
+  coreAgentsLabel: string;
+  /** Etiqueta de estado de los agentes de nucleo (ej. "Siempre activo"). */
+  coreAgentsActiveLabel: string;
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Secciones con header estandar
 // ──────────────────────────────────────────────────────────────────
 
@@ -500,19 +568,6 @@ export interface SectionHeader {
   description?: string;
 }
 
-/** Nota contextual sobre agentes opcionales en flujos. */
-export interface OptionalAgentsNote {
-  /** Contenido HTML de la nota. */
-  html: string;
-}
-
-/** Elemento de proteccion automatica (caso de uso wide). */
-export interface ProtectionItem {
-  /** Titulo en negrita. */
-  title: string;
-  /** Descripcion. */
-  description: string;
-}
 
 // ──────────────────────────────────────────────────────────────────
 // Footer
@@ -564,6 +619,8 @@ export interface PageData {
     header: SectionHeader;
     agents: Agent[];
   };
+  /** Seccion de composicion dinamica de equipo. */
+  composition: CompositionSection;
   /** Seccion del dashboard. */
   dashboard: DashboardSection;
   /** Seccion de flujos de trabajo. */
@@ -597,8 +654,8 @@ export interface PageData {
   commands: {
     header: SectionHeader;
     list: Command[];
-    /** Nota sobre agentes opcionales en flujos. */
-    optionalNote: OptionalAgentsNote;
+    /** Nota HTML sobre agentes opcionales en flujos. */
+    optionalNote: string;
   };
   /** Seccion de deteccion de stack. */
   stacks: {
