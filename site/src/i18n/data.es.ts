@@ -1254,6 +1254,16 @@ personalidad:
 
   changelog: [
     {
+      version: '0.3.3',
+      date: '2026-02-24',
+      fixed: [
+        '<strong>Inicialización de SQLite al arrancar</strong> -- la BD de memoria se crea automáticamente en cada sesión si no existe. Elimina la dependencia circular que impedía arrancar el servidor GUI en la primera sesión.',
+        '<strong>Servidor GUI siempre operativo</strong> -- el dashboard arranca desde el minuto 1. El WebSocket está disponible inmediatamente para el cliente.',
+        '<strong>Agentes servidos por WebSocket</strong> -- el catálogo de 15 agentes se envía desde el servidor en el mensaje <code>init</code>, eliminando la lista hardcodeada en el dashboard.',
+        '<strong>Hooks resilientes a actualizaciones</strong> -- guardas <code>test -f</code> en todos los hooks para degradación graceful cuando el directorio del plugin ha cambiado.',
+      ],
+    },
+    {
       version: '0.3.2',
       date: '2026-02-23',
       added: [
@@ -1417,7 +1427,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.2',
+    version: 'v0.3.3',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

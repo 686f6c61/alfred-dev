@@ -1251,6 +1251,16 @@ personality:
 
   changelog: [
     {
+      version: '0.3.3',
+      date: '2026-02-24',
+      fixed: [
+        '<strong>SQLite initialization at startup</strong> -- the memory database is automatically created on each session if it does not exist. Removes the circular dependency that prevented the GUI server from starting on the first session.',
+        '<strong>GUI server always operational</strong> -- the dashboard starts from minute 1. The WebSocket is immediately available for the client.',
+        '<strong>Agents served via WebSocket</strong> -- the 15-agent catalogue is sent from the server in the <code>init</code> message, removing the hardcoded list from the dashboard.',
+        '<strong>Hooks resilient to updates</strong> -- <code>test -f</code> guards on all hooks for graceful degradation when the plugin directory has changed.',
+      ],
+    },
+    {
       version: '0.3.2',
       date: '2026-02-23',
       added: [
@@ -1414,7 +1424,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.2',
+    version: 'v0.3.3',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

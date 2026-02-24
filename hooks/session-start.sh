@@ -135,14 +135,34 @@ Puedes continuar la sesión con /alfred status o avanzar a la siguiente fase."
   fi
 fi
 
+# --- Rutas del plugin y memoria ---
+
+PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+MEMORY_DB="${PROJECT_DIR}/.claude/alfred-memory.db"
+
+# --- Asegurar que la BD de memoria existe desde el primer arranque ---
+#
+# La BD se crea siempre (si no existe) para que el servidor GUI y el
+# WebSocket estén operativos desde el minuto 1. Sin BD, el servidor no
+# arranca y el dashboard muestra datos estáticos en vez de datos reales.
+# La creación es idempotente: MemoryDB usa CREATE TABLE IF NOT EXISTS.
+
+if [[ ! -f "$MEMORY_DB" ]]; then
+  PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
+import sys
+sys.path.insert(0, sys.argv[2])
+from core.memory import MemoryDB
+db = MemoryDB(sys.argv[1])
+db.close()
+" "$MEMORY_DB" "$PLUGIN_ROOT" 2>/dev/null || echo "[Alfred Dev] Aviso: no se pudo crear la BD de memoria" >&2
+fi
+
 # --- Memoria persistente del proyecto ---
 
-# Si el proyecto tiene memoria activa (.claude/alfred-memory.db), se extrae
+# Si el proyecto tiene memoria (.claude/alfred-memory.db), se extrae
 # un resumen de las últimas decisiones para dar contexto histórico a Claude.
 # El bloque Python importa core.memory desde el directorio raíz del plugin
 # y consulta la base de datos. Si algo falla, se omite silenciosamente.
-MEMORY_DB="${PROJECT_DIR}/.claude/alfred-memory.db"
-PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 if [[ -f "$MEMORY_DB" ]]; then
   MEMORY_INFO=$(PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
@@ -292,15 +312,16 @@ fi
 
 # --- Servidor GUI ---
 
-# Levantar el servidor del dashboard si hay memoria activa.
-# El servidor corre en background y se para con stop-hook.py.
-# Si falla, la sesion continua sin GUI (fail-open).
+# Levantar el servidor del dashboard siempre que el script del servidor
+# exista. La BD se crea más arriba, así que estará disponible. El servidor
+# corre en background y se para con stop-hook.py. Si falla, la sesión
+# continúa sin GUI (fail-open).
 GUI_SERVER="${PLUGIN_ROOT}/gui/server.py"
 GUI_PID_FILE="${PROJECT_DIR}/.claude/alfred-gui.pid"
 
 GUI_LOG="${PROJECT_DIR}/.claude/alfred-gui.log"
 
-if [[ -f "$MEMORY_DB" && -f "$GUI_SERVER" ]]; then
+if [[ -f "$GUI_SERVER" && -f "$MEMORY_DB" ]]; then
   # Matar proceso anterior si existe (sesion previa no limpiada)
   if [[ -f "$GUI_PID_FILE" ]]; then
     OLD_PID=$(cat "$GUI_PID_FILE" 2>/dev/null)

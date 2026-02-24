@@ -7,6 +7,15 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.3] - 2026-02-24
+
+### Fixed
+
+- **Inicializacion de SQLite al arrancar**: la BD de memoria (`alfred-memory.db`) se crea automaticamente en `session-start.sh` si no existe. Antes, la BD solo se creaba cuando los hooks de captura se disparaban, lo que impedia que el servidor GUI arrancara en la primera sesion.
+- **Servidor GUI siempre operativo**: el dashboard arranca desde el minuto 1 en cada sesion. Se elimino la dependencia circular que requeria una BD preexistente para levantar el servidor.
+- **Agentes servidos por WebSocket**: el catalogo de 15 agentes (8 principales + 7 opcionales) se envia desde el servidor en el mensaje `init`, eliminando la lista hardcodeada en `dashboard.html`. El dashboard no muestra datos que no provengan del WebSocket.
+- **Hooks resilientes a actualizaciones**: todos los comandos en `hooks.json` usan guardas `test -f ... || true` para degradacion graceful cuando `CLAUDE_PLUGIN_ROOT` apunta a un directorio eliminado tras una actualizacion de version.
+
 ## [0.3.2] - 2026-02-23
 
 ### Added
@@ -228,6 +237,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.3.3]: https://github.com/686f6c61/alfred-dev/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/686f6c61/alfred-dev/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/686f6c61/alfred-dev/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/686f6c61/alfred-dev/compare/v0.2.3...v0.3.0

@@ -66,6 +66,29 @@ _DEFAULT_WS_PORT = 7534
 # Intervalo de sondeo del watcher en segundos
 _POLL_INTERVAL = 0.5
 
+# Catalogo de agentes del sistema Alfred Dev.
+# Se envia a los clientes en el mensaje init para que el dashboard no
+# necesite tener esta lista hardcodeada. La fuente de verdad es el servidor.
+_REGISTERED_AGENTS: List[Dict[str, Any]] = [
+    # --- Agentes principales (8) ---
+    {"id": "alfred",               "name": "Alfred",               "icon": "AL", "role": "Orquestacion y coordinacion general",        "optional": False},
+    {"id": "architect",            "name": "Architect",            "icon": "AR", "role": "Diseno de arquitectura y ADRs",              "optional": False},
+    {"id": "product-owner",        "name": "Product Owner",        "icon": "PO", "role": "Requisitos, PRDs e historias de usuario",    "optional": False},
+    {"id": "senior-dev",           "name": "Senior Dev",           "icon": "SD", "role": "Implementacion con TDD y refactoring",      "optional": False},
+    {"id": "qa-engineer",          "name": "QA Engineer",          "icon": "QA", "role": "Testing, code review y validacion",         "optional": False},
+    {"id": "security-officer",     "name": "Security Officer",     "icon": "SO", "role": "Seguridad, OWASP y compliance",             "optional": False},
+    {"id": "devops-engineer",      "name": "DevOps Engineer",      "icon": "DE", "role": "CI/CD, Docker y despliegue",                "optional": False},
+    {"id": "tech-writer",          "name": "Tech Writer",          "icon": "TW", "role": "Documentacion de API y guias",              "optional": False},
+    # --- Agentes opcionales (7) ---
+    {"id": "copywriter",           "name": "Copywriter",           "icon": "CW", "role": "Textos publicos, landing y copy",           "optional": True},
+    {"id": "data-engineer",        "name": "Data Engineer",        "icon": "DA", "role": "Modelado de datos, esquemas y ETL",         "optional": True},
+    {"id": "github-manager",       "name": "GitHub Manager",       "icon": "GH", "role": "Gestion de repos, PRs y releases",         "optional": True},
+    {"id": "librarian",            "name": "Librarian",            "icon": "LB", "role": "Memoria persistente del proyecto",          "optional": True},
+    {"id": "performance-engineer", "name": "Performance Engineer", "icon": "PE", "role": "Profiling, benchmarks y optimizacion",      "optional": True},
+    {"id": "seo-specialist",       "name": "SEO Specialist",       "icon": "SE", "role": "SEO, Core Web Vitals y posicionamiento",    "optional": True},
+    {"id": "ux-reviewer",          "name": "UX Reviewer",          "icon": "UX", "role": "Accesibilidad, usabilidad y flujos de UX",  "optional": True},
+]
+
 
 def find_available_port(start: int = 7533, max_attempts: int = 50) -> int:
     """Busca un puerto TCP disponible a partir de uno dado.
@@ -217,6 +240,7 @@ class GUIServer:
             "events": events,
             "commits": commits,
             "pinned": pinned,
+            "registered_agents": _REGISTERED_AGENTS,
         }
 
     # --- Sondeo incremental de cambios --------------------------------------
