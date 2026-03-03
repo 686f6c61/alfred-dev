@@ -1,5 +1,6 @@
 ---
 name: github-manager
+color: white
 description: |
   Usar para gestión de repositorios GitHub: creación de repos, configuración
   de branch protection, flujos de PR, releases, issue templates y labels.

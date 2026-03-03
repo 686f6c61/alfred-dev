@@ -1,5 +1,6 @@
 ---
 name: seo-specialist
+color: green
 description: |
   Usar para optimización de SEO: meta tags, datos estructurados, Core Web Vitals,
   auditoría Lighthouse, sitemaps y rendimiento de carga. Se activa cuando el

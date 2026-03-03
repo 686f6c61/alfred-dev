@@ -57,7 +57,7 @@ Pasa `equipo_sesion` internamente al flujo. Desde este momento, la ejecución co
 
 Lanza 4 agentes EN PARALELO usando la herramienta Task:
 
-1. **qa-engineer**: cobertura de tests, tests rotos, code smells, deuda técnica de calidad
+1. **qa-engineer**: cobertura de tests, tests rotos, code smells, deuda técnica de calidad. **Además, ejecuta el skill de SonarQube** (`skills/calidad/sonarqube/SKILL.md`) como parte del análisis: levanta una instancia temporal con Docker, ejecuta el scanner y traduce los hallazgos en mejoras accionables. Si Docker no está disponible, pide permiso al usuario para instalarlo; si el usuario rechaza, continúa la auditoría sin SonarQube documentando que se omitió.
 2. **security-officer**: CVEs en dependencias, OWASP, compliance RGPD/NIS2/CRA, SBOM
 3. **architect**: deuda técnica arquitectónica, coherencia del diseño, acoplamiento excesivo
 4. **tech-writer**: documentación desactualizada, lagunas, inconsistencias

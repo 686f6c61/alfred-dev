@@ -345,17 +345,45 @@ if [[ -f "$GUI_SERVER" && -f "$MEMORY_DB" ]]; then
     >> "$GUI_LOG" 2>&1 &
   GUI_PID=$!
 
-  # Verificar que el proceso arranco (esperar brevemente)
+  # Verificar que el proceso arranco y esta escuchando.
+  # Esperamos brevemente y luego intentamos una conexion real al puerto
+  # HTTP en vez de confiar solo en kill -0 (que no distingue un proceso
+  # bloqueado de uno que escucha).
   sleep 1
-  if kill -0 "$GUI_PID" 2>/dev/null; then
+  GUI_PORT_FILE="${PROJECT_DIR}/.claude/alfred-gui-port"
+
+  # Extraer puertos del log del servidor. El servidor imprime:
+  #   HTTP: http://127.0.0.1:XXXX/dashboard.html
+  #   WS:   ws://127.0.0.1:XXXX
+  GUI_HTTP_PORT=$(grep -o 'HTTP: http://127.0.0.1:[0-9]*' "$GUI_LOG" 2>/dev/null | tail -1 | grep -o '[0-9]*$')
+  GUI_WS_PORT=$(grep -o 'WS:   ws://127.0.0.1:[0-9]*' "$GUI_LOG" 2>/dev/null | tail -1 | grep -o '[0-9]*$')
+
+  # Valores por defecto si no se pudieron extraer
+  GUI_HTTP_PORT="${GUI_HTTP_PORT:-7533}"
+  GUI_WS_PORT="${GUI_WS_PORT:-7534}"
+
+  # Verificar que el servidor responde realmente en el puerto HTTP
+  if kill -0 "$GUI_PID" 2>/dev/null && \
+     python3 -c "
+import socket, sys
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.settimeout(2)
+try:
+    s.connect(('127.0.0.1', int(sys.argv[1])))
+    s.close()
+except Exception:
+    sys.exit(1)
+" "$GUI_HTTP_PORT" 2>/dev/null; then
     echo "$GUI_PID" > "$GUI_PID_FILE"
+    echo "${GUI_HTTP_PORT} ${GUI_WS_PORT}" > "$GUI_PORT_FILE"
     CONTEXT="${CONTEXT}
 
 ### Dashboard GUI
 
-El servidor del dashboard esta activo. El usuario puede abrir la GUI con /alfred gui."
+El servidor del dashboard esta activo (HTTP: ${GUI_HTTP_PORT}, WS: ${GUI_WS_PORT}). El usuario puede abrir la GUI con /alfred-dev:gui."
   else
     echo "[Alfred Dev] Aviso: el servidor GUI no pudo arrancar. Revisa ${GUI_LOG}" >&2
+    rm -f "$GUI_PID_FILE" "$GUI_PORT_FILE"
   fi
 fi
 

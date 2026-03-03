@@ -1,5 +1,6 @@
 ---
 name: ux-reviewer
+color: pink
 description: |
   Usar para revisión de experiencia de usuario, auditoría de accesibilidad,
   análisis de flujos de usuario y evaluación de heurísticas de usabilidad.

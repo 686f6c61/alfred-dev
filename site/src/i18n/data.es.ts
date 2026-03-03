@@ -129,11 +129,11 @@ const data: PageData = {
 
   stats: [
     { number: 15, label: 'Agentes' },
-    { number: 56, label: 'Skills' },
+    { number: 59, label: 'Skills' },
     { number: 5, label: 'Flujos' },
-    { number: 10, label: 'Comandos' },
+    { number: 11, label: 'Comandos' },
     { number: 7, label: 'Templates' },
-    { number: 7, label: 'Hooks' },
+    { number: 11, label: 'Hooks' },
     { number: 18, label: 'Gates' },
   ],
 
@@ -224,7 +224,7 @@ const data: PageData = {
       label: 'Ampliables',
       labelColor: 'var(--gold)',
       title: '7 agentes opcionales',
-      description: 'Roles especializados que activas según lo que necesite tu proyecto. Alfred analiza tu stack y te sugiere cuáles activar. Se gestionan con <strong style="color: var(--blue);">/alfred config</strong>.',
+      description: 'Roles especializados que activas según lo que necesite tu proyecto. Alfred analiza tu stack y te sugiere cuáles activar. Se gestionan con <strong style="color: var(--blue);">/alfred-dev:config</strong>.',
     },
     agents: [
       {
@@ -297,8 +297,8 @@ const data: PageData = {
       title: 'El equipo que necesitas, cuando lo necesitas',
       description: 'Alfred analiza tu tarea en tiempo real y sugiere los agentes opcionales más relevantes. Sin configuración manual: describes lo que quieres hacer y el sistema propone el equipo ideal.',
     },
-    introHtml: 'Cuando ejecutas <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred feature</code> con una descripción de tarea, el motor de composición extrae las keywords relevantes y puntúa cada agente opcional según su afinidad con el trabajo a realizar. Después te presenta un selector para que confirmes o ajustes el equipo antes de arrancar.',
-    terminalPrompt: '$ /alfred feature',
+    introHtml: 'Cuando ejecutas <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code> con una descripción de tarea, el motor de composición extrae las keywords relevantes y puntúa cada agente opcional según su afinidad con el trabajo a realizar. Después te presenta un selector para que confirmes o ajustes el equipo antes de arrancar.',
+    terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'Necesito migrar la base de datos de SQLite a PostgreSQL, consultar las decisiones anteriores sobre el esquema de datos para no repetir errores, rediseñar completamente la interfaz del checkout con tests de accesibilidad, escribir todo el copy de la landing de lanzamiento y optimizar el rendimiento de carga en dispositivos móviles',
     coreAgentsLabel: 'Equipo base',
     coreAgentsActiveLabel: 'Siempre activo',
@@ -377,7 +377,7 @@ const data: PageData = {
   dashboard: {
     sectionLabel: 'Fase Alpha',
     title: 'Dashboard en tiempo real',
-    descriptionHtml: 'El dashboard web muestra el estado completo del proyecto sin intervenir en el terminal. Fases, agentes, decisiones, commits y timeline actualizados por WebSocket. Se lanza con <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred gui</code> y funciona en cualquier navegador.',
+    descriptionHtml: 'El dashboard web muestra el estado completo del proyecto sin intervenir en el terminal. Fases, agentes, decisiones, commits y timeline actualizados por WebSocket. Se lanza con <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:gui</code> y funciona en cualquier navegador.',
     heroImage: {
       src: '/screenshots/dashboard-estado.webp',
       alt: 'Vista de estado del proyecto en el dashboard de Alfred Dev',
@@ -447,31 +447,31 @@ const data: PageData = {
     },
     flows: [
       {
-        command: '/alfred feature',
+        command: '/alfred-dev:feature',
         subtitle: 'Ciclo completo o parcial',
         description: '6 fases: producto, arquitectura, desarrollo TDD, calidad + seguridad, documentación, entrega. Puedes arrancar desde cualquier fase.',
         stages: ['Producto', 'Arquitectura', 'Desarrollo', 'Calidad + Seguridad', 'Documentación', 'Entrega'],
       },
       {
-        command: '/alfred fix',
+        command: '/alfred-dev:fix',
         subtitle: 'Corrección rápida',
         description: 'Diagnóstico de causa raíz, corrección con TDD (test que reproduce el bug primero), validación con QA + seguridad.',
         stages: ['Diagnóstico', 'Corrección TDD', 'Validación'],
       },
       {
-        command: '/alfred spike',
+        command: '/alfred-dev:spike',
         subtitle: 'Investigación',
         description: 'Exploración técnica sin compromiso: prototipos, benchmarks, evaluación de alternativas. Documento de hallazgos.',
         stages: ['Investigación', 'Hallazgos'],
       },
       {
-        command: '/alfred ship',
+        command: '/alfred-dev:ship',
         subtitle: 'Despliegue',
         description: 'Auditoría final paralela, documentación de release, empaquetado con versionado semántico, despliegue a producción.',
         stages: ['Auditoría', 'Documentación', 'Empaquetado', 'Despliegue'],
       },
       {
-        command: '/alfred audit',
+        command: '/alfred-dev:audit',
         subtitle: 'Auditoría',
         description: '4 agentes en paralelo: calidad, seguridad, arquitectura y documentación. Informe consolidado con prioridades.',
         stages: ['Auditoría paralela'],
@@ -720,47 +720,51 @@ const data: PageData = {
     },
     list: [
       {
-        command: '/alfred',
+        command: '/alfred-dev:alfred',
         description: 'Asistente contextual: detecta el stack y la sesión activa, pregunta qué necesitas y lanza el flujo adecuado.',
       },
       {
-        command: '/alfred feature',
+        command: '/alfred-dev:feature',
         description: 'Ciclo completo de 6 fases o desde la que indiques. Alfred pregunta y se adapta: "desde desarrollo", "solo documentación", "ciclo completo".',
       },
       {
-        command: '/alfred fix',
+        command: '/alfred-dev:fix',
         description: 'Corregir un bug con flujo de 3 fases: diagnóstico, corrección TDD, validación.',
       },
       {
-        command: '/alfred spike',
+        command: '/alfred-dev:spike',
         description: 'Investigación exploratoria sin compromiso: prototipos, benchmarks, conclusiones.',
       },
       {
-        command: '/alfred ship',
+        command: '/alfred-dev:ship',
         description: 'Preparar release: auditoría final, documentación, empaquetado, despliegue.',
       },
       {
-        command: '/alfred audit',
+        command: '/alfred-dev:audit',
         description: 'Auditoría completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentación.',
       },
       {
-        command: '/alfred config',
+        command: '/alfred-dev:config',
         description: 'Configurar autonomía, stack, compliance, personalidad, <strong style="color: var(--gold);">agentes opcionales</strong> y <strong style="color: var(--gold);">memoria persistente</strong>. Incluye descubrimiento contextual: Alfred analiza tu proyecto y sugiere qué agentes activar.',
       },
       {
-        command: '/alfred status',
+        command: '/alfred-dev:status',
         description: 'Sesión activa: fase actual, fases completadas con duración, gate pendiente y agente activo.',
       },
       {
-        command: '/alfred update',
+        command: '/alfred-dev:update',
         description: 'Comprobar si hay versión nueva, ver las notas de release y actualizar con un clic.',
       },
       {
-        command: '/alfred help',
+        command: '/alfred-dev:help',
         description: 'Ayuda completa de todos los comandos disponibles.',
       },
+      {
+        command: '/alfred-dev:gui',
+        description: 'Abre el dashboard web en el navegador. Muestra estado, timeline, decisiones, agentes, commits y marcados en tiempo real.',
+      },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 7 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred config</strong> y a partir de ahí se integran automáticamente en los flujos existentes. Por ejemplo, si activas el <em>data-engineer</em>, participará en la fase de arquitectura de <strong style="color: var(--blue);">/alfred feature</strong>; si activas el <em>seo-specialist</em>, intervendrá en la fase de calidad de <strong style="color: var(--blue);">/alfred ship</strong>; si activas <em>El Bibliotecario</em>, Alfred consultará el historial de decisiones antes de cada flujo. Alfred decide cuándo invocar a cada agente según el contexto del flujo.',
+    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 7 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y a partir de ahí se integran automáticamente en los flujos existentes. Por ejemplo, si activas el <em>data-engineer</em>, participará en la fase de arquitectura de <strong style="color: var(--blue);">/alfred-dev:feature</strong>; si activas el <em>seo-specialist</em>, intervendrá en la fase de calidad de <strong style="color: var(--blue);">/alfred-dev:ship</strong>; si activas <em>El Bibliotecario</em>, Alfred consultará el historial de decisiones antes de cada flujo. Alfred decide cuándo invocar a cada agente según el contexto del flujo.',
   },
 
   // ----------------------------------------------------------------
@@ -804,7 +808,7 @@ const data: PageData = {
         color: 'var(--blue)',
         background: 'rgba(91,156,245,0.08)',
         title: 'Desarrollar una feature completa',
-        command: '/alfred feature sistema de notificaciones push',
+        command: '/alfred-dev:feature sistema de notificaciones push',
         steps: [
           'El product-owner genera el PRD con historias de usuario y criterios de aceptación',
           'El architect diseña la solución y el security-officer valida el diseño',
@@ -818,7 +822,7 @@ const data: PageData = {
         color: 'var(--red)',
         background: 'rgba(229,86,79,0.08)',
         title: 'Corregir un bug',
-        command: '/alfred fix el login falla con emails que tienen tildes',
+        command: '/alfred-dev:fix el login falla con emails que tienen tildes',
         steps: [
           'El senior-dev reproduce el error e identifica la causa raíz',
           'Escribe un test que falla reproduciendo el bug exacto',
@@ -831,7 +835,7 @@ const data: PageData = {
         color: 'var(--purple)',
         background: 'rgba(160,126,232,0.08)',
         title: 'Investigación técnica (spike)',
-        command: '/alfred spike evaluar si migrar de REST a gRPC',
+        command: '/alfred-dev:spike evaluar si migrar de REST a gRPC',
         steps: [
           'El architect y el senior-dev exploran las alternativas sin compromiso de código',
           'Se generan pruebas de concepto ligeras para comparar rendimiento',
@@ -844,7 +848,7 @@ const data: PageData = {
         color: 'var(--orange)',
         background: 'rgba(232,164,74,0.08)',
         title: 'Auditar el proyecto',
-        command: '/alfred audit',
+        command: '/alfred-dev:audit',
         steps: [
           '4 agentes trabajan en paralelo: QA, seguridad, arquitectura y documentación',
           'QA busca errores lógicos, code smells y cobertura de tests',
@@ -857,7 +861,7 @@ const data: PageData = {
         color: 'var(--green)',
         background: 'rgba(78,201,144,0.08)',
         title: 'Preparar una entrega',
-        command: '/alfred ship',
+        command: '/alfred-dev:ship',
         steps: [
           'Auditoría final obligatoria: QA y seguridad deben aprobar',
           'El tech-writer actualiza el changelog y genera las notas de release',
@@ -870,7 +874,7 @@ const data: PageData = {
         color: 'var(--gold)',
         background: 'rgba(201,169,110,0.08)',
         title: 'Asistente contextual',
-        command: '/alfred',
+        command: '/alfred-dev:alfred',
         steps: [
           'Alfred detecta el stack del proyecto y el estado de la sesión activa',
           'Pregunta qué necesitas y ofrece opciones adaptadas al contexto',
@@ -883,7 +887,7 @@ const data: PageData = {
         color: 'var(--red)',
         background: 'rgba(229,86,79,0.08)',
         title: 'Análisis con SonarQube',
-        command: '/alfred audit',
+        command: '/alfred-dev:audit',
         steps: [
           'El QA comprueba si Docker está instalado; si no, lo instala él mismo (con tu permiso)',
           'Levanta SonarQube con Docker automáticamente y espera a que esté listo',
@@ -897,7 +901,7 @@ const data: PageData = {
         color: 'var(--orange)',
         background: 'rgba(232,164,74,0.08)',
         title: 'Diseñar y migrar una base de datos',
-        command: '/alfred feature añadir sistema de suscripciones con pagos',
+        command: '/alfred-dev:feature añadir sistema de suscripciones con pagos',
         steps: [
           'El data-engineer diseña el esquema normalizado con constraints e índices',
           'Genera el script de migración con rollback obligatorio (ida y vuelta)',
@@ -910,7 +914,7 @@ const data: PageData = {
         color: 'var(--text-muted)',
         background: 'rgba(110,115,138,0.08)',
         title: 'Configurar y publicar un repositorio',
-        command: '/alfred ship',
+        command: '/alfred-dev:ship',
         steps: [
           'El github-manager verifica que gh CLI está instalado y autenticado; si no, guía el proceso',
           'Configura branch protection, labels, issue templates y .gitignore optimizado',
@@ -923,7 +927,7 @@ const data: PageData = {
         color: 'var(--green)',
         background: 'rgba(78,201,144,0.08)',
         title: 'Optimizar una landing page',
-        command: '/alfred audit',
+        command: '/alfred-dev:audit',
         steps: [
           'El seo-specialist audita meta tags, Open Graph, canonical y datos estructurados JSON-LD',
           'Ejecuta Lighthouse y prioriza las mejoras por impacto en Core Web Vitals',
@@ -936,7 +940,7 @@ const data: PageData = {
         color: '#ff69b4',
         background: 'rgba(255,105,180,0.08)',
         title: 'Auditoría de accesibilidad y usabilidad',
-        command: '/alfred audit',
+        command: '/alfred-dev:audit',
         steps: [
           'El ux-reviewer ejecuta una auditoría WCAG 2.1 AA por los 4 principios (perceptible, operable, comprensible, robusto)',
           'Aplica las 10 heurísticas de Nielsen al flujo principal del usuario',
@@ -949,7 +953,7 @@ const data: PageData = {
         color: 'var(--purple)',
         background: 'rgba(160,126,232,0.08)',
         title: 'Optimizar el rendimiento',
-        command: '/alfred spike la API tarda 3 segundos en responder',
+        command: '/alfred-dev:spike la API tarda 3 segundos en responder',
         steps: [
           'El performance-engineer ejecuta profiling de CPU y memoria para localizar cuellos de botella',
           'Analiza queries lentas con EXPLAIN y propone índices o reestructuración',
@@ -1033,7 +1037,7 @@ const data: PageData = {
         question: '> Por qué usamos SQLite en lugar de PostgreSQL para la memoria?',
         answerHtml: 'Se eligió SQLite porque el requisito era cero dependencias externas <span style="color: var(--gold);">[D#12]</span>. La alternativa de PostgreSQL se descartó por requerir un servicio externo corriendo <span style="color: var(--gold);">[D#12, alternativas]</span>. La implementación se hizo en el commit <span style="color: var(--green);">[C#1833e83]</span> dentro de la iteración <span style="color: var(--blue);">[I#3]</span>.',
       },
-      activationHtml: '<strong>Activación:</strong> se habilita desde <strong style="color: var(--blue);">/alfred config</strong> en la sección de memoria persistente. Una vez activo, Alfred le delega automáticamente las consultas históricas que surjan durante cualquier flujo.',
+      activationHtml: '<strong>Activación:</strong> se habilita desde <strong style="color: var(--blue);">/alfred-dev:config</strong> en la sección de memoria persistente. Una vez activo, Alfred le delega automáticamente las consultas históricas que surjan durante cualquier flujo.',
     },
     faq: [
       {
@@ -1042,7 +1046,7 @@ const data: PageData = {
       },
       {
         question: 'La memoria se activa sola?',
-        answerHtml: 'No. La activación es explícitamente opcional. Se habilita desde <strong>/alfred config</strong> en la sección de memoria. Si no la activas, no se crea la base de datos ni se captura nada.',
+        answerHtml: 'No. La activación es explícitamente opcional. Se habilita desde <strong>/alfred-dev:config</strong> en la sección de memoria. Si no la activas, no se crea la base de datos ni se captura nada.',
       },
       {
         question: 'Qué pasa con los secretos?',
@@ -1050,7 +1054,7 @@ const data: PageData = {
       },
       {
         question: 'Puedo borrar la memoria?',
-        answerHtml: 'Sí. Basta con eliminar el fichero <code>.claude/alfred-memory.db</code>. También puedes desactivar la memoria desde <strong>/alfred config</strong>: los datos existentes se conservan pero dejan de consultarse y no se capturan nuevos eventos.',
+        answerHtml: 'Sí. Basta con eliminar el fichero <code>.claude/alfred-memory.db</code>. También puedes desactivar la memoria desde <strong>/alfred-dev:config</strong>: los datos existentes se conservan pero dejan de consultarse y no se capturan nuevos eventos.',
       },
     ],
   },
@@ -1068,19 +1072,19 @@ const data: PageData = {
         id: 'macos',
         label: 'macOS',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred help</strong>.',
+        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'linux',
         label: 'Linux',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred help</strong>.',
+        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'windows',
         label: 'Windows',
         command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
-        requirementsHtml: '<strong>Requisitos:</strong> git, PowerShell 5.1+ (preinstalado en Windows 10/11), Claude Code instalado.<br>No necesita Python. Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred help</strong>.<br>Alternativa: también puedes usar el instalador bash con WSL o Git Bash.',
+        requirementsHtml: '<strong>Requisitos:</strong> git, PowerShell 5.1+ (preinstalado en Windows 10/11), Claude Code instalado.<br>No necesita Python. Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:help</strong>.<br>Alternativa: también puedes usar el instalador bash con WSL o Git Bash.',
       },
     ],
     uninstall: {
@@ -1101,7 +1105,7 @@ const data: PageData = {
     },
     update: {
       title: 'Actualización',
-      descriptionHtml: 'Desde Claude Code, ejecuta <strong style="color: var(--blue);">/alfred update</strong> para comprobar si hay una versión nueva. Si la hay, Alfred te muestra las notas de la release y te pregunta si quieres actualizar. También puedes volver a ejecutar el instalador: es idempotente.',
+      descriptionHtml: 'Desde Claude Code, ejecuta <strong style="color: var(--blue);">/alfred-dev:update</strong> para comprobar si hay una versión nueva. Si la hay, Alfred te muestra las notas de la release y te pregunta si quieres actualizar. También puedes volver a ejecutar el instalador: es idempotente.',
     },
   },
 
@@ -1112,7 +1116,7 @@ const data: PageData = {
   config: {
     sectionLabel: 'Personalización',
     title: 'Configuración por proyecto',
-    descriptionHtml: 'Cada proyecto tiene su propio fichero de configuración en <code>.claude/alfred-dev.local.md</code>. Se gestiona con <strong>/alfred config</strong>, que incluye descubrimiento contextual de agentes opcionales y activación de memoria persistente.',
+    descriptionHtml: 'Cada proyecto tiene su propio fichero de configuración en <code>.claude/alfred-dev.local.md</code>. Se gestiona con <strong>/alfred-dev:config</strong>, que incluye descubrimiento contextual de agentes opcionales y activación de memoria persistente.',
     yamlExample: `---
 autonomia:
   producto: interactivo
@@ -1183,7 +1187,7 @@ personalidad:
       {
         svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
         question: 'Cómo actualizo el plugin?',
-        answerHtml: 'Ejecuta <strong>/alfred update</strong> dentro de Claude Code. El comando consulta GitHub, compara versiones y te muestra las notas de la release si hay versión nueva. También puedes volver a ejecutar el instalador: sobreescribe la versión anterior sin conflictos.',
+        answerHtml: 'Ejecuta <strong>/alfred-dev:update</strong> dentro de Claude Code. El comando consulta GitHub, compara versiones y te muestra las notas de la release si hay versión nueva. También puedes volver a ejecutar el instalador: sobreescribe la versión anterior sin conflictos.',
       },
       {
         svgContent: '<path d="M19.439 5.56a5.018 5.018 0 0 0-7.09 0L11 6.91l-1.35-1.35a5.013 5.013 0 0 0-7.09 7.09L11 21.09l8.44-8.44a5.013 5.013 0 0 0 0-7.09z"/>',
@@ -1193,7 +1197,7 @@ personalidad:
       {
         svgContent: '<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>',
         question: 'Qué son los agentes opcionales?',
-        answerHtml: 'Son 7 agentes especializados que puedes activar según las necesidades de tu proyecto: <strong>data-engineer</strong> (bases de datos), <strong>ux-reviewer</strong> (accesibilidad y usabilidad), <strong>performance-engineer</strong> (rendimiento), <strong>github-manager</strong> (gestión de repositorios), <strong>seo-specialist</strong> (posicionamiento web), <strong>copywriter</strong> (textos y ortografía) y <strong>El Bibliotecario</strong> (memoria persistente: consultas históricas sobre decisiones, commits e iteraciones del proyecto).<br><br>Alfred analiza tu proyecto y te sugiere cuáles activar. También puedes gestionarlos manualmente con <strong>/alfred config</strong>. Se activan o desactivan sin reinstalar nada.',
+        answerHtml: 'Son 7 agentes especializados que puedes activar según las necesidades de tu proyecto: <strong>data-engineer</strong> (bases de datos), <strong>ux-reviewer</strong> (accesibilidad y usabilidad), <strong>performance-engineer</strong> (rendimiento), <strong>github-manager</strong> (gestión de repositorios), <strong>seo-specialist</strong> (posicionamiento web), <strong>copywriter</strong> (textos y ortografía) y <strong>El Bibliotecario</strong> (memoria persistente: consultas históricas sobre decisiones, commits e iteraciones del proyecto).<br><br>Alfred analiza tu proyecto y te sugiere cuáles activar. También puedes gestionarlos manualmente con <strong>/alfred-dev:config</strong>. Se activan o desactivan sin reinstalar nada.',
       },
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
@@ -1203,7 +1207,7 @@ personalidad:
       {
         svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
         question: 'Qué es la memoria persistente?',
-        answerHtml: 'Es una base de datos SQLite local que almacena las decisiones, commits e iteraciones de cada proyecto. Se activa opcionalmente desde <strong>/alfred config</strong>. Una vez activa, Alfred registra automáticamente los eventos del flujo de trabajo y el agente <strong>El Bibliotecario</strong> puede responder consultas históricas como "por qué se eligió esta arquitectura" o "qué se hizo en la última iteración", citando siempre las fuentes. Los datos no salen del proyecto: todo queda en <code>.claude/alfred-memory.db</code>.',
+        answerHtml: 'Es una base de datos SQLite local que almacena las decisiones, commits e iteraciones de cada proyecto. Se activa opcionalmente desde <strong>/alfred-dev:config</strong>. Una vez activa, Alfred registra automáticamente los eventos del flujo de trabajo y el agente <strong>El Bibliotecario</strong> puede responder consultas históricas como "por qué se eligió esta arquitectura" o "qué se hizo en la última iteración", citando siempre las fuentes. Los datos no salen del proyecto: todo queda en <code>.claude/alfred-memory.db</code>.',
       },
       {
         svgContent: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
@@ -1213,7 +1217,7 @@ personalidad:
       {
         svgContent: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
         question: 'En qué idioma responde Alfred?',
-        answerHtml: 'Castellano de España por defecto: tanto las respuestas como los comentarios de código, commits y documentación generada. Puedes ajustar este comportamiento con <strong>/alfred config</strong>.',
+        answerHtml: 'Castellano de España por defecto: tanto las respuestas como los comentarios de código, commits y documentación generada. Puedes ajustar este comportamiento con <strong>/alfred-dev:config</strong>.',
       },
       {
         svgContent: '<polyline points="20 6 9 17 4 12"/>',
@@ -1238,7 +1242,7 @@ personalidad:
       {
         svgContent: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
         question: 'Qué pasa si una quality gate falla?',
-        answerHtml: 'El flujo se detiene en la fase actual y Alfred te explica qué no se cumple: tests que fallan, vulnerabilidades detectadas, documentación incompleta o lo que corresponda. Tienes tres opciones: corregir el problema y reintentar la gate, pedir a Alfred que te ayude a resolverlo (por ejemplo, con <strong>/alfred fix</strong> si es un bug), o continuar manualmente asumiendo el riesgo. Alfred nunca avanza en silencio si una gate no se supera.',
+        answerHtml: 'El flujo se detiene en la fase actual y Alfred te explica qué no se cumple: tests que fallan, vulnerabilidades detectadas, documentación incompleta o lo que corresponda. Tienes tres opciones: corregir el problema y reintentar la gate, pedir a Alfred que te ayude a resolverlo (por ejemplo, con <strong>/alfred-dev:fix</strong> si es un bug), o continuar manualmente asumiendo el riesgo. Alfred nunca avanza en silencio si una gate no se supera.',
       },
       {
         svgContent: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
@@ -1305,7 +1309,7 @@ personalidad:
       version: '0.3.0',
       date: '2026-02-22',
       added: [
-        '<strong>Dashboard GUI</strong> (Fase Alpha) -- dashboard web en tiempo real con 7 vistas: estado, timeline, decisiones, agentes, memoria, commits y marcados. Se lanza con <code>/alfred gui</code>.',
+        '<strong>Dashboard GUI</strong> (Fase Alpha) -- dashboard web en tiempo real con 7 vistas: estado, timeline, decisiones, agentes, memoria, commits y marcados. Se lanza con <code>/alfred-dev:gui</code>.',
         '<strong>Servidor monolítico Python</strong> -- HTTP + WebSocket RFC 6455 manual + SQLite watcher. Sin dependencias externas.',
         '<strong>Protocolo WebSocket bidireccional</strong> -- mensajes <code>init</code>, <code>update</code>, <code>action</code> y <code>action_ack</code>. Reconexión con backoff exponencial.',
         '<strong>Sistema de marcado</strong> -- elementos marcados sobreviven a la compactación del contexto.',
@@ -1341,7 +1345,7 @@ personalidad:
         '<strong>Hook sensitive-read-guard.py</strong> -- aviso al leer claves privadas, <code>.env</code>, credenciales.',
         '<strong>4 herramientas MCP nuevas</strong> -- total 10: stats, iteraciones, abandon.',
         '<strong>3 skills nuevos</strong> -- incident-response, release-planning, dependency-strategy.',
-        '<code>/alfred feature</code> permite seleccionar fase de inicio.',
+        '<code>/alfred-dev:feature</code> permite seleccionar fase de inicio.',
         'Test de consistencia de versión. 219 tests en total.',
       ],
       fixed: [
@@ -1377,7 +1381,7 @@ personalidad:
       fixed: [
         '<strong>Secret-guard fail-closed</strong> -- bloquea cuando no puede determinar la ruta destino.',
         'Instalador idempotente en entorno limpio (<code>mkdir -p</code>).',
-        'Detección de versión en <code>/alfred update</code> más fiable.',
+        'Detección de versión en <code>/alfred-dev:update</code> más fiable.',
       ],
     },
     {
