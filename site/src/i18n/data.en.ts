@@ -1255,6 +1255,18 @@ personality:
 
   changelog: [
     {
+      version: '0.3.4',
+      date: '2026-03-03',
+      fixed: [
+        '<strong>Command nomenclature</strong> -- all web commands updated from <code>/alfred X</code> to <code>/alfred-dev:X</code> to reflect the actual Claude Code convention.',
+        '<strong>Stats corrected</strong> -- skills from 56 to 59, commands from 10 to 11, hooks from 7 to 11. Aligned with actual implementation.',
+        '<strong>Command /alfred-dev:gui visible</strong> -- added to the public commands table in both languages.',
+        '<strong>SonarQube integrated in audit</strong> -- the qa-engineer runs the SonarQube skill as a default step. Verified end-to-end with Docker.',
+        '<strong>Dashboard port file</strong> -- <code>session-start.sh</code> creates <code>.claude/alfred-gui-port</code> and verifies real server connection instead of relying on <code>kill -0</code>.',
+        '<strong>Optional agent colours</strong> -- the 5 agents without colour in their frontmatter now have assigned colours for the dashboard.',
+      ],
+    },
+    {
       version: '0.3.3',
       date: '2026-02-24',
       fixed: [
@@ -1428,7 +1440,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.3',
+    version: 'v0.3.4',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

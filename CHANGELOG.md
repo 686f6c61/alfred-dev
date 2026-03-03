@@ -7,6 +7,17 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.4] - 2026-03-03
+
+### Fixed
+
+- **Nomenclatura de comandos en la web**: todos los comandos actualizados de `/alfred X` a `/alfred-dev:X` para reflejar la convencion real de Claude Code.
+- **Stats de la web corregidos**: skills 56 a 59, comandos 10 a 11, hooks 7 a 11.
+- **Comando /alfred-dev:gui visible**: anadido a la lista publica de comandos en la web (ES + EN).
+- **SonarQube integrado en audit**: el qa-engineer ejecuta el skill de SonarQube como paso por defecto en `/alfred-dev:audit`.
+- **Fichero de puertos del dashboard**: `session-start.sh` crea `.claude/alfred-gui-port` y verifica conexion real al servidor.
+- **Colores de agentes opcionales**: los 5 agentes sin color en el frontmatter ahora tienen colores asignados.
+
 ## [0.3.3] - 2026-02-24
 
 ### Fixed
@@ -237,6 +248,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.3.4]: https://github.com/686f6c61/alfred-dev/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/686f6c61/alfred-dev/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/686f6c61/alfred-dev/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/686f6c61/alfred-dev/compare/v0.3.0...v0.3.1
