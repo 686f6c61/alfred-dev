@@ -227,6 +227,23 @@ class GUIServer:
                 (active["id"],),
             ).fetchall()
             commits = [dict(r) for r in rows]
+        else:
+            # Sin iteración activa: devolver los últimos datos globales
+            # para que el dashboard no esté vacío.
+            rows = conn.execute(
+                "SELECT * FROM decisions ORDER BY id DESC LIMIT 50"
+            ).fetchall()
+            decisions = [dict(r) for r in rows]
+
+            rows = conn.execute(
+                "SELECT * FROM events ORDER BY id DESC LIMIT 100"
+            ).fetchall()
+            events = [dict(r) for r in rows]
+
+            rows = conn.execute(
+                "SELECT * FROM commits ORDER BY id DESC LIMIT 50"
+            ).fetchall()
+            commits = [dict(r) for r in rows]
 
         # Marcados: no dependen de la iteracion
         rows = conn.execute(
@@ -645,10 +662,20 @@ class GUIServer:
         servidor WebSocket y el watcher se ejecutan en el bucle asyncio
         del hilo principal.
         """
-        # Seleccionar puertos disponibles si se pidio auto-deteccion
-        if self._http_port == 0:
-            self._http_port = find_available_port(_DEFAULT_HTTP_PORT)
-        if self._ws_port == 0:
+        # Verificar que los puertos están disponibles. Si el puerto solicitado
+        # está ocupado (otra instancia del dashboard u otro servicio), se busca
+        # automáticamente uno libre. Esto permite tener varios proyectos con
+        # dashboards activos simultáneamente sin conflictos.
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", self._http_port))
+        except OSError:
+            self._http_port = find_available_port(self._http_port + 1)
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", self._ws_port))
+        except OSError:
             self._ws_port = find_available_port(self._http_port + 1)
 
         print(f"Alfred Dev Dashboard")

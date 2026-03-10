@@ -101,11 +101,11 @@ Las herramientas de consulta que El Bibliotecario ha utilizado desde su origen. 
 | `memory_get_iteration` | Obtener el detalle completo de una iteración por su ID. |
 | `memory_get_timeline` | Recuperar la línea temporal de eventos de una iteración o período. |
 | `memory_stats` | Contadores generales de la memoria: decisiones, iteraciones, commits, eventos. |
-| `memory_record_decision` | Registrar una nueva decisión con contexto, alternativas y justificación. |
-| `memory_record_iteration` | Registrar una nueva iteración con su comando, descripción y fase. |
-| `memory_record_event` | Registrar un evento en la cronología del proyecto. |
-| `memory_record_commit` | Registrar un commit con su SHA, mensaje y ficheros afectados. |
-| `memory_link_commit` | Vincular un commit con una decisión existente. |
+| `memory_log_decision` | Registrar una nueva decisión con contexto, alternativas y justificación. |
+| `memory_manage_iteration` | Registrar o gestionar una iteración con su comando, descripción y fase. |
+| `memory_log_event` | Registrar un evento en la cronología del proyecto. |
+| `memory_log_commit` | Registrar un commit con su SHA, mensaje y ficheros afectados. |
+| `memory_link_decisions` | Vincular dos decisiones relacionadas entre sí. |
 
 ### Bloque de gestión (5 herramientas nuevas)
 

@@ -7,6 +7,16 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.6] - 2026-03-10
+
+### Fixed
+
+- **Agentes de nucleo registrados en plugin.json**: los 7 agentes de nucleo (product-owner, architect, senior-dev, security-officer, qa-engineer, devops-engineer, tech-writer) no estaban registrados en el manifiesto del plugin, por lo que Claude Code no podia cargar sus system prompts como subagentes. Ahora los 14 agentes (7 nucleo + 7 opcionales) estan registrados.
+- **Herramientas MCP fantasma en librarian**: el agente librarian referenciaba 5 herramientas MCP con nombres incorrectos (`memory_record_decision`, `memory_record_iteration`, `memory_record_event`, `memory_record_commit`, `memory_link_commit`). Corregidos a los nombres reales del servidor MCP.
+- **Dashboard vacio en primera sesion**: el pipeline de datos del dashboard fallaba en cascada por 3 causas: (1) la configuracion local no se creaba con memoria activada, (2) sin iteracion activa los commits no se asociaban, (3) `get_full_state()` devolvia arrays vacios sin iteracion. Corregido con auto-creacion de config, iteracion de sesion automatica y fallback a datos globales.
+- **Conflicto de puertos del dashboard**: si otro proyecto ya usaba los puertos 7533/7534, el dashboard no arrancaba. Ahora detecta puertos ocupados y busca alternativas automaticamente.
+- **Comentarios de cabecera del servidor MCP**: los nombres de herramientas en el docstring del modulo no coincidian con los registrados. Alineados.
+
 ## [0.3.5] - 2026-03-10
 
 ### Changed

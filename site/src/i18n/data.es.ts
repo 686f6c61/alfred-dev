@@ -1258,6 +1258,16 @@ personalidad:
 
   changelog: [
     {
+      version: '0.3.6',
+      date: '2026-03-10',
+      fixed: [
+        '<strong>Agentes de nucleo registrados</strong> -- los 7 agentes de nucleo no estaban en el manifiesto del plugin y Claude Code no cargaba sus system prompts. Ahora los 14 agentes (7 nucleo + 7 opcionales) estan registrados y operativos.',
+        '<strong>Herramientas MCP del librarian</strong> -- el agente librarian referenciaba 5 herramientas MCP con nombres incorrectos. Corregidos a los nombres reales del servidor.',
+        '<strong>Dashboard vacio en primera sesion</strong> -- el pipeline de datos fallaba en cascada: config sin memoria, commits sin iteracion y consultas vacias. Corregido con auto-creacion de config, iteracion automatica y fallback global.',
+        '<strong>Conflicto de puertos</strong> -- si otro proyecto usaba los puertos del dashboard, ahora se detecta y se buscan alternativas automaticamente.',
+      ],
+    },
+    {
       version: '0.3.5',
       date: '2026-03-10',
       changed: [
@@ -1451,7 +1461,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.5',
+    version: 'v0.3.6',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
