@@ -157,6 +157,96 @@ db.close()
 " "$MEMORY_DB" "$PLUGIN_ROOT" 2>/dev/null || echo "[Alfred Dev] Aviso: no se pudo crear la BD de memoria" >&2
 fi
 
+# --- Asegurar que la memoria está habilitada por defecto ---
+#
+# Si el fichero de configuración local no existe, se crea con la memoria
+# activada para que los hooks de captura registren datos desde la primera
+# sesión y el dashboard tenga contenido real desde el minuto 1.
+
+LOCAL_CONFIG="${PROJECT_DIR}/.claude/alfred-dev.local.md"
+
+if [[ ! -f "$LOCAL_CONFIG" ]]; then
+  # Crear con memoria habilitada por defecto
+  cat > "$LOCAL_CONFIG" <<'LOCALCFG'
+---
+memoria:
+  enabled: true
+  capture_decisions: true
+  capture_commits: true
+  retention_days: 365
+---
+
+# Configuración local de Alfred Dev
+
+Este fichero se genera automáticamente en la primera sesión.
+Puedes personalizarlo con `/alfred-dev:config`.
+LOCALCFG
+else
+  # El fichero existe: verificar que la memoria está habilitada.
+  # Se usa Python para un parsing fiable del frontmatter YAML en vez de
+  # sed (cuya sintaxis varía entre BSD/macOS y GNU/Linux).
+  PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
+import re, sys
+
+config_path = sys.argv[1]
+with open(config_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# Comprobar si ya tiene memoria habilitada (mismo regex que memory-capture.py)
+pattern = r'memoria:\s*\n(?:\s*#[^\n]*\n|\s*\w+:[^\n]*\n)*?\s*enabled:\s*true'
+if re.search(pattern, content):
+    sys.exit(0)  # Ya habilitada, no hacer nada
+
+# Inyectar la seccion de memoria en el frontmatter
+memoria_block = '''memoria:
+  enabled: true
+  capture_decisions: true
+  capture_commits: true
+  retention_days: 365'''
+
+if content.startswith('---'):
+    # Tiene frontmatter: insertar tras el primer ---
+    idx = content.index('---') + 3
+    content = content[:idx] + '\n' + memoria_block + content[idx:]
+else:
+    # Sin frontmatter: envolver con --- e insertar al principio
+    content = '---\n' + memoria_block + '\n---\n\n' + content
+
+with open(config_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+" "$LOCAL_CONFIG" 2>/dev/null || true
+fi
+
+# --- Asegurar iteración activa para el dashboard ---
+#
+# Si la BD existe pero no hay iteración activa, se crea una de tipo "session"
+# para que los commits y eventos capturados durante el trabajo normal se
+# asocien a algo y el dashboard tenga contenido desde el primer uso.
+# Si el usuario inicia un flujo (/alfred-dev:feature, etc.), la iteración
+# "session" se completará y se creará una nueva del flujo correspondiente.
+
+if [[ -f "$MEMORY_DB" ]]; then
+  PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
+import sys
+sys.path.insert(0, sys.argv[2])
+from core.memory import MemoryDB
+
+db = MemoryDB(sys.argv[1])
+active = db.get_active_iteration()
+if active is None:
+    iteration_id = db.start_iteration(
+        command='session',
+        description='Sesion de trabajo general',
+    )
+    db.log_event(
+        event_type='session_started',
+        payload={'source': 'session-start.sh'},
+        iteration_id=iteration_id,
+    )
+db.close()
+" "$MEMORY_DB" "$PLUGIN_ROOT" 2>/dev/null || true
+fi
+
 # --- Memoria persistente del proyecto ---
 
 # Si el proyecto tiene memoria (.claude/alfred-memory.db), se extrae

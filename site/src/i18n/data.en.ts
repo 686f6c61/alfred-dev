@@ -1255,6 +1255,16 @@ personality:
 
   changelog: [
     {
+      version: '0.3.6',
+      date: '2026-03-10',
+      fixed: [
+        '<strong>Core agents registered</strong> -- the 7 core agents were missing from the plugin manifest, so Claude Code could not load their system prompts. All 14 agents (7 core + 7 optional) are now registered and operational.',
+        '<strong>Librarian MCP tools</strong> -- the librarian agent referenced 5 MCP tools with incorrect names. Fixed to match the real server tool names.',
+        '<strong>Empty dashboard on first session</strong> -- the data pipeline failed in cascade: config without memory, commits without iteration and empty queries. Fixed with auto-config creation, automatic iteration and global fallback.',
+        '<strong>Port conflict</strong> -- if another project was using the dashboard ports, it now detects the conflict and finds alternatives automatically.',
+      ],
+    },
+    {
       version: '0.3.5',
       date: '2026-03-10',
       changed: [
@@ -1448,7 +1458,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.5',
+    version: 'v0.3.6',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

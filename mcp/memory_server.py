@@ -17,8 +17,8 @@ consultar, registrar y gestionar la base de datos de memoria del proyecto:
     - memory_get_iteration: detalle de una iteracion (o la ultima).
     - memory_get_timeline: cronologia de eventos de una iteracion.
     - memory_stats: estadisticas generales de la memoria.
-    - memory_record_decision / memory_record_iteration / memory_record_event / memory_record_commit
-    - memory_link_commit: vincula un commit con una decision.
+    - memory_log_decision / memory_manage_iteration / memory_log_event / memory_log_commit
+    - memory_link_decisions: vincula dos decisiones relacionadas.
     - memory_get_decisions: listado filtrado de decisiones.
 
     Gestion (5 nuevas en v0.2.3):
@@ -743,7 +743,7 @@ class MemoryMCPServer:
             "protocolVersion": "2024-11-05",
             "serverInfo": {
                 "name": "alfred-memory",
-                "version": "0.3.5",
+                "version": "0.3.6",
             },
             "capabilities": {
                 "tools": {},
