@@ -108,7 +108,7 @@ El dominio de calidad cubre todo lo relacionado con la verificacion del software
 | `code-review` | Revisa codigo con foco en legibilidad, errores logicos, manejo de errores y complejidad | qa-engineer |
 | `exploratory-testing` | Ejecuta sesiones de testing exploratorio estructurado con heuristicas, documentacion en tiempo real y clasificacion de hallazgos | qa-engineer |
 | `regression-check` | Verifica que los cambios nuevos no rompen funcionalidad existente mediante analisis de impacto y ejecucion de tests | qa-engineer |
-| `sonarqube` | Levanta SonarQube con Docker, ejecuta analisis estatico del codigo y traduce los resultados en mejoras accionables | qa-engineer |
+| `sonarqube` | Levanta SonarQube con Docker, ejecuta analisis estatico del codigo y traduce los resultados en mejoras accionables | security-officer |
 | `spelling-check` | Verifica ortografia en castellano (tildes, concordancia, puntuacion) en codigo, documentacion e interfaz | qa-engineer |
 | `test-plan` | Genera un plan de testing priorizado por riesgo que cubre unitarios, integracion, e2e, edge cases y escenarios negativos | qa-engineer |
 

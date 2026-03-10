@@ -886,7 +886,7 @@ const data: PageData = {
         title: 'SonarQube analysis',
         command: '/alfred-dev:audit',
         steps: [
-          'QA checks if Docker is installed; if not, installs it itself (with your permission)',
+          'The security-officer checks if Docker is installed; if not, asks the user for permission to install it',
           'Spins up SonarQube with Docker automatically and waits until it\'s ready',
           'Configures the project, runs the scanner and waits for results',
           'Translates findings (bugs, vulnerabilities, code smells) into a report with proposed fixes',
@@ -1255,13 +1255,21 @@ personality:
 
   changelog: [
     {
+      version: '0.3.5',
+      date: '2026-03-10',
+      changed: [
+        '<strong>SonarQube moved to security-officer</strong> -- the SonarQube analysis is now run by the security-officer instead of the qa-engineer during <code>/alfred-dev:audit</code>. Spins up Docker, runs the scanner end-to-end and integrates findings into its security report.',
+        '<strong>Imperative instructions</strong> -- the subagent receives explicit, sequential steps (read the skill, execute all 7 steps, integrate results) instead of a textual reference that could be ignored.',
+      ],
+    },
+    {
       version: '0.3.4',
       date: '2026-03-03',
       fixed: [
         '<strong>Command nomenclature</strong> -- all web commands updated from <code>/alfred X</code> to <code>/alfred-dev:X</code> to reflect the actual Claude Code convention.',
         '<strong>Stats corrected</strong> -- skills from 56 to 59, commands from 10 to 11, hooks from 7 to 11. Aligned with actual implementation.',
         '<strong>Command /alfred-dev:gui visible</strong> -- added to the public commands table in both languages.',
-        '<strong>SonarQube integrated in audit</strong> -- the qa-engineer runs the SonarQube skill as a default step. Verified end-to-end with Docker.',
+        '<strong>SonarQube integrated in audit</strong> -- the security-officer runs the SonarQube skill as a default step. Verified end-to-end with Docker.',
         '<strong>Dashboard port file</strong> -- <code>session-start.sh</code> creates <code>.claude/alfred-gui-port</code> and verifies real server connection instead of relying on <code>kill -0</code>.',
         '<strong>Optional agent colours</strong> -- the 5 agents without colour in their frontmatter now have assigned colours for the dashboard.',
       ],
@@ -1440,7 +1448,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.4',
+    version: 'v0.3.5',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

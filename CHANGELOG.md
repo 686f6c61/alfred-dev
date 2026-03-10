@@ -7,6 +7,13 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.5] - 2026-03-10
+
+### Changed
+
+- **SonarQube movido al security-officer**: el análisis de SonarQube lo ejecuta ahora el security-officer en lugar del qa-engineer durante `/alfred-dev:audit`. El security-officer levanta Docker, ejecuta el scanner end-to-end e integra los hallazgos en su informe de seguridad. Si Docker no está disponible, informa al usuario y continúa sin SonarQube.
+- **Instrucciones imperativas para SonarQube**: el subagente recibe pasos explícitos y secuenciales (leer el skill con Read, ejecutar los 7 pasos, integrar resultados) en lugar de una referencia textual que podía ignorarse.
+
 ## [0.3.4] - 2026-03-03
 
 ### Fixed
@@ -14,7 +21,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 - **Nomenclatura de comandos en la web**: todos los comandos actualizados de `/alfred X` a `/alfred-dev:X` para reflejar la convencion real de Claude Code.
 - **Stats de la web corregidos**: skills 56 a 59, comandos 10 a 11, hooks 7 a 11.
 - **Comando /alfred-dev:gui visible**: anadido a la lista publica de comandos en la web (ES + EN).
-- **SonarQube integrado en audit**: el qa-engineer ejecuta el skill de SonarQube como paso por defecto en `/alfred-dev:audit`.
+- **SonarQube integrado en audit**: el security-officer ejecuta el skill de SonarQube como paso por defecto en `/alfred-dev:audit`.
 - **Fichero de puertos del dashboard**: `session-start.sh` crea `.claude/alfred-gui-port` y verifica conexion real al servidor.
 - **Colores de agentes opcionales**: los 5 agentes sin color en el frontmatter ahora tienen colores asignados.
 

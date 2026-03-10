@@ -57,8 +57,12 @@ Pasa `equipo_sesion` internamente al flujo. Desde este momento, la ejecución co
 
 Lanza 4 agentes EN PARALELO usando la herramienta Task:
 
-1. **qa-engineer**: cobertura de tests, tests rotos, code smells, deuda técnica de calidad. **Además, ejecuta el skill de SonarQube** (`skills/calidad/sonarqube/SKILL.md`) como parte del análisis: levanta una instancia temporal con Docker, ejecuta el scanner y traduce los hallazgos en mejoras accionables. Si Docker no está disponible, pide permiso al usuario para instalarlo; si el usuario rechaza, continúa la auditoría sin SonarQube documentando que se omitió.
-2. **security-officer**: CVEs en dependencias, OWASP, compliance RGPD/NIS2/CRA, SBOM
+1. **qa-engineer**: cobertura de tests, tests rotos, code smells, deuda técnica de calidad.
+2. **security-officer**: CVEs en dependencias, OWASP, compliance RGPD/NIS2/CRA, SBOM. **Antes de empezar su análisis manual, ejecuta el end-to-end de SonarQube** siguiendo estos pasos obligatorios:
+   1. Lee el fichero `skills/calidad/sonarqube/SKILL.md` con la herramienta Read.
+   2. Sigue los 7 pasos del skill al pie de la letra: verificar Docker, levantar SonarQube (`docker run -d --name sonarqube-alfred -p 9000:9000 sonarqube:community`), esperar a que esté UP, configurar el proyecto, ejecutar el scanner, recoger resultados vía API y limpiar el contenedor.
+   3. Integra los hallazgos de SonarQube (vulnerabilidades, bugs, code smells) en su informe de seguridad, clasificados por severidad.
+   4. Si Docker no está disponible, pregunta al usuario si quiere instalarlo. Si rechaza, continúa sin SonarQube documentando que se omitió.
 3. **architect**: deuda técnica arquitectónica, coherencia del diseño, acoplamiento excesivo
 4. **tech-writer**: documentación desactualizada, lagunas, inconsistencias
 

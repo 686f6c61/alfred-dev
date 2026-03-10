@@ -889,7 +889,7 @@ const data: PageData = {
         title: 'Análisis con SonarQube',
         command: '/alfred-dev:audit',
         steps: [
-          'El QA comprueba si Docker está instalado; si no, lo instala él mismo (con tu permiso)',
+          'El security-officer comprueba si Docker está instalado; si no, pide permiso al usuario para instalarlo',
           'Levanta SonarQube con Docker automáticamente y espera a que esté listo',
           'Configura el proyecto, ejecuta el scanner y espera los resultados',
           'Traduce los hallazgos (bugs, vulnerabilidades, code smells) en un informe con correcciones propuestas',
@@ -1258,13 +1258,21 @@ personalidad:
 
   changelog: [
     {
+      version: '0.3.5',
+      date: '2026-03-10',
+      changed: [
+        '<strong>SonarQube movido al security-officer</strong> -- el análisis de SonarQube lo ejecuta ahora el security-officer en lugar del qa-engineer durante <code>/alfred-dev:audit</code>. Levanta Docker, ejecuta el scanner end-to-end e integra los hallazgos en su informe de seguridad.',
+        '<strong>Instrucciones imperativas</strong> -- el subagente recibe pasos explícitos y secuenciales (leer el skill, ejecutar los 7 pasos, integrar resultados) en lugar de una referencia textual que podía ignorarse.',
+      ],
+    },
+    {
       version: '0.3.4',
       date: '2026-03-03',
       fixed: [
         '<strong>Nomenclatura de comandos</strong> -- todos los comandos de la web actualizados de <code>/alfred X</code> a <code>/alfred-dev:X</code> para reflejar la convención real de Claude Code.',
         '<strong>Stats corregidos</strong> -- skills de 56 a 59, comandos de 10 a 11, hooks de 7 a 11. Alineados con la implementación real.',
         '<strong>Comando /alfred-dev:gui visible</strong> -- añadido a la tabla pública de comandos en ambos idiomas.',
-        '<strong>SonarQube integrado en audit</strong> -- el qa-engineer ejecuta el skill de SonarQube como paso por defecto. Verificado end-to-end con Docker.',
+        '<strong>SonarQube integrado en audit</strong> -- el security-officer ejecuta el skill de SonarQube como paso por defecto. Verificado end-to-end con Docker.',
         '<strong>Fichero de puertos del dashboard</strong> -- <code>session-start.sh</code> crea <code>.claude/alfred-gui-port</code> y verifica la conexión real al servidor en vez de confiar en <code>kill -0</code>.',
         '<strong>Colores de agentes opcionales</strong> -- los 5 agentes sin color en el frontmatter ahora tienen colores asignados para el dashboard.',
       ],
@@ -1443,7 +1451,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.4',
+    version: 'v0.3.5',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
