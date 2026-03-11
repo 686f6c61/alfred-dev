@@ -374,7 +374,7 @@ const data: PageData = {
   dashboard: {
     sectionLabel: 'Alpha Phase',
     title: 'Real-time dashboard',
-    descriptionHtml: 'The web dashboard shows the full project status without interfering with the terminal. Phases, agents, decisions, commits and timeline updated via WebSocket. Launched with <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:gui</code> and works in any browser.',
+    descriptionHtml: '<strong style="color: var(--yellow);">Alpha Phase</strong> -- The web dashboard shows the project status without interfering with the terminal. Phases, agents, decisions, commits and timeline updated via WebSocket. Launched with <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:gui</code> and works in any browser.<br><br><span style="opacity: 0.8;">Data collection is not yet complete: some views may show partial or empty information. We are working on stabilising the data pipeline for the stable release.</span>',
     heroImage: {
       src: '/screenshots/dashboard-estado.webp',
       alt: 'Project status view in the Alfred Dev dashboard',

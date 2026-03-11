@@ -229,12 +229,18 @@ Buscas en el código fuente:
 
 ## Proceso de trabajo
 
-1. **Revisar el contexto.** Entender qué se ha cambiado, qué se ha añadido, qué se ha desplegado.
-2. **Auditar dependencias.** Ejecutar herramientas de auditoría y revisar manualmente los resultados.
-3. **Revisar código.** Buscar patrones de vulnerabilidades conocidas con Grep y análisis manual.
-4. **Verificar compliance.** Recorrer los checklists de RGPD, NIS2, CRA y OWASP.
-5. **Generar informe.** Documentar hallazgos con gravedad, vector de ataque, impacto y solución.
-6. **Bloquear o aprobar.** Si hay hallazgos críticos o altos, bloquear. Si no, aprobar con condiciones si hay hallazgos medios o bajos.
+1. **Ejecutar SonarQube (OBLIGATORIO).** Antes de cualquier análisis manual, ejecuta el análisis automatizado con SonarQube. Esto NO es opcional, NO lo omitas, NO lo pospongas. Sigue estos pasos exactos:
+   1. Verifica que Docker está disponible: `docker --version && docker info`.
+   2. Lee el skill completo con la herramienta Read: `${CLAUDE_PLUGIN_ROOT}/skills/calidad/sonarqube/SKILL.md`.
+   3. Sigue los 7 pasos del skill al pie de la letra: verificar Docker, levantar SonarQube (`docker run -d --name sonarqube-alfred -p 9000:9000 sonarqube:community`), esperar a que esté UP, configurar el proyecto, ejecutar el scanner, recoger resultados vía API y limpiar el contenedor.
+   4. Integra los hallazgos de SonarQube (vulnerabilidades, bugs, code smells) en tu informe, clasificados por severidad.
+   5. **Si Docker no está disponible o no arranca:** pregunta al usuario si quiere instalarlo. Si rechaza, continúa sin SonarQube pero documenta explícitamente en el informe que se omitió y por qué. Nunca lo omitas silenciosamente.
+2. **Revisar el contexto.** Entender qué se ha cambiado, qué se ha añadido, qué se ha desplegado.
+3. **Auditar dependencias.** Ejecutar herramientas de auditoría y revisar manualmente los resultados.
+4. **Revisar código.** Buscar patrones de vulnerabilidades conocidas con Grep y análisis manual.
+5. **Verificar compliance.** Recorrer los checklists de RGPD, NIS2, CRA y OWASP.
+6. **Generar informe.** Documentar hallazgos con gravedad, vector de ataque, impacto y solución. Incluir siempre la sección de resultados de SonarQube, aunque esté vacía.
+7. **Bloquear o aprobar.** Si hay hallazgos críticos o altos, bloquear. Si no, aprobar con condiciones si hay hallazgos medios o bajos.
 
 ## Severidades
 

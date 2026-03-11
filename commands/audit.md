@@ -58,11 +58,15 @@ Pasa `equipo_sesion` internamente al flujo. Desde este momento, la ejecución co
 Lanza 4 agentes EN PARALELO usando la herramienta Task:
 
 1. **qa-engineer**: cobertura de tests, tests rotos, code smells, deuda técnica de calidad.
-2. **security-officer**: CVEs en dependencias, OWASP, compliance RGPD/NIS2/CRA, SBOM. **Antes de empezar su análisis manual, ejecuta el end-to-end de SonarQube** siguiendo estos pasos obligatorios:
-   1. Lee el fichero `skills/calidad/sonarqube/SKILL.md` con la herramienta Read.
-   2. Sigue los 7 pasos del skill al pie de la letra: verificar Docker, levantar SonarQube (`docker run -d --name sonarqube-alfred -p 9000:9000 sonarqube:community`), esperar a que esté UP, configurar el proyecto, ejecutar el scanner, recoger resultados vía API y limpiar el contenedor.
-   3. Integra los hallazgos de SonarQube (vulnerabilidades, bugs, code smells) en su informe de seguridad, clasificados por severidad.
-   4. Si Docker no está disponible, pregunta al usuario si quiere instalarlo. Si rechaza, continúa sin SonarQube documentando que se omitió.
+2. **security-officer**: CVEs en dependencias, OWASP, compliance RGPD/NIS2/CRA, SBOM. **OBLIGATORIO: SonarQube es el PRIMER paso del security-officer, ANTES de cualquier análisis manual.** Cuando lances el agente security-officer, incluye en su prompt estas instrucciones textuales de forma explícita e imperativa:
+
+   > **INSTRUCCIÓN OBLIGATORIA -- SonarQube:**
+   > Tu PRIMER paso, antes de cualquier otra acción, es ejecutar el análisis de SonarQube. Esto NO es opcional. NO lo omitas. NO lo pospongas. NO decidas que "no es necesario". Sigue estos pasos exactos:
+   > 1. Verifica Docker: `docker --version && docker info`
+   > 2. Lee el skill COMPLETO con Read: `${CLAUDE_PLUGIN_ROOT}/skills/calidad/sonarqube/SKILL.md`
+   > 3. Ejecuta los 7 pasos del skill al pie de la letra: levantar SonarQube (`docker run -d --name sonarqube-alfred -p 9000:9000 sonarqube:community`), esperar UP, configurar proyecto, ejecutar scanner, recoger resultados vía API y limpiar contenedor.
+   > 4. Integra los hallazgos en tu informe.
+   > 5. Si Docker no está disponible, documéntalo explícitamente en el informe. NUNCA omitas SonarQube sin dejarlo por escrito.
 3. **architect**: deuda técnica arquitectónica, coherencia del diseño, acoplamiento excesivo
 4. **tech-writer**: documentación desactualizada, lagunas, inconsistencias
 
