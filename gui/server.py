@@ -676,7 +676,9 @@ class GUIServer:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.bind(("127.0.0.1", self._ws_port))
         except OSError:
-            self._ws_port = find_available_port(self._http_port + 1)
+            # Buscar desde el puerto WS original, no desde el HTTP recalculado,
+            # para evitar solapamientos cuando ambos puertos cambian.
+            self._ws_port = find_available_port(self._ws_port + 1)
 
         print(f"Alfred Dev Dashboard")
         print(f"  HTTP: http://127.0.0.1:{self._http_port}/dashboard.html")
