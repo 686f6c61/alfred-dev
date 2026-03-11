@@ -468,14 +468,10 @@ except Exception:
     echo "${GUI_HTTP_PORT} ${GUI_WS_PORT}" > "$GUI_PORT_FILE"
 
     # Abrir el dashboard automaticamente en el navegador del usuario.
-    # Se usa el comando apropiado segun la plataforma. Si falla, no
-    # bloquea la sesion (fail-open).
+    # Se usa webbrowser de Python (multiplataforma: macOS, Linux, Windows)
+    # en vez de comandos de shell que varian entre plataformas.
     DASHBOARD_URL="http://127.0.0.1:${GUI_HTTP_PORT}/dashboard.html"
-    case "$(uname -s)" in
-      Darwin)  open "$DASHBOARD_URL" 2>/dev/null || true ;;
-      Linux)   xdg-open "$DASHBOARD_URL" 2>/dev/null || true ;;
-      MINGW*|MSYS*|CYGWIN*) start "$DASHBOARD_URL" 2>/dev/null || true ;;
-    esac
+    python3 -c "import webbrowser; webbrowser.open('${DASHBOARD_URL}')" 2>/dev/null || true
 
     CONTEXT="${CONTEXT}
 
