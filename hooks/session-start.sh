@@ -466,11 +466,22 @@ except Exception:
 " "$GUI_HTTP_PORT" 2>/dev/null; then
     echo "$GUI_PID" > "$GUI_PID_FILE"
     echo "${GUI_HTTP_PORT} ${GUI_WS_PORT}" > "$GUI_PORT_FILE"
+
+    # Abrir el dashboard automaticamente en el navegador del usuario.
+    # Se usa el comando apropiado segun la plataforma. Si falla, no
+    # bloquea la sesion (fail-open).
+    DASHBOARD_URL="http://127.0.0.1:${GUI_HTTP_PORT}/dashboard.html"
+    case "$(uname -s)" in
+      Darwin)  open "$DASHBOARD_URL" 2>/dev/null || true ;;
+      Linux)   xdg-open "$DASHBOARD_URL" 2>/dev/null || true ;;
+      MINGW*|MSYS*|CYGWIN*) start "$DASHBOARD_URL" 2>/dev/null || true ;;
+    esac
+
     CONTEXT="${CONTEXT}
 
 ### Dashboard GUI
 
-El servidor del dashboard esta activo (HTTP: ${GUI_HTTP_PORT}, WS: ${GUI_WS_PORT}). El usuario puede abrir la GUI con /alfred-dev:gui."
+El servidor del dashboard esta activo en ${DASHBOARD_URL} (WS: ${GUI_WS_PORT}). Se ha abierto automaticamente en el navegador."
   else
     echo "[Alfred Dev] Aviso: el servidor GUI no pudo arrancar. Revisa ${GUI_LOG}" >&2
     rm -f "$GUI_PID_FILE" "$GUI_PORT_FILE"
