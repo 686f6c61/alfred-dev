@@ -7,6 +7,29 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.7] - 2026-03-12
+
+### Added
+
+- **SonIA -- Project Manager**: nuevo agente de nucleo transversal. Descompone el PRD en tareas, gestiona un kanban en `docs/project/kanban/` con 4 ficheros MD (backlog, in-progress, done, blocked), mantiene la matriz de trazabilidad (criterio -- tarea -- test -- doc) y genera informes de progreso por fase. HARD-GATE: completitud de trazabilidad (criterio -- tarea -- test -- doc enlazados).
+- **La Interprete -- i18n Specialist**: nuevo agente opcional para internacionalizacion. Auditoria de claves i18n, deteccion de cadenas hardcodeadas, validacion de formatos por locale, generacion de esqueletos para nuevos idiomas. HARD-GATE: completitud de claves (N en base = N en todos los idiomas).
+- **QA Engineer ampliado**: nueva seccion de testing de integracion y E2E con estrategias para Playwright/Cypress, tabla de decision entre tipos de test (unitario, integracion, E2E, regresion) y criterios de seleccion.
+
+### Changed
+
+- **El Escriba (antes El Traductor)**: tech-writer reescrito como agente de nucleo con doble activacion: fase 3b (documentacion inline: cabeceras, docstrings, comentarios de contexto) y fase 5 (documentacion de proyecto: API, arquitectura con diagramas Mermaid, guias, changelogs). Guia de estilo estricta: castellano sin latinismos, anglicismos permitidos, sin emojis.
+- **HARD-GATEs en 5 agentes opcionales**: data-engineer (integridad de migraciones), ux-reviewer (WCAG 2.1 nivel A), performance-engineer (umbrales de rendimiento), seo-specialist (requisitos minimos de indexacion), github-manager (operaciones destructivas requieren confirmacion).
+- **Equipo ampliado a 17 agentes**: 9 de nucleo (antes 8) + 8 opcionales (antes 7). Todos los conteos actualizados en web, README y manifiesto.
+- **Colores de agentes unificados**: QA Engineer de red a amber (conflicto con security-officer), performance-engineer y copywriter alineados entre frontmatter y cuerpo del agente.
+- Variable CSS `--magenta` anadida al sistema de diseno para el color de SonIA.
+- Landing page actualizada: nueva entrada de changelog, FAQs actualizados, conteos corregidos en hero, meta, footer y secciones de agentes.
+- **Memoria persistente mejorada**: optimizaciones en el modulo SQLite, consultas mas eficientes y mejor gestion de la base de datos entre sesiones.
+- **Todos los agentes revisados**: inconsistencias corregidas en frontmatter (colores, herramientas), descripciones alineadas con las capacidades reales, personalidades refinadas y cadenas de integracion actualizadas.
+
+### Removed
+
+- **Dashboard GUI eliminado**: la interfaz web del dashboard (introducida en v0.3.0) se retira por no cumplir las expectativas de usabilidad. El servidor HTTP/WebSocket, los ficheros de dashboard, las tablas SQLite de GUI (`gui_actions`, `pinned_items`) y los hooks de arranque/parada automatica dejan de estar activos. La funcionalidad de estado del proyecto se cubre con `/alfred-dev:status`.
+
 ## [0.3.6] - 2026-03-10
 
 ### Fixed
@@ -265,6 +288,9 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.3.7]: https://github.com/686f6c61/alfred-dev/compare/v0.3.6...v0.3.7
+[0.3.6]: https://github.com/686f6c61/alfred-dev/compare/v0.3.5...v0.3.6
+[0.3.5]: https://github.com/686f6c61/alfred-dev/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/686f6c61/alfred-dev/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/686f6c61/alfred-dev/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/686f6c61/alfred-dev/compare/v0.3.1...v0.3.2

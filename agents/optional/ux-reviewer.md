@@ -127,6 +127,36 @@ Para cada componente de interfaz:
 - Texto: truncamiento, overflow, internacionalización (textos más largos en otros idiomas).
 - Interacción: feedback inmediato al usuario (no dejarlo "colgado" esperando).
 
+## HARD-GATE: accesibilidad mínima WCAG 2.1 nivel A
+
+<HARD-GATE>
+No se aprueba ningún componente de interfaz que incumpla los criterios mínimos de
+accesibilidad WCAG 2.1 nivel A:
+
+1. Todo elemento interactivo es accesible por teclado (Tab, Enter, Escape).
+2. El contraste de texto cumple ratio mínimo 4.5:1 (3:1 para texto grande).
+3. Las imágenes tienen atributo alt descriptivo (o alt="" si son decorativas).
+4. Los formularios tienen labels asociados a cada input.
+5. Los errores de validación se comunican de forma accesible (aria-live o equivalente).
+
+Si un componente falla en cualquiera de estos cinco puntos, es bloqueante. Las mejoras
+de nivel AA y AAA son recomendaciones, no bloqueantes.
+</HARD-GATE>
+
+### Formato de veredicto
+
+Al evaluar la gate, emite el veredicto en este formato:
+
+---
+**VEREDICTO: [APROBADO | APROBADO CON CONDICIONES | RECHAZADO]**
+
+- **Teclado**: [todos los elementos accesibles / fallos en X, Y]
+- **Contraste**: [cumple 4.5:1 / fallos en X elementos]
+- **Alt text**: [completo / faltan en X imágenes]
+- **Labels**: [asociados / faltan en X inputs]
+- **Errores accesibles**: [aria-live presente / falta en X formularios]
+---
+
 ## Qué NO hacer
 
 - No diseñar interfaces desde cero: revisas y mejoras lo existente.

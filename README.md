@@ -2,9 +2,9 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-15 agentes especializados con personalidad propia (8 de nucleo + 7 opcionales), 59 skills en 13 dominios, memoria persistente de decisiones por proyecto, dashboard web en tiempo real, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 59 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
-[Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Dashboard](#dashboard-gui) -- [Arquitectura](#arquitectura)
+[Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
 ---
 
@@ -51,6 +51,23 @@ curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.
 irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.ps1 | iex
 ```
 
+## Inicio rapido
+
+Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
+
+```bash
+# 1. Verificar que el plugin esta cargado
+/alfred help
+
+# 2. Configurar el proyecto (detecta el stack automaticamente)
+/alfred config
+
+# 3. Arrancar una funcionalidad de ejemplo
+/alfred feature sistema de login con email y password
+```
+
+Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred fix` con una descripcion del bug o `/alfred spike` para investigar una tecnologia sin compromiso de implementacion.
+
 ## Comandos
 
 Toda la interfaz se controla desde la línea de comandos de Claude Code con el prefijo `/alfred`:
@@ -64,7 +81,6 @@ Toda la interfaz se controla desde la línea de comandos de Claude Code con el p
 | `/alfred ship` | Release: auditoria final paralela, changelog, versionado semantico, despliegue. |
 | `/alfred audit` | Auditoria completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentacion. |
 | `/alfred config` | Configurar autonomia, stack, compliance, personalidad, agentes opcionales y memoria persistente. |
-| `/alfred gui` | Lanzar el dashboard web con estado del proyecto en tiempo real. |
 | `/alfred status` | Fase actual, fases completadas con duracion, gate pendiente y agente activo. |
 | `/alfred update` | Comprobar si hay version nueva y actualizar el plugin. |
 | `/alfred help` | Referencia completa de comandos, agentes y flujos. |
@@ -87,24 +103,25 @@ Cada transición entre fases requiere superar la quality gate correspondiente.
 
 ## Arquitectura
 
-### Agentes de nucleo (8)
+### Agentes de nucleo (9)
 
-El plugin implementa 8 agentes de nucleo, siempre activos, cada uno con un system prompt especializado, un conjunto de herramientas definido y un modelo asignado segun la complejidad de su tarea:
+El plugin implementa 9 agentes de nucleo, siempre activos, cada uno con un system prompt especializado, un conjunto de herramientas definido y un modelo asignado segun la complejidad de su tarea:
 
 | Agente | Rol | Modelo | Responsabilidad |
 |--------|-----|--------|-----------------|
 | **Alfred** | Orquestador | opus | Coordina flujos, activa agentes, evalua gates entre fases |
+| **SonIA** | Project Manager | sonnet | Descompone PRD en tareas, kanban con MD, trazabilidad criterio-tarea-test-doc, informes de progreso |
 | **El buscador de problemas** | Product Owner | opus | PRDs, historias de usuario, criterios de aceptacion, analisis competitivo |
 | **El dibujante de cajas** | Arquitecto | opus | Diseno de sistemas, ADRs, diagramas Mermaid, matrices de decision |
 | **El artesano** | Senior Dev | opus | Implementacion TDD estricto, refactoring, commits atomicos |
 | **El paranoico** | Security Officer | opus | OWASP Top 10, threat modeling STRIDE, SBOM, compliance RGPD/NIS2/CRA |
-| **El rompe-cosas** | QA Engineer | sonnet | Test plans, code review, testing exploratorio, regresion |
+| **El rompe-cosas** | QA Engineer | sonnet | Test plans, code review, testing exploratorio, integracion, E2E, regresion |
 | **El fontanero** | DevOps Engineer | sonnet | Docker multi-stage, CI/CD, deploy, monitoring, observabilidad |
-| **El traductor** | Tech Writer | sonnet | Documentacion de API, arquitectura, guias de usuario, changelogs |
+| **El escriba** | Tech Writer | sonnet | Fase 3b: cabeceras, docstrings, comentarios inline. Fase 5: API docs, arquitectura, guias, changelogs |
 
 Los agentes con modelo `opus` realizan tareas que requieren razonamiento complejo (diseno, seguridad, implementacion). Los agentes con modelo `sonnet` cubren tareas estructuradas con patrones mas predecibles (QA, infra, documentacion).
 
-### Agentes opcionales (7)
+### Agentes opcionales (8)
 
 Agentes predefinidos que el usuario activa segun las necesidades de su proyecto con `/alfred config`. Se sugieren automaticamente en funcion del stack detectado. Desde v0.3.6, Alfred tambien propone agentes opcionales de forma dinamica al arrancar cada flujo, analizando la descripcion de la tarea con keywords contextuales y combinandolas con las senales del proyecto. La seleccion dinamica es efimera (solo para esa sesion) y no modifica la configuracion persistente. Mas detalles en la [documentacion de configuracion](docs/configuration.md#composicion-dinamica-de-equipo).
 
@@ -117,6 +134,7 @@ Agentes predefinidos que el usuario activa segun las necesidades de su proyecto 
 | **SEO Specialist** | Especialista SEO | Proyectos web con contenido publico |
 | **Copywriter** | Copywriter | Proyectos con textos publicos: landing, emails, onboarding |
 | **El Bibliotecario** | Consultas historicas | Proyectos con memoria persistente activa |
+| **La Interprete** | Especialista i18n | Proyectos multilingues: claves, formatos, cadenas hardcodeadas |
 
 ### Skills (59)
 
@@ -238,43 +256,6 @@ Funcionalidades principales:
 - **Seguridad**: sanitizacion de secretos con los mismos patrones que `secret-guard.sh`, permisos 0600 en el fichero de base de datos.
 - **Migracion automatica**: el esquema se actualiza automaticamente con backup previo al abrir bases de datos de versiones anteriores.
 
-## Dashboard GUI
-
-> **Fase Alpha** -- Funcionalidad en desarrollo activo. La interfaz y el protocolo pueden cambiar entre versiones menores.
-
-A partir de v0.3.0, Alfred Dev incluye un dashboard web que muestra el estado completo del proyecto en tiempo real sin intervenir en el terminal de Claude Code. La v0.3.1 refuerza la estabilidad del servidor (lectura robusta de frames WebSocket, cabeceras de seguridad HTTP, soporte movil) y anade inyeccion dinamica de version y puerto. La v0.3.6 corrige la nomenclatura de comandos en la web y actualiza las estadisticas. Se lanza con `/alfred gui` y se abre automaticamente en el navegador.
-
-El dashboard actua como fuente de verdad externa: persiste toda la informacion de la sesion independientemente de la compactacion de contexto de Claude Code. Si la conversacion se compacta y se pierde contexto, el dashboard sigue mostrando el historial completo.
-
-![Vista de estado del dashboard de Alfred Dev](site/screenshots/dashboard-estado.png)
-
-**7 vistas disponibles:**
-
-| Vista | Contenido |
-|-------|-----------|
-| Estado | Resumen general: fase activa, progreso de gates, agente activo, contadores y marcados recientes |
-| Timeline | Cronologia de todos los eventos del proyecto con filtros por tipo (fases, agentes, decisiones, commits, gates) |
-| Decisiones | Tabla de decisiones tecnicas con busqueda, filtros por fase/estado y etiquetas |
-| Agentes | Cuadricula de los 15 agentes (8 principales + 7 opcionales) con estado y toggle de activacion |
-| Memoria | Explorador directo de la base de datos SQLite con pestanas por tabla |
-| Commits | Historial de commits con SHA, autor y ficheros afectados |
-| Marcados | Elementos importantes marcados por el usuario o el sistema, con prioridad y nota |
-
-| | | |
-|---|---|---|
-| ![Timeline](site/screenshots/dashboard-timeline.png) | ![Decisiones](site/screenshots/dashboard-decisiones.png) | ![Agentes](site/screenshots/dashboard-agentes.png) |
-| Timeline | Decisiones | Agentes |
-| ![Memoria](site/screenshots/dashboard-memoria.png) | ![Commits](site/screenshots/dashboard-commits.png) | ![Marcados](site/screenshots/dashboard-marcados.png) |
-| Memoria | Commits | Marcados |
-
-Para la documentacion completa del protocolo WebSocket, las tablas SQLite del dashboard y la guia de desarrollo, consulta [docs/gui.md](docs/gui.md).
-
-**Arquitectura tecnica:**
-
-- **Servidor:** proceso Python asyncio con HTTP (puerto 7533) + WebSocket RFC 6455 manual (puerto 7534) + polling SQLite cada 500ms. Sin dependencias externas.
-- **Frontend:** fichero HTML unico con CSS y JS vanilla embebidos. Estetica dark mode coherente con la landing page.
-- **Comunicacion:** WebSocket bidireccional con reconexion automatica y backoff exponencial (1s, 2s, 4s, 8s, max 30s).
-- **Principio fail-open:** si la GUI falla, Alfred funciona exactamente igual que sin ella. Los hooks siguen escribiendo en SQLite.
 
 ## Estructura del proyecto
 
@@ -284,17 +265,13 @@ alfred-dev/
     plugin.json           # Manifiesto del plugin
     marketplace.json      # Metadatos para el marketplace
     mcp.json              # Servidor MCP de memoria persistente
-  agents/                 # 8 agentes de nucleo
-  agents/optional/        # 7 agentes opcionales
-  commands/               # 11 comandos /alfred (incluye gui)
+  agents/                 # 9 agentes de nucleo
+  agents/optional/        # 8 agentes opcionales
+  commands/               # 10 comandos /alfred
   skills/                 # 59 skills en 13 dominios
-  hooks/                  # 11 hooks del ciclo de vida
+  hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos
   core/                   # Motor de orquestacion y memoria (Python)
-  gui/                    # Dashboard web (servidor + frontend)
-    server.py             # Servidor HTTP + WebSocket + SQLite watcher
-    websocket.py          # Protocolo WebSocket RFC 6455
-    dashboard.html        # Frontend completo (HTML + CSS + JS)
   mcp/                    # Servidor MCP stdio (memoria persistente)
   templates/              # 7 plantillas de artefactos
   tests/                  # Tests unitarios (pytest)
@@ -324,6 +301,7 @@ agentes_opcionales:
   seo-specialist: false
   copywriter: false
   librarian: true
+  i18n-specialist: false
 
 memoria:
   enabled: true

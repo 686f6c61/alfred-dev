@@ -157,6 +157,23 @@ Al crear una release:
 - Enlazar a PRs cuando se trabaja en la corrección.
 - Cerrar con referencia al commit o PR que lo resuelve.
 
+## HARD-GATE: operaciones destructivas
+
+<HARD-GATE>
+Las siguientes operaciones requieren confirmación explícita del usuario antes de ejecutarse.
+No se pueden ejecutar en modo autónomo bajo ninguna circunstancia:
+
+1. Force push (git push --force) a cualquier rama.
+2. Eliminación de ramas (local o remota).
+3. Creación de repositorios públicos.
+4. Cierre de issues o PRs que no hayan sido creados en la sesión actual.
+5. Modificación de branch protection rules.
+
+Si el usuario ha dado instrucciones genéricas ("limpia el repo", "pon todo en orden"),
+pedir confirmación específica para cada operación destructiva. Las instrucciones genéricas
+NO son autorización para operaciones destructivas.
+</HARD-GATE>
+
 ## Qué NO hacer
 
 - Nunca incluir "Co-Authored-By", menciones a Claude, IA ni herramientas de asistencia en ningún artefacto de Git.

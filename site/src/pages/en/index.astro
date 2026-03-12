@@ -19,7 +19,6 @@ import Hero from '@/components/Hero.astro';
 import Stats from '@/components/Stats.astro';
 import AgentsSection from '@/components/AgentsSection.astro';
 import CompositionSection from '@/components/CompositionSection.astro';
-import DashboardSection from '@/components/DashboardSection.astro';
 import FlowsSection from '@/components/FlowsSection.astro';
 import GatesSection from '@/components/GatesSection.astro';
 import SkillsSection from '@/components/SkillsSection.astro';
@@ -33,7 +32,6 @@ import ConfigSection from '@/components/ConfigSection.astro';
 import FaqSection from '@/components/FaqSection.astro';
 import Footer from '@/components/Footer.astro';
 import ChangelogModal from '@/components/ChangelogModal.astro';
-import Lightbox from '@/components/Lightbox.astro';
 import ScrollSpy from '@/components/ScrollSpy.astro';
 
 const locale: Locale = 'en';
@@ -50,9 +48,9 @@ const softwareApplicationLd = JSON.stringify({
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'macOS, Linux, Windows',
   inLanguage: 'en-US',
-  softwareVersion: '0.3.6',
+  softwareVersion: '0.3.7',
   datePublished: '2025-02-22',
-  screenshot: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
+  screenshot: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
   offers: {
     '@type': 'Offer',
     price: '0',
@@ -130,8 +128,6 @@ const faqPageLd = JSON.stringify({
 
     <CompositionSection composition={data.composition} />
 
-    <DashboardSection dashboard={data.dashboard} />
-
     <FlowsSection
       header={data.workflows.header}
       flows={data.workflows.flows}
@@ -196,10 +192,4 @@ const faqPageLd = JSON.stringify({
     }}
   />
 
-  {/* Dashboard image lightbox */}
-  <Lightbox
-    closeLabel={t('lightboxClose', locale)}
-    prevLabel={t('lightboxPrev', locale)}
-    nextLabel={t('lightboxNext', locale)}
-  />
 </BaseLayout>

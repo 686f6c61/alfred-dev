@@ -679,6 +679,12 @@ class MemoryMCPServer:
                         Si es 0 o negativo, no se ejecuta la purga.
     """
 
+    # Diccionario explicito de handlers por herramienta.
+    # Usar un diccionario en vez de getattr dinamico tiene dos ventajas:
+    # 1. Superficie de ataque reducida: solo se exponen los handlers listados.
+    # 2. Mantenibilidad: si falta un handler, es visible aqui de un vistazo.
+    _TOOL_HANDLERS: Dict[str, Any] = {}  # Se inicializa al final de la clase
+
     def __init__(self, db_path: str, retention_days: int = 365) -> None:
         self._db: Optional[MemoryDB] = None
         self._db_path = db_path
@@ -743,7 +749,7 @@ class MemoryMCPServer:
             "protocolVersion": "2024-11-05",
             "serverInfo": {
                 "name": "alfred-memory",
-                "version": "0.3.6",
+                "version": "0.3.7",
             },
             "capabilities": {
                 "tools": {},
@@ -803,9 +809,10 @@ class MemoryMCPServer:
                 str(exc),
             )
 
-        # Despachar al handler concreto
-        handler_name = f"_call_{tool_name}"
-        handler = getattr(self, handler_name, None)
+        # Despachar al handler concreto mediante diccionario explicito.
+        # Se evita getattr dinamico para reducir superficie de ataque y
+        # facilitar el mantenimiento: si un handler falta, es visible aqui.
+        handler = self._TOOL_HANDLERS.get(tool_name)
         if handler is None:
             return _make_error(
                 request_id,
@@ -1454,6 +1461,32 @@ class MemoryMCPServer:
             "source": source,
         }
 
+    # --- Diccionario de handlers (inicializacion) -------------------------
+    # Se define aqui, despues de todos los metodos _call_*, para que las
+    # referencias a self.<metodo> resuelvan correctamente en tiempo de
+    # ejecucion. El placeholder vacio del inicio de la clase se sobreescribe.
+
+    @classmethod
+    def _init_handlers(cls) -> Dict[str, Any]:
+        """Construye el diccionario de handlers MCP."""
+        return {
+            "memory_search": cls._call_memory_search,
+            "memory_log_decision": cls._call_memory_log_decision,
+            "memory_log_commit": cls._call_memory_log_commit,
+            "memory_get_iteration": cls._call_memory_get_iteration,
+            "memory_get_timeline": cls._call_memory_get_timeline,
+            "memory_stats": cls._call_memory_stats,
+            "memory_manage_iteration": cls._call_memory_manage_iteration,
+            "memory_log_event": cls._call_memory_log_event,
+            "memory_get_decisions": cls._call_memory_get_decisions,
+            "memory_purge": cls._call_memory_purge,
+            "memory_update_decision": cls._call_memory_update_decision,
+            "memory_link_decisions": cls._call_memory_link_decisions,
+            "memory_health": cls._call_memory_health,
+            "memory_export": cls._call_memory_export,
+            "memory_import": cls._call_memory_import,
+        }
+
     # --- Bucle principal ---------------------------------------------------
 
     def run(self) -> None:
@@ -1558,6 +1591,11 @@ class MemoryMCPServer:
 # ---------------------------------------------------------------------------
 # Punto de entrada
 # ---------------------------------------------------------------------------
+
+
+# Inicializar el diccionario de handlers despues de que todos los metodos
+# _call_* esten definidos. Esto sobreescribe el placeholder vacio.
+MemoryMCPServer._TOOL_HANDLERS = MemoryMCPServer._init_handlers()
 
 
 def main() -> None:

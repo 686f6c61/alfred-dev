@@ -21,17 +21,17 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-    description: 'Plugin de Claude Code: 15 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
+    description: 'Plugin de Claude Code: 17 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
     canonical: 'https://alfred-dev.com/',
     locale: 'es_ES',
     og: {
       type: 'website',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '15 agentes especializados, 59 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
+      description: '17 agentes especializados, 59 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
       url: 'https://alfred-dev.com/',
       siteName: 'Alfred Dev',
       locale: 'es_ES',
-      image: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
+      image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
       imageWidth: 1470,
       imageHeight: 759,
       imageType: 'image/webp',
@@ -39,8 +39,8 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '15 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción.',
-      image: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
+      description: '17 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción.',
+      image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
 
@@ -53,11 +53,6 @@ const data: PageData = {
       href: '#agentes',
       label: 'Agentes',
       svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    },
-    {
-      href: '#dashboard',
-      label: 'Dashboard',
-      svgContent: '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
     },
     {
       href: '#flujos',
@@ -108,7 +103,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '15 agentes especializados con personalidad propia. 8 de núcleo, 7 opcionales que activas según tu proyecto. Memoria persistente, quality gates, 59 skills, de la idea a producción.',
+    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales que activas según tu proyecto. Memoria persistente, quality gates, 59 skills, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -128,13 +123,13 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   stats: [
-    { number: 15, label: 'Agentes' },
+    { number: 17, label: 'Agentes' },
     { number: 59, label: 'Skills' },
     { number: 5, label: 'Flujos' },
-    { number: 11, label: 'Comandos' },
+    { number: 10, label: 'Comandos' },
     { number: 7, label: 'Templates' },
-    { number: 11, label: 'Hooks' },
-    { number: 18, label: 'Gates' },
+    { number: 10, label: 'Hooks' },
+    { number: 21, label: 'Gates' },
   ],
 
   // ----------------------------------------------------------------
@@ -144,7 +139,7 @@ const data: PageData = {
   coreAgents: {
     header: {
       label: 'El equipo',
-      title: '8 agentes de núcleo',
+      title: '9 agentes de núcleo',
       description: 'Cada agente tiene un rol definido, una personalidad propia y frases características. Trabajan coordinados por Alfred, el mayordomo jefe. Siempre activos en cada flujo.',
     },
     agents: [
@@ -155,6 +150,14 @@ const data: PageData = {
         role: 'Orquestador del equipo. Decide qué agentes activar, en qué orden, y evalúa las quality gates entre fases.',
         phrase: '"Muy bien, señor. Permítame organizar eso."',
         color: 'var(--blue)',
+      },
+      {
+        name: 'SonIA',
+        model: 'sonnet',
+        alias: 'Project Manager',
+        role: 'Si no está en el kanban, no existe. Descompone el PRD en tareas, traza cada criterio de aceptación hasta su test y documentación, y detecta desvíos de alcance.',
+        phrase: '"El criterio CA-05 no tiene test asociado. Quién se encarga?"',
+        color: 'var(--magenta)',
       },
       {
         name: 'El buscador de problemas',
@@ -194,7 +197,7 @@ const data: PageData = {
         alias: 'QA Engineer',
         role: 'Su misión es demostrar que el código no funciona. Test plans, code review, testing exploratorio, regresión.',
         phrase: '"Ese edge case que no contemplaste? Lo encontré."',
-        color: 'var(--red)',
+        color: 'var(--gold)',
       },
       {
         name: 'El fontanero',
@@ -205,11 +208,11 @@ const data: PageData = {
         color: 'var(--cyan)',
       },
       {
-        name: 'El traductor',
+        name: 'El escriba',
         model: 'sonnet',
         alias: 'Tech Writer',
-        role: 'Si no está documentado, no existe. API docs, guías de usuario, arquitectura, changelogs, release notes.',
-        phrase: '"He visto tumbas con más información que este README."',
+        role: 'Document first. Comenta el código inline (cabeceras, docstrings) y genera la documentación de proyecto: API docs, arquitectura con diagramas Mermaid, guías y changelogs.',
+        phrase: '"Ese fichero no tiene cabecera. Nadie sabe para qué sirve."',
         color: 'var(--white)',
       },
     ],
@@ -223,7 +226,7 @@ const data: PageData = {
     header: {
       label: 'Ampliables',
       labelColor: 'var(--gold)',
-      title: '7 agentes opcionales',
+      title: '8 agentes opcionales',
       description: 'Roles especializados que activas según lo que necesite tu proyecto. Alfred analiza tu stack y te sugiere cuáles activar. Se gestionan con <strong style="color: var(--blue);">/alfred-dev:config</strong>.',
     },
     agents: [
@@ -283,6 +286,14 @@ const data: PageData = {
         phrase: '"Según la decisión D#42 del 15 de febrero, se descartó Redis por latencia."',
         color: '#c9a96e',
       },
+      {
+        name: 'La Intérprete',
+        model: 'sonnet',
+        alias: 'i18n Specialist',
+        role: 'Auditoría de claves i18n, detección de cadenas hardcodeadas, validación de formatos por locale. Si el idioma base tiene N claves, todos los demás deben tener N.',
+        phrase: '"El idioma base tiene 847 claves. El francés tiene 831. Faltan 16."',
+        color: 'var(--cyan)',
+      },
     ],
   },
 
@@ -297,13 +308,14 @@ const data: PageData = {
       title: 'El equipo que necesitas, cuando lo necesitas',
       description: 'Alfred analiza tu tarea en tiempo real y sugiere los agentes opcionales más relevantes. Sin configuración manual: describes lo que quieres hacer y el sistema propone el equipo ideal.',
     },
-    introHtml: 'Cuando ejecutas <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code> con una descripción de tarea, el motor de composición extrae las keywords relevantes y puntúa cada agente opcional según su afinidad con el trabajo a realizar. Después te presenta un selector para que confirmes o ajustes el equipo antes de arrancar.',
+    introHtml: 'Cuando ejecutas <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code> con una descripción de tarea, Alfred lee la descripción completa y razona sobre qué especialistas encajan con el trabajo. No busca palabras clave: entiende el contexto. Después te presenta todos los agentes opcionales con los sugeridos preseleccionados para que confirmes o ajustes el equipo.',
     terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'Necesito migrar la base de datos de SQLite a PostgreSQL, consultar las decisiones anteriores sobre el esquema de datos para no repetir errores, rediseñar completamente la interfaz del checkout con tests de accesibilidad, escribir todo el copy de la landing de lanzamiento y optimizar el rendimiento de carga en dispositivos móviles',
     coreAgentsLabel: 'Equipo base',
     coreAgentsActiveLabel: 'Siempre activo',
     coreAgents: [
       { id: 'alfred', name: 'Alfred', color: '#e8a44a', role: 'Orquestador' },
+      { id: 'project-manager', name: 'SonIA', color: '#d46ab2', role: 'Seguimiento' },
       { id: 'product-owner', name: 'Product Owner', color: '#5b9cf5', role: 'Producto' },
       { id: 'architect', name: 'Architect', color: '#a07ee8', role: 'Arquitectura' },
       { id: 'senior-dev', name: 'Senior Dev', color: '#4ec990', role: 'Desarrollo' },
@@ -317,120 +329,64 @@ const data: PageData = {
     notSuggestedLabel: 'No necesario',
     selectorTitle: 'Equipo propuesto',
     confirmLabel: 'Confirmar equipo',
+    thinkingLabel: 'Analizando tarea...',
+    reasoningLabel: 'Razonamiento',
     agents: [
       {
         id: 'data-engineer',
         name: 'Data Engineer',
         color: '#5b9cf5',
-        score: 0.85,
-        keywords: ['base de datos', 'PostgreSQL'],
+        suggested: true,
+        reasoning: 'La tarea implica migrar de SQLite a PostgreSQL y rediseñar el esquema. Un especialista en datos es imprescindible.',
       },
       {
         id: 'ux-reviewer',
         name: 'UX Reviewer',
         color: '#a07ee8',
-        score: 0.75,
-        keywords: ['interfaz', 'redisenar'],
+        suggested: true,
+        reasoning: 'Se menciona un rediseño completo del checkout con tests de accesibilidad. Necesitamos revisión de UX.',
       },
       {
         id: 'performance-engineer',
         name: 'Performance Engineer',
         color: '#4ec990',
-        score: 0.80,
-        keywords: ['rendimiento', 'optimizar'],
+        suggested: true,
+        reasoning: 'Hay un objetivo explícito de optimizar el rendimiento de carga en móviles.',
       },
       {
         id: 'copywriter',
         name: 'Copywriter',
         color: '#e8a44a',
-        score: 0.70,
-        keywords: ['copy', 'landing'],
+        suggested: true,
+        reasoning: 'La tarea incluye escribir todo el copy de la landing de lanzamiento.',
       },
       {
         id: 'librarian',
         name: 'Bibliotecario',
         color: '#c9a96e',
-        score: 0.65,
-        keywords: ['decisiones anteriores', 'esquema'],
+        suggested: true,
+        reasoning: 'Se quiere consultar decisiones anteriores sobre el esquema para no repetir errores. El historial es clave.',
       },
       {
         id: 'github-manager',
         name: 'GitHub Manager',
         color: '#8b90a8',
-        score: 0.0,
-        keywords: [],
+        suggested: false,
+        reasoning: 'No se menciona gestión de repositorio, PRs ni releases en esta tarea.',
       },
       {
         id: 'seo-specialist',
         name: 'SEO Specialist',
         color: '#8b90a8',
-        score: 0.0,
-        keywords: [],
-      },
-    ],
-  },
-
-  // ----------------------------------------------------------------
-  // Dashboard
-  // ----------------------------------------------------------------
-
-  dashboard: {
-    sectionLabel: 'Fase Alpha',
-    title: 'Dashboard en tiempo real',
-    descriptionHtml: '<strong style="color: var(--yellow);">Fase Alpha</strong> -- El dashboard web muestra el estado del proyecto sin intervenir en el terminal. Fases, agentes, decisiones, commits y timeline actualizados por WebSocket. Se lanza con <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:gui</code> y funciona en cualquier navegador.<br><br><span style="opacity: 0.8;">La recogida de datos aun no es completa: algunas vistas pueden mostrar informacion parcial o vacia. Estamos trabajando en estabilizar el pipeline de datos para la version estable.</span>',
-    heroImage: {
-      src: '/screenshots/dashboard-estado.webp',
-      alt: 'Vista de estado del proyecto en el dashboard de Alfred Dev',
-      caption: 'Estado del proyecto',
-    },
-    gridImages: [
-      {
-        src: '/screenshots/dashboard-timeline.webp',
-        alt: 'Timeline de eventos en el dashboard de Alfred Dev',
-        caption: 'Timeline de eventos',
+        suggested: false,
+        reasoning: 'La landing es nueva, pero el enfoque es el copy, no el posicionamiento. No es prioritario ahora.',
       },
       {
-        src: '/screenshots/dashboard-decisiones.webp',
-        alt: 'Decisiones técnicas en el dashboard de Alfred Dev',
-        caption: 'Decisiones técnicas',
-      },
-      {
-        src: '/screenshots/dashboard-agentes.webp',
-        alt: 'Control de agentes en el dashboard de Alfred Dev',
-        caption: 'Control de agentes',
-      },
-      {
-        src: '/screenshots/dashboard-memoria.webp',
-        alt: 'Explorador de memoria en el dashboard de Alfred Dev',
-        caption: 'Explorador de memoria',
-      },
-      {
-        src: '/screenshots/dashboard-commits.webp',
-        alt: 'Historial de commits en el dashboard de Alfred Dev',
-        caption: 'Historial de commits',
-      },
-      {
-        src: '/screenshots/dashboard-marcados.webp',
-        alt: 'Elementos marcados en el dashboard de Alfred Dev',
-        caption: 'Elementos marcados',
-      },
-    ],
-    features: [
-      {
-        title: '7 vistas',
-        description: 'Estado, timeline, decisiones, agentes, memoria, commits y marcados.',
-      },
-      {
-        title: 'Tiempo real',
-        description: 'WebSocket con reconexión automática y backoff exponencial.',
-      },
-      {
-        title: 'Sin dependencias',
-        description: 'HTML + JS vanilla, servidor Python asyncio, sin frameworks externos.',
-      },
-      {
-        title: 'Fail-open',
-        description: 'Si la GUI falla, Alfred funciona exactamente igual que sin ella.',
+        id: 'i18n-specialist',
+        name: 'i18n Specialist',
+        color: '#8b90a8',
+        suggested: false,
+        reasoning: 'No se mencionan múltiples idiomas ni traducciones en esta tarea.',
       },
     ],
   },
@@ -486,23 +442,25 @@ const data: PageData = {
   gates: {
     header: {
       label: 'Quality gates',
-      title: 'Hacia dónde trabaja Alfred',
-      description: 'Alfred no da garantías absolutas, pero trabaja activamente para que estos objetivos se cumplan en cada flujo. Si detecta que algo no cuadra, detiene el avance y te avisa.',
+      title: 'Cobertura de calidad en todo el ciclo',
+      description: 'Cada fase del desarrollo tiene sus propias quality gates. Los 9 agentes de núcleo cubren desde la validación del producto hasta la entrega, y los opcionales amplían el control a dominios especializados. Si una gate no se supera, el flujo se detiene.',
     },
-    coreLabel: 'Núcleo -- siempre activos',
+    coreLabel: 'Núcleo -- de la idea a producción',
     core: [
-      { text: 'Intenta que los tests estén en verde antes de avanzar a calidad' },
-      { text: 'Pasa revisión de QA y seguridad antes de proponer el despliegue' },
-      { text: 'Busca que el pipeline CI/CD esté verde como requisito de entrega' },
-      { text: 'Pide aprobación del PRD al usuario antes de diseñar' },
-      { text: 'El security officer revisa el diseño antes de pasar a desarrollo' },
-      { text: 'Revisa vulnerabilidades OWASP y alerta si encuentra críticas o altas' },
-      { text: 'Audita dependencias en busca de CVEs conocidos' },
-      { text: 'Comprueba aspectos de compliance RGPD, NIS2 y CRA según el contexto' },
+      { text: 'Valida el PRD con el usuario antes de pasar a diseño' },
+      { text: 'Revisa coherencia arquitectónica y acoplamiento entre módulos antes de codificar' },
+      { text: 'Analiza el diseño en busca de vectores de ataque con modelo de amenazas' },
+      { text: 'Aplica TDD estricto: test que falla, implementación mínima, refactor' },
+      { text: 'Ejecuta tests unitarios, de integración y E2E antes de avanzar a calidad' },
+      { text: 'Audita OWASP Top 10, CVEs en dependencias y compliance RGPD, NIS2 y CRA' },
+      { text: 'Documenta código en línea durante el desarrollo y genera documentación de proyecto al cierre' },
+      { text: 'Exige pipeline CI/CD en verde como requisito de entrega' },
+      { text: 'Rastrea progreso entre fases y mantiene la trazabilidad de cada decisión' },
+      { text: 'Consulta la memoria persistente del proyecto para contextualizar con el histórico' },
       { text: 'Vigila cada escritura de fichero buscando secretos, API keys o tokens' },
       { text: 'Detecta tildes omitidas en castellano al escribir o editar ficheros' },
     ],
-    optionalLabel: 'Opcionales -- cuando los activas',
+    optionalLabel: 'Opcionales -- amplían el control',
     optional: [
       { text: 'Analiza el código con SonarQube (instala Docker si falta, con tu permiso)', optional: true },
       { text: 'Exige rollback en cada migración de base de datos antes de ejecutarla', optional: true },
@@ -512,6 +470,7 @@ const data: PageData = {
       { text: 'Monitoriza Core Web Vitals (LCP, INP, CLS) y alerta si están fuera de umbral', optional: true },
       { text: 'Revisa meta tags, structured data y rastreabilidad SEO antes de publicar', optional: true },
       { text: 'Valida ortografía, tono y consistencia de los textos de la interfaz', optional: true },
+      { text: 'Comprueba que todas las claves i18n del idioma base existan en todos los idiomas destino', optional: true },
     ],
   },
 
@@ -668,7 +627,7 @@ const data: PageData = {
     },
     groups: [
       {
-        title: '11 hooks',
+        title: '10 hooks',
         items: [
           { name: 'session-start.sh', label: 'SessionStart' },
           { name: 'stop-hook.py', label: 'Stop' },
@@ -678,8 +637,7 @@ const data: PageData = {
           { name: 'quality-gate.py', label: 'PostToolUse' },
           { name: 'dependency-watch.py', label: 'PostToolUse' },
           { name: 'spelling-guard.py', label: 'PostToolUse' },
-          { name: 'memory-capture.py', label: 'PostToolUse' },
-          { name: 'commit-capture.py', label: 'PostToolUse' },
+          { name: 'activity-capture.py', label: 'PostToolUse' },
           { name: 'memory-compact.py', label: 'PreCompact' },
         ],
       },
@@ -715,7 +673,7 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interfaz',
-      title: '11 comandos',
+      title: '10 comandos',
       description: 'Todo se controla desde la línea de comandos de Claude Code. Un prefijo, un verbo, una descripción.',
     },
     list: [
@@ -759,12 +717,8 @@ const data: PageData = {
         command: '/alfred-dev:help',
         description: 'Ayuda completa de todos los comandos disponibles.',
       },
-      {
-        command: '/alfred-dev:gui',
-        description: 'Abre el dashboard web en el navegador. Muestra estado, timeline, decisiones, agentes, commits y marcados en tiempo real.',
-      },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 7 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y a partir de ahí se integran automáticamente en los flujos existentes. Por ejemplo, si activas el <em>data-engineer</em>, participará en la fase de arquitectura de <strong style="color: var(--blue);">/alfred-dev:feature</strong>; si activas el <em>seo-specialist</em>, intervendrá en la fase de calidad de <strong style="color: var(--blue);">/alfred-dev:ship</strong>; si activas <em>El Bibliotecario</em>, Alfred consultará el historial de decisiones antes de cada flujo. Alfred decide cuándo invocar a cada agente según el contexto del flujo.',
+    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 8 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y a partir de ahí se integran automáticamente en los flujos existentes. Por ejemplo, si activas el <em>data-engineer</em>, participará en la fase de arquitectura de <strong style="color: var(--blue);">/alfred-dev:feature</strong>; si activas el <em>seo-specialist</em>, intervendrá en la fase de calidad de <strong style="color: var(--blue);">/alfred-dev:ship</strong>; si activas <em>El Bibliotecario</em>, Alfred consultará el historial de decisiones antes de cada flujo. Alfred decide cuándo invocar a cada agente según el contexto del flujo.',
   },
 
   // ----------------------------------------------------------------
@@ -814,7 +768,7 @@ const data: PageData = {
           'El architect diseña la solución y el security-officer valida el diseño',
           'El senior-dev implementa siguiendo TDD estricto (rojo-verde-refactor)',
           'QA y seguridad auditan en paralelo antes de dar el visto bueno',
-          'El tech-writer documenta la API y el devops-engineer prepara el despliegue',
+          'El escriba documenta el código inline y genera los docs de API; el devops-engineer prepara el despliegue',
         ],
       },
       {
@@ -864,7 +818,7 @@ const data: PageData = {
         command: '/alfred-dev:ship',
         steps: [
           'Auditoría final obligatoria: QA y seguridad deben aprobar',
-          'El tech-writer actualiza el changelog y genera las notas de release',
+          'El escriba actualiza el changelog y genera las notas de release',
           'El devops-engineer empaqueta, configura el pipeline y verifica el build',
           'Despliegue supervisado: el usuario confirma antes de subir a producción',
         ],
@@ -1010,7 +964,7 @@ const data: PageData = {
       },
       {
         title: 'Captura automática',
-        descriptionHtml: 'Dos hooks complementarios capturan todo automáticamente: <code>memory-capture.py</code> registra eventos del flujo (iteraciones, fases) y <code>commit-capture.py</code> detecta cada <code>git commit</code> y registra SHA, mensaje, autor y ficheros afectados.',
+        descriptionHtml: 'Un único hook unificado (<code>activity-capture.py</code>) captura todo automáticamente: eventos del flujo (iteraciones, fases), commits de Git (SHA, mensaje, autor, ficheros) y actividad de herramientas. Dispatch interno según el tipo de evento.',
       },
       {
         title: 'Servidor MCP integrado',
@@ -1132,6 +1086,7 @@ agentes_opcionales:
   ux-reviewer: false
   github-manager: true
   librarian: true
+  i18n-specialist: false
 
 memoria:
   enabled: true
@@ -1197,7 +1152,7 @@ personalidad:
       {
         svgContent: '<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>',
         question: 'Qué son los agentes opcionales?',
-        answerHtml: 'Son 7 agentes especializados que puedes activar según las necesidades de tu proyecto: <strong>data-engineer</strong> (bases de datos), <strong>ux-reviewer</strong> (accesibilidad y usabilidad), <strong>performance-engineer</strong> (rendimiento), <strong>github-manager</strong> (gestión de repositorios), <strong>seo-specialist</strong> (posicionamiento web), <strong>copywriter</strong> (textos y ortografía) y <strong>El Bibliotecario</strong> (memoria persistente: consultas históricas sobre decisiones, commits e iteraciones del proyecto).<br><br>Alfred analiza tu proyecto y te sugiere cuáles activar. También puedes gestionarlos manualmente con <strong>/alfred-dev:config</strong>. Se activan o desactivan sin reinstalar nada.',
+        answerHtml: 'Son 8 agentes especializados que puedes activar según las necesidades de tu proyecto: <strong>data-engineer</strong> (bases de datos), <strong>ux-reviewer</strong> (accesibilidad y usabilidad), <strong>performance-engineer</strong> (rendimiento), <strong>github-manager</strong> (gestión de repositorios), <strong>seo-specialist</strong> (posicionamiento web), <strong>copywriter</strong> (textos y ortografía), <strong>El Bibliotecario</strong> (memoria persistente: consultas históricas sobre decisiones, commits e iteraciones del proyecto) y <strong>La Intérprete</strong> (internacionalización: auditoría de claves i18n, detección de cadenas hardcodeadas, validación de formatos por locale).<br><br>Alfred analiza tu proyecto y te sugiere cuáles activar. También puedes gestionarlos manualmente con <strong>/alfred-dev:config</strong>. Se activan o desactivan sin reinstalar nada.',
       },
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
@@ -1232,7 +1187,7 @@ personalidad:
       {
         svgContent: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
         question: 'Los agentes consumen tokens adicionales?',
-        answerHtml: 'Sí, como cualquier interacción con Claude. Los agentes son instrucciones de sistema que guían las respuestas, así que consumen contexto proporcional a su complejidad. En la práctica, el coste adicional es moderado: los system prompts de los agentes están optimizados para ocupar el mínimo posible sin perder precisión. Los agentes opcionales solo se cargan si los activas, así que el contexto base es el de los 8 de núcleo.',
+        answerHtml: 'Sí, como cualquier interacción con Claude. Los agentes son instrucciones de sistema que guían las respuestas, así que consumen contexto proporcional a su complejidad. En la práctica, el coste adicional es moderado: los system prompts de los agentes están optimizados para ocupar el mínimo posible sin perder precisión. Los agentes opcionales solo se cargan si los activas, así que el contexto base es el de los 9 de núcleo.',
       },
       {
         svgContent: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
@@ -1258,10 +1213,31 @@ personalidad:
 
   changelog: [
     {
+      version: '0.3.7',
+      date: '2026-03-12',
+      added: [
+        '<strong>SonIA -- Project Manager</strong> -- nuevo agente de nucleo transversal. Descompone el PRD en tareas, gestiona un kanban en <code>docs/project/kanban/</code> con 4 ficheros MD (backlog, in-progress, done, blocked), mantiene la matriz de trazabilidad (criterio -- tarea -- test -- doc) y genera informes de progreso por fase.',
+        '<strong>La Intérprete -- i18n Specialist</strong> -- nuevo agente opcional para internacionalización. Auditoría de claves i18n, detección de cadenas hardcodeadas, validación de formatos por locale, generación de esqueletos para nuevos idiomas. HARD-GATE: completitud de claves (N en base = N en todos los idiomas).',
+        '<strong>QA Engineer ampliado</strong> -- nueva seccion de testing de integracion y E2E con estrategias para Playwright/Cypress, tabla de decision entre tipos de test (unitario, integracion, E2E, regresion) y criterios de seleccion.',
+      ],
+      changed: [
+        '<strong>El Escriba (antes El Traductor)</strong> -- tech-writer reescrito como agente de nucleo con doble activacion: fase 3b (documentacion inline de codigo: cabeceras, docstrings, comentarios de contexto) y fase 5 (documentacion de proyecto: API, arquitectura con diagramas Mermaid, guias, changelogs). Guia de estilo estricta: castellano sin latinismos, anglicismos permitidos, sin emojis.',
+        '<strong>HARD-GATEs en 5 agentes opcionales</strong> -- data-engineer (integridad de migraciones), ux-reviewer (WCAG 2.1 nivel A), performance-engineer (umbrales de rendimiento), seo-specialist (requisitos minimos de indexacion), github-manager (operaciones destructivas requieren confirmacion).',
+        '<strong>Equipo ampliado a 17 agentes</strong> -- 9 de nucleo (antes 8) + 8 opcionales (antes 7). Todos los conteos actualizados en web, README y manifiesto.',
+        '<strong>Colores de agentes unificados</strong> -- QA Engineer de red a amber (conflicto con security-officer), performance-engineer y copywriter alineados entre frontmatter y cuerpo del agente.',
+        '<strong>Memoria persistente mejorada</strong> -- optimizaciones en el modulo SQLite, consultas mas eficientes y mejor gestion de la base de datos entre sesiones.',
+        '<strong>Hooks de captura unificados</strong> -- <code>memory-capture.py</code> y <code>commit-capture.py</code> fusionados en <code>activity-capture.py</code>, un unico hook con dispatch interno por tipo de evento. De 11 a 10 hooks.',
+        '<strong>Todos los agentes revisados</strong> -- inconsistencias corregidas en frontmatter, descripciones alineadas con las capacidades reales, personalidades refinadas y cadenas de integracion actualizadas.',
+      ],
+      removed: [
+        '<strong>Dashboard GUI eliminado</strong> -- la interfaz web del dashboard (introducida en v0.3.0) se retira por no cumplir las expectativas de usabilidad. La funcionalidad de estado se cubre con <code>/alfred-dev:status</code>.',
+      ],
+    },
+    {
       version: '0.3.6',
       date: '2026-03-10',
       fixed: [
-        '<strong>Agentes de nucleo registrados</strong> -- los 7 agentes de nucleo no estaban en el manifiesto del plugin y Claude Code no cargaba sus system prompts. Ahora los 14 agentes (7 nucleo + 7 opcionales) estan registrados y operativos.',
+        '<strong>Agentes de nucleo registrados</strong> -- los 7 agentes de nucleo no estaban en el manifiesto del plugin y Claude Code no cargaba sus system prompts. Ahora los 15 agentes (8 nucleo + 7 opcionales) estan registrados y operativos.',
         '<strong>Herramientas MCP del librarian</strong> -- el agente librarian referenciaba 5 herramientas MCP con nombres incorrectos. Corregidos a los nombres reales del servidor.',
         '<strong>Dashboard vacio en primera sesion</strong> -- el pipeline de datos fallaba en cascada: config sin memoria, commits sin iteracion y consultas vacias. Corregido con auto-creacion de config, iteracion automatica y fallback global.',
         '<strong>Conflicto de puertos</strong> -- si otro proyecto usaba los puertos del dashboard, ahora se detecta y se buscan alternativas automaticamente.',
@@ -1303,7 +1279,7 @@ personalidad:
       added: [
         '<strong>Composición dinámica de equipo</strong> -- sistema de 4 capas (heurística, razonamiento, presentación, ejecución) que sugiere agentes opcionales según la descripción de la tarea. La selección es efímera y no modifica la configuración persistente.',
         '<strong>Función run_flow()</strong> -- punto de entrada para flujos con equipo de sesión efímero. Valida la estructura, inyecta el equipo y registra diagnósticos de error.',
-        '<strong>Tabla TASK_KEYWORDS</strong> -- mapa de 7 agentes opcionales con keywords contextuales y pesos base para la composición dinámica.',
+        '<strong>Tabla TASK_KEYWORDS</strong> -- mapa de 8 agentes opcionales con keywords contextuales y pesos base para la composición dinámica.',
       ],
       fixed: [
         '<strong>Matching por palabra completa</strong> -- <code>match_task_keywords()</code> usa word boundary en vez de subcadena, eliminando falsos positivos para keywords cortas.',
@@ -1359,7 +1335,7 @@ personalidad:
         '<strong>5 herramientas MCP nuevas</strong> -- total 15: update, link, health, export, import.',
         '<strong>Filtros de búsqueda</strong> -- parámetros <code>since</code>, <code>until</code>, <code>tags</code>, <code>status</code>.',
         '<strong>Export/Import</strong> -- decisiones a Markdown (ADR), import desde Git y ADRs.',
-        '<strong>Hook commit-capture.py</strong> -- auto-captura de commits en la memoria.',
+        '<strong>Hook activity-capture.py</strong> -- hook unificado de captura (eventos del flujo + commits).',
         '<strong>Hook memory-compact.py</strong> -- protege decisiones durante la compactación.',
         'Inyección de contexto por iteración activa. ~268 tests.',
       ],
@@ -1389,7 +1365,7 @@ personalidad:
       date: '2026-02-21',
       fixed: [
         '<strong>Ruta de caché en Windows</strong> -- install.ps1 y uninstall.ps1 alineados con la convención de Claude Code.',
-        '<strong>memory-capture.py</strong> -- diagnóstico en bloques except silenciosos.',
+        '<strong>activity-capture.py</strong> -- diagnóstico en bloques except silenciosos.',
         '<strong>session-start.sh</strong> -- catches específicos en vez de Exception genérico.',
       ],
     },
@@ -1400,7 +1376,7 @@ personalidad:
         '<strong>Memoria persistente</strong> -- SQLite local por proyecto con decisiones, commits, iteraciones y eventos.',
         '<strong>Servidor MCP</strong> -- 6 herramientas stdio: buscar, registrar, consultar.',
         '<strong>El Bibliotecario</strong> -- agente opcional para consultas históricas.',
-        '<strong>Hook memory-capture.py</strong> -- captura automática de eventos del flujo.',
+        '<strong>Hook activity-capture.py</strong> -- captura automática de eventos del flujo.',
         'Búsqueda FTS5, sanitización de secretos, permisos 0600.',
         '114 tests (58 nuevos para memoria).',
       ],
@@ -1461,11 +1437,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.6',
+    version: 'v0.3.7',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 15 agentes. 59 skills. 11 comandos. Memoria persistente. De la idea a producción.',
+    tagline: 'Plugin de Claude Code. 17 agentes. 59 skills. 10 hooks. 10 comandos. Memoria persistente. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
   },
 };

@@ -1,8 +1,8 @@
 {
   "name": "alfred-dev",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Plugin de Claude Code: tu empresa de ingeniería de software en un plugin",
-  "author": "00b",
+  "author": "686f6c61",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,6 +17,10 @@
     "nis2",
     "agents"
   ],
+  "scripts": {
+    "test": "python3 -m pytest tests/ -v",
+    "test:coverage": "coverage run -m pytest tests/ -v && coverage report"
+  },
   "files": [
     ".claude-plugin/",
     "agents/",

@@ -20,7 +20,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.3.6"
+VERSION="0.3.7"
 
 # -- Colores ----------------------------------------------------------------
 
@@ -36,6 +36,33 @@ ok()    { printf "${GREEN}+${NC} %s\n" "$1"; }
 error() { printf "${RED}x${NC} %s\n" "$1" >&2; }
 
 # -- Verificaciones ---------------------------------------------------------
+
+# Python 3.10+ es necesario para los hooks y el core del plugin
+if ! command -v python3 &>/dev/null; then
+    error "Python 3 no esta instalado o no esta en el PATH"
+    error "Alfred Dev requiere Python 3.10 o superior"
+    error "Instala Python desde https://www.python.org/downloads/"
+    exit 1
+fi
+
+PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
+PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+
+if [[ "$PYTHON_MAJOR" -lt 3 ]] || { [[ "$PYTHON_MAJOR" -eq 3 ]] && [[ "$PYTHON_MINOR" -lt 10 ]]; }; then
+    error "Python $PYTHON_VERSION detectado, pero se requiere 3.10 o superior"
+    error "Actualiza Python desde https://www.python.org/downloads/"
+    exit 1
+fi
+
+ok "Python $PYTHON_VERSION detectado"
+
+# git es necesario para descargar el plugin
+if ! command -v git &>/dev/null; then
+    error "git no esta instalado o no esta en el PATH"
+    error "Instala git desde https://git-scm.com/"
+    exit 1
+fi
 
 if [[ -z "${HOME:-}" ]] || [[ ! -d "${HOME}" ]]; then
     error "La variable HOME no esta definida o no apunta a un directorio valido"

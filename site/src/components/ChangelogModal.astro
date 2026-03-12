@@ -102,6 +102,16 @@ const CHANGELOG_URL = 'https://github.com/686f6c61/alfred-dev/blob/main/CHANGELO
             </ul>
           </>
         )}
+        {v.removed && v.removed.length > 0 && (
+          <>
+            <p class="cl-section-title removed">Removed</p>
+            <ul class="cl-list">
+              {v.removed.map((entry) => (
+                <li set:html={entry} />
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     ))}
   </div>
@@ -324,6 +334,10 @@ const CHANGELOG_URL = 'https://github.com/686f6c61/alfred-dev/blob/main/CHANGELO
 
   .cl-section-title.fixed {
     color: var(--cyan);
+  }
+
+  .cl-section-title.removed {
+    color: var(--red);
   }
 
   /* ── Lista de entradas ───────────────────────────── */

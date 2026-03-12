@@ -2,20 +2,18 @@
 /**
  * Seccion interactiva de composicion dinamica de equipo.
  *
- * Muestra una demo visual del flujo completo de composicion dinamica
- * de Alfred: como analiza una tarea, puntua agentes opcionales y
- * presenta un selector con checkboxes para que el usuario confirme
- * o ajuste el equipo antes de arrancar.
+ * Muestra una demo visual del flujo de composicion semantica
+ * de Alfred: como lee una tarea, razona sobre que agentes
+ * encajan y presenta un selector con todos los agentes para
+ * que el usuario confirme o ajuste el equipo.
  *
  * La animacion tiene tres fases:
  *
- * 1. Terminal con efecto typing que escribe la descripcion de la tarea
- *    caracter a caracter y resalta keywords con el color del agente.
- * 2. Tarjetas de agentes que reaccionan cuando sus keywords aparecen:
- *    su checkbox se marca, la barra de puntuacion crece y la tarjeta
- *    se ilumina.
- * 3. Fase de selector: aparece el titulo "Equipo propuesto" y un
- *    boton "Confirmar equipo" que replica el flujo real del plugin.
+ * 1. Terminal con efecto typing que escribe la descripcion de la tarea.
+ * 2. Fase de razonamiento: Alfred «piensa» y revela su analisis
+ *    agente por agente con una explicacion breve.
+ * 3. Fase de selector: los agentes sugeridos aparecen marcados,
+ *    el resto disponible, y un boton «Confirmar equipo».
  *
  * La animacion se lanza una sola vez al entrar en viewport
  * (IntersectionObserver). Respeta prefers-reduced-motion mostrando
@@ -40,15 +38,14 @@ const { composition } = Astro.props;
 const CHECK_PATH = 'M3.5 8.5L6.5 11.5L12.5 4.5';
 
 /**
- * Serializa los datos de agentes y keywords como JSON para que
- * el script del cliente pueda construir el mapa de activacion
- * sin depender del DOM.
+ * Serializa los datos de agentes como JSON para que el script
+ * del cliente pueda construir la animacion de razonamiento.
  */
 const agentsJson = JSON.stringify(
   composition.agents.map((a) => ({
     id: a.id,
-    score: a.score,
-    keywords: a.keywords,
+    suggested: a.suggested,
+    reasoning: a.reasoning,
     color: a.color,
   }))
 );
@@ -87,6 +84,12 @@ const agentsJson = JSON.stringify(
                 data-full-text={composition.terminalText}
               ></span>
               <span class="terminal-cursor" id="compositionCursor">|</span>
+            </div>
+
+            <!-- Indicador de razonamiento -->
+            <div class="thinking-indicator" id="thinkingIndicator">
+              <span class="thinking-dot"></span>
+              <span class="thinking-label">{composition.thinkingLabel}</span>
             </div>
           </div>
 
@@ -127,17 +130,14 @@ const agentsJson = JSON.stringify(
                     </span>
                     <span class="agent-name">{agent.name}</span>
                   </div>
-                  <span class="agent-score" data-target-score={agent.score}>
-                    0%
+                  <span class="agent-badge" data-suggested={agent.suggested ? 'true' : 'false'}>
+                    {agent.suggested
+                      ? composition.suggestedLabel
+                      : composition.notSuggestedLabel}
                   </span>
                 </div>
-                <div class="agent-bar">
-                  <div class="agent-bar-fill"></div>
-                </div>
-                <div class="agent-status">
-                  {agent.score > 0
-                    ? composition.suggestedLabel
-                    : composition.notSuggestedLabel}
+                <div class="agent-reasoning">
+                  {agent.reasoning}
                 </div>
               </div>
             ))}
@@ -168,25 +168,18 @@ const agentsJson = JSON.stringify(
 
 <script>
   /**
-   * Animacion de la demo de composicion dinamica.
+   * Animacion de la demo de composicion semantica.
    *
    * Tres fases:
-   * 1. Typing: escribe caracter a caracter, resalta keywords, activa agentes.
-   * 2. Scoring: las tarjetas muestran barras y checkboxes se marcan.
-   * 3. Selector: aparece el titulo "Equipo propuesto" y el boton "Confirmar".
+   * 1. Typing: escribe la tarea caracter a caracter.
+   * 2. Thinking: muestra indicador de analisis con puntos animados.
+   * 3. Reveal: desvela agentes uno a uno con razonamiento y seleccion.
    */
 
   interface AgentData {
     id: string;
-    score: number;
-    keywords: string[];
-    color: string;
-  }
-
-  interface KeywordRange {
-    agentId: string;
-    start: number;
-    end: number;
+    suggested: boolean;
+    reasoning: string;
     color: string;
   }
 
@@ -194,134 +187,84 @@ const agentsJson = JSON.stringify(
   const cursorEl = document.getElementById('compositionCursor') as HTMLSpanElement | null;
   const dataEl = document.getElementById('compositionData') as HTMLScriptElement | null;
   const sectionEl = document.getElementById('composicion') as HTMLElement | null;
+  const thinkingEl = document.getElementById('thinkingIndicator') as HTMLElement | null;
   const selectorFooter = document.getElementById('selectorFooter') as HTMLElement | null;
   const selectorConfirm = document.getElementById('selectorConfirm') as HTMLButtonElement | null;
 
-  if (textEl && cursorEl && dataEl && sectionEl && selectorFooter) {
+  if (textEl && cursorEl && dataEl && sectionEl && thinkingEl && selectorFooter) {
     const fullText = textEl.dataset.fullText || '';
     if (!fullText) {
-      console.warn('[CompositionSection] data-full-text esta vacio. La animacion de typing no mostrara texto.');
+      console.warn('[CompositionSection] data-full-text esta vacio.');
     }
 
     let agents: AgentData[];
     try {
       agents = JSON.parse(dataEl.textContent || '[]');
     } catch {
-      console.warn('[CompositionSection] Error al parsear datos de agentes, se usa array vacio.');
+      console.warn('[CompositionSection] Error al parsear datos de agentes.');
       agents = [];
     }
 
-    /* Construir mapa de rangos de keywords */
-    const ranges: KeywordRange[] = [];
-    const textLower = fullText.toLowerCase();
-    for (const agent of agents) {
-      for (const kw of agent.keywords) {
-        const kwLower = kw.toLowerCase();
-        let searchFrom = 0;
-        let idx: number;
-        while ((idx = textLower.indexOf(kwLower, searchFrom)) !== -1) {
-          ranges.push({
-            agentId: agent.id,
-            start: idx,
-            end: idx + kw.length,
-            color: agent.color,
-          });
-          searchFrom = idx + 1;
-        }
+    /** Oculta todas las tarjetas de agente al inicio. */
+    function hideAllCards(): void {
+      const cards = document.querySelectorAll('.agent-card');
+      for (const card of cards) {
+        (card as HTMLElement).classList.add('hidden');
       }
-    }
-    /* Ordenar por posicion de inicio */
-    ranges.sort((a, b) => a.start - b.start);
-
-    /** Conjunto de agentes ya activados. */
-    const activatedAgents = new Set<string>();
-
-    /**
-     * Renderiza el texto hasta `charIndex` con keywords resaltadas.
-     * Construye nodos de texto y spans sin innerHTML.
-     */
-    function renderText(charIndex: number): void {
-      textEl!.textContent = '';
-      const visibleText = fullText.slice(0, charIndex);
-
-      const completedRanges = ranges.filter((r) => r.end <= charIndex);
-
-      if (completedRanges.length === 0) {
-        textEl!.textContent = visibleText;
-        return;
-      }
-
-      const fragment = document.createDocumentFragment();
-      let lastEnd = 0;
-
-      for (const range of completedRanges) {
-        if (range.start < lastEnd) continue;
-
-        if (range.start > lastEnd) {
-          fragment.appendChild(
-            document.createTextNode(fullText.slice(lastEnd, range.start))
-          );
-        }
-
-        const span = document.createElement('span');
-        span.className = 'keyword-highlight';
-        span.style.setProperty('--kw-color', range.color);
-        span.textContent = fullText.slice(range.start, range.end);
-        fragment.appendChild(span);
-
-        lastEnd = range.end;
-      }
-
-      if (lastEnd < charIndex) {
-        fragment.appendChild(
-          document.createTextNode(fullText.slice(lastEnd, charIndex))
-        );
-      }
-
-      textEl!.appendChild(fragment);
     }
 
     /**
-     * Activa un agente: marca el checkbox, anima la barra y cambia el estilo.
+     * Revela un agente: muestra la tarjeta con animacion y la marca
+     * si esta sugerido.
      */
-    function activateAgent(agentId: string): void {
-      if (activatedAgents.has(agentId)) return;
-      activatedAgents.add(agentId);
-
+    function revealAgent(agentId: string, suggested: boolean): void {
       const card = document.querySelector(
         `[data-agent-id="${CSS.escape(agentId)}"]`
       ) as HTMLElement | null;
       if (!card) return;
 
-      const agent = agents.find((a) => a.id === agentId);
-      if (!agent || agent.score === 0) return;
+      card.classList.remove('hidden');
+      card.classList.add('revealed');
 
-      card.classList.add('active');
-
-      /* Animar barra y porcentaje */
-      const barFill = card.querySelector('.agent-bar-fill') as HTMLElement | null;
-      const scoreEl = card.querySelector('.agent-score') as HTMLElement | null;
-      if (barFill) {
-        barFill.style.width = `${agent.score * 100}%`;
-        barFill.style.background = agent.color;
-      }
-      if (scoreEl) {
-        animateScore(scoreEl, agent.score);
+      if (suggested) {
+        /* Retardo breve para que la animacion de entrada se vea antes del check */
+        setTimeout(() => {
+          card.classList.add('active');
+        }, 200);
+      } else {
+        card.classList.add('dimmed');
       }
     }
 
     /**
-     * Anima el porcentaje de puntuacion de 0% a targetScore%.
+     * Fase de razonamiento: muestra el indicador, luego revela
+     * agentes uno a uno con retardo.
      */
-    function animateScore(el: HTMLElement, targetScore: number): void {
-      const target = Math.round(targetScore * 100);
-      let current = 0;
-      const step = Math.max(1, Math.floor(target / 20));
-      const interval = setInterval(() => {
-        current = Math.min(current + step, target);
-        el.textContent = `${current}%`;
-        if (current >= target) clearInterval(interval);
-      }, 30);
+    function startReasoning(): void {
+      cursorEl!.style.display = 'none';
+      thinkingEl!.classList.add('visible');
+
+      /* Tras un momento, empezar a revelar agentes */
+      setTimeout(() => {
+        thinkingEl!.classList.remove('visible');
+        revealAgentsSequence(0);
+      }, 1500);
+    }
+
+    /**
+     * Revela agentes de forma secuencial con un retardo entre cada uno.
+     */
+    function revealAgentsSequence(index: number): void {
+      if (index >= agents.length) {
+        /* Todos revelados: mostrar selector */
+        setTimeout(showSelector, 400);
+        return;
+      }
+
+      const agent = agents[index];
+      revealAgent(agent.id, agent.suggested);
+
+      setTimeout(() => revealAgentsSequence(index + 1), 300);
     }
 
     /**
@@ -330,7 +273,6 @@ const agentsJson = JSON.stringify(
     function showSelector(): void {
       selectorFooter!.classList.add('visible');
 
-      /* Efecto de pulsacion en el boton tras un breve retardo */
       if (selectorConfirm) {
         setTimeout(() => {
           selectorConfirm.classList.add('pulse');
@@ -340,29 +282,20 @@ const agentsJson = JSON.stringify(
 
     /**
      * Bucle principal de la animacion de escritura.
-     * Escribe un caracter cada ~30ms y comprueba activaciones.
      */
     function startTyping(): void {
       let charIndex = 0;
-      const speed = 30;
+      const speed = 25;
 
       function typeNext(): void {
         if (charIndex > fullText.length) {
           cursorEl!.classList.add('blink');
-          /* Mostrar selector tras completar el typing */
-          setTimeout(showSelector, 500);
+          /* Iniciar fase de razonamiento tras completar typing */
+          setTimeout(startReasoning, 600);
           return;
         }
 
-        renderText(charIndex);
-
-        /* Comprobar si completamos alguna keyword */
-        for (const range of ranges) {
-          if (range.end === charIndex) {
-            activateAgent(range.agentId);
-          }
-        }
-
+        textEl!.textContent = fullText.slice(0, charIndex);
         charIndex++;
         setTimeout(typeNext, speed);
       }
@@ -374,17 +307,18 @@ const agentsJson = JSON.stringify(
      * Muestra el estado final sin animacion (prefers-reduced-motion).
      */
     function showFinalState(): void {
-      renderText(fullText.length);
-      cursorEl!.classList.add('blink');
+      textEl!.textContent = fullText;
+      cursorEl!.style.display = 'none';
 
       for (const agent of agents) {
-        if (agent.score > 0) {
-          activateAgent(agent.id);
-        }
+        revealAgent(agent.id, agent.suggested);
       }
 
       showSelector();
     }
+
+    /* Ocultar tarjetas al inicio */
+    hideAllCards();
 
     /* Detectar preferencia de movimiento reducido */
     const prefersReducedMotion = window.matchMedia(
@@ -414,14 +348,14 @@ const agentsJson = JSON.stringify(
     observer.observe(sectionEl);
   } else {
     console.warn(
-      '[CompositionSection] Elementos DOM no encontrados. La animacion no se ejecutara.',
-      { textEl: !!textEl, cursorEl: !!cursorEl, dataEl: !!dataEl, sectionEl: !!sectionEl, selectorFooter: !!selectorFooter }
+      '[CompositionSection] Elementos DOM no encontrados.',
+      { textEl: !!textEl, cursorEl: !!cursorEl, dataEl: !!dataEl, sectionEl: !!sectionEl, thinkingEl: !!thinkingEl, selectorFooter: !!selectorFooter }
     );
   }
 </script>
 
 <style>
-  /* ── Seccion ────────────────────────────────────── */
+  /* -- Seccion ------------------------------------------------ */
   .composition-section {
     padding: 80px 0 40px;
   }
@@ -434,19 +368,19 @@ const agentsJson = JSON.stringify(
     margin-bottom: 40px;
   }
 
-  /* ── Layout de la demo ──────────────────────────── */
+  /* -- Layout de la demo -------------------------------------- */
   .composition-demo {
     margin-top: 8px;
   }
 
   .demo-layout {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 1fr 320px;
     gap: 20px;
     align-items: start;
   }
 
-  /* ── Terminal ───────────────────────────────────── */
+  /* -- Terminal ----------------------------------------------- */
   .terminal {
     background: #0d0f14;
     border: 1px solid var(--border);
@@ -523,16 +457,48 @@ const agentsJson = JSON.stringify(
     50% { opacity: 0; }
   }
 
-  /* ── Keywords resaltadas ────────────────────────── */
-  :global(.keyword-highlight) {
-    color: var(--kw-color, var(--blue));
-    font-weight: 600;
-    border-bottom: 1px solid var(--kw-color, var(--blue));
-    padding-bottom: 1px;
-    transition: color 0.3s, border-color 0.3s;
+  /* -- Indicador de razonamiento ------------------------------ */
+  .thinking-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 10px 14px;
+    background: rgba(91, 156, 245, 0.06);
+    border: 1px solid rgba(91, 156, 245, 0.15);
+    border-radius: 6px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.4s, transform 0.4s;
+    pointer-events: none;
   }
 
-  /* ── Panel de agentes ───────────────────────────── */
+  .thinking-indicator.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .thinking-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--blue);
+    animation: thinkPulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes thinkPulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  .thinking-label {
+    font-size: 13px;
+    color: var(--blue);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* -- Panel de agentes --------------------------------------- */
   .agents-panel {
     display: flex;
     flex-direction: column;
@@ -556,18 +522,32 @@ const agentsJson = JSON.stringify(
     gap: 6px;
   }
 
-  /* ── Tarjeta de agente ──────────────────────────── */
+  /* -- Tarjeta de agente -------------------------------------- */
   .agent-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 10px 12px;
-    transition: border-color 0.4s, box-shadow 0.4s;
+    transition: border-color 0.4s, box-shadow 0.4s, opacity 0.4s, transform 0.4s;
+  }
+
+  .agent-card.hidden {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+
+  .agent-card.revealed {
+    opacity: 1;
+    transform: translateX(0);
   }
 
   .agent-card.active {
     border-color: var(--agent-color);
     box-shadow: 0 0 12px rgba(0, 0, 0, 0.3), inset 0 0 0 1px var(--agent-color);
+  }
+
+  .agent-card.dimmed {
+    opacity: 0.5;
   }
 
   .agent-header {
@@ -577,7 +557,7 @@ const agentsJson = JSON.stringify(
     margin-bottom: 6px;
   }
 
-  /* ── Checkbox del agente ─────────────────────────── */
+  /* -- Checkbox del agente ------------------------------------ */
   .agent-check-row {
     display: flex;
     align-items: center;
@@ -620,45 +600,41 @@ const agentsJson = JSON.stringify(
     letter-spacing: -0.01em;
   }
 
-  .agent-score {
+  /* -- Badge de sugerencia ------------------------------------ */
+  .agent-badge {
     font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-dim);
+  }
+
+  .agent-badge[data-suggested="true"] {
+    background: rgba(78, 201, 144, 0.1);
+    color: var(--green);
+  }
+
+  /* -- Razonamiento del agente -------------------------------- */
+  .agent-reasoning {
     font-size: 11px;
+    line-height: 1.5;
     color: var(--text-dim);
-    min-width: 32px;
-    text-align: right;
+    margin-top: 2px;
   }
 
-  /* ── Barra de puntuacion ────────────────────────── */
-  .agent-bar {
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 6px;
-  }
-
-  .agent-bar-fill {
-    height: 100%;
-    width: 0%;
-    border-radius: 2px;
-    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  /* ── Estado de sugerencia ───────────────────────── */
-  .agent-status {
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--text-dim);
-    letter-spacing: 0.02em;
-  }
-
-  .agent-card.active .agent-name,
-  .agent-card.active .agent-score,
-  .agent-card.active .agent-status {
+  .agent-card.active .agent-name {
     color: var(--agent-color);
   }
 
-  /* ── Selector footer (fase 3) ───────────────────── */
+  .agent-card.active .agent-reasoning {
+    color: var(--text-muted);
+  }
+
+  /* -- Selector footer (fase 3) ------------------------------- */
   .selector-footer {
     display: flex;
     align-items: center;
@@ -714,7 +690,7 @@ const agentsJson = JSON.stringify(
     height: 14px;
   }
 
-  /* ── Agentes de nucleo dentro del terminal ────────── */
+  /* -- Agentes de nucleo dentro del terminal ------------------- */
   .terminal-team {
     padding: 12px 20px 14px;
     border-top: 1px solid var(--border);
@@ -785,10 +761,10 @@ const agentsJson = JSON.stringify(
     margin-left: auto;
   }
 
-  /* ── Responsive 1100px ──────────────────────────── */
+  /* -- Responsive 1100px -------------------------------------- */
   @media (max-width: 1100px) {
     .demo-layout {
-      grid-template-columns: 1fr 260px;
+      grid-template-columns: 1fr 280px;
       gap: 14px;
     }
 
@@ -801,7 +777,7 @@ const agentsJson = JSON.stringify(
     }
   }
 
-  /* ── Responsive 768px ───────────────────────────── */
+  /* -- Responsive 768px --------------------------------------- */
   @media (max-width: 768px) {
     .composition-section {
       padding: 60px 0 32px;
@@ -841,7 +817,7 @@ const agentsJson = JSON.stringify(
     }
   }
 
-  /* ── Responsive 480px ───────────────────────────── */
+  /* -- Responsive 480px --------------------------------------- */
   @media (max-width: 480px) {
     .terminal-team-grid {
       grid-template-columns: repeat(2, 1fr);

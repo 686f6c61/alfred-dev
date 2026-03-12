@@ -369,122 +369,78 @@ El descubrimiento de agentes opcionales descrito en la seccion anterior resuelve
 
 La seleccion es efimera: solo aplica a la sesion en curso y no modifica la configuracion persistente del fichero `.claude/alfred-dev.local.md`. Esto evita que una tarea puntual contamine la configuracion del proyecto para todas las sesiones futuras.
 
-### Las cuatro capas de la composicion
+### Las tres capas de la composicion
 
-La composicion dinamica se ejecuta al invocar cualquier flujo y opera en cuatro capas secuenciales. Cada capa anade informacion a la anterior, refinando la propuesta hasta que el usuario confirma el equipo final.
-
-```
-1. CAPA HEURISTICA  (config_loader.py)
-   suggest_optional_agents() + match_task_keywords()
-   --> propuesta_base con puntuaciones y razones
-
-2. CAPA DE RAZONAMIENTO  (Alfred / skill del comando)
-   Alfred recibe propuesta_base como contexto y la refina
-   --> propuesta_final (confirma, anade, quita agentes)
-
-3. CAPA DE PRESENTACION  (AskUserQuestion multiSelect)
-   Lista con checkboxes: nucleo fijo + opcionales seleccionables
-   + infraestructura (memoria, GUI)
-   --> equipo_sesion
-
-4. EJECUCION DEL FLUJO  (orchestrator)
-   equipo_sesion se pasa como override efimero a run_flow()
-   Ajuste opcional por fase segun nivel de autonomia
-```
-
-La primera capa es determinista y rapida (regex + diccionarios). La segunda aprovecha la capacidad de razonamiento de Alfred (Opus) sin coste adicional, porque la propuesta heuristica se inyecta como contexto en el mismo prompt que ya procesa la tarea. La tercera da al usuario la decision final. La cuarta ejecuta el flujo con el equipo elegido.
-
-### Capa heuristica: match_task_keywords
-
-La funcion `match_task_keywords()` en `config_loader.py` es el corazon de la capa heuristica. Recibe la descripcion en lenguaje natural de la tarea del usuario y devuelve una puntuacion por cada agente opcional, combinando tres fuentes de informacion:
-
-**Senal textual (keywords).** La constante `TASK_KEYWORDS` define un mapa de 7 agentes con listas de palabras clave y un peso base. Las keywords se buscan con *word boundary regex* (`\b`) sobre la descripcion en minusculas. Si coincide al menos una keyword, se suma el peso base del agente; si coinciden dos o mas, se suma un bonus adicional de +0.1.
-
-**Senal de proyecto.** Si `suggest_optional_agents()` recomienda el agente (porque detecto ORM, frontend, HTML publico, etc.), se suman +0.4 puntos. Esta senal aporta contexto del proyecto que las keywords por si solas no capturan.
-
-**Senal de configuracion.** Si el agente ya esta activado en el fichero `.claude/alfred-dev.local.md`, se suman +0.3 puntos. Esto refleja la intencion explicita del usuario de usar ese agente en el proyecto.
-
-Un agente se marca como `sugerido` cuando su puntuacion acumulada alcanza o supera 0.5.
-
-#### Tabla de puntuaciones
-
-| Fuente | Condicion | Puntuacion |
-|--------|-----------|------------|
-| Proyecto | `suggest_optional_agents()` lo recomienda | +0.4 |
-| Tarea | Una keyword coincide | +`peso_base` |
-| Tarea | Dos o mas keywords coinciden | +`peso_base` + 0.1 |
-| Config | Ya estaba activo en `alfred-dev.local.md` | +0.3 |
-
-Ejemplos de combinaciones y resultado:
-
-| Combinacion | Puntuacion tipica | Sugerido |
-|-------------|-------------------|----------|
-| Solo proyecto (sin keywords ni config) | 0.4 | No |
-| Solo keyword (peso_base 0.6) | 0.6 | Si |
-| Solo config activa | 0.3 | No |
-| Proyecto + config activa | 0.7 | Si |
-| Proyecto + keyword | 1.0 | Si |
-| Keyword + config activa | 0.9 | Si |
-
-La razon mostrada al usuario concatena las fuentes: «ORM detectado (Prisma) + la tarea menciona 'base de datos'».
-
-#### Mapa de keywords por agente
-
-| Agente | Keywords (extracto) | peso_base |
-|--------|---------------------|-----------|
-| `data-engineer` | bd, database, migracion, esquema, orm, prisma, sql, pagos, facturacion, stripe | 0.6 |
-| `ux-reviewer` | interfaz, ui, ux, formulario, accesibilidad, responsive, onboarding, checkout | 0.6 |
-| `performance-engineer` | rendimiento, lento, optimizar, cache, latencia, benchmark, bundle, profiling | 0.7 |
-| `github-manager` | release, pr, pull request, deploy, publicar, tag, version, changelog | 0.5 |
-| `seo-specialist` | seo, meta tags, lighthouse, posicionamiento, sitemap, json-ld, google | 0.7 |
-| `copywriter` | textos, copy, landing, cta, tono, redaccion, marketing, newsletter | 0.6 |
-| `librarian` | historial, decision, por que, antecedente, contexto historico, que se decidio | 0.5 |
-
-La tabla completa de keywords se encuentra en la constante `TASK_KEYWORDS` de `core/config_loader.py`. Las keywords incluyen variantes con y sin tilde para garantizar la coincidencia independientemente de como escriba el usuario.
-
-### Capa de razonamiento: Alfred como refinador
-
-Alfred (Opus) recibe la propuesta heuristica como contexto estructurado dentro del prompt del skill del comando. No se realiza una llamada adicional al modelo: la propuesta es contexto extra en el mismo prompt que Alfred ya procesa para decidir que flujo lanzar.
-
-Alfred puede realizar cuatro acciones sobre la propuesta:
-
-| Accion | Ejemplo |
-|--------|---------|
-| Confirmar | Propuesta correcta, la presenta sin cambios |
-| Anadir agente | «mejorar experiencia de checkout» -- las heuristicas no detectan «ux» pero Alfred entiende que checkout implica interfaz y anade ux-reviewer |
-| Quitar agente | Heuristicas sugieren seo-specialist por HTML publico, pero la tarea es backend puro -- Alfred lo quita |
-| Ajustar razon | Cambiar razon generica por una mas especifica al contexto |
-
-Restricciones que Alfred debe respetar: nunca quita agentes de nucleo, no puede activar agentes que no existan en el plugin, y si modifica la propuesta debe explicar el cambio al usuario.
-
-### Capa de presentacion: checkboxes
-
-Los skills de los comandos (`feature.md`, `fix.md`, `spike.md`, `ship.md`, `audit.md` y `alfred.md`) presentan al usuario una lista con checkboxes antes de arrancar el flujo. Los agentes de nucleo aparecen como texto introductorio (siempre activos, no seleccionables). Los opcionales e infraestructura son seleccionables:
+La composicion dinamica se ejecuta al invocar cualquier flujo y opera en tres capas. El protocolo esta centralizado en `commands/_composicion.md` y todos los comandos lo referencian, eliminando la duplicacion anterior.
 
 ```
-Alfred analizo: "anadir sistema de pagos con Stripe"
+1. CONTEXTO DEL PROYECTO  (config_loader.py)
+   suggest_optional_agents() -- senales basadas en I/O
+   --> ORM detectado, frontend, HTML publico, remote Git, etc.
 
+2. RAZONAMIENTO SEMANTICO  (Alfred)
+   Alfred analiza la tarea + senales del proyecto y decide
+   que agentes son relevantes usando comprension semantica.
+   --> preseleccion razonada, no por keywords
+
+3. PRESENTACION + EJECUCION
+   Todos los agentes opcionales se muestran como checkboxes.
+   Los sugeridos van preseleccionados. El usuario puede anadir
+   o quitar cualquiera.
+   --> equipo_sesion efimero
+```
+
+La primera capa proporciona senales objetivas del proyecto (I/O de ficheros). La segunda aprovecha la capacidad de comprension semantica de Alfred para decidir que agentes son relevantes para la tarea concreta, sin depender de un diccionario de keywords. La tercera da al usuario la decision final mostrando **todos** los agentes disponibles.
+
+### Capa de proyecto: suggest_optional_agents
+
+La funcion `suggest_optional_agents()` en `config_loader.py` analiza el proyecto de forma estatica para generar senales contextuales. No analiza la descripcion de la tarea; eso lo hace Alfred semanticamente.
+
+| Senal | Agente sugerido | Condicion |
+|-------|-----------------|-----------|
+| ORM detectado | data-engineer | `detect_stack()` detecta Prisma, Drizzle, etc. |
+| Framework frontend | ux-reviewer | Next, React, Vue, Svelte, etc. |
+| HTML publico | seo-specialist, copywriter | `index.html` o ficheros en `public/`, `site/` |
+| Remote Git | github-manager | `.git/config` contiene `[remote "..."]` |
+| Proyecto grande | performance-engineer | Mas de 50 ficheros fuente |
+| Memoria activa | librarian | `.claude/alfred-dev.local.md` con `memoria: enabled: true` |
+
+### Capa semantica: Alfred como razonador
+
+Alfred analiza la descripcion de la tarea con comprension semantica completa. No busca keywords; entiende la intencion. El catalogo de agentes en `commands/_composicion.md` le proporciona el contexto necesario para decidir.
+
+Ejemplos de razonamiento semantico:
+
+| Tarea | Decision de Alfred | Por que |
+|-------|--------------------|---------|
+| "Implementar pagos con Stripe" | senior-dev, quiza data-engineer | Entiende que "pagos" es logica de negocio, no automaticamente datos |
+| "Dark mode en el dashboard" | ux-reviewer | Entiende que afecta a la interfaz aunque no diga "formulario" |
+| "¿Por que se eligio SQLite?" | librarian | Entiende que es una pregunta sobre decisiones pasadas |
+| "El endpoint tarda 3 segundos" | performance-engineer | Entiende que es un problema de rendimiento |
+
+### Capa de presentacion: todos los agentes visibles
+
+Los comandos presentan al usuario **todos** los agentes opcionales como checkboxes. Los que Alfred considera relevantes van preseleccionados con una razon. Los demas aparecen disponibles sin seleccionar, para que el usuario pueda anadir cualquiera que Alfred no haya detectado.
+
+```
 Equipo de nucleo (siempre activos):
   Alfred, Product Owner, Arquitecto, Senior Dev,
   Security Officer, QA Engineer, Tech Writer, DevOps
 
 Agentes opcionales:
-  [x] Data Engineer  - ORM Prisma + pagos
-  [ ] UX Reviewer
-  [ ] Performance Engineer
+  [x] Data Engineer  - proyecto con Prisma, la tarea implica migracion
   [x] GitHub Manager - remote git configurado
-  [ ] SEO Specialist
-  [ ] Copywriter
-  [x] Bibliotecario  - memoria activa
+  [ ] UX Reviewer -- revision de accesibilidad y usabilidad
+  [ ] Performance Engineer -- profiling y optimizacion
+  [ ] SEO Specialist -- posicionamiento web
+  [ ] Copywriter -- textos publicos
+  [ ] Bibliotecario -- memoria y decisiones historicas
 
 Infraestructura:
   [x] Memoria persistente
-  [ ] Dashboard GUI
 
 Confirmas este equipo?
 ```
-
-La infraestructura (memoria y GUI) se presenta junto con los agentes para que el usuario vea el «equipo» completo de un vistazo. La memoria se sugiere cuando no esta activa pero la tarea indica trazabilidad (keywords de librarian) o el flujo es feature/ship. La GUI se sugiere cuando el flujo tiene 3 o mas fases y la memoria esta activa.
 
 ### Ejecucion: equipo efimero en el orquestador
 
@@ -503,7 +459,6 @@ equipo_sesion = {
     },
     "infra": {
         "memoria": True,
-        "gui": False,
     },
     "fuente": "composicion_dinamica",
 }
@@ -512,8 +467,8 @@ equipo_sesion = {
 Antes de inyectar el equipo en la sesion, `run_flow()` lo valida con `_validate_equipo_sesion()`. Las reglas de validacion son:
 
 - El primer nivel exige exactamente tres claves: `opcionales_activos`, `infra` y `fuente`.
-- `opcionales_activos` exige como minimo las claves de los 7 agentes opcionales conocidos (derivados de `TASK_KEYWORDS`). Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validacion.
-- `infra` exige exactamente `memoria` y `gui`, ambos booleanos.
+- `opcionales_activos` exige como minimo las claves de los 7 agentes opcionales conocidos. Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validacion.
+- `infra` exige exactamente `memoria`, de tipo booleano.
 - `fuente` debe ser la cadena `"composicion_dinamica"`.
 
 Si la validacion falla, el equipo se descarta con un aviso a stderr y el motivo se registra en `session["equipo_sesion_error"]` para que los consumidores downstream puedan informar al usuario. La sesion se crea igualmente, pero sin agentes opcionales, lo que garantiza que un equipo mal formado nunca rompe el flujo.
@@ -522,29 +477,23 @@ Si la validacion falla, el equipo se descarta con un aviso a stderr y el motivo 
 
 La composicion dinamica es un camino nuevo, no un reemplazo del existente. Si `equipo_sesion` no se pasa a `run_flow()`, la sesion se crea exactamente como antes (leyendo la configuracion persistente). Un proyecto que ya tiene agentes configurados en `.claude/alfred-dev.local.md` sigue funcionando sin cambios.
 
-Los tres mecanismos de seleccion de agentes opcionales coexisten:
+Los mecanismos de seleccion de agentes opcionales coexisten:
 
 | Mecanismo | Persistencia | Contexto |
 |-----------|--------------|----------|
 | `/alfred config` | Persistente (fichero `.local.md`) | Proyecto |
 | Descubrimiento (`suggest_optional_agents`) | Persistente (se guarda al confirmar) | Proyecto |
-| Composicion dinamica (`match_task_keywords` + Alfred) | Efimera (solo la sesion) | Tarea |
+| Composicion dinamica (Alfred semantico) | Efimera (solo la sesion) | Tarea |
 
 ### Ficheros involucrados
 
 | Fichero | Componente | Rol en la composicion dinamica |
 |---------|------------|--------------------------------|
-| `core/config_loader.py` | `TASK_KEYWORDS` | Mapa de keywords por agente con peso base |
-| `core/config_loader.py` | `match_task_keywords()` | Puntuacion heuristica por agente |
-| `core/config_loader.py` | `suggest_optional_agents()` | Senales de proyecto (existente, sin cambios) |
+| `commands/_composicion.md` | Protocolo compartido | Catalogo de agentes, criterios de decision, formato de presentacion |
+| `core/config_loader.py` | `suggest_optional_agents()` | Senales de proyecto basadas en I/O |
 | `core/orchestrator.py` | `_validate_equipo_sesion()` | Validacion de la estructura del equipo efimero |
 | `core/orchestrator.py` | `run_flow()` | Punto de entrada con inyeccion de equipo de sesion |
-| `commands/alfred.md` | Skill de triaje | Inyecta propuesta heuristica en el contexto |
-| `commands/feature.md` | Skill de feature | Presenta checkboxes y arranca flujo con equipo |
-| `commands/fix.md` | Skill de fix | Presenta checkboxes y arranca flujo con equipo |
-| `commands/spike.md` | Skill de spike | Presenta checkboxes y arranca flujo con equipo |
-| `commands/ship.md` | Skill de ship | Presenta checkboxes y arranca flujo con equipo |
-| `commands/audit.md` | Skill de audit | Presenta checkboxes y arranca flujo con equipo |
+| `commands/*.md` | Skills de cada flujo | Referencian `_composicion.md` y arrancan flujo con equipo |
 
 
 ## Configuracion de memoria
