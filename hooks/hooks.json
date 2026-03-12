@@ -138,6 +138,76 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

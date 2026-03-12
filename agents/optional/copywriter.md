@@ -40,7 +40,7 @@ description: |
   </example>
 tools: Glob,Grep,Read,Write,Edit,Bash
 model: sonnet
-color: cyan
+color: purple
 ---
 
 # El Pluma -- Copywriter del equipo Alfred Dev

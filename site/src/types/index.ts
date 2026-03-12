@@ -444,44 +444,8 @@ export interface ChangelogVersion {
   changed?: string[];
   /** Correcciones de errores. */
   fixed?: string[];
-}
-
-// ──────────────────────────────────────────────────────────────────
-// Dashboard
-// ──────────────────────────────────────────────────────────────────
-
-/** Imagen de la galeria del dashboard. */
-export interface DashboardImage {
-  /** Ruta relativa a la imagen. */
-  src: string;
-  /** Texto alternativo para accesibilidad. */
-  alt: string;
-  /** Pie de imagen visible. */
-  caption: string;
-}
-
-/** Feature del dashboard. */
-export interface DashboardFeature {
-  /** Titulo de la feature. */
-  title: string;
-  /** Descripcion breve. */
-  description: string;
-}
-
-/** Datos de la seccion del dashboard. */
-export interface DashboardSection {
-  /** Etiqueta de la seccion. */
-  sectionLabel: string;
-  /** Titulo principal. */
-  title: string;
-  /** Descripcion con HTML inline. */
-  descriptionHtml: string;
-  /** Imagen hero (primera, a pantalla completa). */
-  heroImage: DashboardImage;
-  /** Imagenes de la cuadricula. */
-  gridImages: DashboardImage[];
-  /** Features destacadas. */
-  features: DashboardFeature[];
+  /** Funcionalidades eliminadas. */
+  removed?: string[];
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -489,13 +453,11 @@ export interface DashboardSection {
 // ──────────────────────────────────────────────────────────────────
 
 /**
- * Agente que reacciona a keywords en la demo de composicion.
+ * Agente opcional en la demo de composicion semantica.
  *
- * Cada agente tiene un conjunto de keywords que lo activan y una
- * puntuacion final que se muestra cuando todas sus keywords han
- * sido escritas en el terminal. El JS del componente localiza
- * las keywords en el texto de la demo en tiempo de ejecucion,
- * evitando asi calcular offsets manualmente en los datos i18n.
+ * Alfred razona sobre la tarea descrita y decide si cada agente
+ * es relevante. El campo `reasoning` contiene la explicacion
+ * breve que se muestra en la tarjeta durante la animacion.
  */
 export interface CompositionAgent {
   /** Identificador del agente (data-engineer, ux-reviewer...). */
@@ -504,10 +466,10 @@ export interface CompositionAgent {
   name: string;
   /** Color CSS del agente (variable o valor directo). */
   color: string;
-  /** Puntuacion final (0.0 - 1.0) que muestra la barra al completar. */
-  score: number;
-  /** Keywords del texto que activan este agente (coincidencia por subcadena, case-insensitive). */
-  keywords: string[];
+  /** Indica si Alfred sugiere este agente para la tarea de ejemplo. */
+  suggested: boolean;
+  /** Razonamiento breve de Alfred sobre por que incluir o descartar este agente. */
+  reasoning: string;
 }
 
 /** Agente de nucleo (siempre activo en cada sesion). */
@@ -532,7 +494,7 @@ export interface CompositionSection {
   terminalText: string;
   /** Prefijo del prompt del terminal (ej. "$ /alfred feature"). */
   terminalPrompt: string;
-  /** Agentes que reaccionan al texto. */
+  /** Agentes opcionales con razonamiento semantico. */
   agents: CompositionAgent[];
   /** Titulo del panel lateral de agentes (ej. "Agentes opcionales"). */
   agentsPanelLabel: string;
@@ -550,6 +512,10 @@ export interface CompositionSection {
   coreAgentsLabel: string;
   /** Etiqueta de estado de los agentes de nucleo (ej. "Siempre activo"). */
   coreAgentsActiveLabel: string;
+  /** Etiqueta de la fase de analisis (ej. "Analizando tarea..."). */
+  thinkingLabel: string;
+  /** Etiqueta de la seccion de razonamiento (ej. "Razonamiento"). */
+  reasoningLabel: string;
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -621,8 +587,6 @@ export interface PageData {
   };
   /** Seccion de composicion dinamica de equipo. */
   composition: CompositionSection;
-  /** Seccion del dashboard. */
-  dashboard: DashboardSection;
   /** Seccion de flujos de trabajo. */
   workflows: {
     header: SectionHeader;

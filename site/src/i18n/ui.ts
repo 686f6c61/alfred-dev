@@ -69,20 +69,6 @@ export const ui: Record<string, Record<Locale, string>> = {
     en: 'Copied to clipboard',
   },
 
-  // ── Lightbox de imagenes ────────────────────────────────────
-  lightboxClose: {
-    es: 'Cerrar imagen',
-    en: 'Close image',
-  },
-  lightboxPrev: {
-    es: 'Imagen anterior',
-    en: 'Previous image',
-  },
-  lightboxNext: {
-    es: 'Imagen siguiente',
-    en: 'Next image',
-  },
-
   // ── FAQ ─────────────────────────────────────────────────────
   faqLabel: {
     es: 'Preguntas frecuentes',

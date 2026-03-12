@@ -19,53 +19,29 @@ from typing import Any, Dict, List, Optional
 
 def build_compact_context(
     decisions: List[Dict[str, Any]],
-    pinned_items: Optional[List[Dict[str, Any]]] = None,
-    pending_actions: Optional[List[Dict[str, Any]]] = None,
 ) -> str:
     """Construye el texto de contexto protegido para la compactacion.
 
-    Incluye decisiones criticas, elementos marcados por el usuario y
-    acciones pendientes del dashboard GUI para garantizar continuidad
-    completa entre sesiones.
+    Incluye las decisiones criticas de la sesion para garantizar
+    continuidad entre compactaciones.
 
     Args:
         decisions: lista de diccionarios de decisiones.
-        pinned_items: elementos marcados (opcionales).
-        pending_actions: acciones pendientes de la GUI (opcionales).
 
     Returns:
         Texto formateado para inyectar.
     """
-    if not decisions and not pinned_items and not pending_actions:
+    if not decisions:
         return ""
 
-    lines = []
-
-    if decisions:
-        lines.append(
-            "## Decisiones criticas de la sesion (protegidas contra compactacion)\n"
-        )
-        for d in decisions:
-            titulo = d.get("title", "sin titulo")
-            elegida = d.get("chosen", "")
-            fecha = d.get("decided_at", "")[:10]
-            lines.append(f"- [{fecha}] **{titulo}**: {elegida}")
-
-    if pinned_items:
-        lines.append("\n## Elementos marcados por el usuario\n")
-        for item in pinned_items:
-            tipo = item.get("item_type", "?")
-            ref = item.get("item_ref") or f"id:{item.get('item_id', '?')}"
-            nota = item.get("note", "")
-            auto = " (auto)" if item.get("auto_pinned") else ""
-            lines.append(f"- [{tipo}] {ref}: {nota}{auto}")
-
-    if pending_actions:
-        lines.append("\n## Acciones pendientes desde el dashboard\n")
-        for action in pending_actions:
-            tipo = action.get("action_type", "?")
-            payload = action.get("payload", "{}")
-            lines.append(f"- {tipo}: {payload}")
+    lines = [
+        "## Decisiones criticas de la sesion (protegidas contra compactacion)\n"
+    ]
+    for d in decisions:
+        titulo = d.get("title", "sin titulo")
+        elegida = d.get("chosen", "")
+        fecha = d.get("decided_at", "")[:10]
+        lines.append(f"- [{fecha}] **{titulo}**: {elegida}")
 
     lines.append(
         "\nContexto reinyectado por memory-compact para mantener coherencia."
@@ -108,11 +84,7 @@ def main():
         else:
             decisions = db.get_decisions(limit=5)
 
-        # Recopilar elementos marcados y acciones pendientes
-        pinned_items = db.get_pinned_items()
-        pending_actions = db.get_pending_actions()
-
-        context = build_compact_context(decisions, pinned_items, pending_actions)
+        context = build_compact_context(decisions)
         db.close()
 
         if context:

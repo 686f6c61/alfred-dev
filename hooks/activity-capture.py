@@ -15,6 +15,13 @@ Eventos gestionados:
     - PostToolUse Write: fichero escrito (contenido completo).
     - PostToolUse Edit: fichero editado (diff old/new).
     - PostToolUse Bash: comando ejecutado (stdout+stderr completos).
+    - PostToolUse Read: fichero leido (ruta y rango, sin contenido).
+    - PostToolUse Glob: busqueda de ficheros por patron.
+    - PostToolUse Grep: busqueda de contenido en ficheros.
+    - PostToolUse Agent: lanzamiento de subagente (prompt + resultado).
+    - PostToolUse WebFetch: peticion HTTP a URL externa.
+    - PostToolUse WebSearch: busqueda web.
+    - PostToolUse NotebookEdit: edicion de notebook Jupyter.
     - UserPromptSubmit: prompt del usuario.
     - PreCompact: marcador de compactacion de contexto.
     - Stop: cierre de sesion.
@@ -86,6 +93,13 @@ def _build_dispatcher_table():
         "Write": _dispatch_write,
         "Edit": _dispatch_edit,
         "Bash": _dispatch_bash,
+        "Read": _dispatch_read,
+        "Glob": _dispatch_glob,
+        "Grep": _dispatch_grep,
+        "Agent": _dispatch_agent,
+        "WebFetch": _dispatch_web_fetch,
+        "WebSearch": _dispatch_web_search,
+        "NotebookEdit": _dispatch_notebook,
         "UserPromptSubmit": _dispatch_prompt,
         "PreCompact": _dispatch_compact,
         "Stop": _dispatch_stop,
@@ -390,21 +404,6 @@ def _process_state(db, file_path: str) -> None:
             iteration_id=iteration_id,
         )
 
-    # --- Auto-pinning de fases completadas ---
-    if fases_completadas and len(fases_completadas) > len(existing_phases):
-        ultima_fase = fases_completadas[-1]
-        nombre = ultima_fase.get("nombre", "") if isinstance(ultima_fase, dict) else str(ultima_fase)
-        if nombre:
-            try:
-                db.pin_item(
-                    item_type="phase",
-                    item_ref=f"phase:{nombre}",
-                    note=f"Fase completada: {nombre}",
-                    auto=True,
-                    priority=5,
-                )
-            except Exception:
-                pass  # Fail-open: no bloquear si el pinning falla
 
 
 # ---------------------------------------------------------------------------
@@ -575,6 +574,262 @@ def _dispatch_bash(db, data: dict) -> None:
     # Captura enriquecida de git commit
     if _GIT_COMMIT_RE.search(command) and exit_code == 0:
         _capture_git_commit(db)
+
+
+def _dispatch_read(db, data: dict) -> None:
+    """Captura la lectura de un fichero.
+
+    Registra la ruta del fichero leido y el rango de lineas solicitado.
+    No almacena el contenido (ya existe en el fichero) para evitar
+    duplicacion innecesaria.
+
+    Args:
+        db: instancia de MemoryDB ya abierta.
+        data: datos del hook PostToolUse.
+    """
+    tool_input = data.get("tool_input", {})
+    file_path = tool_input.get("file_path", "")
+
+    if not file_path or _is_excluded_path(file_path):
+        return
+
+    rel_path = _relative_path(file_path, os.getcwd())
+    offset = tool_input.get("offset")
+    limit = tool_input.get("limit")
+
+    range_str = ""
+    if offset and limit:
+        range_str = f" (lineas {offset}-{offset + limit})"
+    elif offset:
+        range_str = f" (desde linea {offset})"
+    elif limit:
+        range_str = f" (primeras {limit} lineas)"
+
+    summary = f"Leido {rel_path}{range_str}"
+
+    payload = {"file": rel_path}
+    if offset:
+        payload["offset"] = offset
+    if limit:
+        payload["limit"] = limit
+
+    db.log_event(
+        event_type="file_read",
+        summary=summary,
+        payload=payload,
+    )
+
+
+def _dispatch_glob(db, data: dict) -> None:
+    """Captura una busqueda de ficheros por patron glob.
+
+    Registra el patron usado y el numero de resultados encontrados.
+
+    Args:
+        db: instancia de MemoryDB ya abierta.
+        data: datos del hook PostToolUse.
+    """
+    tool_input = data.get("tool_input", {})
+    tool_result = data.get("tool_result", {})
+
+    pattern = tool_input.get("pattern", "")
+    if not pattern:
+        return
+
+    search_path = tool_input.get("path", ".")
+
+    # Contar resultados: tool_result puede ser string con rutas o un dict
+    result_text = ""
+    if isinstance(tool_result, str):
+        result_text = tool_result
+    elif isinstance(tool_result, dict):
+        result_text = tool_result.get("output", "") or tool_result.get("stdout", "")
+
+    match_count = len([l for l in result_text.strip().split("\n") if l.strip()]) if result_text.strip() else 0
+
+    summary = f"Glob: {pattern} en {search_path} ({match_count} resultados)"
+
+    db.log_event(
+        event_type="glob_search",
+        summary=summary,
+        payload={"pattern": pattern, "path": search_path, "results": match_count},
+        content=result_text if result_text else None,
+    )
+
+
+def _dispatch_grep(db, data: dict) -> None:
+    """Captura una busqueda de contenido en ficheros.
+
+    Registra el patron regex, el directorio y el numero de coincidencias.
+
+    Args:
+        db: instancia de MemoryDB ya abierta.
+        data: datos del hook PostToolUse.
+    """
+    tool_input = data.get("tool_input", {})
+    tool_result = data.get("tool_result", {})
+
+    pattern = tool_input.get("pattern", "")
+    if not pattern:
+        return
+
+    search_path = tool_input.get("path", ".")
+    output_mode = tool_input.get("output_mode", "files_with_matches")
+    file_type = tool_input.get("type", "")
+    glob_filter = tool_input.get("glob", "")
+
+    result_text = ""
+    if isinstance(tool_result, str):
+        result_text = tool_result
+    elif isinstance(tool_result, dict):
+        result_text = tool_result.get("output", "") or tool_result.get("stdout", "")
+
+    match_count = len([l for l in result_text.strip().split("\n") if l.strip()]) if result_text.strip() else 0
+
+    filter_str = ""
+    if file_type:
+        filter_str = f" tipo={file_type}"
+    elif glob_filter:
+        filter_str = f" filtro={glob_filter}"
+
+    summary = f"Grep: '{pattern}' en {search_path}{filter_str} ({match_count} coincidencias)"
+
+    payload = {"pattern": pattern, "path": search_path, "mode": output_mode, "results": match_count}
+    if file_type:
+        payload["type"] = file_type
+    if glob_filter:
+        payload["glob"] = glob_filter
+
+    db.log_event(
+        event_type="grep_search",
+        summary=summary,
+        payload=payload,
+        content=result_text if result_text else None,
+    )
+
+
+def _dispatch_agent(db, data: dict) -> None:
+    """Captura el lanzamiento de un subagente.
+
+    Registra el tipo de subagente, la descripcion de la tarea y el
+    prompt enviado. El resultado completo se almacena en content.
+
+    Args:
+        db: instancia de MemoryDB ya abierta.
+        data: datos del hook PostToolUse.
+    """
+    tool_input = data.get("tool_input", {})
+    tool_result = data.get("tool_result", {})
+
+    description = tool_input.get("description", "")
+    subagent_type = tool_input.get("subagent_type", "general-purpose")
+    prompt = tool_input.get("prompt", "")
+
+    summary = f"Subagente ({subagent_type}): {description}" if description else f"Subagente ({subagent_type}) lanzado"
+
+    result_text = ""
+    if isinstance(tool_result, str):
+        result_text = tool_result
+    elif isinstance(tool_result, dict):
+        result_text = tool_result.get("output", "") or tool_result.get("stdout", "")
+
+    content_parts = []
+    if prompt:
+        content_parts.append(f"--- prompt ---\n{prompt}")
+    if result_text:
+        content_parts.append(f"--- resultado ---\n{result_text}")
+
+    db.log_event(
+        event_type="agent_launched",
+        summary=summary,
+        payload={"subagent_type": subagent_type, "description": description},
+        content="\n".join(content_parts) if content_parts else None,
+    )
+
+
+def _dispatch_web_fetch(db, data: dict) -> None:
+    """Captura una peticion HTTP a una URL externa.
+
+    Args:
+        db: instancia de MemoryDB ya abierta.
+        data: datos del hook PostToolUse.
+    """
+    tool_input = data.get("tool_input", {})
+    tool_result = data.get("tool_result", {})
+
+    url = tool_input.get("url", "")
+    if not url:
+        return
+
+    result_text = ""
+    if isinstance(tool_result, str):
+        result_text = tool_result
+    elif isinstance(tool_result, dict):
+        result_text = tool_result.get("output", "") or tool_result.get("content", "")
+
+    summary = f"Web fetch: {url[:100]}"
+
+    db.log_event(
+        event_type="web_fetched",
+        summary=summary,
+        payload={"url": url},
+        content=result_text if result_text else None,
+    )
+
+
+def _dispatch_web_search(db, data: dict) -> None:
+    """Captura una busqueda web.
+
+    Args:
+        db: instancia de MemoryDB ya abierta.
+        data: datos del hook PostToolUse.
+    """
+    tool_input = data.get("tool_input", {})
+    tool_result = data.get("tool_result", {})
+
+    query = tool_input.get("query", "")
+    if not query:
+        return
+
+    result_text = ""
+    if isinstance(tool_result, str):
+        result_text = tool_result
+    elif isinstance(tool_result, dict):
+        result_text = tool_result.get("output", "") or tool_result.get("content", "")
+
+    summary = f"Web search: {query[:100]}"
+
+    db.log_event(
+        event_type="web_searched",
+        summary=summary,
+        payload={"query": query},
+        content=result_text if result_text else None,
+    )
+
+
+def _dispatch_notebook(db, data: dict) -> None:
+    """Captura la edicion de un notebook Jupyter.
+
+    Args:
+        db: instancia de MemoryDB ya abierta.
+        data: datos del hook PostToolUse.
+    """
+    tool_input = data.get("tool_input", {})
+
+    notebook_path = tool_input.get("notebook_path", "") or tool_input.get("path", "")
+    if not notebook_path or _is_excluded_path(notebook_path):
+        return
+
+    rel_path = _relative_path(notebook_path, os.getcwd())
+    command = tool_input.get("command", "edit")
+
+    summary = f"Notebook {command}: {rel_path}"
+
+    db.log_event(
+        event_type="notebook_edited",
+        summary=summary,
+        payload={"file": rel_path, "command": command},
+    )
 
 
 def _dispatch_prompt(db, data: dict) -> None:

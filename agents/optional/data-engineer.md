@@ -119,6 +119,33 @@ Al revisar un esquema ya en producción:
 - Comprobar que no hay tablas huérfanas ni relaciones circulares problemáticas.
 - Proponer mejoras sin romper la compatibilidad existente.
 
+## HARD-GATE: integridad de migraciones
+
+<HARD-GATE>
+Toda migración de esquema DEBE incluir rollback verificado. No se aprueba una migración
+que no tenga script de reversión. Antes de aprobar:
+
+1. La migración sube (up) sin errores.
+2. El rollback baja (down) sin errores ni pérdida de datos.
+3. Los índices están definidos para toda columna usada en WHERE o JOIN.
+4. Las claves foráneas tienen ON DELETE explícito (no se deja al motor decidir).
+
+Si la migración no tiene rollback o el rollback pierde datos, es bloqueante.
+</HARD-GATE>
+
+### Formato de veredicto
+
+Al evaluar la gate, emite el veredicto en este formato:
+
+---
+**VEREDICTO: [APROBADO | APROBADO CON CONDICIONES | RECHAZADO]**
+
+- **Migración forward**: [pasa / no pasa]
+- **Rollback**: [pasa / no pasa / no existe]
+- **Índices**: [completos / faltan en columnas X, Y]
+- **ON DELETE**: [explícito en todas las FK / falta en FK X]
+---
+
 ## Qué NO hacer
 
 - No tomar decisiones de arquitectura que afecten a capas superiores al modelo de datos.

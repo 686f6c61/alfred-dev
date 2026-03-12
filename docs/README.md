@@ -52,7 +52,6 @@ La documentacion se organiza de lo general a lo especifico. Se recomienda leer e
 | [skills.md](skills.md) | Catalogo de 59 skills organizados en 13 dominios con diagrama mindmap |
 | [hooks.md](hooks.md) | Los 11 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
-| [gui.md](gui.md) | Dashboard web: arquitectura, protocolo WebSocket, vistas, integracion con hooks |
 | [configuration.md](configuration.md) | Deteccion de stack, fichero .local.md, niveles de autonomia, agentes opcionales, composicion dinamica de equipo |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalacion, troubleshooting |
 | [personality.md](personality.md) | Motor de personalidad: frases, sarcasmo, veredictos, distribucion de modelos |

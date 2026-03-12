@@ -6,7 +6,8 @@ Verifica la logica del hook centralizado de captura de actividad:
     - Deteccion de ficheros excluidos (_is_excluded_path).
     - Deteccion de comandos triviales (_is_trivial_command).
     - Deteccion de git commit (is_git_commit_command).
-    - Dispatchers: Write, Edit, Bash, Prompt, Compact, Stop.
+    - Dispatchers: Write, Edit, Bash, Read, Glob, Grep, Agent, WebFetch,
+      WebSearch, NotebookEdit, Prompt, Compact, Stop.
     - Procesamiento de estado: iteraciones y fases (_process_state).
 
 Cada test que interactua con la DB crea una instancia temporal de MemoryDB,
@@ -827,6 +828,445 @@ class TestProcessState(_DBTestCase):
             self.assertGreaterEqual(len(pins), 1)
         except Exception:
             pass  # Si la tabla no existe, el test no aplica
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchRead
+# ---------------------------------------------------------------------------
+
+class TestDispatchRead(_DBTestCase):
+    """Verifica el dispatcher de Read."""
+
+    def setUp(self):
+        super().setUp()
+        self._original_cwd = os.getcwd()
+        os.chdir(self._tmpdir)
+
+    def tearDown(self):
+        os.chdir(self._original_cwd)
+        super().tearDown()
+
+    def test_creates_file_read_event(self):
+        """Un Read crea un evento file_read."""
+        data = {"tool_input": {"file_path": os.path.join(self._tmpdir, "src", "main.py")}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        self.assertEqual(len(events), 1)
+
+    def test_summary_contains_path(self):
+        """El summary incluye la ruta relativa."""
+        data = {"tool_input": {"file_path": os.path.join(self._tmpdir, "core", "memory.py")}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        self.assertIn("memory.py", events[0].get("summary", ""))
+
+    def test_summary_with_offset_and_limit(self):
+        """El summary incluye el rango de lineas cuando se especifica."""
+        data = {"tool_input": {"file_path": os.path.join(self._tmpdir, "f.py"), "offset": 10, "limit": 50}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        summary = events[0].get("summary", "")
+        self.assertIn("lineas 10-60", summary)
+
+    def test_summary_with_only_offset(self):
+        """El summary indica la linea de inicio cuando solo hay offset."""
+        data = {"tool_input": {"file_path": os.path.join(self._tmpdir, "f.py"), "offset": 100}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        self.assertIn("desde linea 100", events[0].get("summary", ""))
+
+    def test_summary_with_only_limit(self):
+        """El summary indica el limite cuando solo hay limit."""
+        data = {"tool_input": {"file_path": os.path.join(self._tmpdir, "f.py"), "limit": 20}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        self.assertIn("primeras 20 lineas", events[0].get("summary", ""))
+
+    def test_excluded_file_creates_no_event(self):
+        """Un Read de fichero excluido no crea evento."""
+        data = {"tool_input": {"file_path": os.path.join(self._tmpdir, ".git", "HEAD")}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        self.assertEqual(len(events), 0)
+
+    def test_empty_path_creates_no_event(self):
+        """Una ruta vacia no crea evento."""
+        data = {"tool_input": {"file_path": ""}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        self.assertEqual(len(events), 0)
+
+    def test_no_content_stored(self):
+        """No almacena contenido para evitar duplicacion."""
+        data = {"tool_input": {"file_path": os.path.join(self._tmpdir, "f.py")}}
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        self.assertIsNone(events[0].get("content"))
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchGlob
+# ---------------------------------------------------------------------------
+
+class TestDispatchGlob(_DBTestCase):
+    """Verifica el dispatcher de Glob."""
+
+    def test_creates_glob_search_event(self):
+        """Un Glob crea un evento glob_search."""
+        data = {
+            "tool_input": {"pattern": "**/*.py", "path": "."},
+            "tool_result": {"output": "src/main.py\nsrc/util.py\n"},
+        }
+        _capture._dispatch_glob(self._db, data)
+
+        events = self._get_events("glob_search")
+        self.assertEqual(len(events), 1)
+
+    def test_summary_contains_pattern_and_count(self):
+        """El summary incluye el patron y el numero de resultados."""
+        data = {
+            "tool_input": {"pattern": "*.ts"},
+            "tool_result": {"output": "index.ts\napp.ts\nutil.ts\n"},
+        }
+        _capture._dispatch_glob(self._db, data)
+
+        events = self._get_events("glob_search")
+        summary = events[0].get("summary", "")
+        self.assertIn("*.ts", summary)
+        self.assertIn("3 resultados", summary)
+
+    def test_content_stores_file_list(self):
+        """El content almacena la lista de ficheros encontrados."""
+        file_list = "a.py\nb.py\n"
+        data = {
+            "tool_input": {"pattern": "*.py"},
+            "tool_result": {"output": file_list},
+        }
+        _capture._dispatch_glob(self._db, data)
+
+        events = self._get_events("glob_search")
+        self.assertEqual(events[0].get("content"), file_list)
+
+    def test_empty_pattern_creates_no_event(self):
+        """Un patron vacio no crea evento."""
+        data = {"tool_input": {"pattern": ""}, "tool_result": {}}
+        _capture._dispatch_glob(self._db, data)
+
+        events = self._get_events("glob_search")
+        self.assertEqual(len(events), 0)
+
+    def test_zero_results(self):
+        """Un glob sin resultados se registra con 0 resultados."""
+        data = {
+            "tool_input": {"pattern": "*.xyz"},
+            "tool_result": {"output": ""},
+        }
+        _capture._dispatch_glob(self._db, data)
+
+        events = self._get_events("glob_search")
+        payload = self._parse_payload(events[0])
+        self.assertEqual(payload["results"], 0)
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchGrep
+# ---------------------------------------------------------------------------
+
+class TestDispatchGrep(_DBTestCase):
+    """Verifica el dispatcher de Grep."""
+
+    def test_creates_grep_search_event(self):
+        """Un Grep crea un evento grep_search."""
+        data = {
+            "tool_input": {"pattern": "TODO", "path": "."},
+            "tool_result": {"output": "file.py:10:# TODO fix\n"},
+        }
+        _capture._dispatch_grep(self._db, data)
+
+        events = self._get_events("grep_search")
+        self.assertEqual(len(events), 1)
+
+    def test_summary_contains_pattern_and_count(self):
+        """El summary incluye el patron regex y el conteo."""
+        data = {
+            "tool_input": {"pattern": "import\\s+os"},
+            "tool_result": {"output": "a.py\nb.py\nc.py\n"},
+        }
+        _capture._dispatch_grep(self._db, data)
+
+        events = self._get_events("grep_search")
+        summary = events[0].get("summary", "")
+        self.assertIn("import\\s+os", summary)
+        self.assertIn("3 coincidencias", summary)
+
+    def test_payload_includes_filters(self):
+        """El payload incluye filtros de tipo y glob cuando se usan."""
+        data = {
+            "tool_input": {"pattern": "def ", "type": "py", "output_mode": "content"},
+            "tool_result": {"output": "result\n"},
+        }
+        _capture._dispatch_grep(self._db, data)
+
+        events = self._get_events("grep_search")
+        payload = self._parse_payload(events[0])
+        self.assertEqual(payload["type"], "py")
+        self.assertEqual(payload["mode"], "content")
+
+    def test_glob_filter_in_summary(self):
+        """El summary muestra el filtro glob cuando se usa."""
+        data = {
+            "tool_input": {"pattern": "class", "glob": "*.tsx"},
+            "tool_result": {"output": "Component.tsx\n"},
+        }
+        _capture._dispatch_grep(self._db, data)
+
+        events = self._get_events("grep_search")
+        summary = events[0].get("summary", "")
+        self.assertIn("filtro=*.tsx", summary)
+
+    def test_empty_pattern_creates_no_event(self):
+        """Un patron vacio no crea evento."""
+        data = {"tool_input": {"pattern": ""}, "tool_result": {}}
+        _capture._dispatch_grep(self._db, data)
+
+        events = self._get_events("grep_search")
+        self.assertEqual(len(events), 0)
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchAgent
+# ---------------------------------------------------------------------------
+
+class TestDispatchAgent(_DBTestCase):
+    """Verifica el dispatcher de Agent."""
+
+    def test_creates_agent_launched_event(self):
+        """Un Agent crea un evento agent_launched."""
+        data = {
+            "tool_input": {
+                "description": "buscar patron",
+                "subagent_type": "Explore",
+                "prompt": "Busca la clase AuthMiddleware",
+            },
+            "tool_result": {"output": "Encontrado en src/auth.py"},
+        }
+        _capture._dispatch_agent(self._db, data)
+
+        events = self._get_events("agent_launched")
+        self.assertEqual(len(events), 1)
+
+    def test_summary_contains_type_and_description(self):
+        """El summary incluye el tipo y la descripcion."""
+        data = {
+            "tool_input": {
+                "description": "revisar codigo",
+                "subagent_type": "code-reviewer",
+                "prompt": "Revisa el modulo auth",
+            },
+            "tool_result": {},
+        }
+        _capture._dispatch_agent(self._db, data)
+
+        events = self._get_events("agent_launched")
+        summary = events[0].get("summary", "")
+        self.assertIn("code-reviewer", summary)
+        self.assertIn("revisar codigo", summary)
+
+    def test_content_contains_prompt_and_result(self):
+        """El content almacena el prompt enviado y el resultado."""
+        data = {
+            "tool_input": {"prompt": "Analiza esto", "description": "test"},
+            "tool_result": {"output": "Resultado del analisis"},
+        }
+        _capture._dispatch_agent(self._db, data)
+
+        events = self._get_events("agent_launched")
+        content = events[0].get("content", "")
+        self.assertIn("--- prompt ---", content)
+        self.assertIn("Analiza esto", content)
+        self.assertIn("--- resultado ---", content)
+        self.assertIn("Resultado del analisis", content)
+
+    def test_default_subagent_type(self):
+        """Sin subagent_type, usa general-purpose por defecto."""
+        data = {
+            "tool_input": {"description": "tarea generica", "prompt": "haz algo"},
+            "tool_result": {},
+        }
+        _capture._dispatch_agent(self._db, data)
+
+        events = self._get_events("agent_launched")
+        payload = self._parse_payload(events[0])
+        self.assertEqual(payload["subagent_type"], "general-purpose")
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchWebFetch
+# ---------------------------------------------------------------------------
+
+class TestDispatchWebFetch(_DBTestCase):
+    """Verifica el dispatcher de WebFetch."""
+
+    def test_creates_web_fetched_event(self):
+        """Un WebFetch crea un evento web_fetched."""
+        data = {
+            "tool_input": {"url": "https://example.com/api"},
+            "tool_result": {"content": "<html>OK</html>"},
+        }
+        _capture._dispatch_web_fetch(self._db, data)
+
+        events = self._get_events("web_fetched")
+        self.assertEqual(len(events), 1)
+
+    def test_summary_contains_url(self):
+        """El summary incluye la URL (truncada si es larga)."""
+        data = {
+            "tool_input": {"url": "https://docs.python.org/3/library/sqlite3.html"},
+            "tool_result": {"content": "docs"},
+        }
+        _capture._dispatch_web_fetch(self._db, data)
+
+        events = self._get_events("web_fetched")
+        self.assertIn("docs.python.org", events[0].get("summary", ""))
+
+    def test_content_stores_response(self):
+        """El content almacena la respuesta completa."""
+        response = "<html><body>Contenido completo</body></html>"
+        data = {
+            "tool_input": {"url": "https://example.com"},
+            "tool_result": {"content": response},
+        }
+        _capture._dispatch_web_fetch(self._db, data)
+
+        events = self._get_events("web_fetched")
+        self.assertEqual(events[0].get("content"), response)
+
+    def test_empty_url_creates_no_event(self):
+        """Una URL vacia no crea evento."""
+        data = {"tool_input": {"url": ""}, "tool_result": {}}
+        _capture._dispatch_web_fetch(self._db, data)
+
+        events = self._get_events("web_fetched")
+        self.assertEqual(len(events), 0)
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchWebSearch
+# ---------------------------------------------------------------------------
+
+class TestDispatchWebSearch(_DBTestCase):
+    """Verifica el dispatcher de WebSearch."""
+
+    def test_creates_web_searched_event(self):
+        """Un WebSearch crea un evento web_searched."""
+        data = {
+            "tool_input": {"query": "python sqlite3 fts5"},
+            "tool_result": {"content": "resultado 1\nresultado 2"},
+        }
+        _capture._dispatch_web_search(self._db, data)
+
+        events = self._get_events("web_searched")
+        self.assertEqual(len(events), 1)
+
+    def test_summary_contains_query(self):
+        """El summary incluye la consulta de busqueda."""
+        data = {
+            "tool_input": {"query": "claude code hooks api"},
+            "tool_result": {"content": "results"},
+        }
+        _capture._dispatch_web_search(self._db, data)
+
+        events = self._get_events("web_searched")
+        self.assertIn("claude code hooks api", events[0].get("summary", ""))
+
+    def test_content_stores_results(self):
+        """El content almacena los resultados de la busqueda."""
+        results = "1. Resultado uno\n2. Resultado dos\n3. Resultado tres"
+        data = {
+            "tool_input": {"query": "test"},
+            "tool_result": {"content": results},
+        }
+        _capture._dispatch_web_search(self._db, data)
+
+        events = self._get_events("web_searched")
+        self.assertEqual(events[0].get("content"), results)
+
+    def test_empty_query_creates_no_event(self):
+        """Una query vacia no crea evento."""
+        data = {"tool_input": {"query": ""}, "tool_result": {}}
+        _capture._dispatch_web_search(self._db, data)
+
+        events = self._get_events("web_searched")
+        self.assertEqual(len(events), 0)
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchNotebook
+# ---------------------------------------------------------------------------
+
+class TestDispatchNotebook(_DBTestCase):
+    """Verifica el dispatcher de NotebookEdit."""
+
+    def setUp(self):
+        super().setUp()
+        self._original_cwd = os.getcwd()
+        os.chdir(self._tmpdir)
+
+    def tearDown(self):
+        os.chdir(self._original_cwd)
+        super().tearDown()
+
+    def test_creates_notebook_edited_event(self):
+        """Un NotebookEdit crea un evento notebook_edited."""
+        data = {"tool_input": {"notebook_path": os.path.join(self._tmpdir, "analysis.ipynb"), "command": "edit"}}
+        _capture._dispatch_notebook(self._db, data)
+
+        events = self._get_events("notebook_edited")
+        self.assertEqual(len(events), 1)
+
+    def test_summary_contains_path_and_command(self):
+        """El summary incluye la ruta y el tipo de operacion."""
+        data = {"tool_input": {"notebook_path": os.path.join(self._tmpdir, "model.ipynb"), "command": "add_cell"}}
+        _capture._dispatch_notebook(self._db, data)
+
+        events = self._get_events("notebook_edited")
+        summary = events[0].get("summary", "")
+        self.assertIn("model.ipynb", summary)
+        self.assertIn("add_cell", summary)
+
+    def test_payload_has_file_and_command(self):
+        """El payload incluye la ruta relativa y el comando."""
+        data = {"tool_input": {"notebook_path": os.path.join(self._tmpdir, "nb.ipynb"), "command": "delete_cell"}}
+        _capture._dispatch_notebook(self._db, data)
+
+        events = self._get_events("notebook_edited")
+        payload = self._parse_payload(events[0])
+        self.assertIn("nb.ipynb", payload["file"])
+        self.assertEqual(payload["command"], "delete_cell")
+
+    def test_excluded_path_creates_no_event(self):
+        """Un notebook en directorio excluido no crea evento."""
+        data = {"tool_input": {"notebook_path": os.path.join(self._tmpdir, ".venv", "nb.ipynb")}}
+        _capture._dispatch_notebook(self._db, data)
+
+        events = self._get_events("notebook_edited")
+        self.assertEqual(len(events), 0)
+
+    def test_empty_path_creates_no_event(self):
+        """Una ruta vacia no crea evento."""
+        data = {"tool_input": {"notebook_path": ""}}
+        _capture._dispatch_notebook(self._db, data)
+
+        events = self._get_events("notebook_edited")
+        self.assertEqual(len(events), 0)
 
 
 # ---------------------------------------------------------------------------

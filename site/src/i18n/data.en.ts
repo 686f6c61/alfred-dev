@@ -18,17 +18,17 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - Claude Code plugin for development teams',
-    description: 'Claude Code plugin: 15 specialised agents, 59 skills, persistent memory and quality gates. From idea to production with TDD, security and compliance.',
+    description: 'Claude Code plugin: 17 specialised agents, 59 skills, persistent memory and quality gates. From idea to production with TDD, security and compliance.',
     canonical: 'https://alfred-dev.com/en/',
     locale: 'en_US',
     og: {
       type: 'website',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '15 specialised agents, 59 skills, persistent memory and quality gates. Automated software engineering for Claude Code.',
+      description: '17 specialised agents, 59 skills, persistent memory and quality gates. Automated software engineering for Claude Code.',
       url: 'https://alfred-dev.com/en/',
       siteName: 'Alfred Dev',
       locale: 'en_US',
-      image: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
+      image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
       imageWidth: 1470,
       imageHeight: 759,
       imageType: 'image/webp',
@@ -36,8 +36,8 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '15 specialised agents, 59 skills, persistent memory and quality gates. From idea to production.',
-      image: 'https://alfred-dev.com/screenshots/dashboard-estado.webp',
+      description: '17 specialised agents, 59 skills, persistent memory and quality gates. From idea to production.',
+      image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
 
@@ -50,11 +50,6 @@ const data: PageData = {
       href: '#agentes',
       label: 'Agents',
       svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    },
-    {
-      href: '#dashboard',
-      label: 'Dashboard',
-      svgContent: '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
     },
     {
       href: '#flujos',
@@ -105,7 +100,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Your development<br>teammates in one <em>plugin</em>',
     platformHtml: 'for <span style="color: var(--blue);">Claude Code</span> and <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(in development)</span>',
-    subtitle: '15 specialised agents with their own personality. 8 core, 7 optional that you activate per project. Persistent memory, quality gates, 59 skills, from idea to production.',
+    subtitle: '17 specialised agents with their own personality. 9 core, 8 optional that you activate per project. Persistent memory, quality gates, 59 skills, from idea to production.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -125,13 +120,13 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   stats: [
-    { number: 15, label: 'Agents' },
+    { number: 17, label: 'Agents' },
     { number: 59, label: 'Skills' },
     { number: 5, label: 'Workflows' },
-    { number: 11, label: 'Commands' },
+    { number: 10, label: 'Commands' },
     { number: 7, label: 'Templates' },
-    { number: 11, label: 'Hooks' },
-    { number: 18, label: 'Gates' },
+    { number: 10, label: 'Hooks' },
+    { number: 21, label: 'Gates' },
   ],
 
   // ----------------------------------------------------------------
@@ -141,7 +136,7 @@ const data: PageData = {
   coreAgents: {
     header: {
       label: 'The team',
-      title: '8 core agents',
+      title: '9 core agents',
       description: 'Each agent has a defined role, its own personality and signature phrases. They work coordinated by Alfred, the head butler. Always active in every workflow.',
     },
     agents: [
@@ -152,6 +147,14 @@ const data: PageData = {
         role: 'Team orchestrator. Decides which agents to activate, in what order, and evaluates the quality gates between phases.',
         phrase: '"Very well, sir. Allow me to organise that."',
         color: 'var(--blue)',
+      },
+      {
+        name: 'SonIA',
+        model: 'sonnet',
+        alias: 'Project Manager',
+        role: 'If it\'s not on the kanban, it doesn\'t exist. Breaks down the PRD into tasks, traces every acceptance criterion to its test and documentation, and detects scope drift.',
+        phrase: '"Criterion AC-05 has no associated test. Who\'s on it?"',
+        color: 'var(--magenta)',
       },
       {
         name: 'The Problem Finder',
@@ -191,7 +194,7 @@ const data: PageData = {
         alias: 'QA Engineer',
         role: 'His mission is to prove the code doesn\'t work. Test plans, code review, exploratory testing, regression.',
         phrase: '"That edge case you didn\'t consider? Found it."',
-        color: 'var(--red)',
+        color: 'var(--gold)',
       },
       {
         name: 'The Plumber',
@@ -202,11 +205,11 @@ const data: PageData = {
         color: 'var(--cyan)',
       },
       {
-        name: 'The Translator',
+        name: 'The Scribe',
         model: 'sonnet',
         alias: 'Tech Writer',
-        role: 'If it\'s not documented, it doesn\'t exist. API docs, user guides, architecture, changelogs, release notes.',
-        phrase: '"I\'ve seen graves with more information than this README."',
+        role: 'Document first. Writes inline code docs (headers, docstrings) and generates project documentation: API docs, architecture with Mermaid diagrams, guides and changelogs.',
+        phrase: '"That file has no header. Nobody knows what it\'s for."',
         color: 'var(--white)',
       },
     ],
@@ -220,7 +223,7 @@ const data: PageData = {
     header: {
       label: 'Extensible',
       labelColor: 'var(--gold)',
-      title: '7 optional agents',
+      title: '8 optional agents',
       description: 'Specialised roles you activate according to your project\'s needs. Alfred analyses your stack and suggests which to enable. Managed with <strong style="color: var(--blue);">/alfred-dev:config</strong>.',
     },
     agents: [
@@ -280,6 +283,14 @@ const data: PageData = {
         phrase: '"According to decision D#42 from February 15th, Redis was discarded due to latency."',
         color: '#c9a96e',
       },
+      {
+        name: 'The Interpreter',
+        model: 'sonnet',
+        alias: 'i18n Specialist',
+        role: 'i18n key audit, hardcoded string detection, per-locale format validation. If the base language has N keys, all others must have N.',
+        phrase: '"The base language has 847 keys. French has 831. 16 missing."',
+        color: 'var(--cyan)',
+      },
     ],
   },
 
@@ -294,13 +305,14 @@ const data: PageData = {
       title: 'The team you need, when you need it',
       description: 'Alfred analyzes your task in real time and suggests the most relevant optional agents. No manual configuration: describe what you want to do and the system proposes the ideal team.',
     },
-    introHtml: 'When you run <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code> with a task description, the composition engine extracts relevant keywords and scores each optional agent based on its affinity with the work to be done. Then it presents a selector so you can confirm or adjust the team before starting.',
+    introHtml: 'When you run <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code> with a task description, Alfred reads the full description and reasons about which specialists fit the work. No keyword matching: it understands context. Then it presents all optional agents with the suggested ones preselected so you can confirm or adjust the team.',
     terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'I need to migrate the database from SQLite to PostgreSQL, check previous decisions about the data schema to avoid repeating mistakes, completely redesign the checkout interface with accessibility testing, write all the launch landing page copy and optimize load performance on mobile devices',
     coreAgentsLabel: 'Core team',
     coreAgentsActiveLabel: 'Always active',
     coreAgents: [
       { id: 'alfred', name: 'Alfred', color: '#e8a44a', role: 'Orchestrator' },
+      { id: 'project-manager', name: 'SonIA', color: '#d46ab2', role: 'Tracking' },
       { id: 'product-owner', name: 'Product Owner', color: '#5b9cf5', role: 'Product' },
       { id: 'architect', name: 'Architect', color: '#a07ee8', role: 'Architecture' },
       { id: 'senior-dev', name: 'Senior Dev', color: '#4ec990', role: 'Development' },
@@ -314,120 +326,64 @@ const data: PageData = {
     notSuggestedLabel: 'Not needed',
     selectorTitle: 'Proposed team',
     confirmLabel: 'Confirm team',
+    thinkingLabel: 'Analyzing task...',
+    reasoningLabel: 'Reasoning',
     agents: [
       {
         id: 'data-engineer',
         name: 'Data Engineer',
         color: '#5b9cf5',
-        score: 0.85,
-        keywords: ['database', 'PostgreSQL'],
+        suggested: true,
+        reasoning: 'Task involves migrating from SQLite to PostgreSQL and redesigning the schema. A data specialist is essential.',
       },
       {
         id: 'ux-reviewer',
         name: 'UX Reviewer',
         color: '#a07ee8',
-        score: 0.75,
-        keywords: ['interface', 'redesign'],
+        suggested: true,
+        reasoning: 'A complete checkout redesign with accessibility testing is mentioned. UX review is needed.',
       },
       {
         id: 'performance-engineer',
         name: 'Performance Engineer',
         color: '#4ec990',
-        score: 0.80,
-        keywords: ['performance', 'optimize'],
+        suggested: true,
+        reasoning: 'There is an explicit goal to optimize load performance on mobile devices.',
       },
       {
         id: 'copywriter',
         name: 'Copywriter',
         color: '#e8a44a',
-        score: 0.70,
-        keywords: ['copy', 'landing'],
+        suggested: true,
+        reasoning: 'The task includes writing all the launch landing page copy.',
       },
       {
         id: 'librarian',
         name: 'Librarian',
         color: '#c9a96e',
-        score: 0.65,
-        keywords: ['previous decisions', 'schema'],
+        suggested: true,
+        reasoning: 'Previous decisions about the schema need to be consulted to avoid repeating mistakes. History is key.',
       },
       {
         id: 'github-manager',
         name: 'GitHub Manager',
         color: '#8b90a8',
-        score: 0.0,
-        keywords: [],
+        suggested: false,
+        reasoning: 'No repository management, PRs or releases are mentioned in this task.',
       },
       {
         id: 'seo-specialist',
         name: 'SEO Specialist',
         color: '#8b90a8',
-        score: 0.0,
-        keywords: [],
-      },
-    ],
-  },
-
-  // ----------------------------------------------------------------
-  // Dashboard
-  // ----------------------------------------------------------------
-
-  dashboard: {
-    sectionLabel: 'Alpha Phase',
-    title: 'Real-time dashboard',
-    descriptionHtml: '<strong style="color: var(--yellow);">Alpha Phase</strong> -- The web dashboard shows the project status without interfering with the terminal. Phases, agents, decisions, commits and timeline updated via WebSocket. Launched with <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:gui</code> and works in any browser.<br><br><span style="opacity: 0.8;">Data collection is not yet complete: some views may show partial or empty information. We are working on stabilising the data pipeline for the stable release.</span>',
-    heroImage: {
-      src: '/screenshots/dashboard-estado.webp',
-      alt: 'Project status view in the Alfred Dev dashboard',
-      caption: 'Project status',
-    },
-    gridImages: [
-      {
-        src: '/screenshots/dashboard-timeline.webp',
-        alt: 'Event timeline in the Alfred Dev dashboard',
-        caption: 'Event timeline',
+        suggested: false,
+        reasoning: 'The landing page is new, but the focus is on copy, not SEO. Not a priority now.',
       },
       {
-        src: '/screenshots/dashboard-decisiones.webp',
-        alt: 'Technical decisions in the Alfred Dev dashboard',
-        caption: 'Technical decisions',
-      },
-      {
-        src: '/screenshots/dashboard-agentes.webp',
-        alt: 'Agent control in the Alfred Dev dashboard',
-        caption: 'Agent control',
-      },
-      {
-        src: '/screenshots/dashboard-memoria.webp',
-        alt: 'Memory explorer in the Alfred Dev dashboard',
-        caption: 'Memory explorer',
-      },
-      {
-        src: '/screenshots/dashboard-commits.webp',
-        alt: 'Commit history in the Alfred Dev dashboard',
-        caption: 'Commit history',
-      },
-      {
-        src: '/screenshots/dashboard-marcados.webp',
-        alt: 'Pinned items in the Alfred Dev dashboard',
-        caption: 'Pinned items',
-      },
-    ],
-    features: [
-      {
-        title: '7 views',
-        description: 'Status, timeline, decisions, agents, memory, commits and pinned items.',
-      },
-      {
-        title: 'Real-time',
-        description: 'WebSocket with automatic reconnection and exponential backoff.',
-      },
-      {
-        title: 'No dependencies',
-        description: 'HTML + vanilla JS, Python asyncio server, no external frameworks.',
-      },
-      {
-        title: 'Fail-open',
-        description: 'If the GUI fails, Alfred works exactly the same as without it.',
+        id: 'i18n-specialist',
+        name: 'i18n Specialist',
+        color: '#8b90a8',
+        suggested: false,
+        reasoning: 'No multilingual requirements or translations are mentioned in this task.',
       },
     ],
   },
@@ -483,23 +439,25 @@ const data: PageData = {
   gates: {
     header: {
       label: 'Quality gates',
-      title: 'What Alfred works towards',
-      description: 'Alfred doesn\'t give absolute guarantees, but actively works to meet these objectives in every workflow. If it detects something is off, it stops progress and alerts you.',
+      title: 'Quality coverage across the entire cycle',
+      description: 'Each development phase has its own quality gates. The 9 core agents cover from product validation to delivery, and the optional agents extend control to specialised domains. If a gate fails, the workflow stops.',
     },
-    coreLabel: 'Core -- always active',
+    coreLabel: 'Core -- from idea to production',
     core: [
-      { text: 'Tries to ensure tests are green before advancing to quality' },
-      { text: 'Runs QA and security review before proposing deployment' },
-      { text: 'Seeks a green CI/CD pipeline as a delivery requirement' },
-      { text: 'Asks for user PRD approval before designing' },
-      { text: 'The security officer reviews the design before development' },
-      { text: 'Reviews OWASP vulnerabilities and alerts on critical or high findings' },
-      { text: 'Audits dependencies for known CVEs' },
-      { text: 'Checks GDPR, NIS2 and CRA compliance aspects according to context' },
+      { text: 'Validates the PRD with the user before moving to design' },
+      { text: 'Reviews architectural coherence and module coupling before coding' },
+      { text: 'Analyses the design for attack vectors using threat modelling' },
+      { text: 'Applies strict TDD: failing test, minimal implementation, refactor' },
+      { text: 'Runs unit, integration and E2E tests before advancing to quality' },
+      { text: 'Audits OWASP Top 10, dependency CVEs and GDPR, NIS2, CRA compliance' },
+      { text: 'Documents code inline during development and generates project docs at closure' },
+      { text: 'Requires a green CI/CD pipeline as a delivery prerequisite' },
+      { text: 'Tracks progress between phases and maintains full decision traceability' },
+      { text: 'Queries the project\'s persistent memory to contextualise with historical data' },
       { text: 'Monitors every file write looking for secrets, API keys or tokens' },
       { text: 'Detects missing accents in Spanish when writing or editing files' },
     ],
-    optionalLabel: 'Optional -- when you activate them',
+    optionalLabel: 'Optional -- extend the coverage',
     optional: [
       { text: 'Analyses code with SonarQube (installs Docker if missing, with your permission)', optional: true },
       { text: 'Requires rollback in every database migration before executing it', optional: true },
@@ -509,6 +467,7 @@ const data: PageData = {
       { text: 'Monitors Core Web Vitals (LCP, INP, CLS) and alerts if out of threshold', optional: true },
       { text: 'Reviews meta tags, structured data and SEO crawlability before publishing', optional: true },
       { text: 'Validates spelling, tone and consistency of interface texts', optional: true },
+      { text: 'Checks that all i18n keys from the base language exist in every target language', optional: true },
     ],
   },
 
@@ -665,7 +624,7 @@ const data: PageData = {
     },
     groups: [
       {
-        title: '11 hooks',
+        title: '10 hooks',
         items: [
           { name: 'session-start.sh', label: 'SessionStart' },
           { name: 'stop-hook.py', label: 'Stop' },
@@ -675,8 +634,7 @@ const data: PageData = {
           { name: 'quality-gate.py', label: 'PostToolUse' },
           { name: 'dependency-watch.py', label: 'PostToolUse' },
           { name: 'spelling-guard.py', label: 'PostToolUse' },
-          { name: 'memory-capture.py', label: 'PostToolUse' },
-          { name: 'commit-capture.py', label: 'PostToolUse' },
+          { name: 'activity-capture.py', label: 'PostToolUse' },
           { name: 'memory-compact.py', label: 'PreCompact' },
         ],
       },
@@ -712,7 +670,7 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interface',
-      title: '11 commands',
+      title: '10 commands',
       description: 'Everything is controlled from the Claude Code command line. One prefix, one verb, one description.',
     },
     list: [
@@ -756,12 +714,8 @@ const data: PageData = {
         command: '/alfred-dev:help',
         description: 'Full help for all available commands.',
       },
-      {
-        command: '/alfred-dev:gui',
-        description: 'Opens the web dashboard in the browser. Shows status, timeline, decisions, agents, commits and pinned items in real time.',
-      },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Optional agents in workflows:</strong> the 7 optional agents don\'t have their own commands. They are activated with <strong style="color: var(--blue);">/alfred-dev:config</strong> and from then on integrate automatically into existing workflows. For example, if you activate the <em>data-engineer</em>, it will participate in the architecture phase of <strong style="color: var(--blue);">/alfred-dev:feature</strong>; if you activate the <em>seo-specialist</em>, it will intervene in the quality phase of <strong style="color: var(--blue);">/alfred-dev:ship</strong>; if you activate <em>The Librarian</em>, Alfred will consult the decision history before each workflow. Alfred decides when to invoke each agent based on the workflow context.',
+    optionalNote: '<strong style="color: var(--gold);">Optional agents in workflows:</strong> the 8 optional agents don\'t have their own commands. They are activated with <strong style="color: var(--blue);">/alfred-dev:config</strong> and from then on integrate automatically into existing workflows. For example, if you activate the <em>data-engineer</em>, it will participate in the architecture phase of <strong style="color: var(--blue);">/alfred-dev:feature</strong>; if you activate the <em>seo-specialist</em>, it will intervene in the quality phase of <strong style="color: var(--blue);">/alfred-dev:ship</strong>; if you activate <em>The Librarian</em>, Alfred will consult the decision history before each workflow. Alfred decides when to invoke each agent based on the workflow context.',
   },
 
   // ----------------------------------------------------------------
@@ -811,7 +765,7 @@ const data: PageData = {
           'The architect designs the solution and the security-officer validates the design',
           'The senior-dev implements following strict TDD (red-green-refactor)',
           'QA and security audit in parallel before giving the green light',
-          'The tech-writer documents the API and the devops-engineer prepares deployment',
+          'The Scribe documents inline code and generates API docs; the devops-engineer prepares deployment',
         ],
       },
       {
@@ -861,7 +815,7 @@ const data: PageData = {
         command: '/alfred-dev:ship',
         steps: [
           'Mandatory final audit: QA and security must approve',
-          'The tech-writer updates the changelog and generates release notes',
+          'The Scribe updates the changelog and generates release notes',
           'The devops-engineer packages, configures the pipeline and verifies the build',
           'Supervised deployment: the user confirms before pushing to production',
         ],
@@ -1007,7 +961,7 @@ const data: PageData = {
       },
       {
         title: 'Automatic capture',
-        descriptionHtml: 'Two complementary hooks capture everything automatically: <code>memory-capture.py</code> records workflow events (iterations, phases) and <code>commit-capture.py</code> detects every <code>git commit</code> and records SHA, message, author and affected files.',
+        descriptionHtml: 'A single unified hook (<code>activity-capture.py</code>) captures everything automatically: workflow events (iterations, phases), Git commits (SHA, message, author, files) and tool activity. Internal dispatch based on event type.',
       },
       {
         title: 'Integrated MCP server',
@@ -1129,6 +1083,7 @@ optional_agents:
   ux-reviewer: false
   github-manager: true
   librarian: true
+  i18n-specialist: false
 
 memory:
   enabled: true
@@ -1194,7 +1149,7 @@ personality:
       {
         svgContent: '<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>',
         question: 'What are optional agents?',
-        answerHtml: 'They are 7 specialised agents you can activate based on your project\'s needs: <strong>data-engineer</strong> (databases), <strong>ux-reviewer</strong> (accessibility and usability), <strong>performance-engineer</strong> (performance), <strong>github-manager</strong> (repository management), <strong>seo-specialist</strong> (web positioning), <strong>copywriter</strong> (text and spelling) and <strong>The Librarian</strong> (persistent memory: historical queries about project decisions, commits and iterations).<br><br>Alfred analyses your project and suggests which to activate. You can also manage them manually with <strong>/alfred-dev:config</strong>. They are activated or deactivated without reinstalling anything.',
+        answerHtml: 'They are 8 specialised agents you can activate based on your project\'s needs: <strong>data-engineer</strong> (databases), <strong>ux-reviewer</strong> (accessibility and usability), <strong>performance-engineer</strong> (performance), <strong>github-manager</strong> (repository management), <strong>seo-specialist</strong> (web positioning), <strong>copywriter</strong> (text and spelling), <strong>The Librarian</strong> (persistent memory: historical queries about project decisions, commits and iterations) and <strong>The Interpreter</strong> (internationalisation: i18n key audit, hardcoded string detection, per-locale format validation).<br><br>Alfred analyses your project and suggests which to activate. You can also manage them manually with <strong>/alfred-dev:config</strong>. They are activated or deactivated without reinstalling anything.',
       },
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
@@ -1229,7 +1184,7 @@ personality:
       {
         svgContent: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
         question: 'Do the agents consume additional tokens?',
-        answerHtml: 'Yes, like any interaction with Claude. Agents are system instructions that guide responses, so they consume context proportional to their complexity. In practice, the additional cost is moderate: agent system prompts are optimised to take up as little space as possible without losing precision. Optional agents are only loaded if you activate them, so the base context is that of the 8 core agents.',
+        answerHtml: 'Yes, like any interaction with Claude. Agents are system instructions that guide responses, so they consume context proportional to their complexity. In practice, the additional cost is moderate: agent system prompts are optimised to take up as little space as possible without losing precision. Optional agents are only loaded if you activate them, so the base context is that of the 9 core agents.',
       },
       {
         svgContent: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
@@ -1255,10 +1210,31 @@ personality:
 
   changelog: [
     {
+      version: '0.3.7',
+      date: '2026-03-12',
+      added: [
+        '<strong>SonIA -- Project Manager</strong> -- new transversal core agent. Decomposes the PRD into tasks, manages a kanban board in <code>docs/project/kanban/</code> with 4 MD files (backlog, in-progress, done, blocked), maintains the traceability matrix (criterion -- task -- test -- doc) and generates progress reports per phase.',
+        '<strong>The Interpreter -- i18n Specialist</strong> -- new optional agent for internationalisation. i18n key audit, hardcoded string detection, per-locale format validation, skeleton generation for new languages. HARD-GATE: key completeness (N in base = N in all languages).',
+        '<strong>QA Engineer expanded</strong> -- new integration and E2E testing section with strategies for Playwright/Cypress, decision table for test types (unit, integration, E2E, regression) and selection criteria.',
+      ],
+      changed: [
+        '<strong>The Scribe (formerly The Translator)</strong> -- tech-writer rewritten as a core agent with dual activation: phase 3b (inline code documentation: headers, docstrings, context comments) and phase 5 (project documentation: API, architecture with Mermaid diagrams, guides, changelogs). Strict style guide: Castilian Spanish without Latinisms, anglicisms allowed, no emojis.',
+        '<strong>HARD-GATEs on 5 optional agents</strong> -- data-engineer (migration integrity), ux-reviewer (WCAG 2.1 level A), performance-engineer (performance thresholds), seo-specialist (minimum indexing requirements), github-manager (destructive operations require confirmation).',
+        '<strong>Team expanded to 17 agents</strong> -- 9 core (previously 8) + 8 optional (previously 7). All counts updated across web, README and manifest.',
+        '<strong>Agent colours unified</strong> -- QA Engineer from red to amber (conflict with security-officer), performance-engineer and copywriter aligned between frontmatter and agent body.',
+        '<strong>Persistent memory improved</strong> -- SQLite module optimisations, more efficient queries and better database management between sessions.',
+        '<strong>Capture hooks unified</strong> -- <code>memory-capture.py</code> and <code>commit-capture.py</code> merged into <code>activity-capture.py</code>, a single hook with internal dispatch by event type. From 11 to 10 hooks.',
+        '<strong>All agents reviewed</strong> -- frontmatter inconsistencies fixed, descriptions aligned with actual capabilities, personalities refined and integration chains updated.',
+      ],
+      removed: [
+        '<strong>Dashboard GUI removed</strong> -- the dashboard web interface (introduced in v0.3.0) is retired as it did not meet usability expectations. Project status functionality is covered by <code>/alfred-dev:status</code>.',
+      ],
+    },
+    {
       version: '0.3.6',
       date: '2026-03-10',
       fixed: [
-        '<strong>Core agents registered</strong> -- the 7 core agents were missing from the plugin manifest, so Claude Code could not load their system prompts. All 14 agents (7 core + 7 optional) are now registered and operational.',
+        '<strong>Core agents registered</strong> -- the core agents were missing from the plugin manifest, so Claude Code could not load their system prompts. All 15 agents (8 core + 7 optional) are now registered and operational.',
         '<strong>Librarian MCP tools</strong> -- the librarian agent referenced 5 MCP tools with incorrect names. Fixed to match the real server tool names.',
         '<strong>Empty dashboard on first session</strong> -- the data pipeline failed in cascade: config without memory, commits without iteration and empty queries. Fixed with auto-config creation, automatic iteration and global fallback.',
         '<strong>Port conflict</strong> -- if another project was using the dashboard ports, it now detects the conflict and finds alternatives automatically.',
@@ -1300,7 +1276,7 @@ personality:
       added: [
         '<strong>Dynamic team composition</strong> -- 4-layer system (heuristic, reasoning, presentation, execution) that suggests optional agents based on the task description. The selection is ephemeral and does not modify persistent configuration.',
         '<strong>run_flow() function</strong> -- entry point for flows with ephemeral session team. Validates structure, injects team and records error diagnostics.',
-        '<strong>TASK_KEYWORDS table</strong> -- map of 7 optional agents with contextual keywords and base weights for dynamic composition.',
+        '<strong>TASK_KEYWORDS table</strong> -- map of 8 optional agents with contextual keywords and base weights for dynamic composition.',
       ],
       fixed: [
         '<strong>Whole-word matching</strong> -- <code>match_task_keywords()</code> uses word boundaries instead of substrings, eliminating false positives for short keywords.',
@@ -1356,7 +1332,7 @@ personality:
         '<strong>5 new MCP tools</strong> -- total 15: update, link, health, export, import.',
         '<strong>Search filters</strong> -- <code>since</code>, <code>until</code>, <code>tags</code>, <code>status</code> parameters.',
         '<strong>Export/Import</strong> -- decisions to Markdown (ADR), import from Git and ADRs.',
-        '<strong>commit-capture.py hook</strong> -- auto-capture of commits in memory.',
+        '<strong>activity-capture.py hook</strong> -- unified capture hook (workflow events + commits).',
         '<strong>memory-compact.py hook</strong> -- protects decisions during compaction.',
         'Context injection by active iteration. ~268 tests.',
       ],
@@ -1386,7 +1362,7 @@ personality:
       date: '2026-02-21',
       fixed: [
         '<strong>Windows cache path</strong> -- install.ps1 and uninstall.ps1 aligned with Claude Code convention.',
-        '<strong>memory-capture.py</strong> -- diagnostics in silent except blocks.',
+        '<strong>activity-capture.py</strong> -- diagnostics in silent except blocks.',
         '<strong>session-start.sh</strong> -- specific catches instead of generic Exception.',
       ],
     },
@@ -1397,7 +1373,7 @@ personality:
         '<strong>Persistent memory</strong> -- local SQLite per project with decisions, commits, iterations and events.',
         '<strong>MCP server</strong> -- 6 stdio tools: search, record, query.',
         '<strong>The Librarian</strong> -- optional agent for historical queries.',
-        '<strong>memory-capture.py hook</strong> -- automatic workflow event capture.',
+        '<strong>activity-capture.py hook</strong> -- automatic workflow event capture.',
         'FTS5 search, secret sanitisation, 0600 permissions.',
         '114 tests (58 new for memory).',
       ],
@@ -1458,11 +1434,11 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.6',
+    version: 'v0.3.7',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Claude Code plugin. 15 agents. 59 skills. 11 commands. Persistent memory. From idea to production.',
+    tagline: 'Claude Code plugin. 17 agents. 59 skills. 10 hooks. 10 commands. Persistent memory. From idea to production.',
     slogan: 'Automated software engineering for Claude Code.',
   },
 };

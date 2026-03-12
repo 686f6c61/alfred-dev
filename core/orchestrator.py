@@ -27,9 +27,6 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from core.config_loader import TASK_KEYWORDS
-
-
 # --- Constantes de tipos de gate -------------------------------------------
 # Se extraen como constantes para evitar la duplicación de literales
 # y facilitar la validación centralizada.
@@ -46,11 +43,18 @@ _KNOWN_GATE_TYPES = {
 }
 
 # --- Agentes opcionales conocidos -------------------------------------------
-# Derivado de TASK_KEYWORDS (fuente única de verdad) para evitar que añadir
-# un nuevo agente en config_loader obligue a actualizar también este fichero.
-# Se usa para validar la estructura del equipo de sesión.
+# Lista canónica de agentes opcionales del plugin. Se usa para validar la
+# estructura del equipo de sesión en composición dinámica.
 
-_KNOWN_OPTIONAL_AGENTS = frozenset(TASK_KEYWORDS.keys())
+_KNOWN_OPTIONAL_AGENTS = frozenset({
+    "data-engineer",
+    "ux-reviewer",
+    "performance-engineer",
+    "github-manager",
+    "seo-specialist",
+    "copywriter",
+    "librarian",
+})
 
 # --- Definición de flujos ---------------------------------------------------
 # Cada flujo describe una secuencia de fases que el orquestador recorre.
@@ -368,10 +372,10 @@ def _validate_equipo_sesion(equipo_sesion: Any) -> bool:
         - **Primer nivel**: exige exactamente las claves ``"opcionales_activos"``,
           ``"infra"`` y ``"fuente"``. Claves extra o ausentes provocan rechazo.
         - **``opcionales_activos``**: exige como mínimo las claves de
-          ``_KNOWN_OPTIONAL_AGENTS`` (derivadas de ``TASK_KEYWORDS``). Acepta
+          ``_KNOWN_OPTIONAL_AGENTS``. Acepta
           claves extra con aviso a stderr (tolerancia ante extensiones futuras),
           pero no las valida. Todos los valores deben ser ``bool``.
-        - **``infra``**: exige exactamente ``"memoria"`` y ``"gui"``, ambos ``bool``.
+        - **``infra``**: exige exactamente ``"memoria"``, de tipo ``bool``.
         - **``fuente``**: debe ser la cadena ``"composicion_dinamica"``.
 
     Args:
@@ -441,7 +445,7 @@ def _validate_equipo_sesion(equipo_sesion: Any) -> bool:
             )
             return False
 
-    # --- 4. infra: dict con exactamente "memoria" y "gui", valores bool ---
+    # --- 4. infra: dict con exactamente "memoria", valor bool ---
     infra = equipo_sesion["infra"]
     if not isinstance(infra, dict):
         print(
@@ -450,8 +454,11 @@ def _validate_equipo_sesion(equipo_sesion: Any) -> bool:
         )
         return False
 
-    expected_infra_keys = {"memoria", "gui"}
-    if set(infra.keys()) != expected_infra_keys:
+    expected_infra_keys = {"memoria"}
+    actual_keys = set(infra.keys())
+    # Aceptar "gui" por compatibilidad con estados de sesiones anteriores
+    accepted_keys = actual_keys - {"gui"}
+    if accepted_keys != expected_infra_keys:
         print(
             f"[Alfred Dev] Aviso: infra tiene claves inesperadas. "
             f"Esperadas: {sorted(expected_infra_keys)}, "
@@ -461,6 +468,8 @@ def _validate_equipo_sesion(equipo_sesion: Any) -> bool:
         return False
 
     for infra_key, value in infra.items():
+        if infra_key == "gui":
+            continue  # Ignorar clave obsoleta
         if not isinstance(value, bool):
             print(
                 f"[Alfred Dev] Aviso: infra['{infra_key}'] no es bool "

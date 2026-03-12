@@ -7,11 +7,11 @@ potencialmente destructivos (borrado catastrofico, force push, destruccion de
 datos, fork bombs, etc.). Si detecta un patron peligroso, bloquea la operacion
 (exit 2) con un aviso explicativo.
 
-Politica de seguridad: fail-open. Si no se puede parsear la entrada del hook
-o se produce cualquier error inesperado, se permite la operacion (exit 0).
-La razon es que un fallo en el hook no debe paralizar el flujo de trabajo;
-la proteccion contra comandos destructivos es una capa de defensa adicional,
-no el unico mecanismo de seguridad.
+Politica de seguridad: fail-closed. Si no se puede parsear la entrada del hook
+o se produce cualquier error inesperado, se bloquea la operacion (exit 2).
+Un hook de seguridad que permite la operacion cuando falla equivale a
+desactivar la proteccion justo cuando mas se necesita. Esta politica es
+coherente con secret-guard.sh, que tambien es fail-closed.
 
 Patrones vigilados:
     - rm -rf / (o ~, o $HOME): borrado catastrofico del sistema o del home.
@@ -121,13 +121,21 @@ def main():
     try:
         data = json.load(sys.stdin)
     except (ValueError, json.JSONDecodeError) as e:
-        # Fail-open: si no podemos parsear, permitir la operacion pero avisar
+        # Fail-closed: si no podemos parsear, bloquear por precaucion.
+        # Un guard de seguridad que falla en abierto equivale a no tenerlo.
         print(
-            f"[Alfred Dev] Aviso: no se pudo parsear la entrada del hook: {e}. "
-            f"La guardia de comandos peligrosos esta desactivada para esta invocacion.",
+            f"[Alfred Dev] BLOQUEADO: no se pudo parsear la entrada del hook: {e}. "
+            f"La guardia de comandos peligrosos bloquea por precaucion.",
             file=sys.stderr,
         )
-        sys.exit(0)
+        json.dump(
+            {
+                "decision": "block",
+                "reason": f"No se pudo analizar el comando: {e}",
+            },
+            sys.stdout,
+        )
+        sys.exit(2)
 
     tool_input = data.get("tool_input", {})
     command = tool_input.get("command", "")

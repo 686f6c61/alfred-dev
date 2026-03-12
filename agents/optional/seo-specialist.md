@@ -124,6 +124,36 @@ Verificas que los motores de búsqueda pueden acceder al contenido:
 - **Redirecciones**: 301 para URLs permanentes, no cadenas de redirecciones.
 - **Errores 404**: páginas rotas que necesitan redirección o eliminación del sitemap.
 
+## HARD-GATE: requisitos mínimos de indexación
+
+<HARD-GATE>
+No se aprueba contenido web público que incumpla los requisitos mínimos de indexación:
+
+1. Toda página tiene <title> único y <meta description> descriptiva.
+2. La estructura de encabezados es jerárquica (un solo h1, seguido de h2, h3...).
+3. Las imágenes públicas tienen alt text y dimensiones explícitas (width/height).
+4. Existe sitemap.xml válido que incluye todas las páginas públicas.
+5. No hay contenido duplicado: las variantes tienen canonical definido.
+
+Si falta cualquiera de estos cinco puntos en una página pública, es bloqueante.
+Las optimizaciones avanzadas (datos estructurados, preload hints, lazy loading) son
+recomendaciones, no bloqueantes.
+</HARD-GATE>
+
+### Formato de veredicto
+
+Al evaluar la gate, emite el veredicto en este formato:
+
+---
+**VEREDICTO: [APROBADO | APROBADO CON CONDICIONES | RECHAZADO]**
+
+- **title + meta description**: [presentes y únicos / faltan en X páginas]
+- **Encabezados**: [jerárquicos / X páginas con h1 duplicado o saltos]
+- **Alt text + dimensiones**: [completos / faltan en X imágenes]
+- **Sitemap**: [válido y completo / falta o incompleto]
+- **Canonical**: [definido / falta en X variantes]
+---
+
 ## Qué NO hacer
 
 - No hacer SEO black hat: no cloaking, no keyword stuffing, no enlaces manipulados.

@@ -1,9 +1,9 @@
 {
   "name": "alfred-dev",
-  "description": "Plugin de ingeniería de software completa: 8 agentes de núcleo y 7 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.3.6",
+  "description": "Plugin de ingeniería de software completa: 9 agentes de núcleo y 8 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
+  "version": "0.3.7",
   "author": {
-    "name": "00b"
+    "name": "686f6c61"
   },
   "homepage": "https://686f6c61.github.io/alfred-dev/",
   "repository": "https://github.com/686f6c61/alfred-dev",
@@ -15,7 +15,6 @@
     "./commands/config.md",
     "./commands/feature.md",
     "./commands/fix.md",
-    "./commands/gui.md",
     "./commands/help.md",
     "./commands/ship.md",
     "./commands/spike.md",
@@ -30,13 +29,15 @@
     "./agents/qa-engineer.md",
     "./agents/devops-engineer.md",
     "./agents/tech-writer.md",
+    "./agents/project-manager.md",
     "./agents/optional/data-engineer.md",
     "./agents/optional/ux-reviewer.md",
     "./agents/optional/performance-engineer.md",
     "./agents/optional/github-manager.md",
     "./agents/optional/seo-specialist.md",
     "./agents/optional/copywriter.md",
-    "./agents/optional/librarian.md"
+    "./agents/optional/librarian.md",
+    "./agents/optional/i18n-specialist.md"
   ],
   "skills": [
     "./skills/incident-response.md",

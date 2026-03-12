@@ -34,70 +34,22 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-
-# ---------------------------------------------------------------------------
-# Patrones de sanitizacion
-# ---------------------------------------------------------------------------
-# Compilados a partir de los mismos regex que usa hooks/secret-guard.sh.
-# Cada tupla contiene (patron_compilado, etiqueta_para_el_marcador).
-# El orden importa: los patrones mas especificos van primero para evitar
-# que un patron generico consuma un match que deberia ser mas preciso.
-
-_SECRET_PATTERNS: List[Tuple[re.Pattern, str]] = [
-    (re.compile(r"AKIA[0-9A-Z]{16}"), "AWS_KEY"),
-    (re.compile(r"sk-ant-[a-zA-Z0-9\-]{20,}"), "ANTHROPIC_KEY"),
-    (re.compile(r"sk-[a-zA-Z0-9]{20,}"), "SK_KEY"),
-    (
-        re.compile(r"(ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{20,})"),
-        "GITHUB_TOKEN",
-    ),
-    (re.compile(r"xox[bpsa]-[a-zA-Z0-9\-]{10,}"), "SLACK_TOKEN"),
-    (re.compile(r"AIza[0-9A-Za-z\-_]{35}"), "GOOGLE_KEY"),
-    (
-        re.compile(r"SG\.[a-zA-Z0-9\-_]{22,}\.[a-zA-Z0-9\-_]{22,}"),
-        "SENDGRID_KEY",
-    ),
-    (
-        re.compile(r"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"),
-        "PRIVATE_KEY",
-    ),
-    (
-        re.compile(
-            r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"
-        ),
-        "JWT",
-    ),
-    (
-        re.compile(
-            r"(?:mysql|postgresql|postgres|mongodb(?:\+srv)?|redis|amqp)"
-            r"://[^\s\"']{10,}@"
-        ),
-        "CONNECTION_STRING",
-    ),
-    (
-        re.compile(r"https://hooks\.slack\.com/services/[A-Za-z0-9/]+"),
-        "SLACK_WEBHOOK",
-    ),
-    (
-        re.compile(
-            r"https://discord\.com/api/webhooks/[0-9]+/[A-Za-z0-9_-]+"
-        ),
-        "DISCORD_WEBHOOK",
-    ),
-    # Asignaciones directas de credenciales en codigo
-    (
-        re.compile(
-            r"(?i)(?:password|passwd|api_key|apikey|api_secret|secret_key"
-            r"|auth_token|access_token|private_key)"
-            r"""\s*[:=]\s*["'][^"']{8,}["']"""
-        ),
-        "HARDCODED_CREDENTIAL",
-    ),
-]
+from core.secrets import SECRET_PATTERNS as _SECRET_PATTERNS
 
 # Version actual del esquema. Se almacena en la tabla meta y se usa
 # para detectar si es necesario aplicar migraciones en el futuro.
-_SCHEMA_VERSION = 3
+_SCHEMA_VERSION = 4
+
+# Factor de margen para búsquedas con post-filtrado.
+# Cuando se aplican filtros temporales, por etiquetas o por estado, se piden
+# N * _FETCH_MARGIN resultados a SQLite para compensar los descartados
+# después del post-filtrado, y luego se truncan al límite original.
+_FETCH_MARGIN = 3
+
+# Permisos del fichero de base de datos: solo lectura y escritura para el
+# propietario (equivalente a chmod 600). Se aplica tanto al .db como a los
+# ficheros auxiliares WAL y SHM.
+_DB_PERMISSIONS = stat.S_IRUSR | stat.S_IWUSR
 
 # Migraciones de esquema. Cada entrada es una lista de sentencias SQL
 # que transforman la base de datos de la version N a la N+1. Se ejecutan
@@ -119,30 +71,22 @@ _MIGRATIONS: Dict[int, List[str]] = {
         )""",
         "CREATE INDEX IF NOT EXISTS idx_decision_links_target ON decision_links(target_id)",
     ],
+    3: [
+        # v3 -> v4: columnas summary y content para captura total
+        "ALTER TABLE events ADD COLUMN summary TEXT",
+        "ALTER TABLE events ADD COLUMN content TEXT",
+    ],
     2: [
-        # v2 -> v3: tablas para el dashboard GUI (acciones y elementos marcados)
-        """CREATE TABLE IF NOT EXISTS gui_actions (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            action_type   TEXT    NOT NULL,
-            payload       TEXT    NOT NULL,
-            status        TEXT    DEFAULT 'pending',
-            created_at    TEXT    NOT NULL,
-            processed_at  TEXT,
-            processed_by  TEXT
-        )""",
-        "CREATE INDEX IF NOT EXISTS idx_gui_actions_status ON gui_actions(status)",
-        """CREATE TABLE IF NOT EXISTS pinned_items (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            item_type     TEXT    NOT NULL,
-            item_id       INTEGER,
-            item_ref      TEXT,
-            note          TEXT,
-            auto_pinned   INTEGER DEFAULT 0,
-            priority      INTEGER DEFAULT 0,
-            pinned_at     TEXT    NOT NULL,
-            session_id    TEXT
-        )""",
-        "CREATE INDEX IF NOT EXISTS idx_pinned_items_type ON pinned_items(item_type)",
+        # v2 -> v3: tablas gui_actions y pinned_items (obsoletas, eliminadas
+        # en v0.3.7). Se mantienen las sentencias CREATE para que la migracion
+        # siga siendo idempotente y las DB existentes no fallen.
+        "CREATE TABLE IF NOT EXISTS gui_actions ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, action_type TEXT, payload TEXT, "
+        "status TEXT, created_at TEXT, processed_at TEXT, processed_by TEXT)",
+        "CREATE TABLE IF NOT EXISTS pinned_items ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, item_type TEXT, item_id INTEGER, "
+        "item_ref TEXT, note TEXT, auto_pinned INTEGER, priority INTEGER, "
+        "pinned_at TEXT, session_id TEXT)",
     ],
 }
 
@@ -244,6 +188,8 @@ CREATE TABLE IF NOT EXISTS events (
     event_type    TEXT    NOT NULL,
     phase         TEXT,
     payload       TEXT,
+    summary       TEXT,
+    content       TEXT,
     created_at    TEXT    NOT NULL
 );
 
@@ -267,29 +213,6 @@ CREATE TABLE IF NOT EXISTS decision_links (
 );
 CREATE INDEX IF NOT EXISTS idx_decision_links_target ON decision_links(target_id);
 
-CREATE TABLE IF NOT EXISTS gui_actions (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    action_type   TEXT    NOT NULL,
-    payload       TEXT    NOT NULL,
-    status        TEXT    DEFAULT 'pending',
-    created_at    TEXT    NOT NULL,
-    processed_at  TEXT,
-    processed_by  TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_gui_actions_status ON gui_actions(status);
-
-CREATE TABLE IF NOT EXISTS pinned_items (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_type     TEXT    NOT NULL,
-    item_id       INTEGER,
-    item_ref      TEXT,
-    note          TEXT,
-    auto_pinned   INTEGER DEFAULT 0,
-    priority      INTEGER DEFAULT 0,
-    pinned_at     TEXT    NOT NULL,
-    session_id    TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_pinned_items_type ON pinned_items(item_type);
 """
 
 
@@ -331,7 +254,7 @@ class MemoryDB:
         # Permisos 0600: solo el propietario puede leer y escribir.
         # Se aplica despues de la creacion para cubrir el caso de DB nueva.
         try:
-            os.chmod(db_path, stat.S_IRUSR | stat.S_IWUSR)
+            os.chmod(db_path, _DB_PERMISSIONS)
         except OSError:
             # En algunos sistemas de ficheros (ej. FAT32) chmod no funciona.
             # No es critico: se continua sin permisos restrictivos.
@@ -826,6 +749,8 @@ class MemoryDB:
         event_type: str,
         phase: Optional[str] = None,
         payload: Optional[Dict[str, Any]] = None,
+        summary: Optional[str] = None,
+        content: Optional[str] = None,
         iteration_id: Optional[int] = None,
     ) -> int:
         """
@@ -839,6 +764,8 @@ class MemoryDB:
             event_type: tipo de evento (phase_completed, gate_passed, etc.).
             phase: fase del flujo en la que ocurrio.
             payload: datos adicionales en formato diccionario.
+            summary: resumen breve del evento para consultas rapidas.
+            content: contenido completo del evento, indexado en FTS si esta habilitado.
             iteration_id: ID de la iteracion (auto-detectado si se omite).
 
         Returns:
@@ -859,12 +786,25 @@ class MemoryDB:
             }
             payload_json = json.dumps(sanitized, ensure_ascii=False)
 
+        sanitized_summary = sanitize_content(summary) if summary else None
+        sanitized_content = sanitize_content(content) if content else None
+
         cursor = self._conn.execute(
             "INSERT INTO events "
-            "(iteration_id, event_type, phase, payload, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (iteration_id, event_type, phase, payload_json, now),
+            "(iteration_id, event_type, phase, payload, summary, content, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (iteration_id, event_type, phase, payload_json,
+             sanitized_summary, sanitized_content, now),
         )
+
+        # Indexar el contenido en FTS para permitir busqueda de texto completo
+        if self._fts_enabled and sanitized_content:
+            self._conn.execute(
+                "INSERT INTO memory_fts (source_type, source_id, content) "
+                "VALUES (?, ?, ?)",
+                ("event", cursor.lastrowid, sanitized_content),
+            )
+
         self._conn.commit()
         return cursor.lastrowid
 
@@ -1101,6 +1041,44 @@ class MemoryDB:
 
         return filtered
 
+    def _execute_search(
+        self,
+        fetch_fn,
+        limit: int,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Ejecuta una busqueda con la estrategia dada y aplica post-filtros.
+
+        Centraliza la logica comun a FTS5 y LIKE: calculo de margen,
+        post-filtrado por fecha/etiquetas/estado y truncamiento al limite.
+        La estrategia de obtencion de resultados brutos se delega en
+        ``fetch_fn``, que recibe el ``fetch_limit`` calculado y devuelve
+        una lista de dicts con ``source_type`` incluido.
+
+        Args:
+            fetch_fn: funcion que recibe (fetch_limit: int) y devuelve
+                una lista de dicts con los resultados brutos.
+            limit: numero maximo de resultados finales.
+            since: fecha ISO minima (post-filtro).
+            until: fecha ISO maxima (post-filtro).
+            tags: etiquetas requeridas (post-filtro, solo decisiones).
+            status: estado requerido (post-filtro, solo decisiones).
+        """
+        has_post_filters = since or until or tags or status
+        fetch_limit = limit * _FETCH_MARGIN if has_post_filters else limit
+
+        results = fetch_fn(fetch_limit)
+
+        if has_post_filters:
+            results = self._apply_post_filters(
+                results, since=since, until=until, tags=tags, status=status,
+            )
+
+        return results[:limit]
+
     def _search_fts(
         self,
         query: str,
@@ -1111,56 +1089,33 @@ class MemoryDB:
         tags: Optional[List[str]] = None,
         status: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Busqueda con FTS5 MATCH y post-filtrado opcional.
-
-        Se solicita un margen extra de resultados al indice FTS5 para
-        compensar los registros que el post-filtrado pueda descartar.
-
-        Args:
-            query: termino de busqueda.
-            limit: numero maximo de resultados finales.
-            iteration_id: filtra por iteracion (pre-filtro).
-            since: fecha ISO minima (post-filtro).
-            until: fecha ISO maxima (post-filtro).
-            tags: etiquetas requeridas (post-filtro, solo decisiones).
-            status: estado requerido (post-filtro, solo decisiones).
-        """
-        results: List[Dict[str, Any]] = []
-
+        """Busqueda con FTS5 MATCH, delegando post-filtrado a _execute_search."""
         # FTS5 requiere escapar caracteres especiales en la query.
         # Se envuelve entre comillas dobles para tratarla como frase literal.
         safe_query = '"' + query.replace('"', '""') + '"'
 
-        # Solicitar un margen extra para compensar el post-filtrado
-        fetch_limit = limit * 3 if (since or until or tags or status) else limit
-
-        rows = self._conn.execute(
-            "SELECT source_type, source_id FROM memory_fts "
-            "WHERE memory_fts MATCH ? LIMIT ?",
-            (safe_query, fetch_limit),
-        ).fetchall()
-
-        for row in rows:
-            source_type = row["source_type"]
-            source_id = int(row["source_id"])
-            record = self._fetch_source_record(source_type, source_id)
-            if record is None:
-                continue
-            # Filtrar por iteracion si se especifico
-            if iteration_id is not None:
-                if record.get("iteration_id") != iteration_id:
+        def fetch(fetch_limit: int) -> List[Dict[str, Any]]:
+            rows = self._conn.execute(
+                "SELECT source_type, source_id FROM memory_fts "
+                "WHERE memory_fts MATCH ? LIMIT ?",
+                (safe_query, fetch_limit),
+            ).fetchall()
+            results: List[Dict[str, Any]] = []
+            for row in rows:
+                source_type = row["source_type"]
+                source_id = int(row["source_id"])
+                record = self._fetch_source_record(source_type, source_id)
+                if record is None:
                     continue
-            results.append({
-                "source_type": source_type,
-                **record,
-            })
+                if iteration_id is not None:
+                    if record.get("iteration_id") != iteration_id:
+                        continue
+                results.append({"source_type": source_type, **record})
+            return results
 
-        # Aplicar post-filtros de fecha, etiquetas y estado
-        results = self._apply_post_filters(
-            results, since=since, until=until, tags=tags, status=status,
+        return self._execute_search(
+            fetch, limit, since=since, until=until, tags=tags, status=status,
         )
-
-        return results[:limit]
 
     def _search_like(
         self,
@@ -1172,76 +1127,61 @@ class MemoryDB:
         tags: Optional[List[str]] = None,
         status: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Busqueda con LIKE como fallback y post-filtrado opcional.
-
-        Se solicita un margen extra de resultados SQL para compensar los
-        registros que el post-filtrado pueda descartar.
-
-        Args:
-            query: termino de busqueda.
-            limit: numero maximo de resultados finales.
-            iteration_id: filtra por iteracion (pre-filtro SQL).
-            since: fecha ISO minima (post-filtro).
-            until: fecha ISO maxima (post-filtro).
-            tags: etiquetas requeridas (post-filtro, solo decisiones).
-            status: estado requerido (post-filtro, solo decisiones).
-        """
-        results: List[Dict[str, Any]] = []
+        """Busqueda con LIKE como fallback, delegando post-filtrado a _execute_search."""
         like_pattern = f"%{query}%"
 
-        # Margen extra para compensar el post-filtrado
-        fetch_limit = limit * 3 if (since or until or tags or status) else limit
+        def fetch(fetch_limit: int) -> List[Dict[str, Any]]:
+            results: List[Dict[str, Any]] = []
 
-        # Buscar en decisiones
-        if iteration_id is not None:
-            decision_rows = self._conn.execute(
-                "SELECT * FROM decisions "
-                "WHERE (title LIKE ? OR context LIKE ? OR chosen LIKE ? "
-                "       OR rationale LIKE ?) "
-                "  AND iteration_id = ? "
-                "ORDER BY decided_at DESC LIMIT ?",
-                (like_pattern, like_pattern, like_pattern, like_pattern,
-                 iteration_id, fetch_limit),
-            ).fetchall()
-        else:
-            decision_rows = self._conn.execute(
-                "SELECT * FROM decisions "
-                "WHERE title LIKE ? OR context LIKE ? OR chosen LIKE ? "
-                "      OR rationale LIKE ? "
-                "ORDER BY decided_at DESC LIMIT ?",
-                (like_pattern, like_pattern, like_pattern, like_pattern,
-                 fetch_limit),
-            ).fetchall()
-
-        for row in decision_rows:
-            results.append({"source_type": "decision", **dict(row)})
-
-        # Buscar en commits
-        remaining = fetch_limit - len(results)
-        if remaining > 0:
+            # Buscar en decisiones
             if iteration_id is not None:
-                commit_rows = self._conn.execute(
-                    "SELECT * FROM commits "
-                    "WHERE message LIKE ? AND iteration_id = ? "
-                    "ORDER BY committed_at DESC LIMIT ?",
-                    (like_pattern, iteration_id, remaining),
+                decision_rows = self._conn.execute(
+                    "SELECT * FROM decisions "
+                    "WHERE (title LIKE ? OR context LIKE ? OR chosen LIKE ? "
+                    "       OR rationale LIKE ?) "
+                    "  AND iteration_id = ? "
+                    "ORDER BY decided_at DESC LIMIT ?",
+                    (like_pattern, like_pattern, like_pattern, like_pattern,
+                     iteration_id, fetch_limit),
                 ).fetchall()
             else:
-                commit_rows = self._conn.execute(
-                    "SELECT * FROM commits WHERE message LIKE ? "
-                    "ORDER BY committed_at DESC LIMIT ?",
-                    (like_pattern, remaining),
+                decision_rows = self._conn.execute(
+                    "SELECT * FROM decisions "
+                    "WHERE title LIKE ? OR context LIKE ? OR chosen LIKE ? "
+                    "      OR rationale LIKE ? "
+                    "ORDER BY decided_at DESC LIMIT ?",
+                    (like_pattern, like_pattern, like_pattern, like_pattern,
+                     fetch_limit),
                 ).fetchall()
 
-            for row in commit_rows:
-                results.append({"source_type": "commit", **dict(row)})
+            for row in decision_rows:
+                results.append({"source_type": "decision", **dict(row)})
 
-        # Aplicar post-filtros de fecha, etiquetas y estado
-        results = self._apply_post_filters(
-            results, since=since, until=until, tags=tags, status=status,
+            # Buscar en commits
+            remaining = fetch_limit - len(results)
+            if remaining > 0:
+                if iteration_id is not None:
+                    commit_rows = self._conn.execute(
+                        "SELECT * FROM commits "
+                        "WHERE message LIKE ? AND iteration_id = ? "
+                        "ORDER BY committed_at DESC LIMIT ?",
+                        (like_pattern, iteration_id, remaining),
+                    ).fetchall()
+                else:
+                    commit_rows = self._conn.execute(
+                        "SELECT * FROM commits WHERE message LIKE ? "
+                        "ORDER BY committed_at DESC LIMIT ?",
+                        (like_pattern, remaining),
+                    ).fetchall()
+
+                for row in commit_rows:
+                    results.append({"source_type": "commit", **dict(row)})
+
+            return results
+
+        return self._execute_search(
+            fetch, limit, since=since, until=until, tags=tags, status=status,
         )
-
-        return results[:limit]
 
     def _fetch_source_record(
         self, source_type: str, source_id: int
@@ -1359,7 +1299,7 @@ class MemoryDB:
         try:
             mode = os.stat(self._db_path).st_mode
             perms = stat.S_IMODE(mode)
-            if perms != 0o600:
+            if perms != stat.S_IMODE(_DB_PERMISSIONS):
                 permissions_ok = False
                 issues.append(
                     f"Permisos incorrectos: {oct(perms)} (esperado: 0600)"
@@ -1689,157 +1629,16 @@ class MemoryDB:
         text = "\n".join(result_lines).strip()
         return text if text else None
 
-    # --- GUI Actions -------------------------------------------------------
-
-    def create_gui_action(
-        self, action_type: str, payload: Dict[str, Any]
-    ) -> int:
-        """Registra una accion enviada desde el dashboard GUI.
-
-        Las acciones quedan en estado 'pending' hasta que un hook las
-        procese e inyecte como contexto en Claude Code.
-
-        Args:
-            action_type: tipo de accion (activate_agent, approve_gate, etc.).
-            payload: datos de la accion como diccionario.
-
-        Returns:
-            ID de la accion creada.
-        """
-        now = datetime.now(timezone.utc).isoformat()
-        payload_json = json.dumps(payload, ensure_ascii=False)
-
-        cursor = self._conn.execute(
-            "INSERT INTO gui_actions (action_type, payload, created_at) VALUES (?, ?, ?)",
-            (action_type, payload_json, now),
-        )
-        self._conn.commit()
-        return cursor.lastrowid
-
-    def get_pending_actions(self) -> List[Dict[str, Any]]:
-        """Devuelve las acciones pendientes de procesar, en orden FIFO.
-
-        Returns:
-            Lista de diccionarios con los datos de cada accion pendiente.
-        """
-        rows = self._conn.execute(
-            "SELECT id, action_type, payload, status, created_at "
-            "FROM gui_actions WHERE status = 'pending' ORDER BY id ASC"
-        ).fetchall()
-        return [dict(r) for r in rows]
-
-    def mark_action_processed(self, action_id: int, processed_by: str) -> None:
-        """Marca una accion como procesada.
-
-        Args:
-            action_id: ID de la accion.
-            processed_by: identificador del hook que la proceso.
-        """
-        now = datetime.now(timezone.utc).isoformat()
-        self._conn.execute(
-            "UPDATE gui_actions SET status = 'processed', processed_at = ?, "
-            "processed_by = ? WHERE id = ?",
-            (now, processed_by, action_id),
-        )
-        self._conn.commit()
-
-    # --- Pinned Items ------------------------------------------------------
-
-    def pin_item(
-        self,
-        item_type: str,
-        item_id: Optional[int] = None,
-        item_ref: Optional[str] = None,
-        note: Optional[str] = None,
-        auto: bool = False,
-        priority: int = 0,
-        session_id: Optional[str] = None,
-    ) -> int:
-        """Marca un elemento como importante para persistir entre sesiones.
-
-        Los elementos marcados se inyectan con prioridad al reanudar una
-        sesion y quedan como memoria permanente del proyecto.
-
-        Args:
-            item_type: tipo de elemento (decision, event, gate, phase, commit).
-            item_id: ID del registro original (opcional si se usa item_ref).
-            item_ref: referencia textual (ej: 'gate:security_review').
-            note: nota explicativa del usuario.
-            auto: True si el sistema lo marco automaticamente.
-            priority: orden de inyeccion (mayor = antes).
-            session_id: identificador de la sesion en que se marco.
-
-        Returns:
-            ID del registro de marcado.
-        """
-        now = datetime.now(timezone.utc).isoformat()
-        cursor = self._conn.execute(
-            "INSERT INTO pinned_items "
-            "(item_type, item_id, item_ref, note, auto_pinned, priority, pinned_at, session_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (item_type, item_id, item_ref, note, 1 if auto else 0, priority, now, session_id),
-        )
-        self._conn.commit()
-        return cursor.lastrowid
-
-    def unpin_item(self, pin_id: int) -> None:
-        """Elimina un marcado.
-
-        Args:
-            pin_id: ID del registro en pinned_items.
-        """
-        self._conn.execute("DELETE FROM pinned_items WHERE id = ?", (pin_id,))
-        self._conn.commit()
-
-    def update_pin_priority(self, pin_id: int, priority: int) -> None:
-        """Actualiza la prioridad de un elemento marcado.
-
-        Args:
-            pin_id: ID del registro en pinned_items.
-            priority: nueva prioridad (0 = alta, 1 = media, 2 = baja).
-        """
-        self._conn.execute(
-            "UPDATE pinned_items SET priority = ? WHERE id = ?",
-            (priority, pin_id),
-        )
-        self._conn.commit()
-
-    def get_pinned_items(
-        self, item_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Devuelve los elementos marcados, ordenados por prioridad descendente.
-
-        Args:
-            item_type: filtrar por tipo (opcional).
-
-        Returns:
-            Lista de diccionarios con los datos de cada elemento marcado.
-        """
-        if item_type:
-            rows = self._conn.execute(
-                "SELECT id, item_type, item_id, item_ref, note, auto_pinned, "
-                "priority, pinned_at, session_id "
-                "FROM pinned_items WHERE item_type = ? ORDER BY priority DESC, id ASC",
-                (item_type,),
-            ).fetchall()
-        else:
-            rows = self._conn.execute(
-                "SELECT id, item_type, item_id, item_ref, note, auto_pinned, "
-                "priority, pinned_at, session_id "
-                "FROM pinned_items ORDER BY priority DESC, id ASC"
-            ).fetchall()
-        return [dict(r) for r in rows]
 
     def get_session_context(self) -> Dict[str, Any]:
         """Genera el contexto estructurado para inyeccion al reanudar sesion.
 
-        Recopila la iteracion activa, decisiones, elementos marcados y
-        acciones pendientes en un unico diccionario que puede serializarse
-        e inyectarse como contexto en Claude Code.
+        Recopila la iteracion activa y las decisiones en un unico
+        diccionario que puede serializarse e inyectarse como contexto
+        en Claude Code.
 
         Returns:
-            Diccionario con claves: iteration, decisions, pinned_items,
-            pending_actions.
+            Diccionario con claves: iteration, decisions.
         """
         active = self.get_active_iteration()
         decisions = []
@@ -1849,8 +1648,6 @@ class MemoryDB:
         return {
             "iteration": active,
             "decisions": decisions,
-            "pinned_items": self.get_pinned_items(),
-            "pending_actions": self.get_pending_actions(),
         }
 
     # --- Ciclo de vida ------------------------------------------------------
