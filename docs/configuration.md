@@ -333,7 +333,7 @@ El nivel de autonomia modifica el comportamiento de las gates de tipo `usuario`:
 
 ## Descubrimiento de agentes opcionales
 
-Alfred Dev incluye 8 agentes de nucleo que siempre estan activos (Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA, DevOps y Tech Writer) y 7 agentes opcionales que el desarrollador activa segun las necesidades de su proyecto. Los agentes opcionales no son genericos: cada uno esta especializado en un dominio concreto y solo tiene sentido en proyectos que lo necesitan.
+Alfred Dev incluye 9 agentes de nucleo que siempre estan activos (Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA, DevOps, Tech Writer y Project Manager) y 8 agentes opcionales que el desarrollador activa segun las necesidades de su proyecto. Los agentes opcionales no son genericos: cada uno esta especializado en un dominio concreto y solo tiene sentido en proyectos que lo necesitan.
 
 La funcion `suggest_optional_agents()` en `config_loader.py` analiza el proyecto y sugiere que agentes opcionales podrian ser utiles. La logica de sugerencia se basa en indicadores objetivos del proyecto, no en preferencias arbitrarias. A continuacion se detalla la logica de cada sugerencia:
 
@@ -467,7 +467,7 @@ equipo_sesion = {
 Antes de inyectar el equipo en la sesion, `run_flow()` lo valida con `_validate_equipo_sesion()`. Las reglas de validacion son:
 
 - El primer nivel exige exactamente tres claves: `opcionales_activos`, `infra` y `fuente`.
-- `opcionales_activos` exige como minimo las claves de los 7 agentes opcionales conocidos. Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validacion.
+- `opcionales_activos` exige como minimo las claves de los 8 agentes opcionales conocidos. Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validacion.
 - `infra` exige exactamente `memoria`, de tipo booleano.
 - `fuente` debe ser la cadena `"composicion_dinamica"`.
 

@@ -4,7 +4,7 @@ Los skills son las capacidades concretas que los agentes de Alfred pueden ejecut
 
 La razon de separar los skills de los agentes es la misma por la que una empresa separa los procedimientos de los roles: un procedimiento (skill) puede ser ejecutado por diferentes personas (agentes) segun el contexto, y un mismo rol puede dominar multiples procedimientos. Esta separacion permite que el sistema crezca sin acoplar capacidades a identidades.
 
-Los 55 skills se organizan en 13 dominios tematicos que cubren todo el ciclo de vida del software, desde la definicion de producto hasta la optimizacion SEO. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegacion y la asignacion a agentes especializados.
+Los 59 skills se organizan en 13 dominios tematicos que cubren todo el ciclo de vida del software, desde la definicion de producto hasta la optimizacion SEO. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegacion y la asignacion a agentes especializados.
 
 ## Mapa de dominios y skills
 

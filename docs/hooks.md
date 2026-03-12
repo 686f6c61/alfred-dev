@@ -62,9 +62,9 @@ Cada hook tiene un **timeout configurable** en segundos. Si el script no termina
 
 ---
 
-## Los 11 hooks de Alfred Dev
+## Los 10 hooks de Alfred Dev
 
-Alfred Dev registra once hooks que cubren los cuatro eventos del ciclo de vida: arranque de sesion, parada, antes de usar una herramienta y despues de usarla. Cada hook tiene una responsabilidad unica y esta disenado para fallar de forma segura: si algo va mal internamente, el hook sale con codigo 0 (sin bloquear) excepto en los casos donde la politica de seguridad exige fail-closed.
+Alfred Dev registra diez hooks que cubren los cuatro eventos del ciclo de vida: arranque de sesion, parada, antes de usar una herramienta y despues de usarla. Cada hook tiene una responsabilidad unica y esta disenado para fallar de forma segura: si algo va mal internamente, el hook sale con codigo 0 (sin bloquear) excepto en los casos donde la politica de seguridad exige fail-closed.
 
 ### session-start.sh
 
@@ -218,41 +218,47 @@ Los patrones se compilan en una unica expresion regular con limites de palabra y
 
 El hook solo inspecciona ficheros con extensiones de texto donde es probable encontrar castellano: `.md`, `.txt`, `.html`, `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.vue`, `.svelte`, `.astro`, `.sh`, `.bash`, `.zsh`, `.css`, `.scss`, `.xml`, `.svg`, `.rst`, `.adoc` y `.toml`. Ignora rutas dentro de `node_modules`, `.git`, `dist`, `build`, `__pycache__`, `.next`, `.nuxt`, `.venv`, `venv` y `env`.
 
-### memory-capture.py
+### activity-capture.py
 
-**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit` -- **Timeout:** 10 s
+**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit|Bash|Read|Glob|Grep|Agent|WebFetch|WebSearch|NotebookEdit` + `UserPromptSubmit` + `PreCompact` + `Stop` -- **Timeout:** 10 s
 
-Este es el observador mas silencioso del sistema. No emite mensajes, no bloquea operaciones, no imprime nada por stderr. Su unica funcion es registrar eventos en la base de datos SQLite de memoria persistente (`alfred-memory.db`) cuando detecta una escritura sobre el fichero de estado de sesion (`alfred-dev-state.json`).
+Este hook centraliza toda la captura de actividad en un unico punto de entrada. Sustituye a los antiguos `memory-capture.py` y `commit-capture.py` (unificados en v0.3.6) y ademas amplia la cobertura a practicamente todas las herramientas de Claude Code, los prompts del usuario, la compactacion de contexto y el cierre de sesion.
 
-El hook captura tres tipos de eventos:
+El hook registra cada evento en la base de datos SQLite de memoria persistente (`alfred-memory.db`) con tres niveles de detalle:
 
-| Evento | Cuando se registra |
-|--------|--------------------|
-| `iteration_started` | Cuando se inicia una sesion y no hay iteracion activa en la base de datos. |
-| `phase_completed` | Cuando el estado nuevo contiene fases completadas que aun no tienen evento registrado. La comparacion se hace por nombre de fase. |
-| `iteration_completed` | Cuando la fase actual pasa a `"completado"`. Se cierra la iteracion activa. |
+| Nivel | Proposito |
+|-------|-----------|
+| `summary` | Texto legible en castellano (una linea), pensado para listados rapidos. |
+| `payload` | JSON estructurado con los campos clave del evento, pensado para filtrado programatico. |
+| `content` | Texto completo sin truncar (contenido de ficheros, stdout/stderr, prompts), pensado para consulta bajo demanda. |
+
+La tabla de dispatchers mapea cada tipo de evento a su funcion de procesamiento:
+
+| Evento | Tipo | Que captura |
+|--------|------|-------------|
+| `Write` | PostToolUse | Fichero escrito: ruta, extension, lineas y contenido completo. Si el fichero es `alfred-dev-state.json`, dispara ademas la logica de seguimiento de iteraciones y fases. |
+| `Edit` | PostToolUse | Fichero editado: diff old/new con conteo de lineas. |
+| `Bash` | PostToolUse | Comando ejecutado: comando, exit code, stdout y stderr completos. Si detecta un `git commit` exitoso, captura ademas los metadatos del commit (SHA, mensaje, autor, ficheros). |
+| `Read` | PostToolUse | Fichero leido: ruta y rango de lineas solicitado (sin contenido duplicado). |
+| `Glob` | PostToolUse | Busqueda por patron: patron, directorio y numero de resultados. |
+| `Grep` | PostToolUse | Busqueda de contenido: patron regex, directorio, modo y coincidencias. |
+| `Agent` | PostToolUse | Subagente lanzado: tipo, descripcion, prompt y resultado completo. |
+| `WebFetch` | PostToolUse | Peticion HTTP: URL y respuesta. |
+| `WebSearch` | PostToolUse | Busqueda web: query y resultados. |
+| `NotebookEdit` | PostToolUse | Edicion de notebook Jupyter: ruta y comando. |
+| `UserPromptSubmit` | Evento propio | Prompt del usuario: texto completo. |
+| `PreCompact` | Evento propio | Marcador de compactacion de contexto. |
+| `Stop` | Evento propio | Cierre de sesion: marca el fin y cierra la iteracion activa si existe. |
 
 La memoria solo esta activa si el usuario la ha habilitado explicitamente en `.claude/alfred-dev.local.md` con la seccion `memoria: enabled: true`. El hook comprueba esta configuracion antes de hacer nada, y si no esta habilitada, sale inmediatamente.
 
-La logica de comparacion importa `MemoryDB` desde `core.memory` y trabaja contra la iteracion activa de la base de datos. Para las fases completadas, obtiene la linea temporal de eventos (`get_timeline`) y construye un conjunto de fases ya registradas, comparandolo con las fases que aparecen en el estado nuevo. Esto evita registrar duplicados si el fichero de estado se reescribe multiples veces durante la misma fase.
+El hook excluye automaticamente ficheros de rutas internas (`.claude/`, `.git/`, `node_modules/`, `__pycache__/`, `.venv/`) y comandos triviales de lectura o navegacion (`ls`, `pwd`, `cat`, etc.) para evitar ruido en el historial.
 
-El diseno de este hook es deliberadamente conservador: cualquier excepcion se captura y se descarta silenciosamente. La logica es que la memoria persistente es un servicio complementario, nunca critico. Si falla, el flujo de trabajo debe continuar sin interrupcion.
+La logica de seguimiento de iteraciones y fases (heredada de `memory-capture.py`) se activa cuando se escribe `alfred-dev-state.json`. Captura tres tipos de eventos de flujo: `iteration_started` (si no hay iteracion activa), `phase_completed` (fases nuevas que aun no estan registradas) e `iteration_completed` (cuando la fase actual pasa a `"completado"`).
 
----
+La deteccion de commits (heredada de `commit-capture.py`) se basa en la regex `(?:^|&&|\|\||;)\s*git\s+commit\b` y se activa solo si el exit code es 0. Ejecuta `git log -1` para extraer SHA, mensaje, autor y ficheros, y los registra con `MemoryDB.log_commit()`, que es idempotente por SHA.
 
-### commit-capture.py
-
-**Evento:** `PostToolUse` -- **Matcher:** `Bash` -- **Timeout:** 10 s
-
-Este hook detecta automaticamente cuando Claude ejecuta un comando `git commit` a traves de Bash y registra los metadatos del commit en la memoria persistente. A diferencia de `memory-capture.py`, que captura eventos de flujo observando el fichero de estado, este hook captura commits observando los comandos de terminal.
-
-La deteccion se basa en una expresion regular (`(?:^|&&|\|\||;)\s*git\s+commit\b`) que reconoce el patron `git commit` tanto al inicio del comando como despues de operadores shell (`&&`, `||`, `;`). Esto cubre los casos habituales: `git commit -m "..."`, `git add . && git commit -m "..."` y variantes. La regex excluye correctamente falsos positivos como `grep git commit` o `echo git commit`.
-
-Antes de registrar, el hook verifica tres condiciones: que el comando contenga `git commit`, que el codigo de salida sea 0 (el commit se ejecuto con exito) y que la memoria este habilitada en la configuracion del proyecto. Si alguna condicion falla, sale silenciosamente.
-
-Cuando las tres condiciones se cumplen, ejecuta `git log -1 --format=%H|%s|%an|%aI --name-only` para extraer el SHA, mensaje, autor, fecha y ficheros afectados del commit recien creado. Registra estos datos en la memoria con `MemoryDB.log_commit()`, que es idempotente por SHA: si el commit ya existe en la base de datos, la operacion se ignora.
-
-La politica es **fail-open**: cualquier error se captura y el hook sale con codigo 0 sin bloquear el flujo.
+La politica es **fail-open**: cualquier error se imprime en stderr con prefijo `[activity-capture]` y el hook sale con codigo 0 sin bloquear el flujo.
 
 ### memory-compact.py
 
@@ -270,7 +276,7 @@ La politica es **fail-open**: si la memoria no esta disponible, no hay decisione
 
 ## Diagrama de interaccion
 
-El siguiente diagrama muestra como interactuan los hooks con Claude Code durante una sesion tipica. Los cuatro hooks representados cubren los cuatro eventos del ciclo de vida; los otros cinco (`stop-hook.py`, `dangerous-command-guard.py`, `sensitive-read-guard.py`, `dependency-watch.py` y `spelling-guard.py`) siguen patrones analogos a los representados.
+El siguiente diagrama muestra como interactuan los hooks con Claude Code durante una sesion tipica. Los cuatro hooks representados cubren los cuatro eventos del ciclo de vida; los otros (`stop-hook.py`, `dangerous-command-guard.py`, `sensitive-read-guard.py`, `dependency-watch.py` y `spelling-guard.py`) siguen patrones analogos a los representados.
 
 ```mermaid
 sequenceDiagram
@@ -278,7 +284,7 @@ sequenceDiagram
     participant SS as session-start.sh
     participant SG as secret-guard.sh
     participant QG as quality-gate.py
-    participant MC as memory-capture.py
+    participant AC as activity-capture.py
 
     Note over CC: El usuario abre la sesion
 
@@ -316,9 +322,9 @@ sequenceDiagram
 
     Note over CC: Claude escribe alfred-dev-state.json
 
-    CC->>+MC: PostToolUse Write (stdin: file_path + content)
-    Note right of MC: Detecta escritura en<br/>el fichero de estado.<br/>Compara con la memoria.
-    MC-->>-CC: exit 0 (sin salida, registro silencioso en SQLite)
+    CC->>+AC: PostToolUse Write (stdin: file_path + content)
+    Note right of AC: Detecta escritura en<br/>el fichero de estado.<br/>Registra el evento y<br/>actualiza iteraciones.
+    AC-->>-CC: exit 0 (sin salida, registro silencioso en SQLite)
     Note over CC: Claude no percibe nada.<br/>La memoria se actualiza en segundo plano.
 ```
 
@@ -336,8 +342,7 @@ sequenceDiagram
 | `PostToolUse` | `Bash` | `quality-gate.py` | 10 s | No | No | Resultado de ejecuciones de tests. Detecta fallos en 17 runners de tests y avisa sin bloquear. |
 | `PostToolUse` | `Write\|Edit` | `dependency-watch.py` | 10 s | No | No | Modificaciones en manifiestos de dependencias. Sugiere revision de seguridad de las dependencias anadidas. |
 | `PostToolUse` | `Write\|Edit` | `spelling-guard.py` | 10 s | No | No | Palabras castellanas sin tilde en ficheros de texto. Detecta ~80 errores comunes y avisa sin bloquear. |
-| `PostToolUse` | `Write\|Edit` | `memory-capture.py` | 10 s | No | No | Escrituras en `alfred-dev-state.json`. Registra eventos de iteracion en SQLite de forma completamente silenciosa. |
-| `PostToolUse` | `Bash` | `commit-capture.py` | 10 s | No | No | Comandos `git commit`. Registra automaticamente SHA, mensaje, autor y ficheros en la memoria persistente. |
+| `PostToolUse` | `Write\|Edit\|Bash\|Read\|Glob\|Grep\|Agent\|WebFetch\|WebSearch\|NotebookEdit` + `UserPromptSubmit` + `PreCompact` + `Stop` | `activity-capture.py` | 10 s | No | No | Captura centralizada de toda la actividad: ficheros, comandos, busquedas, subagentes, prompts, compactaciones y cierre de sesion. Registra en SQLite con tres niveles de detalle (summary, payload, content). |
 | `PreCompact` | _(ninguno)_ | `memory-compact.py` | 10 s | No | No | Compactacion de contexto. Inyecta decisiones criticas como contexto protegido para que sobrevivan a la compactacion. |
 
 ---
@@ -430,7 +435,7 @@ print("[Mi Hook] Operacion bloqueada: motivo detallado.", file=sys.stderr)
 sys.exit(2)
 ```
 
-**Silencioso (exit 0 sin salida).** El hook hace su trabajo internamente sin emitir nada. Claude Code y el usuario no perciben su ejecucion. Es el patron que usa `memory-capture.py` para registrar eventos en SQLite sin interrumpir el flujo.
+**Silencioso (exit 0 sin salida).** El hook hace su trabajo internamente sin emitir nada. Claude Code y el usuario no perciben su ejecucion. Es el patron que usa `activity-capture.py` para registrar eventos en SQLite sin interrumpir el flujo.
 
 ### 4. Restricciones a tener en cuenta
 

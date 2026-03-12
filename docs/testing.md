@@ -71,11 +71,11 @@ La suite incluye tests de sanitizacion de secretos (claves AWS, tokens JWT, clav
 
 ### test_personality.py
 
-El motor de personalidad define los 15 agentes del plugin (8 del nucleo + 7 opcionales), cada uno con nombre, rol, color, modelo, personalidad y frases caracteristicas. Los tests verifican que el diccionario `AGENTS` es completo y coherente, que los agentes opcionales estan correctamente marcados como tales, que la funcion `get_agent_intro` respeta el nivel de sarcasmo configurado y que `get_agent_voice` devuelve frases validas para cada agente.
+El motor de personalidad define los 17 agentes del plugin (9 del nucleo + 8 opcionales), cada uno con nombre, rol, color, modelo, personalidad y frases caracteristicas. Los tests verifican que el diccionario `AGENTS` es completo y coherente, que los agentes opcionales estan correctamente marcados como tales, que la funcion `get_agent_intro` respeta el nivel de sarcasmo configurado y que `get_agent_voice` devuelve frases validas para cada agente.
 
 | Clase | Metodos de test | Que verifica |
 |-------|----------------|--------------|
-| `TestPersonality` | `test_all_agents_defined`, `test_optional_agents_have_flag`, `test_core_agents_not_optional`, `test_intro_respects_sarcasm_level`, `test_voice_returns_phrases`, `test_unknown_agent_raises` | Presencia de los 15 agentes (8 core + 7 opcionales), flag `opcional` correcto en cada agente, intro con diferentes niveles de sarcasmo (1 y 5), frases de voz (minimo 2 por agente) y error `ValueError` al solicitar un agente inexistente. |
+| `TestPersonality` | `test_all_agents_defined`, `test_optional_agents_have_flag`, `test_core_agents_not_optional`, `test_intro_respects_sarcasm_level`, `test_voice_returns_phrases`, `test_unknown_agent_raises` | Presencia de los 17 agentes (9 core + 8 opcionales), flag `opcional` correcto en cada agente, intro con diferentes niveles de sarcasmo (1 y 5), frases de voz (minimo 2 por agente) y error `ValueError` al solicitar un agente inexistente. |
 
 ### test_spelling_guard.py
 

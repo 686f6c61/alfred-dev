@@ -620,6 +620,6 @@ La decision de usar un fichero JSON plano en lugar de la base de datos SQLite es
 
 ### Como leen los hooks este fichero
 
-Los hooks acceden al fichero de estado para tomar decisiones contextuales. Por ejemplo, el hook `quality-gate.py` necesita saber si estamos en una fase de desarrollo (donde los tests rojos son informativos) o en una fase de calidad (donde los tests rojos bloquean el avance). El hook `memory-capture.py` necesita saber en que fase y flujo estamos para asociar los eventos capturados a la iteracion correcta en la memoria persistente.
+Los hooks acceden al fichero de estado para tomar decisiones contextuales. Por ejemplo, el hook `quality-gate.py` necesita saber si estamos en una fase de desarrollo (donde los tests rojos son informativos) o en una fase de calidad (donde los tests rojos bloquean el avance). El hook `activity-capture.py` necesita saber en que fase y flujo estamos para asociar los eventos capturados a la iteracion correcta en la memoria persistente.
 
 El patron de lectura es siempre el mismo: el hook lee el fichero JSON, extrae los campos que necesita (`comando`, `fase_actual`, `fase_numero`) y adapta su comportamiento en funcion del contexto. Si el fichero no existe (porque no hay ningun flujo activo), el hook funciona en modo por defecto sin bloquear nada.

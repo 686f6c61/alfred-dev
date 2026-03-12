@@ -2,9 +2,9 @@
 
 Esta documentacion esta pensada para desarrolladores que necesitan entender como funciona el plugin Alfred Dev por dentro: su arquitectura, sus decisiones de diseno, como se integra en Claude Code y como contribuir. No es documentacion de usuario (eso esta en el [README del proyecto](../README.md) y en la [landing page](https://686f6c61.github.io/alfred-dev/)); es documentacion de ingenieria interna.
 
-Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 15 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integracion) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente. Desde v0.3.0 incluye un dashboard web en tiempo real que actua como fuente de verdad externa.
+Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 17 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentacion, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integracion) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
 
-El codigo fuente es la referencia definitiva, pero esta documentacion explica el **por que** detras de cada decision: por que Python y no JavaScript, por que SQLite y no JSON, por que 15 agentes y no uno solo, por que quality gates en cada transicion. Un junior debe poder leer esta documentacion de principio a fin y entender el proyecto sin ayuda externa.
+El codigo fuente es la referencia definitiva, pero esta documentacion explica el **por que** detras de cada decision: por que Python y no JavaScript, por que SQLite y no JSON, por que 17 agentes y no uno solo, por que quality gates en cada transicion. Un junior debe poder leer esta documentacion de principio a fin y entender el proyecto sin ayuda externa.
 
 ---
 
@@ -24,14 +24,13 @@ mindmap
       ship -- 4 fases
       audit -- 1 fase
     El equipo
-      8 agentes de nucleo
-      7 agentes opcionales
+      9 agentes de nucleo
+      8 agentes opcionales
       Motor de personalidad
     Capacidades
       59 skills en 13 dominios
-      11 hooks del ciclo de vida
+      10 hooks del ciclo de vida
       Memoria persistente SQLite
-      Dashboard web en tiempo real
     Operaciones
       Instalacion y carga
       Configuracion por proyecto
@@ -48,9 +47,9 @@ La documentacion se organiza de lo general a lo especifico. Se recomienda leer e
 |---------|-------------|
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseno fundamentales |
 | [flows.md](flows.md) | Los 5 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
-| [agents/README.md](agents/README.md) | Vision general del equipo de 15 agentes, modelo de colaboracion, distribucion de modelos |
+| [agents/README.md](agents/README.md) | Vision general del equipo de 17 agentes, modelo de colaboracion, distribucion de modelos |
 | [skills.md](skills.md) | Catalogo de 59 skills organizados en 13 dominios con diagrama mindmap |
-| [hooks.md](hooks.md) | Los 11 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
+| [hooks.md](hooks.md) | Los 10 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
 | [configuration.md](configuration.md) | Deteccion de stack, fichero .local.md, niveles de autonomia, agentes opcionales, composicion dinamica de equipo |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalacion, troubleshooting |
@@ -71,6 +70,7 @@ Cada agente tiene su propia ficha con personalidad, responsabilidades, quality g
 | [qa-engineer.md](agents/qa-engineer.md) | El Rompe-cosas | Nucleo |
 | [devops-engineer.md](agents/devops-engineer.md) | El Fontanero | Nucleo |
 | [tech-writer.md](agents/tech-writer.md) | El Traductor | Nucleo |
+| [project-manager.md](agents/project-manager.md) | SonIA | Nucleo |
 | [data-engineer.md](agents/data-engineer.md) | El Fontanero de Datos | Opcional |
 | [ux-reviewer.md](agents/ux-reviewer.md) | El Abogado del Usuario | Opcional |
 | [performance-engineer.md](agents/performance-engineer.md) | El Cronometro | Opcional |
@@ -78,6 +78,7 @@ Cada agente tiene su propia ficha con personalidad, responsabilidades, quality g
 | [seo-specialist.md](agents/seo-specialist.md) | El Rastreador | Opcional |
 | [copywriter.md](agents/copywriter.md) | El Pluma | Opcional |
 | [librarian.md](agents/librarian.md) | El Bibliotecario | Opcional |
+| [i18n-specialist.md](agents/i18n-specialist.md) | La Interprete | Opcional |
 
 ---
 

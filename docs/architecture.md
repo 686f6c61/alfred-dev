@@ -35,9 +35,9 @@ El plugin tiene 10 comandos registrados en `plugin.json`:
 
 Los agentes son system prompts especializados que Claude Code ejecuta como subagentes mediante la herramienta Task. Cada agente tiene un rol definido dentro del equipo virtual, herramientas restringidas segun su ambito de actuacion y una personalidad propia que se adapta al nivel de sarcasmo configurado por el usuario.
 
-La distincion clave en esta capa es la separacion entre agentes de nucleo y agentes opcionales. Los 8 agentes de nucleo participan en todos los flujos y son invocados programaticamente desde los commands: cuando `feature.md` dice «activa el agente product-owner», Claude Code crea un subagente Task cuyo system prompt es el contenido de `agents/product-owner.md`. Los 7 agentes opcionales, en cambio, se registran en `plugin.json` y solo estan disponibles si el usuario los activa en su configuracion.
+La distincion clave en esta capa es la separacion entre agentes de nucleo y agentes opcionales. Los 9 agentes de nucleo participan en todos los flujos y son invocados programaticamente desde los commands: cuando `feature.md` dice «activa el agente product-owner», Claude Code crea un subagente Task cuyo system prompt es el contenido de `agents/product-owner.md`. Los 8 agentes opcionales, en cambio, se registran en `plugin.json` y solo estan disponibles si el usuario los activa en su configuracion.
 
-**Agentes de nucleo** (8):
+**Agentes de nucleo** (9):
 
 | Agente | Alias | Rol |
 |--------|-------|-----|
@@ -48,9 +48,10 @@ La distincion clave en esta capa es la separacion entre agentes de nucleo y agen
 | `qa-engineer` | El Rompe-cosas | QA |
 | `devops-engineer` | El Fontanero | DevOps |
 | `tech-writer` | El Traductor | Tech Writer |
+| `project-manager` | SonIA | Gestora de proyecto y hooks |
 | `alfred` | Alfred | Jefe de operaciones / Orquestador |
 
-**Agentes opcionales** (7):
+**Agentes opcionales** (8):
 
 | Agente | Alias | Rol |
 |--------|-------|-----|
@@ -61,6 +62,7 @@ La distincion clave en esta capa es la separacion entre agentes de nucleo y agen
 | `seo-specialist` | El Rastreador | Especialista SEO |
 | `copywriter` | El Pluma | Copywriter |
 | `librarian` | El Bibliotecario | Archivista del proyecto |
+| `i18n-specialist` | La Interprete | Especialista en internacionalizacion |
 
 ### Capa core (`core/*.py`)
 
@@ -78,7 +80,7 @@ La capa se compone de tres modulos:
 
 La capa de integracion es el puente entre Alfred Dev y el ciclo de vida de Claude Code. Mientras que las capas anteriores definen «que hacer», esta capa define «cuando hacerlo» y «como conectar con el exterior».
 
-**Hooks** (7 ficheros, 4 eventos del ciclo de vida):
+**Hooks** (10 ficheros, 6 eventos del ciclo de vida):
 
 Los hooks son scripts que Claude Code ejecuta automaticamente cuando ocurren eventos especificos. Se registran en `hooks/hooks.json` y cada uno tiene un matcher que filtra cuando se dispara.
 
@@ -87,10 +89,13 @@ Los hooks son scripts que Claude Code ejecuta automaticamente cuando ocurren eve
 | `session-start.sh` | SessionStart | startup, resume, clear, compact | Inyecta contexto del proyecto al inicio de sesion |
 | `stop-hook.py` | Stop | (todos) | Persiste estado y cierra recursos al terminar |
 | `secret-guard.sh` | PreToolUse | Write, Edit | Bloquea escritura de secretos en ficheros |
+| `dangerous-command-guard.py` | PreToolUse | Bash | Bloquea comandos destructivos |
+| `sensitive-read-guard.py` | PreToolUse | Read | Avisa al leer ficheros con credenciales |
 | `quality-gate.py` | PostToolUse | Bash | Vigila resultados de tests tras ejecucion de comandos |
 | `dependency-watch.py` | PostToolUse | Write, Edit | Detecta cambios en dependencias (package.json, etc.) |
 | `spelling-guard.py` | PostToolUse | Write, Edit | Comprueba ortografia en ficheros modificados |
-| `memory-capture.py` | PostToolUse | Write, Edit | Captura eventos relevantes para la memoria del proyecto |
+| `activity-capture.py` | PostToolUse + UserPromptSubmit + PreCompact + Stop | (multiples) | Captura centralizada de actividad en la memoria persistente |
+| `memory-compact.py` | PreCompact | (todos) | Inyecta decisiones criticas como contexto protegido |
 
 **Servidor MCP** (1 fichero):
 
@@ -121,9 +126,9 @@ C4Context
 
     Container_Boundary(plugin, "Plugin Alfred Dev") {
         Container(commands, "Commands", "Markdown + YAML", "10 comandos que definen flujos como system prompts")
-        Container(agents, "Agents", "Markdown", "8 nucleo + 7 opcionales, invocados como subagentes Task")
+        Container(agents, "Agents", "Markdown", "9 nucleo + 8 opcionales, invocados como subagentes Task")
         Container(core, "Core", "Python", "Orquestador, config loader, motor de personalidad")
-        Container(hooks, "Hooks", "Shell + Python", "7 hooks en 4 eventos del ciclo de vida")
+        Container(hooks, "Hooks", "Shell + Python", "10 hooks en 6 eventos del ciclo de vida")
         Container(mcp, "MCP Server", "Python stdio", "Servidor JSON-RPC que expone memoria persistente")
     }
 
@@ -194,7 +199,7 @@ sequenceDiagram
     CMD->>ORC: check_gate(resultado="aprobado")
     ORC-->>CMD: Gate usuario superada
     CMD->>ORC: advance_phase() -> arquitectura
-    HK->>MCP: memory-capture.py registra evento
+    HK->>MCP: activity-capture.py registra evento
 
     Note over ORC: Fase 2: Arquitectura
 
@@ -284,7 +289,7 @@ La alternativa seria ejecutar `python3 -c "..."` cada vez que un agente necesite
 
 Los agentes de nucleo (product-owner, architect, senior-dev, security-officer, qa-engineer, devops-engineer, tech-writer, alfred) se invocan programaticamente desde los commands mediante la herramienta Task de Claude Code. No necesitan estar registrados en `plugin.json` porque no son agentes que el usuario invoque directamente: es el system prompt del command quien decide cuando y como activar cada agente.
 
-Los 7 agentes opcionales (data-engineer, ux-reviewer, performance-engineer, github-manager, seo-specialist, copywriter, librarian) si se registran en `plugin.json` porque Claude Code necesita conocerlos para que el usuario pueda invocarlos con la herramienta Task desde fuera de un flujo Alfred. El usuario puede activarlos o desactivarlos desde `/alfred config` segun las necesidades de su proyecto.
+Los 8 agentes opcionales (data-engineer, ux-reviewer, performance-engineer, github-manager, seo-specialist, copywriter, librarian, i18n-specialist) si se registran en `plugin.json` porque Claude Code necesita conocerlos para que el usuario pueda invocarlos con la herramienta Task desde fuera de un flujo Alfred. El usuario puede activarlos o desactivarlos desde `/alfred config` segun las necesidades de su proyecto.
 
 ### El patron de estado
 

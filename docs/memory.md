@@ -367,21 +367,19 @@ Si no puede citar una fuente concreta, el Bibliotecario no incluye el dato en la
 
 ## Captura automatica
 
-La captura automatica funciona mediante dos hooks complementarios. El hook original `memory-capture.py` captura eventos del flujo de trabajo (iteraciones, fases) observando el fichero de estado. El nuevo hook `commit-capture.py` (v0.2.3) captura commits automaticamente observando los comandos de terminal.
+Desde v0.3.6 la captura automatica esta centralizada en un unico hook: `activity-capture.py`. Este hook sustituye a los anteriores `memory-capture.py` y `commit-capture.py`, que se unificaron para simplificar el mantenimiento y ampliar la cobertura de captura.
 
-### memory-capture.py (eventos de flujo)
+### activity-capture.py (captura centralizada)
 
-Este es un script Python que se ejecuta como hook `PostToolUse` cada vez que Claude Code escribe o edita un fichero. El hook actua como un observador pasivo: nunca bloquea la operacion ni interfiere con el flujo de trabajo. Si algo falla --DB inexistente, JSON corrupto, configuracion ausente--, sale silenciosamente con `exit 0`.
+Este script se ejecuta como hook `PostToolUse` para practicamente todas las herramientas de Claude Code (Write, Edit, Bash, Read, Glob, Grep, Agent, WebFetch, WebSearch, NotebookEdit), ademas de `UserPromptSubmit`, `PreCompact` y `Stop`. Actua como un observador pasivo: nunca bloquea la operacion ni interfiere con el flujo de trabajo. Si algo falla --DB inexistente, JSON corrupto, configuracion ausente--, imprime un aviso en stderr y sale con `exit 0`.
 
-La razon de automatizar la captura en lugar de depender de que los agentes registren eventos manualmente es la fiabilidad: un agente puede olvidarse de llamar a `memory_log_event()`, pero el hook siempre se ejecuta porque esta conectado al ciclo de vida de las herramientas de escritura.
+La razon de automatizar la captura en lugar de depender de que los agentes registren eventos manualmente es la fiabilidad: un agente puede olvidarse de llamar a `memory_log_event()`, pero el hook siempre se ejecuta porque esta conectado al ciclo de vida de las herramientas.
 
-### Que vigila
+Cada evento se registra con tres niveles de detalle: un `summary` legible en castellano, un `payload` JSON estructurado para filtrado programatico, y un `content` con el texto completo sin truncar.
 
-El hook solo actua cuando detecta una escritura sobre el fichero `alfred-dev-state.json`, que es el fichero de estado de sesion de Alfred Dev. Cualquier otra escritura se ignora inmediatamente.
+### Logica de captura de iteraciones y fases
 
-### Logica de captura
-
-Cuando detecta una escritura en el fichero de estado, el hook ejecuta tres comprobaciones en secuencia:
+Cuando detecta una escritura en `alfred-dev-state.json`, el hook ejecuta tres comprobaciones en secuencia:
 
 1. **Iteracion nueva**: si no hay iteracion activa en la DB, se inicia una nueva con los datos del estado (`comando`, `descripcion`) y se registra un evento `iteration_started`.
 
@@ -389,16 +387,13 @@ Cuando detecta una escritura en el fichero de estado, el hook ejecuta tres compr
 
 3. **Iteracion completada**: si la `fase_actual` del estado es `"completado"`, cierra la iteracion activa y registra un evento `iteration_completed`.
 
+### Captura de commits
+
+Cuando el dispatcher de Bash detecta un comando `git commit` exitoso (exit code 0), ejecuta `git log -1 --format=%H|%s|%an|%aI --name-only` para extraer SHA, mensaje, autor, fecha y ficheros. Los registra con `MemoryDB.log_commit()`, que es idempotente por SHA.
+
 ### Verificacion previa
 
-Antes de procesar el estado, el hook comprueba que la memoria esta habilitada leyendo el fichero `.claude/alfred-dev.local.md` del proyecto. Busca el patron `memoria:` seguido de `enabled: true` usando una expresion regular que tolera comentarios y otras claves intermedias.
-
-
-### commit-capture.py (commits automaticos)
-
-Este hook (v0.2.3) se ejecuta como `PostToolUse` en cada invocacion de Bash. Detecta comandos `git commit` mediante la expresion regular `(?:^|&&|\|\||;)\s*git\s+commit\b` y, si el commit se ejecuto con exito (exit code 0), extrae los metadatos del ultimo commit (`git log -1 --format=%H|%s|%an|%aI --name-only`) y los registra en la memoria con `MemoryDB.log_commit()`. La operacion es idempotente por SHA: si el commit ya existe, se ignora.
-
-El hook verifica tres condiciones antes de actuar: que el comando contenga `git commit`, que el codigo de salida sea 0 y que la memoria este habilitada. Si alguna falla, sale con codigo 0 sin bloquear.
+Antes de procesar cualquier evento, el hook comprueba que la memoria esta habilitada leyendo `.claude/alfred-dev.local.md`. Busca el patron `memoria:` seguido de `enabled: true` usando una expresion regular que tolera comentarios y otras claves intermedias. Tambien excluye automaticamente ficheros de rutas internas y comandos triviales para evitar ruido.
 
 
 ## Flujo completo de captura y consulta
@@ -410,7 +405,7 @@ sequenceDiagram
     participant U as Usuario
     participant A as Alfred
     participant S as state.json
-    participant H as memory-capture.py
+    participant H as activity-capture.py
     participant DB as MemoryDB
     participant MCP as Servidor MCP
     participant B as Bibliotecario
@@ -541,7 +536,6 @@ Activar el agente `librarian` junto con la memoria es la combinacion recomendada
 |---------|-----------|
 | `core/memory.py` | Clase `MemoryDB`, funcion `sanitize_content()`, esquema SQL, migraciones, patrones de secretos, logica de FTS5 |
 | `mcp/memory_server.py` | Clase `MemoryMCPServer`, 15 herramientas MCP, transporte JSON-RPC stdio |
-| `hooks/memory-capture.py` | Hook PostToolUse (Write/Edit), deteccion de escrituras en state.json, captura de eventos de flujo |
-| `hooks/commit-capture.py` | Hook PostToolUse (Bash), deteccion de `git commit`, captura automatica de metadatos de commits |
+| `hooks/activity-capture.py` | Hook centralizado de captura: registra ficheros, comandos, busquedas, subagentes, prompts, compactaciones y cierre de sesion. Incluye la logica de seguimiento de iteraciones/fases y la captura de commits. |
 | `hooks/memory-compact.py` | Hook PreCompact, inyeccion de decisiones criticas como contexto protegido |
 | `agents/optional/librarian.md` | Definicion del agente Bibliotecario, 15 herramientas, gestion de ciclo de vida, citas verificables |
