@@ -66,29 +66,6 @@ _DEFAULT_WS_PORT = 7534
 # Intervalo de sondeo del watcher en segundos
 _POLL_INTERVAL = 0.5
 
-# Catalogo de agentes del sistema Alfred Dev.
-# Se envia a los clientes en el mensaje init para que el dashboard no
-# necesite tener esta lista hardcodeada. La fuente de verdad es el servidor.
-_REGISTERED_AGENTS: List[Dict[str, Any]] = [
-    # --- Agentes principales (8) ---
-    {"id": "alfred",               "name": "Alfred",               "icon": "AL", "role": "Orquestacion y coordinacion general",        "optional": False},
-    {"id": "architect",            "name": "Architect",            "icon": "AR", "role": "Diseno de arquitectura y ADRs",              "optional": False},
-    {"id": "product-owner",        "name": "Product Owner",        "icon": "PO", "role": "Requisitos, PRDs e historias de usuario",    "optional": False},
-    {"id": "senior-dev",           "name": "Senior Dev",           "icon": "SD", "role": "Implementacion con TDD y refactoring",      "optional": False},
-    {"id": "qa-engineer",          "name": "QA Engineer",          "icon": "QA", "role": "Testing, code review y validacion",         "optional": False},
-    {"id": "security-officer",     "name": "Security Officer",     "icon": "SO", "role": "Seguridad, OWASP y compliance",             "optional": False},
-    {"id": "devops-engineer",      "name": "DevOps Engineer",      "icon": "DE", "role": "CI/CD, Docker y despliegue",                "optional": False},
-    {"id": "tech-writer",          "name": "Tech Writer",          "icon": "TW", "role": "Documentacion de API y guias",              "optional": False},
-    # --- Agentes opcionales (7) ---
-    {"id": "copywriter",           "name": "Copywriter",           "icon": "CW", "role": "Textos publicos, landing y copy",           "optional": True},
-    {"id": "data-engineer",        "name": "Data Engineer",        "icon": "DA", "role": "Modelado de datos, esquemas y ETL",         "optional": True},
-    {"id": "github-manager",       "name": "GitHub Manager",       "icon": "GH", "role": "Gestion de repos, PRs y releases",         "optional": True},
-    {"id": "librarian",            "name": "Librarian",            "icon": "LB", "role": "Memoria persistente del proyecto",          "optional": True},
-    {"id": "performance-engineer", "name": "Performance Engineer", "icon": "PE", "role": "Profiling, benchmarks y optimizacion",      "optional": True},
-    {"id": "seo-specialist",       "name": "SEO Specialist",       "icon": "SE", "role": "SEO, Core Web Vitals y posicionamiento",    "optional": True},
-    {"id": "ux-reviewer",          "name": "UX Reviewer",          "icon": "UX", "role": "Accesibilidad, usabilidad y flujos de UX",  "optional": True},
-]
-
 
 def find_available_port(start: int = 7533, max_attempts: int = 50) -> int:
     """Busca un puerto TCP disponible a partir de uno dado.
@@ -215,7 +192,8 @@ class GUIServer:
             decisions = [dict(r) for r in rows]
 
             rows = conn.execute(
-                "SELECT * FROM events WHERE iteration_id = ? "
+                "SELECT id, iteration_id, event_type, phase, payload, summary, created_at "
+                "FROM events WHERE iteration_id = ? "
                 "ORDER BY id DESC LIMIT 100",
                 (active["id"],),
             ).fetchall()
@@ -236,7 +214,8 @@ class GUIServer:
             decisions = [dict(r) for r in rows]
 
             rows = conn.execute(
-                "SELECT * FROM events ORDER BY id DESC LIMIT 100"
+                "SELECT id, iteration_id, event_type, phase, payload, summary, created_at "
+                "FROM events ORDER BY id DESC LIMIT 100"
             ).fetchall()
             events = [dict(r) for r in rows]
 
@@ -257,7 +236,6 @@ class GUIServer:
             "events": events,
             "commits": commits,
             "pinned": pinned,
-            "registered_agents": _REGISTERED_AGENTS,
         }
 
     # --- Sondeo incremental de cambios --------------------------------------
@@ -273,7 +251,8 @@ class GUIServer:
             Lista de diccionarios con los eventos nuevos.
         """
         rows = self._poll_conn.execute(
-            "SELECT * FROM events WHERE id > ? ORDER BY id ASC",
+            "SELECT id, iteration_id, event_type, phase, payload, summary, created_at "
+            "FROM events WHERE id > ? ORDER BY id ASC",
             (self._event_checkpoint,),
         ).fetchall()
         results = [dict(r) for r in rows]
@@ -488,7 +467,23 @@ class GUIServer:
                 elif opcode == OPCODE_TEXT:
                     try:
                         msg = json.loads(payload.decode("utf-8"))
-                        if msg.get("type") == "action":
+                        # Accion: cargar contenido completo de un evento
+                        if msg.get("action") == "get_content":
+                            event_id = msg.get("event_id")
+                            if event_id is not None:
+                                row = self._poll_conn.execute(
+                                    "SELECT content FROM events WHERE id = ?",
+                                    (int(event_id),),
+                                ).fetchone()
+                                content_val = row["content"] if row else None
+                                response = json.dumps({
+                                    "type": "content",
+                                    "event_id": event_id,
+                                    "content": content_val,
+                                }, ensure_ascii=False, default=str)
+                                writer.write(encode_frame(response))
+                                await writer.drain()
+                        elif msg.get("type") == "action":
                             self.process_gui_action(msg.get("payload", {}))
                             ack = json.dumps({
                                 "type": "action_ack",
@@ -581,16 +576,25 @@ class GUIServer:
 
     # --- Servidor HTTP ------------------------------------------------------
 
-    def serve_http(self) -> None:
-        """Arranca el servidor HTTP en un hilo separado.
+    # --- Ciclo de vida completo ---------------------------------------------
 
-        Sirve los ficheros estaticos del directorio ``gui/`` con headers
-        de seguridad adicionales. Para ``dashboard.html`` inyecta el
-        puerto WebSocket y la version como variables JS para que el
-        cliente se conecte al puerto correcto sin hardcodear valores.
+    def _bind_http_server(self) -> HTTPServer:
+        """Crea y vincula el servidor HTTP con reintento atomico de puerto.
 
-        El dashboard queda disponible en
-        ``http://127.0.0.1:<http_port>/dashboard.html``.
+        El handler inyecta el puerto WebSocket y la version del plugin
+        en ``dashboard.html`` como variables JS, y anade cabeceras de
+        seguridad a todas las respuestas.
+
+        El bind se hace directamente con ``HTTPServer``, sin verificacion
+        previa, eliminando la condicion de carrera TOCTOU. Si el puerto
+        solicitado esta ocupado, se prueba el siguiente hasta encontrar
+        uno libre.
+
+        Returns:
+            Instancia de HTTPServer ya vinculada al puerto.
+
+        Raises:
+            RuntimeError: si no se encuentra ningun puerto disponible.
         """
         gui_dir = self._gui_dir
         ws_port = self._ws_port
@@ -612,6 +616,7 @@ class GUIServer:
 
             def end_headers(self) -> None:
                 self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
                 self.send_header("Cache-Control", "no-store")
                 self.send_header(
                     "Content-Security-Policy",
@@ -621,13 +626,12 @@ class GUIServer:
                 super().end_headers()
 
             def do_GET(self) -> None:
-                # Inyectar configuracion JS en dashboard.html
                 if self.path in ("/", "/dashboard.html"):
                     html_path = os.path.join(gui_dir, "dashboard.html")
                     try:
                         with open(html_path, "r", encoding="utf-8") as f:
                             content = f.read()
-                        # Inyectar puerto WS antes del script principal
+                        # Inyectar puerto WS y version antes del cierre de head
                         inject = (
                             f"<script>"
                             f"window.__ALFRED_WS_PORT={ws_port};"
@@ -647,13 +651,24 @@ class GUIServer:
                 super().do_GET()
 
             def log_message(self, fmt: str, *args: Any) -> None:
-                # Silenciar logs HTTP en produccion
                 pass
 
-        server = HTTPServer(("127.0.0.1", self._http_port), _Handler)
-        server.serve_forever()
+        # Intentar el puerto configurado primero; si falla, buscar uno libre.
+        # Al crear HTTPServer directamente, el bind es atomico: no hay ventana
+        # TOCTOU entre verificacion y uso.
+        max_attempts = 20
+        for offset in range(max_attempts):
+            port = self._http_port + offset
+            try:
+                server = HTTPServer(("127.0.0.1", port), _Handler)
+                self._http_port = port
+                return server
+            except OSError:
+                continue
 
-    # --- Ciclo de vida completo ---------------------------------------------
+        raise RuntimeError(
+            f"No se encontro puerto HTTP disponible desde {self._http_port}"
+        )
 
     def run(self) -> None:
         """Arranca el servidor completo (HTTP + WebSocket + watcher).
@@ -661,33 +676,19 @@ class GUIServer:
         El servidor HTTP se ejecuta en un hilo daemon, mientras que el
         servidor WebSocket y el watcher se ejecutan en el bucle asyncio
         del hilo principal.
+
+        Los puertos se vinculan atomicamente: si el puerto solicitado esta
+        ocupado, se busca uno libre en el momento del bind real, eliminando
+        la condicion de carrera TOCTOU que ocurria al verificar y usar en
+        dos pasos separados.
         """
-        # Verificar que los puertos están disponibles. Si el puerto solicitado
-        # está ocupado (otra instancia del dashboard u otro servicio), se busca
-        # automáticamente uno libre. Esto permite tener varios proyectos con
-        # dashboards activos simultáneamente sin conflictos.
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(("127.0.0.1", self._http_port))
-        except OSError:
-            self._http_port = find_available_port(self._http_port + 1)
-
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(("127.0.0.1", self._ws_port))
-        except OSError:
-            # Buscar desde el puerto WS original, no desde el HTTP recalculado,
-            # para evitar solapamientos cuando ambos puertos cambian.
-            self._ws_port = find_available_port(self._ws_port + 1)
-
-        print(f"Alfred Dev Dashboard")
-        print(f"  HTTP: http://127.0.0.1:{self._http_port}/dashboard.html")
-        print(f"  WS:   ws://127.0.0.1:{self._ws_port}")
-        print(f"  DB:   {self._db_path}")
-        print()
+        # Vincular el servidor HTTP con reintento atomico de puerto
+        http_server = self._bind_http_server()
 
         # Arrancar servidor HTTP en hilo daemon
-        http_thread = threading.Thread(target=self.serve_http, daemon=True)
+        http_thread = threading.Thread(
+            target=http_server.serve_forever, daemon=True
+        )
         http_thread.start()
 
         # Arrancar WebSocket + watcher en el bucle asyncio
@@ -695,12 +696,39 @@ class GUIServer:
         asyncio.set_event_loop(loop)
 
         async def _start() -> None:
-            """Inicia el servidor WebSocket y el watcher."""
-            ws_server = await asyncio.start_server(
-                self.handle_ws_client,
-                "127.0.0.1",
-                self._ws_port,
-            )
+            """Inicia el servidor WebSocket con reintento de puerto."""
+            # Intentar vincular al puerto WS; si falla, buscar uno libre.
+            # asyncio.start_server hace el bind real, asi que el reintento
+            # aqui es atomico (sin ventana TOCTOU).
+            ws_server = None
+            max_attempts = 20
+            for offset in range(max_attempts):
+                port = self._ws_port + offset
+                try:
+                    ws_server = await asyncio.start_server(
+                        self.handle_ws_client,
+                        "127.0.0.1",
+                        port,
+                    )
+                    self._ws_port = port
+                    break
+                except OSError:
+                    continue
+
+            if ws_server is None:
+                print(
+                    f"[Alfred Dev] Error: no se encontro puerto WebSocket "
+                    f"disponible desde {self._ws_port}.",
+                    file=sys.stderr,
+                )
+                return
+
+            print(f"Alfred Dev Dashboard")
+            print(f"  HTTP: http://127.0.0.1:{self._http_port}/dashboard.html")
+            print(f"  WS:   ws://127.0.0.1:{self._ws_port}")
+            print(f"  DB:   {self._db_path}")
+            print()
+
             # Ejecutar el watcher en paralelo con el servidor WebSocket
             await asyncio.gather(
                 ws_server.serve_forever(),

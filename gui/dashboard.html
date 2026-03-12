@@ -350,10 +350,6 @@
         <span class="nav-badge" id="badge-decisions">0</span>
       </div>
       <div class="nav-section-label">Sistema</div>
-      <div class="nav-item" data-view="agents">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke-linecap="round"/></svg>
-        Agentes
-      </div>
       <div class="nav-item" data-view="memory">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="3" width="14" height="10" rx="2"/><line x1="5" y1="7" x2="11" y2="7" stroke-linecap="round"/><line x1="5" y1="10" x2="9" y2="10" stroke-linecap="round"/></svg>
         Memoria
@@ -380,7 +376,7 @@
           <div class="view-title">Estado del proyecto</div>
           <div class="view-subtitle" id="dash-subtitle">Cargando datos...</div>
         </div>
-        <div class="card-grid card-grid-2" style="margin-bottom:16px;">
+        <div style="margin-bottom:16px;">
           <div class="card">
             <div class="card-title">Progreso de fase</div>
             <div class="phase-bar-container">
@@ -391,10 +387,6 @@
               <div class="phase-bar"><div class="phase-bar-fill" id="dash-phase-fill" style="width:0%"></div></div>
             </div>
             <div class="gates-grid" id="dash-gates"></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Agente activo</div>
-            <div id="dash-agent-wrap"></div>
           </div>
         </div>
         <div class="card-grid card-grid-4" style="margin-bottom:16px;">
@@ -417,11 +409,11 @@
         </div>
         <div class="timeline-filters">
           <button class="tab active" data-filter="all">Todos</button>
+          <button class="tab" data-filter="file">Ficheros</button>
+          <button class="tab" data-filter="command">Comandos</button>
+          <button class="tab" data-filter="user_prompt">Prompts</button>
           <button class="tab" data-filter="decision">Decisiones</button>
           <button class="tab" data-filter="commit">Commits</button>
-          <button class="tab" data-filter="phase">Fases</button>
-          <button class="tab" data-filter="gate">Gates</button>
-          <button class="tab" data-filter="agent">Agentes</button>
           <button class="tab" data-filter="system">Sistema</button>
         </div>
         <div class="timeline-feed" id="timeline-feed"></div>
@@ -460,15 +452,6 @@
             <tbody id="decisions-tbody"></tbody>
           </table>
         </div>
-      </section>
-
-      <!-- Vista 4: Agentes -->
-      <section id="view-agents" class="view">
-        <div class="view-header">
-          <div class="view-title">Agentes</div>
-          <div class="view-subtitle">Control y estado de los agentes del sistema</div>
-        </div>
-        <div class="agents-grid" id="agents-grid"></div>
       </section>
 
       <!-- Vista 5: Memoria -->
@@ -567,7 +550,6 @@ const state = {
   events: [],
   commits: [],
   pinned: [],
-  agents: [],
   lastActivity: null,
   memoryActiveTable: 'events',
   memorySearch: '',
@@ -671,9 +653,22 @@ function statusBadge(status) {
  * @returns {string} Clase CSS.
  */
 function eventDotClass(type) {
-  const valid = ['decision','commit','phase','gate','agent','system'];
-  const t = (type || '').toLowerCase();
-  return valid.includes(t) ? 'type-' + t : 'type-default';
+  var map = {
+    'file_written': 'type-phase',
+    'file_edited': 'type-phase',
+    'command_executed': 'type-gate',
+    'user_prompt': 'type-agent',
+    'context_compacted': 'type-system',
+    'session_ended': 'type-system',
+    'session_started': 'type-system',
+    'phase_completed': 'type-phase',
+    'phase_start': 'type-phase',
+    'iteration_started': 'type-decision',
+    'iteration_completed': 'type-decision',
+    'decision_recorded': 'type-decision',
+    'commit_detected': 'type-commit',
+  };
+  return map[(type || '').toLowerCase()] || 'type-default';
 }
 
 /**
@@ -682,9 +677,22 @@ function eventDotClass(type) {
  * @returns {string} Clase CSS.
  */
 function eventBadgeClass(type) {
-  const valid = ['decision','commit','phase','gate','agent','system'];
-  const t = (type || '').toLowerCase();
-  return valid.includes(t) ? t : 'default';
+  var map = {
+    'file_written': 'phase',
+    'file_edited': 'phase',
+    'command_executed': 'gate',
+    'user_prompt': 'agent',
+    'context_compacted': 'system',
+    'session_ended': 'system',
+    'session_started': 'system',
+    'phase_completed': 'phase',
+    'phase_start': 'phase',
+    'iteration_started': 'decision',
+    'iteration_completed': 'decision',
+    'decision_recorded': 'decision',
+    'commit_detected': 'commit',
+  };
+  return map[(type || '').toLowerCase()] || 'default';
 }
 
 /**
@@ -712,23 +720,6 @@ function toast(msg, kind) {
   setTimeout(function() { el.remove(); }, 3500);
 }
 
-/**
- * Infiere la lista de agentes a partir de los eventos registrados.
- * Se llama cuando el servidor no incluye agentes en el payload init.
- *
- * @returns {Array<{name:string, phases:string[], lastSeen:string}>}
- */
-function buildAgentsFromEvents() {
-  var map = {};
-  state.events.forEach(function(e) {
-    var name = e.agent || e.agent_name;
-    if (!name) return;
-    if (!map[name]) map[name] = { name: name, phases: [], lastSeen: e.created_at };
-    if (e.phase && map[name].phases.indexOf(e.phase) === -1) map[name].phases.push(e.phase);
-    if (e.created_at > map[name].lastSeen) map[name].lastSeen = e.created_at;
-  });
-  return Object.values(map);
-}
 
 /* ----------------------------------------------------------
    3. WEBSOCKET CON RECONEXION EXPONENCIAL
@@ -836,11 +827,6 @@ function handleMessage(msg) {
     state.events    = p.events     || [];
     state.pinned    = p.pinned     || [];
     state.commits   = p.commits    || [];
-    // Agentes registrados: vienen del servidor, no hardcodeados
-    if (p.registered_agents && p.registered_agents.length) {
-      KNOWN_AGENTS = p.registered_agents;
-    }
-    state.agents    = p.agents     || buildAgentsFromEvents();
     updateHeaderInfo();
     renderCurrentView();
     updateBadges();
@@ -851,9 +837,16 @@ function handleMessage(msg) {
     if (u.decisions && u.decisions.length) state.decisions = u.decisions.concat(state.decisions);
     if (u.commits   && u.commits.length)   state.commits   = u.commits.concat(state.commits);
     if (u.pinned    && u.pinned.length)    state.pinned    = u.pinned.concat(state.pinned);
-    state.agents = buildAgentsFromEvents();
     renderCurrentView();
     updateBadges();
+
+  } else if (msg.type === 'content') {
+    // Respuesta a get_content: insertar en el contenedor del evento
+    var contentWrap = document.getElementById('event-content-' + msg.event_id);
+    if (contentWrap) {
+      var pre = contentWrap.querySelector('pre');
+      pre.textContent = msg.content || '(sin contenido)';
+    }
 
   } else if (msg.type === 'action_ack') {
     var status = (msg.payload || {}).status;
@@ -872,7 +865,6 @@ function renderCurrentView() {
     case 'dashboard': renderDashboard(); break;
     case 'timeline':  renderTimeline();  break;
     case 'decisions': renderDecisions(); break;
-    case 'agents':    renderAgents();    break;
     case 'memory':    renderMemory();    break;
     case 'commits':   renderCommits();   break;
     case 'pinned':    renderPinned();    break;
@@ -967,42 +959,6 @@ function renderDashboard() {
     });
   }
 
-  // Agente activo
-  var agentWrap = document.getElementById('dash-agent-wrap');
-  var activeAgent = iter ? (iter.active_agent || null) : null;
-  agentWrap.textContent = '';
-  if (activeAgent) {
-    var card = document.createElement('div');
-    card.className = 'agent-active-card';
-    var avatar = document.createElement('div');
-    avatar.className = 'agent-avatar';
-    avatar.textContent = activeAgent[0] ? activeAgent[0].toUpperCase() : 'A';
-    var info = document.createElement('div');
-    var agName = document.createElement('div');
-    agName.className = 'agent-name';
-    agName.textContent = activeAgent;
-    var agRole = document.createElement('div');
-    agRole.className = 'agent-role';
-    agRole.textContent = 'Ejecutando';
-    info.appendChild(agName);
-    info.appendChild(agRole);
-    var dot = document.createElement('div');
-    dot.className = 'agent-status-dot';
-    card.appendChild(avatar);
-    card.appendChild(info);
-    card.appendChild(dot);
-    agentWrap.appendChild(card);
-  } else {
-    var empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.style.padding = '20px 0';
-    var emptyTitle = document.createElement('div');
-    emptyTitle.className = 'empty-state-title';
-    emptyTitle.textContent = 'Sin agente activo';
-    empty.appendChild(emptyTitle);
-    agentWrap.appendChild(empty);
-  }
-
   // Metricas
   document.getElementById('metric-decisions').textContent = state.decisions.length;
   document.getElementById('metric-commits').textContent   = state.commits.length;
@@ -1057,7 +1013,13 @@ function renderTimeline() {
   if (filter !== 'all') {
     events = events.filter(function(e) {
       var t = (e.event_type || e.type || '').toLowerCase();
-      // Los filtros son prefijos: "decision" matchea "decision_recorded", etc.
+      // El filtro "system" agrupa tipos que no siguen un prefijo comun
+      if (filter === 'system') {
+        return t === 'session_ended' || t === 'context_compacted' ||
+               t === 'phase_completed' || t === 'iteration_started' ||
+               t === 'iteration_completed' || t === 'phase_start' ||
+               t === 'session_started';
+      }
       return t.indexOf(filter) === 0;
     });
   }
@@ -1096,57 +1058,39 @@ function renderTimeline() {
     // Fase: del campo directo o del payload
     var phase = e.phase || payload.phase || '';
 
-    // Generar resumen legible segun tipo de evento
-    var summary = '';
-    var details = [];
-    switch (type) {
-      case 'phase_start':
-        summary = 'Inicio de fase: ' + (payload.phase || '?');
-        if (payload.agents && payload.agents.length) {
-          details.push('Agentes: ' + payload.agents.join(', '));
-        }
-        break;
-      case 'agent_activated':
-        summary = 'Agente activado: ' + (payload.agent || '?');
-        if (payload.phase) details.push('Fase: ' + payload.phase);
-        break;
-      case 'agent_deactivated':
-        summary = 'Agente desactivado: ' + (payload.agent || '?');
-        break;
-      case 'decision_recorded':
-        summary = 'Decision registrada: ' + (payload.title || '?');
-        if (payload.impact) details.push('Impacto: ' + payload.impact);
-        break;
-      case 'gate_passed':
-        summary = 'Gate superada: ' + (payload.gate || '?');
-        if (payload.phase) details.push('Fase: ' + payload.phase);
-        break;
-      case 'gate_failed':
-        summary = 'Gate fallida: ' + (payload.gate || '?');
-        if (payload.reason) details.push('Razon: ' + payload.reason);
-        break;
-      case 'commit_detected':
-        summary = 'Commit: ' + (payload.message || payload.sha || '?');
-        if (payload.sha) details.push('SHA: ' + payload.sha);
-        if (payload.files_changed) details.push('Ficheros: ' + payload.files_changed);
-        break;
-      case 'iteration_completed':
-        summary = 'Iteracion completada';
-        if (payload.comando) details.push('Comando: ' + payload.comando);
-        if (payload.total_fases) details.push('Fases completadas: ' + payload.total_fases);
-        break;
-      case 'error':
-        summary = 'Error: ' + (payload.message || payload.error || '?');
-        break;
-      default:
-        summary = e.summary || e.description || e.message || JSON.stringify(payload);
-        break;
+    // El summary viene directamente del hook activity-capture.py.
+    // Si existe, usarlo como texto principal. Si no, fallback al switch.
+    var summary = e.summary || '';
+    if (!summary) {
+      switch (type) {
+        case 'phase_start':
+          summary = 'Inicio de fase: ' + (payload.phase || '?');
+          break;
+        case 'phase_completed':
+          summary = 'Fase completada: ' + (payload.fase || '?');
+          break;
+        case 'iteration_started':
+          summary = 'Iteracion iniciada: ' + (payload.comando || '?');
+          break;
+        case 'iteration_completed':
+          summary = 'Iteracion completada';
+          break;
+        case 'decision_recorded':
+          summary = 'Decision: ' + (payload.title || '?');
+          break;
+        case 'commit_detected':
+          summary = 'Commit: ' + (payload.message || payload.sha || '?');
+          break;
+        default:
+          summary = type.replace(/_/g, ' ');
+          break;
+      }
     }
 
-    var detailsHtml = details.length
-      ? '<div class="event-details" style="margin-top:4px;color:var(--text-muted);font-size:0.82rem;">' +
-          details.map(function(d) { return '<span style="margin-right:12px;">' + esc(d) + '</span>'; }).join('') +
-        '</div>'
+    // Boton de expandir contenido (solo si el evento puede tener content)
+    var hasContent = ['file_written', 'file_edited', 'command_executed', 'user_prompt'].indexOf(type) !== -1;
+    var expandBtn = hasContent
+      ? '<button class="btn-icon" title="Ver contenido completo" onclick="event.stopPropagation();loadEventContent(' + (parseInt(id,10)||0) + ', this)" style="margin-left:4px;"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="4,6 8,10 12,6"/></svg></button>'
       : '';
 
     return '<div class="timeline-event">' +
@@ -1157,11 +1101,14 @@ function renderTimeline() {
           (phase ? '<span class="event-phase-badge">' + esc(phase) + '</span>' : '') +
           '<span class="event-actions">' +
             '<button class="btn-icon" title="Marcar elemento" onclick="pinEvent(' + (parseInt(id,10)||0) + ')"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 1l6 0 1 5-3 2v4l-2 3-2-3V8L2 6z"/></svg></button>' +
+            expandBtn +
           '</span>' +
         '</div>' +
         '<div class="event-summary">' + esc(summary) + '</div>' +
-        detailsHtml +
         '<div class="event-ts" style="margin-top:6px;">' + ts + '</div>' +
+        '<div id="event-content-' + (parseInt(id,10)||0) + '" class="event-content-wrap" style="display:none;margin-top:8px;">' +
+          '<pre class="code-block" style="max-height:400px;overflow:auto;"></pre>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -1253,73 +1200,6 @@ function toggleDecisionRow(id) {
   if (el) el.classList.toggle('open');
 }
 
-/* -- Vista 4: Agentes -- */
-
-/**
- * Catalogo de agentes del sistema Alfred Dev.
- * Se inicializa vacio y se puebla desde el servidor WebSocket al recibir
- * el mensaje init. La fuente de verdad es el servidor, no el cliente.
- */
-var KNOWN_AGENTS = [];
-
-/**
- * Renderiza la cuadricula de tarjetas de agentes.
- * Combina los agentes conocidos con los inferidos de los eventos.
- */
-function renderAgents() {
-  var grid = document.getElementById('agents-grid');
-  var activeAgentName = state.iteration ? state.iteration.active_agent : null;
-
-  var allAgents = KNOWN_AGENTS.slice();
-  state.agents.forEach(function(a) {
-    var found = KNOWN_AGENTS.find(function(k) { return k.name.toLowerCase() === a.name.toLowerCase(); });
-    if (!found) allAgents.push({ id: a.name.toLowerCase(), name: a.name, icon: a.name[0].toUpperCase(), role: 'Agente del sistema', optional: true });
-  });
-
-  if (allAgents.length === 0) {
-    grid.textContent = '';
-    var es = document.createElement('div');
-    es.className = 'empty-state';
-    var est = document.createElement('div');
-    est.className = 'empty-state-title';
-    est.textContent = state.connected ? 'Sin agentes registrados' : 'Conectando con el servidor...';
-    es.appendChild(est);
-    grid.appendChild(es);
-    return;
-  }
-
-  grid.innerHTML = allAgents.map(function(agent) {
-    var isActive = activeAgentName && activeAgentName.toLowerCase() === agent.id;
-    var dynamicAgent = state.agents.find(function(a) { return a.name.toLowerCase() === agent.id; });
-    var phases = dynamicAgent ? dynamicAgent.phases : [];
-    var statusText = isActive ? 'Activo ahora' : (phases.length ? phases.length + ' fases' : 'Sin actividad');
-    var phaseBadges = phases.slice(0, 4).map(function(p) {
-      return '<span class="badge badge-gray" style="font-size:10px;">' + esc(p) + '</span>';
-    }).join(' ');
-
-    return '<div class="agent-card' + (isActive ? ' active-agent' : '') + '">' +
-      '<div class="agent-card-header">' +
-        '<div class="agent-card-avatar">' + esc(agent.icon) + '</div>' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div class="agent-card-name">' + esc(agent.name) + '</div>' +
-          '<div class="agent-card-status">' + esc(statusText) + '</div>' +
-        '</div>' +
-        (isActive ? '<div class="agent-status-dot"></div>' : '') +
-        (agent.optional ? '<label class="toggle agent-card-toggle">' +
-          '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="toggleAgent(\'' + esc(agent.id) + '\', this.checked)">' +
-          '<div class="toggle-slider"></div>' +
-        '</label>' : '') +
-      '</div>' +
-      '<div>' +
-        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">' + esc(agent.role) +
-          ' · ' + (agent.optional ? '<span style="color:var(--text-dim)">Opcional</span>' : '<span style="color:var(--text-muted)">Requerido</span>') +
-        '</div>' +
-        (phaseBadges ? '<div class="agent-phases">' + phaseBadges + '</div>' : '<div style="font-size:11px;color:var(--text-dim);">Sin actividad registrada</div>') +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
 /* -- Vista 5: Memoria -- */
 
 /**
@@ -1355,7 +1235,7 @@ function renderMemory() {
     return;
   }
 
-  var largeCols = ['context','alternatives','rationale','reasoning','summary','description','metadata','payload'];
+  var largeCols = ['context','alternatives','rationale','reasoning','description','metadata','payload','content'];
   var columns = Object.keys(data[0]);
   var tableCols = columns.filter(function(c) { return largeCols.indexOf(c) === -1; }).slice(0, 8);
 
@@ -1525,6 +1405,42 @@ function renderPinned() {
 ---------------------------------------------------------- */
 
 /**
+ * Carga el contenido completo de un evento bajo demanda via WebSocket.
+ * El contenido no se envia en init/update porque puede ser muy grande;
+ * se solicita individualmente al expandir un evento en el timeline.
+ *
+ * @param {number} eventId - ID del evento.
+ * @param {HTMLElement} btn - Boton que disparo la carga.
+ */
+function loadEventContent(eventId, btn) {
+  var wrap = document.getElementById('event-content-' + eventId);
+  if (!wrap) return;
+
+  // Toggle: si ya esta visible, ocultar
+  if (wrap.style.display !== 'none') {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  // Si ya tiene contenido cargado, mostrar sin volver a pedir
+  var pre = wrap.querySelector('pre');
+  if (pre.textContent) {
+    wrap.style.display = 'block';
+    return;
+  }
+
+  // Pedir al servidor
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    toast('Sin conexion con el servidor', 'error');
+    return;
+  }
+
+  ws.send(JSON.stringify({ action: 'get_content', event_id: eventId }));
+  wrap.style.display = 'block';
+  pre.textContent = 'Cargando...';
+}
+
+/**
  * Marca un evento del timeline como elemento importante.
  * @param {number} eventId - ID del evento en la base de datos.
  */
@@ -1562,15 +1478,6 @@ function unpinItem(pinId) {
   state.pinned = state.pinned.filter(function(p) { return p.id !== pinId; });
   renderPinned();
   updateBadges();
-}
-
-/**
- * Activa o desactiva un agente opcional del sistema.
- * @param {string} agentId - Identificador del agente.
- * @param {boolean} active - true para activar, false para desactivar.
- */
-function toggleAgent(agentId, active) {
-  sendAction(active ? 'activate_agent' : 'deactivate_agent', { agent_id: agentId });
 }
 
 /**
