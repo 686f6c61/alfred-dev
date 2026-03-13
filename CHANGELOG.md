@@ -7,6 +7,21 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.9] - 2026-03-13
+
+### Added
+
+- **Agente opcional i18n-specialist**: nuevo agente para proyectos multiidioma con deteccion automatica de señales i18n (directorios `i18n/`, `locales/`, `translations/`, ficheros de configuracion i18n). Se integra en las fases de desarrollo y calidad en paralelo con los agentes de nucleo.
+- **Deteccion automatica de i18n**: nueva funcion `_has_i18n_signals()` en `config_loader.py` que analiza el proyecto y sugiere `i18n-specialist` cuando detecta estructura de internacionalizacion.
+
+### Changed
+
+- **Seleccion de agentes opcionales rediseñada**: los 8 agentes opcionales se presentan en 2 preguntas `multiSelect` agrupadas por tema (técnicos + contenido/UX) usando `AskUserQuestion`, compatible con el limite de 4 opciones por pregunta. Actualizado en `_composicion.md`, `config.md` y documentacion.
+- **Product Owner con preguntas secuenciales**: la fase de producto formula las preguntas **una a una** (una por turno, esperar respuesta) en vez de lanzar el bloque completo, siguiendo el patron de refinamiento progresivo.
+- **8 agentes opcionales**: añadido `i18n-specialist` al catalogo, `DEFAULT_CONFIG`, `_KNOWN_OPTIONAL_AGENTS`, `OPTIONAL_INTEGRATIONS`, tablas de `feature.md`, `help.md`, `config.md` y `docs/configuration.md`. Tests actualizados.
+
+---
+
 ## [0.3.8] - 2026-03-13
 
 ### Added
@@ -314,6 +329,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.3.9]: https://github.com/686f6c61/alfred-dev/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/686f6c61/alfred-dev/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/686f6c61/alfred-dev/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/686f6c61/alfred-dev/compare/v0.3.5...v0.3.6

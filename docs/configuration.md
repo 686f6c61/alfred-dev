@@ -209,24 +209,26 @@ Activa o desactiva los agentes opcionales del plugin. Cada agente es un especial
 | Clave                    | Rol del agente                              | Valor por defecto |
 |--------------------------|---------------------------------------------|-------------------|
 | `data-engineer`          | Ingeniero de datos (esquemas, migraciones)  | `false`           |
-| `ux-reviewer`            | Revisor de UX (accesibilidad, flujos)       | `false`           |
 | `performance-engineer`   | Ingeniero de rendimiento (profiling)        | `false`           |
 | `github-manager`         | Gestor de GitHub (PRs, issues, releases)    | `false`           |
+| `librarian`              | Bibliotecario (memoria persistente)         | `false`           |
+| `ux-reviewer`            | Revisor de UX (accesibilidad, flujos)       | `false`           |
 | `seo-specialist`         | Especialista SEO (meta tags, Core Vitals)   | `false`           |
 | `copywriter`             | Copywriter (CTAs, tono, textos publicos)    | `false`           |
-| `librarian`              | Bibliotecario (memoria persistente)         | `false`           |
+| `i18n-specialist`        | Especialista i18n (traducciones, locales)   | `false`           |
 
 Ejemplo:
 
 ```yaml
 agentes_opcionales:
   data-engineer: true
-  ux-reviewer: false
   performance-engineer: false
   github-manager: true
+  librarian: true
+  ux-reviewer: false
   seo-specialist: false
   copywriter: false
-  librarian: true
+  i18n-specialist: false
 ```
 
 ### Sección `memoria`
@@ -347,6 +349,8 @@ La función `suggest_optional_agents()` en `config_loader.py` analiza el proyect
 | `copywriter`           | Se detectan ficheros HTML publicos (misma condicion que SEO)                                 | Los textos publicos necesitan cuidar el tono, los CTAs y la coherencia.       |
 | `github-manager`       | El proyecto tiene un remote Git configurado (se lee `.git/config`)                          | Si hay remote, hay PRs, issues y releases que gestionar.                      |
 | `performance-engineer` | El proyecto tiene mas de 50 ficheros de código fuente (hasta 3 niveles de profundidad)      | Los proyectos grandes se benefician de profiling y optimizacion.              |
+| `librarian`            | La memoria persistente esta habilitada en la configuración local                            | Si hay memoria activa, el Bibliotecario consulta decisiones e historial.      |
+| `i18n-specialist`      | Se detectan directorios o ficheros de i18n (`i18n/`, `locales/`, `translations/`, etc.)     | Si hay señales de internacionalización, revisar claves, formatos y cadenas.   |
 
 El recuento de ficheros fuente ignora directorios de dependencias y artefactos (`node_modules`, `.git`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `venv`, `vendor`, `target`, `.cargo`) para no inflar artificialmente la cuenta.
 
@@ -384,9 +388,9 @@ La composicion dinámica se ejecuta al invocar cualquier flujo y opera en tres c
    --> preseleccion razonada, no por keywords
 
 3. PRESENTACION + EJECUCIÓN
-   Todos los agentes opcionales se muestran como checkboxes.
-   Los sugeridos van preseleccionados. El usuario puede añadir
-   o quitar cualquiera.
+   Los agentes se presentan con AskUserQuestion en 2 preguntas
+   multiSelect de 4 opciones: técnicos y contenido/UX.
+   Los recomendados llevan «(Recomendado)» en el label.
    --> equipo_sesion efimero
 ```
 
@@ -404,6 +408,7 @@ La función `suggest_optional_agents()` en `config_loader.py` analiza el proyect
 | Remote Git | github-manager | `.git/config` contiene `[remote "..."]` |
 | Proyecto grande | performance-engineer | Mas de 50 ficheros fuente |
 | Memoria activa | librarian | `.claude/alfred-dev.local.md` con `memoria: enabled: true` |
+| Ficheros i18n | i18n-specialist | Directorios `i18n/`, `locales/`, `translations/`, etc. |
 
 ### Capa semántica: Alfred como razonador
 
@@ -420,26 +425,20 @@ Ejemplos de razonamiento semántico:
 
 ### Capa de presentacion: todos los agentes visibles
 
-Los comandos presentan al usuario **todos** los agentes opcionales como checkboxes. Los que Alfred considera relevantes van preseleccionados con una razon. Los demas aparecen disponibles sin seleccionar, para que el usuario pueda añadir cualquiera que Alfred no haya detectado.
+Los comandos presentan al usuario **todos** los agentes opcionales mediante `AskUserQuestion` con 2 preguntas `multiSelect` de 4 opciones cada una (limite de la herramienta). Los que Alfred considera relevantes llevan «(Recomendado)» al final del label con una razon contextual en la descripcion. Los demas aparecen con una descripcion breve de su especialidad, para que el usuario pueda activar cualquiera que Alfred no haya detectado.
 
 ```
-Equipo de nucleo (siempre activos):
-  Alfred, Product Owner, Arquitecto, Senior Dev,
-  Security Officer, QA Engineer, Tech Writer, DevOps
+Pregunta 1 -- Técnicos (multiSelect):
+  Data Engineer     -- "El proyecto usa Prisma y la tarea implica migración (Recomendado)"
+  Performance Eng.  -- "Optimización de rendimiento, profiling y benchmarks"
+  GitHub Manager    -- "Remote git configurado (Recomendado)"
+  Librarian         -- "Memoria persistente, historial de decisiones"
 
-Agentes opcionales:
-  [x] Data Engineer  - proyecto con Prisma, la tarea implica migración
-  [x] GitHub Manager - remote git configurado
-  [ ] UX Reviewer -- revision de accesibilidad y usabilidad
-  [ ] Performance Engineer -- profiling y optimizacion
-  [ ] SEO Specialist -- posicionamiento web
-  [ ] Copywriter -- textos publicos
-  [ ] Bibliotecario -- memoria y decisiones historicas
-
-Infraestructura:
-  [x] Memoria persistente
-
-Confirmas este equipo?
+Pregunta 2 -- Contenido y UX (multiSelect):
+  UX Reviewer       -- "Revisión de accesibilidad, usabilidad y flujos"
+  SEO Specialist    -- "Posicionamiento web, meta tags, Core Web Vitals"
+  Copywriter        -- "Textos publicos, CTAs, tono de comunicación"
+  i18n Specialist   -- "Internacionalización, claves i18n, formatos por locale"
 ```
 
 ### Ejecución: equipo efimero en el orquestador
@@ -450,12 +449,13 @@ La seleccion del usuario se traduce en un diccionario `equipo_sesion` que se pas
 equipo_sesion = {
     "opcionales_activos": {
         "data-engineer": True,
-        "ux-reviewer": False,
         "performance-engineer": False,
         "github-manager": True,
+        "librarian": True,
+        "ux-reviewer": False,
         "seo-specialist": False,
         "copywriter": False,
-        "librarian": True,
+        "i18n-specialist": False,
     },
     "infra": {
         "memoria": True,
@@ -592,12 +592,13 @@ proyecto:
 
 agentes_opcionales:
   data-engineer: true
-  ux-reviewer: false
   performance-engineer: false
   github-manager: true
+  librarian: true
+  ux-reviewer: false
   seo-specialist: false
   copywriter: false
-  librarian: true
+  i18n-specialist: false
 
 memoria:
   enabled: true

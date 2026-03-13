@@ -75,8 +75,9 @@ class TestOptionalAgents(unittest.TestCase):
         self.assertIn("agentes_opcionales", DEFAULT_CONFIG)
         agents = DEFAULT_CONFIG["agentes_opcionales"]
         expected = {
-            "data-engineer", "ux-reviewer", "performance-engineer",
-            "github-manager", "seo-specialist", "copywriter", "librarian",
+            "data-engineer", "performance-engineer", "github-manager",
+            "librarian", "ux-reviewer", "seo-specialist", "copywriter",
+            "i18n-specialist",
         }
         self.assertEqual(set(agents.keys()), expected)
 

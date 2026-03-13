@@ -13,7 +13,7 @@ El proceso es iterativo: se genera un borrador que el usuario debe revisar y apr
 
 ## Proceso
 
-1. **Recopilar contexto inicial.** Preguntar al usuario por el problema que quiere resolver, el público objetivo y cualquier restricción conocida. Si el usuario ya ha proporcionado esta información, no repetir preguntas.
+1. **Recopilar contexto inicial.** Formular preguntas **una a una** (una por turno, esperar respuesta antes de la siguiente) sobre el problema que quiere resolver, el público objetivo y restricciones conocidas. Usar `AskUserQuestion` con opciones cuando la pregunta tenga respuestas predefinidas; texto directo cuando sea abierta. Si el usuario ya ha proporcionado información suficiente, saltar las preguntas cuya respuesta ya se tiene.
 
 2. **Investigar el contexto del proyecto.** Revisar documentación existente en `docs/`, issues abiertos, y cualquier PRD anterior para evitar duplicidades y mantener coherencia con decisiones previas.
 

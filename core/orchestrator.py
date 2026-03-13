@@ -48,12 +48,13 @@ _KNOWN_GATE_TYPES = {
 
 _KNOWN_OPTIONAL_AGENTS = frozenset({
     "data-engineer",
-    "ux-reviewer",
     "performance-engineer",
     "github-manager",
+    "librarian",
+    "ux-reviewer",
     "seo-specialist",
     "copywriter",
-    "librarian",
+    "i18n-specialist",
 })
 
 # --- Definición de flujos ---------------------------------------------------
@@ -307,6 +308,10 @@ OPTIONAL_INTEGRATIONS: Dict[str, Dict[str, Any]] = {
     "librarian": {
         "fases": [],
         "posicion": "none",
+    },
+    "i18n-specialist": {
+        "fases": ["desarrollo", "calidad"],
+        "posicion": "paralelo",
     },
 }
 

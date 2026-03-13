@@ -77,12 +77,13 @@ DEFAULT_CONFIG = {
     # descubrimiento contextual al iniciar el plugin en un proyecto nuevo.
     "agentes_opcionales": {
         "data-engineer": False,
-        "ux-reviewer": False,
         "performance-engineer": False,
         "github-manager": False,
+        "librarian": False,
+        "ux-reviewer": False,
         "seo-specialist": False,
         "copywriter": False,
-        "librarian": False,
+        "i18n-specialist": False,
     },
     "notas": "",
 }
@@ -799,6 +800,44 @@ def _is_memory_enabled(project_dir):
     return bool(re.search(pattern, content))
 
 
+def _has_i18n_signals(project_dir):
+    """Detecta señales de internacionalización en el proyecto.
+
+    Busca directorios o ficheros típicos de i18n: carpetas ``i18n``,
+    ``locales``, ``translations``, ficheros ``*.po``, ``*.xliff`` o
+    ficheros de configuración de i18n como ``next-i18next.config.*``,
+    ``vue-i18n``, etc.
+
+    Args:
+        project_dir: ruta al directorio raíz del proyecto.
+
+    Returns:
+        True si se detectan señales de internacionalización.
+    """
+    # Directorios típicos de i18n
+    i18n_dirs = ("i18n", "locales", "translations", "lang", "langs")
+    for d in i18n_dirs:
+        if os.path.isdir(os.path.join(project_dir, d)):
+            return True
+        if os.path.isdir(os.path.join(project_dir, "src", d)):
+            return True
+
+    # Ficheros de configuración de i18n
+    i18n_files = (
+        "next-i18next.config.js",
+        "next-i18next.config.mjs",
+        "i18n.config.ts",
+        "i18n.config.js",
+        ".i18nrc",
+        ".i18nrc.json",
+    )
+    for f in i18n_files:
+        if os.path.isfile(os.path.join(project_dir, f)):
+            return True
+
+    return False
+
+
 def suggest_optional_agents(project_dir, current_config=None):
     """Analiza el proyecto y sugiere agentes opcionales relevantes.
 
@@ -878,6 +917,13 @@ def suggest_optional_agents(project_dir, current_config=None):
         suggestions.append((
             "librarian",
             "Memoria persistente activa: consulta decisiones, historial y cronología del proyecto"
+        ))
+
+    # Señales de i18n → i18n-specialist
+    if not active.get("i18n-specialist") and _has_i18n_signals(project_dir):
+        suggestions.append((
+            "i18n-specialist",
+            "Ficheros de internacionalización detectados: revisa claves, formatos y cadenas hardcodeadas"
         ))
 
     return suggestions

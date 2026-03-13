@@ -120,12 +120,13 @@ class TestAdvancePhase(unittest.TestCase):
 VALID_EQUIPO_SESION = {
     "opcionales_activos": {
         "data-engineer": True,
-        "ux-reviewer": False,
         "performance-engineer": False,
         "github-manager": True,
+        "librarian": False,
+        "ux-reviewer": False,
         "seo-specialist": False,
         "copywriter": False,
-        "librarian": False,
+        "i18n-specialist": False,
     },
     "infra": {
         "memoria": True,

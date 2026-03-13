@@ -1213,6 +1213,19 @@ personalidad:
 
   changelog: [
     {
+      version: '0.3.9',
+      date: '2026-03-13',
+      added: [
+        'Agente opcional i18n-specialist para proyectos multiidioma: deteccion automatica de señales i18n (directorios i18n/, locales/, translations/), integracion en fases de desarrollo y calidad.',
+        'Deteccion automatica de i18n en suggest_optional_agents(): analiza directorios y ficheros de configuracion i18n del proyecto.',
+      ],
+      changed: [
+        'Seleccion de agentes opcionales rediseñada: 2 preguntas multiSelect agrupadas por tema (técnicos + contenido/UX) en vez de una lista larga, compatible con el limite de 4 opciones de AskUserQuestion.',
+        'Product Owner reformulado: las preguntas de la fase de producto se hacen una a una (una por turno) en vez de en bloque, siguiendo el patron de refinamiento progresivo de superpowers:brainstorming.',
+        '8 agentes opcionales (antes 7): añadido i18n-specialist al catalogo, config, orquestador, documentacion y tests.',
+      ],
+    },
+    {
       version: '0.3.8',
       date: '2026-03-13',
       added: [
@@ -1453,7 +1466,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.8',
+    version: 'v0.3.9',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
