@@ -7,6 +7,18 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.1] - 2026-03-13
+
+### Added
+
+- **Configuracion inicial automatica (onboarding)**: cuando Alfred se usa por primera vez en un proyecto (no hay configuracion de autonomia en `alfred-dev.local.md`), pregunta automaticamente si el usuario quiere modo interactivo o autopilot. La respuesta se guarda en el fichero de configuracion local y el flujo continua sin necesidad de reiniciar ni ejecutar comandos adicionales. Implementado en `_composicion.md` (Paso 0) para que aplique a todos los flujos (feature, fix, ship, spike, audit).
+
+### Fixed
+
+- **Modo autopilot desconectado de los comandos**: las instrucciones de los comandos (`feature.md`, `fix.md`, `ship.md`) no mencionaban el modo autopilot, por lo que Claude nunca lo activaba aunque el backend (`orchestrator.py`) lo soportase. Añadida seccion "Modo autopilot" a los tres comandos y "Paso 2b" a `_composicion.md` para que Claude compruebe el estado de autopilot y salte las gates de usuario cuando proceda.
+
+---
+
 ## [0.4.0] - 2026-03-13
 
 ### Added
@@ -14,9 +26,8 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 - **Verificacion de evidencia (evidence guard)**: nuevo hook PostToolUse que registra cada ejecucion de tests como evidencia verificable. Cuando un agente afirma que los tests pasan, el sistema puede comprobar que efectivamente se ejecutaron en los ultimos 10 minutos. Fichero de evidencia en `.claude/alfred-evidence.json` con rotacion a 50 registros.
 - **Informe de sesion al cierre**: al finalizar una sesion de trabajo completada, se genera automaticamente un informe en `docs/alfred-reports/` con resumen de fases completadas, evidencia de tests, equipo de sesion y artefactos generados. Integrado en el stop-hook existente.
 - **Loop iterativo dentro de fases**: los agentes pueden iterar dentro de una fase (hasta 5 intentos por defecto) hasta superar la gate correspondiente. Esto habilita ciclos TDD naturales, pasadas de QA repetidas y correccion iterativa sin intervencion manual. Al agotar las iteraciones, se escala al usuario.
-- **Aislamiento con git worktrees**: nuevo modulo `core/worktree.py` que crea worktrees aislados con ramas `alfred/<tipo>/<nombre>` para trabajo seguro. Si algo sale mal, se descarta el worktree sin afectar a la rama principal. Incluye funciones de creacion, fusion, limpieza y listado.
 - **Modo autopilot**: `run_flow_autopilot()` ejecuta un flujo completo sin interrupcion humana. Las gates de tipo «usuario» se aprueban automaticamente; las gates automaticas y de seguridad se evaluan normalmente. Solo se detiene si una gate automatica o de seguridad falla.
-- **46 tests nuevos**: cobertura completa de evidence guard (deteccion de runners, resultados, almacenamiento), informe de sesion (secciones, duracion, generacion), worktrees (creacion, merge, limpieza), loop iterativo (retry, escalado, reset) y autopilot (gates automaticas, seguridad, usuario).
+- **Tests nuevos**: cobertura de evidence guard (deteccion de runners, resultados, almacenamiento), informe de sesion (secciones, duracion, generacion), loop iterativo (retry, escalado, reset) y autopilot (gates automaticas, seguridad, usuario).
 
 ### Changed
 
@@ -348,6 +359,8 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.4.1]: https://github.com/686f6c61/alfred-dev/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/686f6c61/alfred-dev/compare/v0.3.9...v0.4.0
 [0.3.9]: https://github.com/686f6c61/alfred-dev/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/686f6c61/alfred-dev/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/686f6c61/alfred-dev/compare/v0.3.6...v0.3.7

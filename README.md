@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables, verificacion de evidencia automatica, modo autopilot con aislamiento en worktrees y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -68,15 +68,23 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred fix` con una descripcion del bug o `/alfred spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.0
+## Novedades en v0.4.1
 
-La v0.4.0 incorpora cinco capacidades nuevas orientadas a fiabilidad, autonomia controlada y trazabilidad de resultados:
+La v0.4.1 mejora la experiencia de primer uso y corrige la conexion entre el modo autopilot y los comandos:
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Configuracion inicial automatica** | Al usar Alfred por primera vez en un proyecto, pregunta si se quiere modo interactivo o autopilot. Sin pasos manuales, sin reinicios. |
+| **Autopilot conectado a los comandos** | Los comandos `feature`, `fix` y `ship` ahora comprueban el estado de autopilot y saltan las gates de usuario cuando esta activo. |
+
+### Novedades de v0.4.0
+
+La v0.4.0 incorporo cinco capacidades orientadas a fiabilidad, autonomia controlada y trazabilidad de resultados:
 
 | Novedad | Descripcion |
 |---------|-------------|
 | **Verificacion de evidencia** | El hook `evidence-guard.py` intercepta cada ejecucion de tests y registra si hubo exitos o fallos reales. Cuando un agente afirma que «los tests pasan», el orquestador verifica la evidencia registrada antes de aprobar la gate. Sin salida real de tests, no hay aprobacion. |
 | **Loop iterativo en fases** | Si una fase no supera su quality gate, el orquestador puede reintentar hasta 5 veces (`should_retry_phase`) antes de escalar al usuario. Cada reintento incluye el feedback del fallo anterior para que el agente corrija su enfoque. |
-| **Aislamiento con git worktrees** | El modulo `worktree.py` crea ramas aisladas (`alfred/<tipo>/<nombre>`) en worktrees temporales para que el trabajo de Alfred no interfiera con la rama principal. El ciclo completo (crear, trabajar, merge, limpieza) esta gestionado por el orquestador. |
 | **Modo autopilot** | `run_flow_autopilot()` permite ejecutar flujos completos con aprobacion automatica de las gates de usuario, manteniendo las gates de seguridad y calidad intactas. El nivel de autonomia se configura por fase en `/alfred config`. |
 | **Informes de sesion** | Al finalizar cada sesion, `session_report.py` genera un informe Markdown en `docs/alfred-reports/` con las fases completadas, duraciones, equipo de agentes, evidencia recopilada y artefactos producidos. |
 
@@ -193,9 +201,9 @@ Plantillas estandarizadas que los agentes usan para generar artefactos con estru
 - `changelog-entry.md` -- Entrada de changelog (Keep a Changelog)
 - `release-notes.md` -- Notas de release con resumen ejecutivo
 
-### Core (6 modulos)
+### Core (5 modulos)
 
-El nucleo del plugin esta implementado en Python con tests unitarios (530 tests):
+El nucleo del plugin esta implementado en Python con tests unitarios:
 
 | Modulo | Funcion |
 |--------|---------|
@@ -203,7 +211,6 @@ El nucleo del plugin esta implementado en Python con tests unitarios (530 tests)
 | `personality.py` | Motor de personalidad: frases, tono, anuncios, formato de veredicto |
 | `config_loader.py` | Carga de configuracion, deteccion de stack, preferencias de proyecto |
 | `memory.py` | Base de datos SQLite de memoria persistente: decisiones, commits, iteraciones, eventos |
-| `worktree.py` | Gestion de git worktrees: creacion, merge y limpieza de ramas aisladas |
 | `session_report.py` | Generacion de informes de sesion en Markdown con fases, evidencia y artefactos |
 
 ```bash
@@ -287,7 +294,7 @@ alfred-dev/
   skills/                 # 60 skills en 13 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos
-  core/                   # Motor de orquestacion, memoria, worktrees e informes (Python)
+  core/                   # Motor de orquestacion, memoria e informes (Python)
   mcp/                    # Servidor MCP stdio (memoria persistente)
   templates/              # 7 plantillas de artefactos
   tests/                  # Tests unitarios (pytest)

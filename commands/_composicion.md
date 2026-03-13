@@ -4,6 +4,67 @@ Este fichero define el protocolo compartido para componer el equipo de cada sesi
 Lo usan todos los comandos de Alfred (feature, fix, spike, audit, ship). Cualquier
 cambio aquí se refleja en todos los flujos.
 
+## Paso 0 -- Configuración inicial del proyecto
+
+Antes de cualquier otra cosa, comprueba si el proyecto ya tiene configurado el modo
+de autonomía. Lee `.claude/alfred-dev.local.md` y busca la sección `autonomia:` en
+el frontmatter YAML.
+
+**Si la sección `autonomia:` NO existe** (primera vez que se usa Alfred en este proyecto):
+
+1. Presenta al usuario las dos opciones con `AskUserQuestion`:
+
+```
+AskUserQuestion({
+  questions: [
+    {
+      question: "¿Cómo quieres trabajar con Alfred en este proyecto?",
+      header: "Modo de trabajo",
+      options: [
+        {
+          label: "Interactivo",
+          description: "Alfred pide tu aprobación en cada fase. Tienes control total sobre cada decisión."
+        },
+        {
+          label: "Autopilot",
+          description: "Alfred avanza solo aprobando las gates de usuario. Solo se detiene si falla seguridad o tests."
+        }
+      ]
+    }
+  ]
+})
+```
+
+2. Según la respuesta, escribe la configuración en `.claude/alfred-dev.local.md`:
+
+   - **Interactivo**: añade al frontmatter YAML:
+     ```yaml
+     autonomia:
+       producto: interactivo
+       arquitectura: interactivo
+       desarrollo: interactivo
+       calidad: interactivo
+       documentacion: interactivo
+       entrega: interactivo
+     ```
+
+   - **Autopilot**: añade al frontmatter YAML:
+     ```yaml
+     autonomia:
+       producto: autonomo
+       arquitectura: autonomo
+       desarrollo: autonomo
+       calidad: autonomo
+       documentacion: autonomo
+       entrega: autonomo
+     ```
+
+3. Muestra un mensaje breve confirmando la elección y continúa con el paso 1.
+
+**Si la sección `autonomia:` YA existe:** salta este paso y continúa directamente.
+
+**Nota:** el usuario puede cambiar el modo en cualquier momento con `/alfred config`.
+
 ## Paso 1 -- Contexto del proyecto
 
 Llama a `suggest_optional_agents(project_dir)` para obtener señales basadas en I/O
@@ -53,6 +114,17 @@ Ejemplos de razonamiento:
 Combina tu razonamiento con las señales del proyecto (paso 1): si el proyecto tiene
 React y la tarea toca interfaz, ux-reviewer es casi seguro. Si no tiene frontend,
 probablemente no.
+
+## Paso 2b -- Comprobación de autopilot
+
+Antes de presentar las preguntas al usuario, comprueba si el modo autopilot está activo:
+
+1. Lee `.claude/alfred-dev.local.md` y comprueba si todas las fases de autonomía están en `autonomo`.
+2. Lee `.claude/alfred-dev-state.json` y comprueba si tiene `"modo": "autopilot"`.
+
+**Si autopilot está activo:** salta directamente al paso 4. Usa los agentes opcionales configurados en `.claude/alfred-dev.local.md` (si existen) o los que tu razonamiento semántico (paso 2) haya marcado como relevantes. No uses `AskUserQuestion`. Muestra un mensaje breve indicando qué agentes se activan y por qué.
+
+**Si autopilot NO está activo:** continúa con el paso 3 (presentación interactiva al usuario).
 
 ## Paso 3 -- Presentación al usuario
 

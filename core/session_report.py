@@ -40,7 +40,7 @@ _REPORT_TEMPLATE = """# Informe de sesion: {comando}
 
 ---
 
-*Generado automaticamente por Alfred Dev v0.4.0*
+*Generado automaticamente por Alfred Dev v0.4.1*
 """
 
 
