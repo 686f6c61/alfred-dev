@@ -303,91 +303,36 @@ const data: PageData = {
 
   composition: {
     header: {
-      label: 'Composición dinámica',
+      label: 'Composicion dinamica',
       labelColor: 'var(--gold)',
       title: 'El equipo que necesitas, cuando lo necesitas',
-      description: 'Alfred analiza tu tarea en tiempo real y sugiere los agentes opcionales más relevantes. Sin configuración manual: describes lo que quieres hacer y el sistema propone el equipo ideal.',
+      description: 'Alfred analiza tu tarea en tiempo real y sugiere los agentes opcionales mas relevantes. Describes lo que quieres hacer y el sistema propone el equipo ideal.',
     },
-    introHtml: 'Cuando ejecutas <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code> con una descripción de tarea, Alfred lee la descripción completa y razona sobre qué especialistas encajan con el trabajo. No busca palabras clave: entiende el contexto. Después te presenta todos los agentes opcionales con los sugeridos preseleccionados para que confirmes o ajustes el equipo.',
+    introHtml: 'Cuando ejecutas <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>, Alfred razona sobre que especialistas encajan con el trabajo, te presenta la seleccion de agentes y arranca la fase de producto con preguntas una a una. Asi se ve en la terminal:',
     terminalPrompt: '$ /alfred-dev:feature',
-    terminalText: 'Necesito migrar la base de datos de SQLite a PostgreSQL, consultar las decisiones anteriores sobre el esquema de datos para no repetir errores, rediseñar completamente la interfaz del checkout con tests de accesibilidad, escribir todo el copy de la landing de lanzamiento y optimizar el rendimiento de carga en dispositivos móviles',
-    coreAgentsLabel: 'Equipo base',
-    coreAgentsActiveLabel: 'Siempre activo',
-    coreAgents: [
-      { id: 'alfred', name: 'Alfred', color: '#e8a44a', role: 'Orquestador' },
-      { id: 'project-manager', name: 'SonIA', color: '#d46ab2', role: 'Seguimiento' },
-      { id: 'product-owner', name: 'Product Owner', color: '#5b9cf5', role: 'Producto' },
-      { id: 'architect', name: 'Architect', color: '#a07ee8', role: 'Arquitectura' },
-      { id: 'senior-dev', name: 'Senior Dev', color: '#4ec990', role: 'Desarrollo' },
-      { id: 'security-officer', name: 'Security Officer', color: '#e5564f', role: 'Seguridad' },
-      { id: 'qa-engineer', name: 'QA Engineer', color: '#41b9c3', role: 'Calidad' },
-      { id: 'tech-writer', name: 'Tech Writer', color: '#e89a4a', role: 'Documentación' },
-      { id: 'devops-engineer', name: 'DevOps Engineer', color: '#6ec4e8', role: 'Entrega' },
+    terminalText: 'Migrar la base de datos de SQLite a PostgreSQL y rediseñar la interfaz del checkout con tests de accesibilidad',
+    coreTeamText: 'Equipo de nucleo (siempre activos): Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA.',
+    techQuestion: 'Que agentes tecnicos quieres activar?',
+    techOptions: [
+      { label: 'Data Engineer', desc: 'Migracion de BD detectada (Recomendado)', selected: true },
+      { label: 'Performance Engineer', desc: 'Profiling y optimizacion', selected: false },
+      { label: 'GitHub Manager', desc: 'Remote git configurado (Recomendado)', selected: true },
+      { label: 'Librarian', desc: 'Memoria persistente', selected: false },
     ],
-    agentsPanelLabel: 'Agentes opcionales',
-    suggestedLabel: 'Sugerido',
-    notSuggestedLabel: 'No necesario',
-    selectorTitle: 'Equipo propuesto',
-    confirmLabel: 'Confirmar equipo',
-    thinkingLabel: 'Analizando tarea...',
-    reasoningLabel: 'Razonamiento',
-    agents: [
-      {
-        id: 'data-engineer',
-        name: 'Data Engineer',
-        color: '#5b9cf5',
-        suggested: true,
-        reasoning: 'La tarea implica migrar de SQLite a PostgreSQL y rediseñar el esquema. Un especialista en datos es imprescindible.',
-      },
-      {
-        id: 'ux-reviewer',
-        name: 'UX Reviewer',
-        color: '#a07ee8',
-        suggested: true,
-        reasoning: 'Se menciona un rediseño completo del checkout con tests de accesibilidad. Necesitamos revisión de UX.',
-      },
-      {
-        id: 'performance-engineer',
-        name: 'Performance Engineer',
-        color: '#4ec990',
-        suggested: true,
-        reasoning: 'Hay un objetivo explícito de optimizar el rendimiento de carga en móviles.',
-      },
-      {
-        id: 'copywriter',
-        name: 'Copywriter',
-        color: '#e8a44a',
-        suggested: true,
-        reasoning: 'La tarea incluye escribir todo el copy de la landing de lanzamiento.',
-      },
-      {
-        id: 'librarian',
-        name: 'Bibliotecario',
-        color: '#c9a96e',
-        suggested: true,
-        reasoning: 'Se quiere consultar decisiones anteriores sobre el esquema para no repetir errores. El historial es clave.',
-      },
-      {
-        id: 'github-manager',
-        name: 'GitHub Manager',
-        color: '#8b90a8',
-        suggested: false,
-        reasoning: 'No se menciona gestión de repositorio, PRs ni releases en esta tarea.',
-      },
-      {
-        id: 'seo-specialist',
-        name: 'SEO Specialist',
-        color: '#8b90a8',
-        suggested: false,
-        reasoning: 'La landing es nueva, pero el enfoque es el copy, no el posicionamiento. No es prioritario ahora.',
-      },
-      {
-        id: 'i18n-specialist',
-        name: 'i18n Specialist',
-        color: '#8b90a8',
-        suggested: false,
-        reasoning: 'No se mencionan múltiples idiomas ni traducciones en esta tarea.',
-      },
+    contentQuestion: 'Que agentes de contenido y UX quieres activar?',
+    contentOptions: [
+      { label: 'UX Reviewer', desc: 'Rediseño de checkout (Recomendado)', selected: true },
+      { label: 'SEO Specialist', desc: 'Posicionamiento web', selected: false },
+      { label: 'Copywriter', desc: 'Textos publicos', selected: false },
+      { label: 'i18n Specialist', desc: 'Internacionalizacion', selected: false },
+    ],
+    confirmText: 'Equipo confirmado: 9 de nucleo + 3 opcionales',
+    productQuestion: 'Quien es el usuario principal de esta funcionalidad?',
+    productOptions: [
+      { label: 'Administrador de tienda', desc: '', selected: true },
+      { label: 'Cliente final', desc: '', selected: false },
+      { label: 'Equipo de soporte', desc: '', selected: false },
+      { label: 'Desarrollador externo', desc: '', selected: false },
     ],
   },
 
@@ -1084,7 +1029,10 @@ autonomia:
 agentes_opcionales:
   data-engineer: true
   ux-reviewer: false
+  performance-engineer: false
   github-manager: true
+  seo-specialist: false
+  copywriter: false
   librarian: true
   i18n-specialist: false
 
@@ -1472,6 +1420,18 @@ personalidad:
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
     tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 10 hooks. 10 comandos. Memoria persistente. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
+    disclaimer: {
+      linkText: 'Descargo de responsabilidad',
+      title: 'Descargo de responsabilidad',
+      closeText: 'Cerrar',
+      contentHtml: `
+        <p><strong>Alfred Dev</strong> es un proyecto independiente de codigo abierto. No esta afiliado, patrocinado ni respaldado por <strong>Anthropic</strong> ni por el equipo de <strong>Claude Code</strong>.</p>
+        <p>El software se proporciona «tal cual» (<em>as is</em>), sin garantias de ningun tipo, expresas o implicitas, incluyendo, entre otras, las garantias de comerciabilidad, adecuacion a un proposito particular y no infraccion. En ningun caso los autores o titulares de los derechos de autor seran responsables de reclamaciones, danos u otras responsabilidades derivadas del uso del software.</p>
+        <p>Alfred Dev ejecuta agentes que pueden crear, modificar y eliminar ficheros, ejecutar comandos en terminal e interactuar con servicios externos (GitHub, Docker, etc.). El usuario es responsable de revisar y aprobar las acciones que el plugin propone antes de su ejecucion.</p>
+        <p>Los agentes utilizan modelos de lenguaje de gran tamano (LLM) que pueden generar contenido incorrecto, incompleto o inadecuado. Las salidas del plugin deben tratarse como sugerencias que requieren revision humana, no como resultados definitivos.</p>
+        <p>El uso de este plugin esta sujeto a la <a href="https://github.com/686f6c61/alfred-dev/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">licencia MIT</a> del proyecto.</p>
+      `,
+    },
   },
 };
 

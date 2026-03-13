@@ -459,29 +459,14 @@ export interface ChangelogVersion {
  * es relevante. El campo `reasoning` contiene la explicacion
  * breve que se muestra en la tarjeta durante la animacion.
  */
-export interface CompositionAgent {
-  /** Identificador del agente (data-engineer, ux-reviewer...). */
-  id: string;
-  /** Nombre visible del agente. */
-  name: string;
-  /** Color CSS del agente (variable o valor directo). */
-  color: string;
-  /** Indica si Alfred sugiere este agente para la tarea de ejemplo. */
-  suggested: boolean;
-  /** Razonamiento breve de Alfred sobre por que incluir o descartar este agente. */
-  reasoning: string;
-}
-
-/** Agente de nucleo (siempre activo en cada sesion). */
-export interface CoreAgent {
-  /** Identificador unico del agente. */
-  id: string;
-  /** Nombre visible del agente. */
-  name: string;
-  /** Color CSS del agente. */
-  color: string;
-  /** Rol breve del agente (ej. "Orquestador", "Arquitectura"). */
-  role: string;
+/** Opcion de un selector multiSelect o singleSelect en la demo de composicion. */
+export interface CompositionOption {
+  /** Texto visible de la opcion. */
+  label: string;
+  /** Descripcion breve (razon contextual o especialidad). */
+  desc: string;
+  /** Si la opcion aparece marcada en la animacion. */
+  selected: boolean;
 }
 
 /** Datos completos de la seccion de composicion dinamica. */
@@ -490,32 +475,26 @@ export interface CompositionSection {
   header: SectionHeader;
   /** Texto descriptivo bajo el header con HTML inline. */
   introHtml: string;
-  /** Texto completo que se escribe en el terminal. */
-  terminalText: string;
-  /** Prefijo del prompt del terminal (ej. "$ /alfred feature"). */
+  /** Prefijo del prompt del terminal (ej. "$ /alfred-dev:feature"). */
   terminalPrompt: string;
-  /** Agentes opcionales con razonamiento semantico. */
-  agents: CompositionAgent[];
-  /** Titulo del panel lateral de agentes (ej. "Agentes opcionales"). */
-  agentsPanelLabel: string;
-  /** Etiqueta del indicador de sugerencia (ej. "Sugerido"). */
-  suggestedLabel: string;
-  /** Etiqueta del indicador de no sugerido. */
-  notSuggestedLabel: string;
-  /** Titulo de la fase de seleccion (ej. "Equipo propuesto"). */
-  selectorTitle: string;
-  /** Texto del boton de confirmacion (ej. "Confirmar equipo"). */
-  confirmLabel: string;
-  /** Agentes de nucleo que siempre forman parte del equipo. */
-  coreAgents: CoreAgent[];
-  /** Etiqueta del bloque de agentes de nucleo (ej. "Equipo base"). */
-  coreAgentsLabel: string;
-  /** Etiqueta de estado de los agentes de nucleo (ej. "Siempre activo"). */
-  coreAgentsActiveLabel: string;
-  /** Etiqueta de la fase de analisis (ej. "Analizando tarea..."). */
-  thinkingLabel: string;
-  /** Etiqueta de la seccion de razonamiento (ej. "Razonamiento"). */
-  reasoningLabel: string;
+  /** Texto de la tarea que se escribe con efecto typing. */
+  terminalText: string;
+  /** Mensaje informativo del equipo de nucleo. */
+  coreTeamText: string;
+  /** Pregunta del primer bloque multiSelect (agentes tecnicos). */
+  techQuestion: string;
+  /** Opciones del primer bloque multiSelect. */
+  techOptions: CompositionOption[];
+  /** Pregunta del segundo bloque multiSelect (contenido y UX). */
+  contentQuestion: string;
+  /** Opciones del segundo bloque multiSelect. */
+  contentOptions: CompositionOption[];
+  /** Mensaje de confirmacion del equipo. */
+  confirmText: string;
+  /** Pregunta del Product Owner (singleSelect). */
+  productQuestion: string;
+  /** Opciones de la pregunta del Product Owner. */
+  productOptions: CompositionOption[];
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -553,6 +532,17 @@ export interface FooterData {
   tagline: string;
   /** Texto de la tercera linea (slogan). */
   slogan: string;
+  /** Descargo de responsabilidad. */
+  disclaimer: {
+    /** Texto del enlace que abre el popup. */
+    linkText: string;
+    /** Titulo del popup. */
+    title: string;
+    /** Contenido HTML del descargo. */
+    contentHtml: string;
+    /** Texto del boton de cerrar. */
+    closeText: string;
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────

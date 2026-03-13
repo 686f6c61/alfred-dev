@@ -303,88 +303,33 @@ const data: PageData = {
       label: 'Dynamic composition',
       labelColor: 'var(--gold)',
       title: 'The team you need, when you need it',
-      description: 'Alfred analyzes your task in real time and suggests the most relevant optional agents. No manual configuration: describe what you want to do and the system proposes the ideal team.',
+      description: 'Alfred analyzes your task in real time and suggests the most relevant optional agents. Describe what you want to do and the system proposes the ideal team.',
     },
-    introHtml: 'When you run <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code> with a task description, Alfred reads the full description and reasons about which specialists fit the work. No keyword matching: it understands context. Then it presents all optional agents with the suggested ones preselected so you can confirm or adjust the team.',
+    introHtml: 'When you run <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>, Alfred reasons about which specialists fit the work, presents the agent selection and starts the product phase with one question at a time. This is what it looks like in the terminal:',
     terminalPrompt: '$ /alfred-dev:feature',
-    terminalText: 'I need to migrate the database from SQLite to PostgreSQL, check previous decisions about the data schema to avoid repeating mistakes, completely redesign the checkout interface with accessibility testing, write all the launch landing page copy and optimize load performance on mobile devices',
-    coreAgentsLabel: 'Core team',
-    coreAgentsActiveLabel: 'Always active',
-    coreAgents: [
-      { id: 'alfred', name: 'Alfred', color: '#e8a44a', role: 'Orchestrator' },
-      { id: 'project-manager', name: 'SonIA', color: '#d46ab2', role: 'Tracking' },
-      { id: 'product-owner', name: 'Product Owner', color: '#5b9cf5', role: 'Product' },
-      { id: 'architect', name: 'Architect', color: '#a07ee8', role: 'Architecture' },
-      { id: 'senior-dev', name: 'Senior Dev', color: '#4ec990', role: 'Development' },
-      { id: 'security-officer', name: 'Security Officer', color: '#e5564f', role: 'Security' },
-      { id: 'qa-engineer', name: 'QA Engineer', color: '#41b9c3', role: 'Quality' },
-      { id: 'tech-writer', name: 'Tech Writer', color: '#e89a4a', role: 'Documentation' },
-      { id: 'devops-engineer', name: 'DevOps Engineer', color: '#6ec4e8', role: 'Delivery' },
+    terminalText: 'Migrate the database from SQLite to PostgreSQL and redesign the checkout interface with accessibility testing',
+    coreTeamText: 'Core team (always active): Alfred, Product Owner, Architect, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA.',
+    techQuestion: 'Which technical agents do you want to activate?',
+    techOptions: [
+      { label: 'Data Engineer', desc: 'DB migration detected (Recommended)', selected: true },
+      { label: 'Performance Engineer', desc: 'Profiling and optimization', selected: false },
+      { label: 'GitHub Manager', desc: 'Git remote configured (Recommended)', selected: true },
+      { label: 'Librarian', desc: 'Persistent memory', selected: false },
     ],
-    agentsPanelLabel: 'Optional agents',
-    suggestedLabel: 'Suggested',
-    notSuggestedLabel: 'Not needed',
-    selectorTitle: 'Proposed team',
-    confirmLabel: 'Confirm team',
-    thinkingLabel: 'Analyzing task...',
-    reasoningLabel: 'Reasoning',
-    agents: [
-      {
-        id: 'data-engineer',
-        name: 'Data Engineer',
-        color: '#5b9cf5',
-        suggested: true,
-        reasoning: 'Task involves migrating from SQLite to PostgreSQL and redesigning the schema. A data specialist is essential.',
-      },
-      {
-        id: 'ux-reviewer',
-        name: 'UX Reviewer',
-        color: '#a07ee8',
-        suggested: true,
-        reasoning: 'A complete checkout redesign with accessibility testing is mentioned. UX review is needed.',
-      },
-      {
-        id: 'performance-engineer',
-        name: 'Performance Engineer',
-        color: '#4ec990',
-        suggested: true,
-        reasoning: 'There is an explicit goal to optimize load performance on mobile devices.',
-      },
-      {
-        id: 'copywriter',
-        name: 'Copywriter',
-        color: '#e8a44a',
-        suggested: true,
-        reasoning: 'The task includes writing all the launch landing page copy.',
-      },
-      {
-        id: 'librarian',
-        name: 'Librarian',
-        color: '#c9a96e',
-        suggested: true,
-        reasoning: 'Previous decisions about the schema need to be consulted to avoid repeating mistakes. History is key.',
-      },
-      {
-        id: 'github-manager',
-        name: 'GitHub Manager',
-        color: '#8b90a8',
-        suggested: false,
-        reasoning: 'No repository management, PRs or releases are mentioned in this task.',
-      },
-      {
-        id: 'seo-specialist',
-        name: 'SEO Specialist',
-        color: '#8b90a8',
-        suggested: false,
-        reasoning: 'The landing page is new, but the focus is on copy, not SEO. Not a priority now.',
-      },
-      {
-        id: 'i18n-specialist',
-        name: 'i18n Specialist',
-        color: '#8b90a8',
-        suggested: false,
-        reasoning: 'No multilingual requirements or translations are mentioned in this task.',
-      },
+    contentQuestion: 'Which content and UX agents do you want to activate?',
+    contentOptions: [
+      { label: 'UX Reviewer', desc: 'Checkout redesign (Recommended)', selected: true },
+      { label: 'SEO Specialist', desc: 'Web positioning', selected: false },
+      { label: 'Copywriter', desc: 'Public-facing copy', selected: false },
+      { label: 'i18n Specialist', desc: 'Internationalization', selected: false },
+    ],
+    confirmText: 'Team confirmed: 9 core + 3 optional',
+    productQuestion: 'Who is the primary user of this feature?',
+    productOptions: [
+      { label: 'Store administrator', desc: '', selected: true },
+      { label: 'End customer', desc: '', selected: false },
+      { label: 'Support team', desc: '', selected: false },
+      { label: 'External developer', desc: '', selected: false },
     ],
   },
 
@@ -1081,7 +1026,10 @@ autonomy:
 optional_agents:
   data-engineer: true
   ux-reviewer: false
+  performance-engineer: false
   github-manager: true
+  seo-specialist: false
+  copywriter: false
   librarian: true
   i18n-specialist: false
 
@@ -1469,6 +1417,18 @@ personality:
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
     tagline: 'Claude Code plugin. 17 agents. 60 skills. 10 hooks. 10 commands. Persistent memory. From idea to production.',
     slogan: 'Automated software engineering for Claude Code.',
+    disclaimer: {
+      linkText: 'Disclaimer',
+      title: 'Disclaimer',
+      closeText: 'Close',
+      contentHtml: `
+        <p><strong>Alfred Dev</strong> is an independent open-source project. It is not affiliated with, sponsored by, or endorsed by <strong>Anthropic</strong> or the <strong>Claude Code</strong> team.</p>
+        <p>The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability arising from the use of the software.</p>
+        <p>Alfred Dev runs agents that can create, modify, and delete files, execute terminal commands, and interact with external services (GitHub, Docker, etc.). The user is responsible for reviewing and approving the actions the plugin proposes before execution.</p>
+        <p>The agents use large language models (LLMs) that may generate incorrect, incomplete, or inappropriate content. Plugin outputs should be treated as suggestions requiring human review, not as definitive results.</p>
+        <p>Use of this plugin is subject to the project's <a href="https://github.com/686f6c61/alfred-dev/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT licence</a>.</p>
+      `,
+    },
   },
 };
 
