@@ -37,25 +37,65 @@ error() { printf "${RED}x${NC} %s\n" "$1" >&2; }
 
 # -- Verificaciones ---------------------------------------------------------
 
-# Python 3.10+ es necesario para los hooks y el core del plugin
-if ! command -v python3 &>/dev/null; then
-    error "Python 3 no esta instalado o no esta en el PATH"
-    error "Alfred Dev requiere Python 3.10 o superior"
+# Python 3.10+ es necesario para los hooks y el core del plugin.
+# En macOS, /usr/bin/python3 suele ser 3.9 (Apple). Los usuarios pueden
+# tener 3.10+ via Homebrew, pyenv o instalador oficial como python3.13,
+# python3.12, etc. Buscamos la mejor version disponible.
+
+PYTHON_CMD=""
+PYTHON_VERSION=""
+
+# Buscar entre los candidatos mas comunes en orden descendente
+for candidate in python3 python3.13 python3.12 python3.11 python3.10; do
+    if command -v "$candidate" &>/dev/null; then
+        ver=$("$candidate" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+        major=$(echo "$ver" | cut -d. -f1)
+        minor=$(echo "$ver" | cut -d. -f2)
+        if [[ "$major" -ge 3 ]] && [[ "$minor" -ge 10 ]]; then
+            PYTHON_CMD="$candidate"
+            PYTHON_VERSION="$ver"
+            break
+        fi
+    fi
+done
+
+if [[ -z "$PYTHON_CMD" ]]; then
+    # Ultimo intento: Homebrew en las rutas habituales de macOS
+    for brew_path in /opt/homebrew/bin /usr/local/bin; do
+        for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
+            full="${brew_path}/${candidate}"
+            if [[ -x "$full" ]]; then
+                ver=$("$full" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+                major=$(echo "$ver" | cut -d. -f1)
+                minor=$(echo "$ver" | cut -d. -f2)
+                if [[ "$major" -ge 3 ]] && [[ "$minor" -ge 10 ]]; then
+                    PYTHON_CMD="$full"
+                    PYTHON_VERSION="$ver"
+                    break 2
+                fi
+            fi
+        done
+    done
+fi
+
+if [[ -z "$PYTHON_CMD" ]]; then
+    error "No se encontro Python 3.10 o superior"
+    error "Se buscaron: python3, python3.13, python3.12, python3.11, python3.10"
+    error "Tambien en /opt/homebrew/bin y /usr/local/bin"
+    error ""
     error "Instala Python desde https://www.python.org/downloads/"
+    error "o con Homebrew: brew install python@3.12"
     exit 1
 fi
 
-PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
-PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
-PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+ok "Python $PYTHON_VERSION detectado ($PYTHON_CMD)"
 
-if [[ "$PYTHON_MAJOR" -lt 3 ]] || { [[ "$PYTHON_MAJOR" -eq 3 ]] && [[ "$PYTHON_MINOR" -lt 10 ]]; }; then
-    error "Python $PYTHON_VERSION detectado, pero se requiere 3.10 o superior"
-    error "Actualiza Python desde https://www.python.org/downloads/"
-    exit 1
+# Si python3 del PATH no es el que encontramos, avisar al usuario
+DEFAULT_PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+if [[ "$PYTHON_CMD" != "python3" ]] && [[ "$DEFAULT_PY_VER" != "$PYTHON_VERSION" ]]; then
+    info "Nota: 'python3' en tu PATH es $DEFAULT_PY_VER (demasiado antiguo)"
+    info "Los hooks del plugin usaran '$PYTHON_CMD' en su lugar"
 fi
-
-ok "Python $PYTHON_VERSION detectado"
 
 # git es necesario para descargar el plugin
 if ! command -v git &>/dev/null; then
@@ -122,6 +162,32 @@ else
     error "  claude plugin marketplace add ${REPO}"
     error "  claude plugin install ${PLUGIN_NAME}@${PLUGIN_NAME}"
     exit 1
+fi
+
+# -- 3. Parchear hooks si python3 no es 3.10+ ------------------------------
+# Si el python3 por defecto del sistema es demasiado antiguo pero encontramos
+# una version compatible (python3.12, python3.11, etc.), actualizamos
+# hooks.json para que los hooks usen esa version concreta.
+
+if [[ "$PYTHON_CMD" != "python3" ]]; then
+    # Buscar hooks.json en la cache del plugin recien instalado
+    HOOKS_JSON=$(find "${HOME}/.claude/plugins/cache/${PLUGIN_NAME}" -name "hooks.json" -path "*/hooks/*" 2>/dev/null | head -1)
+
+    if [[ -n "$HOOKS_JSON" ]]; then
+        # Obtener la ruta absoluta del Python compatible
+        PYTHON_ABS=$(command -v "$PYTHON_CMD" 2>/dev/null || echo "$PYTHON_CMD")
+
+        # Reemplazar 'python3 ' por la ruta absoluta en los comandos de hooks
+        if sed -i.bak "s|python3 \${CLAUDE_PLUGIN_ROOT}|${PYTHON_ABS} \${CLAUDE_PLUGIN_ROOT}|g" "$HOOKS_JSON" 2>/dev/null; then
+            rm -f "${HOOKS_JSON}.bak"
+            ok "hooks.json parcheado para usar $PYTHON_ABS"
+        else
+            # macOS sed tiene sintaxis diferente para -i
+            sed -i '' "s|python3 \${CLAUDE_PLUGIN_ROOT}|${PYTHON_ABS} \${CLAUDE_PLUGIN_ROOT}|g" "$HOOKS_JSON" 2>/dev/null && \
+                ok "hooks.json parcheado para usar $PYTHON_ABS" || \
+                info "Aviso: no se pudo parchear hooks.json, los hooks usaran 'python3'"
+        fi
+    fi
 fi
 
 # -- Resultado --------------------------------------------------------------
