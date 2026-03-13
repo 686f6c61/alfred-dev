@@ -318,6 +318,16 @@ personalidad:
 Notas adicionales del proyecto que Alfred debe tener en cuenta.
 ```
 
+## Descargo de responsabilidad
+
+**Alfred Dev** es un proyecto independiente de codigo abierto. No esta afiliado, patrocinado ni respaldado por **Anthropic** ni por el equipo de **Claude Code**.
+
+El software se proporciona «tal cual» (*as is*), sin garantias de ningun tipo, expresas o implicitas, incluyendo, entre otras, las garantias de comerciabilidad, adecuacion a un proposito particular y no infraccion. En ningun caso los autores o titulares de los derechos de autor seran responsables de reclamaciones, danos u otras responsabilidades derivadas del uso del software.
+
+Alfred Dev ejecuta agentes que pueden crear, modificar y eliminar ficheros, ejecutar comandos en terminal e interactuar con servicios externos (GitHub, Docker, etc.). El usuario es responsable de revisar y aprobar las acciones que el plugin propone antes de su ejecucion.
+
+Los agentes utilizan modelos de lenguaje de gran tamano (LLM) que pueden generar contenido incorrecto, incompleto o inadecuado. Las salidas del plugin deben tratarse como sugerencias que requieren revision humana, no como resultados definitivos.
+
 ## Licencia
 
 MIT

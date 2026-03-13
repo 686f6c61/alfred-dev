@@ -1,23 +1,21 @@
 ---
 /**
- * Seccion interactiva de composicion dinamica de equipo.
+ * Seccion de composicion dinamica con demo de terminal interactiva.
  *
- * Muestra una demo visual del flujo de composicion semantica
- * de Alfred: como lee una tarea, razona sobre que agentes
- * encajan y presenta un selector con todos los agentes para
- * que el usuario confirme o ajuste el equipo.
+ * Simula una interaccion real en Claude Code: el usuario escribe un
+ * comando, Alfred muestra el equipo de nucleo, presenta dos bloques
+ * de seleccion de agentes opcionales (multiSelect) y finalmente
+ * formula una pregunta del Product Owner (singleSelect).
  *
- * La animacion tiene tres fases:
+ * La animacion tiene cinco fases secuenciales:
  *
- * 1. Terminal con efecto typing que escribe la descripcion de la tarea.
- * 2. Fase de razonamiento: Alfred «piensa» y revela su analisis
- *    agente por agente con una explicacion breve.
- * 3. Fase de selector: los agentes sugeridos aparecen marcados,
- *    el resto disponible, y un boton «Confirmar equipo».
+ * 1. Typing: escribe el comando caracter a caracter.
+ * 2. Core team: muestra el mensaje informativo del equipo base.
+ * 3. Tech agents: pregunta multiSelect con checkboxes animados.
+ * 4. Content agents: segunda pregunta multiSelect.
+ * 5. Confirm + Product question: confirmacion y pregunta del PO.
  *
- * La animacion se lanza una sola vez al entrar en viewport
- * (IntersectionObserver). Respeta prefers-reduced-motion mostrando
- * el estado final directamente sin animacion.
+ * Respeta prefers-reduced-motion mostrando el estado final sin animacion.
  *
  * @example
  * ```astro
@@ -28,27 +26,20 @@ import type { CompositionSection } from '@/types';
 import SectionHeader from '@/components/ui/SectionHeader.astro';
 
 interface Props {
-  /** Datos completos de la seccion de composicion. */
   composition: CompositionSection;
 }
 
 const { composition } = Astro.props;
 
-/** Path SVG del icono de check, reutilizado en checkboxes y boton de confirmacion. */
-const CHECK_PATH = 'M3.5 8.5L6.5 11.5L12.5 4.5';
-
 /**
- * Serializa los datos de agentes como JSON para que el script
- * del cliente pueda construir la animacion de razonamiento.
+ * Serializa los datos de la demo como JSON para el script del cliente.
+ * Incluye las opciones de los tres selectores para animar las selecciones.
  */
-const agentsJson = JSON.stringify(
-  composition.agents.map((a) => ({
-    id: a.id,
-    suggested: a.suggested,
-    reasoning: a.reasoning,
-    color: a.color,
-  }))
-);
+const demoData = JSON.stringify({
+  techOptions: composition.techOptions,
+  contentOptions: composition.contentOptions,
+  productOptions: composition.productOptions,
+});
 ---
 
 <section id="composicion" class="composition-section">
@@ -64,94 +55,109 @@ const agentsJson = JSON.stringify(
 
     <!-- Terminal de la demo -->
     <div class="composition-demo fade-in">
-      <div class="demo-layout">
-        <!-- Bloque terminal -->
-        <div class="terminal" aria-label="Terminal demo">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot--red"></span>
-            <span class="terminal-dot terminal-dot--yellow"></span>
-            <span class="terminal-dot terminal-dot--green"></span>
-            <span class="terminal-title">terminal</span>
-          </div>
-          <div class="terminal-body">
-            <div class="terminal-line">
-              <span class="terminal-prompt">{composition.terminalPrompt}</span>
-            </div>
-            <div class="terminal-line terminal-task">
-              <span
-                class="terminal-text"
-                id="compositionText"
-                data-full-text={composition.terminalText}
-              ></span>
-              <span class="terminal-cursor" id="compositionCursor">|</span>
-            </div>
+      <div class="terminal" aria-label="Terminal demo">
+        <div class="terminal-header">
+          <span class="terminal-dot terminal-dot--red"></span>
+          <span class="terminal-dot terminal-dot--yellow"></span>
+          <span class="terminal-dot terminal-dot--green"></span>
+          <span class="terminal-title">terminal</span>
+        </div>
 
-            <!-- Indicador de razonamiento -->
-            <div class="thinking-indicator" id="thinkingIndicator">
-              <span class="thinking-dot"></span>
-              <span class="thinking-label">{composition.thinkingLabel}</span>
+        <div class="terminal-body" id="compositionTerminal">
+          <!-- Fase 1: comando con typing -->
+          <div class="term-line">
+            <span class="term-prompt">{composition.terminalPrompt}</span>
+          </div>
+          <div class="term-line term-command">
+            <span class="term-text" id="termText" data-full-text={composition.terminalText}></span>
+            <span class="term-cursor" id="termCursor">|</span>
+          </div>
+
+          <!-- Fase 2: equipo de nucleo -->
+          <div class="term-block hidden" id="blockCore">
+            <div class="term-info">
+              <span class="term-info-icon" aria-hidden="true">&#9654;</span>
+              <span>{composition.coreTeamText}</span>
             </div>
           </div>
 
-          <!-- Agentes de nucleo integrados en el terminal -->
-          <div class="terminal-team">
-            <div class="terminal-team-header">
-              <span class="terminal-team-label">{composition.coreAgentsLabel}</span>
-              <span class="terminal-team-status">{composition.coreAgentsActiveLabel}</span>
+          <!-- Fase 3: multiSelect tecnico -->
+          <div class="term-block hidden" id="blockTech">
+            <div class="term-question">
+              <span class="term-q-icon" aria-hidden="true">?</span>
+              <span>{composition.techQuestion}</span>
             </div>
-            <div class="terminal-team-grid">
-              {composition.coreAgents.map((agent) => (
-                <div class="core-chip" style={`--agent-color: ${agent.color}`}>
-                  <span class="core-dot" aria-hidden="true"></span>
-                  <span class="core-name">{agent.name}</span>
-                  <span class="core-role">{agent.role}</span>
+            <div class="term-options" id="optionsTech">
+              {composition.techOptions.map((opt, i) => (
+                <div
+                  class="term-option"
+                  data-selected={opt.selected ? 'true' : 'false'}
+                  data-index={i}
+                >
+                  <span class="term-checkbox" aria-hidden="true">
+                    <span class="cb-box"></span>
+                    <span class="cb-check">&#10003;</span>
+                  </span>
+                  <span class="term-opt-label">{opt.label}</span>
+                  <span class="term-opt-desc">{opt.desc}</span>
                 </div>
               ))}
             </div>
           </div>
-        </div>
 
-        <!-- Panel de agentes con selector -->
-        <div class="agents-panel">
-          <div class="agents-label">{composition.agentsPanelLabel}</div>
-          <div class="agents-grid" id="compositionAgents">
-            {composition.agents.map((agent) => (
-              <div
-                class="agent-card"
-                data-agent-id={agent.id}
-                style={`--agent-color: ${agent.color}`}
-              >
-                <div class="agent-header">
-                  <div class="agent-check-row">
-                    <span class="agent-checkbox" aria-hidden="true">
-                      <svg class="check-icon" viewBox="0 0 16 16" fill="none">
-                        <path d={CHECK_PATH} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    </span>
-                    <span class="agent-name">{agent.name}</span>
-                  </div>
-                  <span class="agent-badge" data-suggested={agent.suggested ? 'true' : 'false'}>
-                    {agent.suggested
-                      ? composition.suggestedLabel
-                      : composition.notSuggestedLabel}
+          <!-- Fase 4: multiSelect contenido -->
+          <div class="term-block hidden" id="blockContent">
+            <div class="term-question">
+              <span class="term-q-icon" aria-hidden="true">?</span>
+              <span>{composition.contentQuestion}</span>
+            </div>
+            <div class="term-options" id="optionsContent">
+              {composition.contentOptions.map((opt, i) => (
+                <div
+                  class="term-option"
+                  data-selected={opt.selected ? 'true' : 'false'}
+                  data-index={i}
+                >
+                  <span class="term-checkbox" aria-hidden="true">
+                    <span class="cb-box"></span>
+                    <span class="cb-check">&#10003;</span>
                   </span>
+                  <span class="term-opt-label">{opt.label}</span>
+                  <span class="term-opt-desc">{opt.desc}</span>
                 </div>
-                <div class="agent-reasoning">
-                  {agent.reasoning}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          <!-- Fase final: selector con boton de confirmacion -->
-          <div class="selector-footer" id="selectorFooter">
-            <div class="selector-title">{composition.selectorTitle}</div>
-            <span class="selector-confirm" id="selectorConfirm" role="presentation" aria-hidden="true">
-              <svg class="confirm-icon" viewBox="0 0 16 16" fill="none">
-                <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              {composition.confirmLabel}
-            </span>
+          <!-- Fase 5a: confirmacion -->
+          <div class="term-block hidden" id="blockConfirm">
+            <div class="term-confirm">
+              <span class="term-confirm-icon" aria-hidden="true">&#10003;</span>
+              <span>{composition.confirmText}</span>
+            </div>
+          </div>
+
+          <!-- Fase 5b: pregunta del Product Owner -->
+          <div class="term-block hidden" id="blockProduct">
+            <div class="term-question term-question--po">
+              <span class="term-q-icon term-q-icon--po" aria-hidden="true">?</span>
+              <span>{composition.productQuestion}</span>
+            </div>
+            <div class="term-options" id="optionsProduct">
+              {composition.productOptions.map((opt, i) => (
+                <div
+                  class="term-option term-option--radio"
+                  data-selected={opt.selected ? 'true' : 'false'}
+                  data-index={i}
+                >
+                  <span class="term-radio" aria-hidden="true">
+                    <span class="radio-ring"></span>
+                    <span class="radio-dot"></span>
+                  </span>
+                  <span class="term-opt-label">{opt.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -159,198 +165,187 @@ const agentsJson = JSON.stringify(
   </div>
 </section>
 
-<!-- Datos serializados para el script del cliente -->
-<script
-  id="compositionData"
-  type="application/json"
-  set:html={agentsJson}
-/>
-
 <script>
   /**
-   * Animacion de la demo de composicion semantica.
+   * Animacion de la demo de composicion en terminal.
    *
-   * Tres fases:
-   * 1. Typing: escribe la tarea caracter a caracter.
-   * 2. Thinking: muestra indicador de analisis con puntos animados.
-   * 3. Reveal: desvela agentes uno a uno con razonamiento y seleccion.
+   * Terminal con altura fija, scroll automatico hacia abajo conforme
+   * aparece contenido nuevo, y bucle infinito: al terminar la secuencia
+   * se reinicia tras una pausa.
    */
 
-  interface AgentData {
-    id: string;
-    suggested: boolean;
-    reasoning: string;
-    color: string;
-  }
-
-  const textEl = document.getElementById('compositionText') as HTMLSpanElement | null;
-  const cursorEl = document.getElementById('compositionCursor') as HTMLSpanElement | null;
-  const dataEl = document.getElementById('compositionData') as HTMLScriptElement | null;
+  const textEl = document.getElementById('termText') as HTMLSpanElement | null;
+  const cursorEl = document.getElementById('termCursor') as HTMLSpanElement | null;
   const sectionEl = document.getElementById('composicion') as HTMLElement | null;
-  const thinkingEl = document.getElementById('thinkingIndicator') as HTMLElement | null;
-  const selectorFooter = document.getElementById('selectorFooter') as HTMLElement | null;
-  const selectorConfirm = document.getElementById('selectorConfirm') as HTMLButtonElement | null;
+  const termBody = document.getElementById('compositionTerminal') as HTMLElement | null;
 
-  if (textEl && cursorEl && dataEl && sectionEl && thinkingEl && selectorFooter) {
+  const blockIds = ['blockCore', 'blockTech', 'blockContent', 'blockConfirm', 'blockProduct'];
+  const optionGroupIds = ['optionsTech', 'optionsContent', 'optionsProduct'];
+
+  const blocks = blockIds.map(id => document.getElementById(id));
+
+  if (textEl && cursorEl && sectionEl && termBody && blocks.every(Boolean)) {
     const fullText = textEl.dataset.fullText || '';
-    if (!fullText) {
-      console.warn('[CompositionSection] data-full-text esta vacio.');
+
+    /** Scroll suave al final del terminal. */
+    function scrollToBottom(): void {
+      termBody!.scrollTo({ top: termBody!.scrollHeight, behavior: 'smooth' });
     }
 
-    let agents: AgentData[];
-    try {
-      agents = JSON.parse(dataEl.textContent || '[]');
-    } catch {
-      console.warn('[CompositionSection] Error al parsear datos de agentes.');
-      agents = [];
+    /** Muestra un bloque con animacion de entrada y hace scroll. */
+    function showBlock(block: HTMLElement): Promise<void> {
+      return new Promise((resolve) => {
+        block.classList.remove('hidden');
+        block.classList.add('visible');
+        scrollToBottom();
+        setTimeout(resolve, 400);
+      });
     }
 
-    /** Oculta todas las tarjetas de agente al inicio. */
-    function hideAllCards(): void {
-      const cards = document.querySelectorAll('.agent-card');
-      for (const card of cards) {
-        (card as HTMLElement).classList.add('hidden');
-      }
-    }
+    /** Anima las selecciones de un grupo de opciones. */
+    function animateSelections(containerId: string): Promise<void> {
+      return new Promise((resolve) => {
+        const container = document.getElementById(containerId);
+        if (!container) { resolve(); return; }
 
-    /**
-     * Revela un agente: muestra la tarjeta con animacion y la marca
-     * si esta sugerido.
-     */
-    function revealAgent(agentId: string, suggested: boolean): void {
-      const card = document.querySelector(
-        `[data-agent-id="${CSS.escape(agentId)}"]`
-      ) as HTMLElement | null;
-      if (!card) return;
+        const options = container.querySelectorAll('.term-option[data-selected="true"]');
+        let i = 0;
 
-      card.classList.remove('hidden');
-      card.classList.add('revealed');
-
-      if (suggested) {
-        /* Retardo breve para que la animacion de entrada se vea antes del check */
-        setTimeout(() => {
-          card.classList.add('active');
-        }, 200);
-      } else {
-        card.classList.add('dimmed');
-      }
-    }
-
-    /**
-     * Fase de razonamiento: muestra el indicador, luego revela
-     * agentes uno a uno con retardo.
-     */
-    function startReasoning(): void {
-      cursorEl!.style.display = 'none';
-      thinkingEl!.classList.add('visible');
-
-      /* Tras un momento, empezar a revelar agentes */
-      setTimeout(() => {
-        thinkingEl!.classList.remove('visible');
-        revealAgentsSequence(0);
-      }, 1500);
-    }
-
-    /**
-     * Revela agentes de forma secuencial con un retardo entre cada uno.
-     */
-    function revealAgentsSequence(index: number): void {
-      if (index >= agents.length) {
-        /* Todos revelados: mostrar selector */
-        setTimeout(showSelector, 400);
-        return;
-      }
-
-      const agent = agents[index];
-      revealAgent(agent.id, agent.suggested);
-
-      setTimeout(() => revealAgentsSequence(index + 1), 300);
-    }
-
-    /**
-     * Muestra la fase de selector: titulo y boton de confirmacion.
-     */
-    function showSelector(): void {
-      selectorFooter!.classList.add('visible');
-
-      if (selectorConfirm) {
-        setTimeout(() => {
-          selectorConfirm.classList.add('pulse');
-        }, 600);
-      }
-    }
-
-    /**
-     * Bucle principal de la animacion de escritura.
-     */
-    function startTyping(): void {
-      let charIndex = 0;
-      const speed = 25;
-
-      function typeNext(): void {
-        if (charIndex > fullText.length) {
-          cursorEl!.classList.add('blink');
-          /* Iniciar fase de razonamiento tras completar typing */
-          setTimeout(startReasoning, 600);
-          return;
+        function selectNext(): void {
+          if (i >= options.length) {
+            setTimeout(resolve, 300);
+            return;
+          }
+          (options[i] as HTMLElement).classList.add('checked');
+          scrollToBottom();
+          i++;
+          setTimeout(selectNext, 250);
         }
 
-        textEl!.textContent = fullText.slice(0, charIndex);
-        charIndex++;
-        setTimeout(typeNext, speed);
-      }
-
-      typeNext();
+        setTimeout(selectNext, 300);
+      });
     }
 
-    /**
-     * Muestra el estado final sin animacion (prefers-reduced-motion).
-     */
+    /** Efecto typing caracter a caracter. */
+    function startTyping(): Promise<void> {
+      return new Promise((resolve) => {
+        let charIndex = 0;
+        const speed = 22;
+
+        function typeNext(): void {
+          if (charIndex > fullText.length) {
+            cursorEl!.classList.add('blink');
+            setTimeout(resolve, 500);
+            return;
+          }
+          textEl!.textContent = fullText.slice(0, charIndex);
+          charIndex++;
+          setTimeout(typeNext, speed);
+        }
+
+        typeNext();
+      });
+    }
+
+    /** Reinicia todo al estado inicial para volver a animar. */
+    function resetState(): void {
+      textEl!.textContent = '';
+      cursorEl!.classList.remove('blink');
+      cursorEl!.style.display = 'none';
+
+      for (const block of blocks) {
+        block!.classList.remove('visible');
+        block!.classList.add('hidden');
+      }
+
+      for (const id of optionGroupIds) {
+        const container = document.getElementById(id);
+        if (!container) continue;
+        container.querySelectorAll('.term-option.checked').forEach(opt => {
+          (opt as HTMLElement).classList.remove('checked');
+        });
+      }
+
+      termBody!.scrollTop = 0;
+    }
+
+    /** Secuencia principal de la animacion (una iteracion). */
+    async function runAnimation(): Promise<void> {
+      resetState();
+      cursorEl!.style.display = 'inline';
+
+      await startTyping();
+      cursorEl!.style.display = 'none';
+
+      await showBlock(blocks[0]!);
+      await new Promise(r => setTimeout(r, 600));
+
+      await showBlock(blocks[1]!);
+      await animateSelections('optionsTech');
+      await new Promise(r => setTimeout(r, 400));
+
+      await showBlock(blocks[2]!);
+      await animateSelections('optionsContent');
+      await new Promise(r => setTimeout(r, 400));
+
+      await showBlock(blocks[3]!);
+      await new Promise(r => setTimeout(r, 600));
+
+      await showBlock(blocks[4]!);
+      await animateSelections('optionsProduct');
+
+      /* Pausa antes de reiniciar el bucle */
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    /** Bucle infinito de la animacion. */
+    async function loopAnimation(): Promise<void> {
+      while (true) {
+        await runAnimation();
+      }
+    }
+
+    /** Estado final sin animacion (prefers-reduced-motion). */
     function showFinalState(): void {
       textEl!.textContent = fullText;
       cursorEl!.style.display = 'none';
 
-      for (const agent of agents) {
-        revealAgent(agent.id, agent.suggested);
+      for (const block of blocks) {
+        block!.classList.remove('hidden');
+        block!.classList.add('visible');
       }
 
-      showSelector();
+      for (const id of optionGroupIds) {
+        const container = document.getElementById(id);
+        if (!container) continue;
+        container.querySelectorAll('.term-option[data-selected="true"]').forEach(opt => {
+          (opt as HTMLElement).classList.add('checked');
+        });
+      }
     }
 
-    /* Ocultar tarjetas al inicio */
-    hideAllCards();
+    /* Lanzar al entrar en viewport */
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let hasStarted = false;
 
-    /* Detectar preferencia de movimiento reducido */
-    const prefersReducedMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)'
-    ).matches;
-
-    /* Lanzar animacion al entrar en viewport */
-    let hasPlayed = false;
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting && !hasPlayed) {
-            hasPlayed = true;
+          if (entry.isIntersecting && !hasStarted) {
+            hasStarted = true;
             observer.disconnect();
-
             if (prefersReducedMotion) {
               showFinalState();
             } else {
-              startTyping();
+              loopAnimation();
             }
           }
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
 
     observer.observe(sectionEl);
-  } else {
-    console.warn(
-      '[CompositionSection] Elementos DOM no encontrados.',
-      { textEl: !!textEl, cursorEl: !!cursorEl, dataEl: !!dataEl, sectionEl: !!sectionEl, thinkingEl: !!thinkingEl, selectorFooter: !!selectorFooter }
-    );
   }
 </script>
 
@@ -368,19 +363,11 @@ const agentsJson = JSON.stringify(
     margin-bottom: 40px;
   }
 
-  /* -- Layout de la demo -------------------------------------- */
-  .composition-demo {
-    margin-top: 8px;
-  }
-
-  .demo-layout {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 20px;
-    align-items: start;
-  }
-
   /* -- Terminal ----------------------------------------------- */
+  .composition-demo {
+    max-width: 760px;
+  }
+
   .terminal {
     background: #0d0f14;
     border: 1px solid var(--border);
@@ -416,39 +403,41 @@ const agentsJson = JSON.stringify(
   }
 
   .terminal-body {
-    padding: 28px 24px;
-    min-height: 160px;
+    padding: 24px 24px 28px;
+    height: 380px;
+    overflow-y: hidden;
   }
 
-  .terminal-line {
-    line-height: 1.9;
+  /* -- Lineas de terminal ------------------------------------- */
+  .term-line {
+    line-height: 1.8;
   }
 
-  .terminal-prompt {
+  .term-prompt {
     color: var(--green);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
   }
 
-  .terminal-task {
-    margin-top: 8px;
+  .term-command {
+    margin-top: 4px;
   }
 
-  .terminal-text {
+  .term-text {
     color: var(--text);
-    font-size: 15px;
-    line-height: 1.9;
+    font-size: 14px;
+    line-height: 1.8;
     word-break: break-word;
   }
 
-  .terminal-cursor {
+  .term-cursor {
     color: var(--blue);
     font-weight: 700;
-    font-size: 16px;
+    font-size: 15px;
     opacity: 1;
   }
 
-  .terminal-cursor.blink {
+  .term-cursor.blink {
     animation: cursorBlink 1s step-end infinite;
   }
 
@@ -457,324 +446,224 @@ const agentsJson = JSON.stringify(
     50% { opacity: 0; }
   }
 
-  /* -- Indicador de razonamiento ------------------------------ */
-  .thinking-indicator {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 20px;
-    padding: 10px 14px;
-    background: rgba(91, 156, 245, 0.06);
-    border: 1px solid rgba(91, 156, 245, 0.15);
-    border-radius: 6px;
-    opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 0.4s, transform 0.4s;
-    pointer-events: none;
+  /* -- Bloques animados --------------------------------------- */
+  .term-block {
+    margin-top: 16px;
+    transition: opacity 0.5s ease, transform 0.4s ease;
   }
 
-  .thinking-indicator.visible {
+  .term-block.hidden {
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    max-height: 0;
+    overflow: hidden;
+    margin-top: 0;
+  }
+
+  .term-block.visible {
     opacity: 1;
     transform: translateY(0);
+    max-height: 600px;
+    margin-top: 16px;
   }
 
-  .thinking-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--blue);
-    animation: thinkPulse 1.2s ease-in-out infinite;
-  }
-
-  @keyframes thinkPulse {
-    0%, 100% { opacity: 0.3; transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1.1); }
-  }
-
-  .thinking-label {
-    font-size: 13px;
-    color: var(--blue);
-    font-weight: 500;
-    letter-spacing: 0.01em;
-  }
-
-  /* -- Panel de agentes --------------------------------------- */
-  .agents-panel {
+  /* -- Mensaje informativo (equipo de nucleo) ----------------- */
+  .term-info {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .agents-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .agents-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  /* -- Tarjeta de agente -------------------------------------- */
-  .agent-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(91, 156, 245, 0.06);
+    border: 1px solid rgba(91, 156, 245, 0.12);
     border-radius: 6px;
-    padding: 10px 12px;
-    transition: border-color 0.4s, box-shadow 0.4s, opacity 0.4s, transform 0.4s;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
   }
 
-  .agent-card.hidden {
-    opacity: 0;
-    transform: translateX(12px);
+  .term-info-icon {
+    color: var(--blue);
+    font-size: 8px;
+    margin-top: 4px;
+    flex-shrink: 0;
   }
 
-  .agent-card.revealed {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .agent-card.active {
-    border-color: var(--agent-color);
-    box-shadow: 0 0 12px rgba(0, 0, 0, 0.3), inset 0 0 0 1px var(--agent-color);
-  }
-
-  .agent-card.dimmed {
-    opacity: 0.5;
-  }
-
-  .agent-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-
-  /* -- Checkbox del agente ------------------------------------ */
-  .agent-check-row {
+  /* -- Preguntas (multiSelect / singleSelect) ----------------- */
+  .term-question {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-bottom: 8px;
   }
 
-  .agent-checkbox {
+  .term-q-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(78, 201, 144, 0.15);
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .term-q-icon--po {
+    background: rgba(160, 126, 232, 0.15);
+    color: var(--purple, #a07ee8);
+  }
+
+  .term-question span:last-child {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+  }
+
+  .term-question--po span:last-child {
+    color: var(--purple, #a07ee8);
+  }
+
+  /* -- Opciones ----------------------------------------------- */
+  .term-options {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 26px;
+  }
+
+  .term-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background 0.3s;
+  }
+
+  .term-option.checked {
+    background: rgba(78, 201, 144, 0.06);
+  }
+
+  .term-option--radio.checked {
+    background: rgba(160, 126, 232, 0.06);
+  }
+
+  /* -- Checkbox ----------------------------------------------- */
+  .term-checkbox {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .cb-box {
+    display: block;
+    width: 14px;
+    height: 14px;
     border: 1.5px solid var(--border);
     border-radius: 3px;
     background: transparent;
     transition: background 0.3s, border-color 0.3s;
-    flex-shrink: 0;
   }
 
-  .check-icon {
-    width: 12px;
-    height: 12px;
+  .cb-check {
+    position: absolute;
     color: transparent;
+    font-size: 10px;
+    font-weight: 700;
     transition: color 0.3s;
+    line-height: 1;
   }
 
-  .agent-card.active .agent-checkbox {
-    background: var(--agent-color);
-    border-color: var(--agent-color);
+  .term-option.checked .cb-box {
+    background: var(--green);
+    border-color: var(--green);
   }
 
-  .agent-card.active .check-icon {
+  .term-option.checked .cb-check {
     color: #fff;
   }
 
-  .agent-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-bright);
-    letter-spacing: -0.01em;
-  }
-
-  /* -- Badge de sugerencia ------------------------------------ */
-  .agent-badge {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-dim);
-  }
-
-  .agent-badge[data-suggested="true"] {
-    background: rgba(78, 201, 144, 0.1);
-    color: var(--green);
-  }
-
-  /* -- Razonamiento del agente -------------------------------- */
-  .agent-reasoning {
-    font-size: 11px;
-    line-height: 1.5;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
-
-  .agent-card.active .agent-name {
-    color: var(--agent-color);
-  }
-
-  .agent-card.active .agent-reasoning {
-    color: var(--text-muted);
-  }
-
-  /* -- Selector footer (fase 3) ------------------------------- */
-  .selector-footer {
+  /* -- Radio -------------------------------------------------- */
+  .term-radio {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 0 0;
-    border-top: 1px solid var(--border);
-    margin-top: 4px;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.5s, transform 0.5s;
-    pointer-events: none;
-  }
-
-  .selector-footer.visible {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  .selector-title {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .selector-confirm {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    background: transparent;
-    border: 1px solid var(--green);
-    border-radius: 5px;
-    color: var(--green);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    cursor: default;
-    transition: box-shadow 0.4s, background 0.4s;
-  }
-
-  .selector-confirm.pulse {
-    box-shadow: 0 0 12px rgba(78, 201, 144, 0.25);
-    background: rgba(78, 201, 144, 0.08);
-  }
-
-  .confirm-icon {
+    justify-content: center;
     width: 14px;
     height: 14px;
-  }
-
-  /* -- Agentes de nucleo dentro del terminal ------------------- */
-  .terminal-team {
-    padding: 12px 20px 14px;
-    border-top: 1px solid var(--border);
-    background: #0f111a;
-  }
-
-  .terminal-team-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-
-  .terminal-team-label {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
-
-  .terminal-team-status {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    color: var(--green);
-  }
-
-  .terminal-team-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
-  }
-
-  .core-chip {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 6px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 4px;
-    border-left: 2px solid var(--agent-color);
-  }
-
-  .core-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--agent-color);
     flex-shrink: 0;
   }
 
-  .core-name {
-    font-size: 9px;
-    font-weight: 600;
-    color: var(--text-muted);
-    white-space: nowrap;
-    letter-spacing: -0.01em;
+  .radio-ring {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    transition: border-color 0.3s;
   }
 
-  .core-role {
-    font-size: 8px;
+  .radio-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: transparent;
+    transition: background 0.3s;
+  }
+
+  .term-option--radio.checked .radio-ring {
+    border-color: var(--purple, #a07ee8);
+  }
+
+  .term-option--radio.checked .radio-dot {
+    background: var(--purple, #a07ee8);
+  }
+
+  /* -- Labels de opciones ------------------------------------- */
+  .term-opt-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .term-option.checked .term-opt-label {
+    color: var(--text-bright);
+  }
+
+  .term-opt-desc {
+    font-size: 11px;
     color: var(--text-dim);
-    white-space: nowrap;
-    margin-left: auto;
+    margin-left: 4px;
   }
 
-  /* -- Responsive 1100px -------------------------------------- */
-  @media (max-width: 1100px) {
-    .demo-layout {
-      grid-template-columns: 1fr 280px;
-      gap: 14px;
-    }
+  .term-option.checked .term-opt-desc {
+    color: var(--text-muted);
+  }
 
-    .terminal-team-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
+  /* -- Confirmacion ------------------------------------------- */
+  .term-confirm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(78, 201, 144, 0.06);
+    border: 1px solid rgba(78, 201, 144, 0.15);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+  }
 
-    .core-role {
-      display: none;
-    }
+  .term-confirm-icon {
+    font-size: 12px;
   }
 
   /* -- Responsive 768px --------------------------------------- */
@@ -783,61 +672,43 @@ const agentsJson = JSON.stringify(
       padding: 60px 0 32px;
     }
 
-    .demo-layout {
-      grid-template-columns: 1fr;
-      gap: 20px;
-    }
-
     .terminal-body {
-      padding: 20px 16px;
-      min-height: 120px;
+      padding: 18px 14px 22px;
+      height: 340px;
     }
 
-    .terminal-prompt,
-    .terminal-text {
-      font-size: 14px;
+    .term-prompt,
+    .term-text {
+      font-size: 13px;
     }
 
-    .terminal-team {
-      padding: 10px 16px 12px;
+    .term-options {
+      padding-left: 18px;
     }
 
-    .terminal-team-grid {
-      grid-template-columns: repeat(4, 1fr);
-    }
-
-    .core-role {
-      display: block;
-    }
-
-    .agents-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+    .term-opt-desc {
+      display: none;
     }
   }
 
   /* -- Responsive 480px --------------------------------------- */
   @media (max-width: 480px) {
-    .terminal-team-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    .core-role {
-      display: none;
-    }
-
-    .agents-grid {
-      grid-template-columns: 1fr;
-    }
-
     .terminal-body {
-      padding: 16px 12px;
+      padding: 14px 10px 18px;
+      height: 300px;
     }
 
-    .terminal-prompt,
-    .terminal-text {
-      font-size: 13px;
+    .term-prompt,
+    .term-text {
+      font-size: 12px;
+    }
+
+    .term-question span:last-child {
+      font-size: 12px;
+    }
+
+    .term-opt-label {
+      font-size: 11px;
     }
   }
 </style>
