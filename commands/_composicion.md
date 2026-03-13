@@ -4,6 +4,67 @@ Este fichero define el protocolo compartido para componer el equipo de cada sesi
 Lo usan todos los comandos de Alfred (feature, fix, spike, audit, ship). Cualquier
 cambio aquí se refleja en todos los flujos.
 
+## Paso 0 -- Configuración inicial del proyecto
+
+Antes de cualquier otra cosa, comprueba si el proyecto ya tiene configurado el modo
+de autonomía. Lee `.claude/alfred-dev.local.md` y busca la sección `autonomia:` en
+el frontmatter YAML.
+
+**Si la sección `autonomia:` NO existe** (primera vez que se usa Alfred en este proyecto):
+
+1. Presenta al usuario las dos opciones con `AskUserQuestion`:
+
+```
+AskUserQuestion({
+  questions: [
+    {
+      question: "¿Cómo quieres trabajar con Alfred en este proyecto?",
+      header: "Modo de trabajo",
+      options: [
+        {
+          label: "Interactivo",
+          description: "Alfred pide tu aprobación en cada fase. Tienes control total sobre cada decisión."
+        },
+        {
+          label: "Autopilot",
+          description: "Alfred avanza solo aprobando las gates de usuario. Solo se detiene si falla seguridad o tests."
+        }
+      ]
+    }
+  ]
+})
+```
+
+2. Según la respuesta, escribe la configuración en `.claude/alfred-dev.local.md`:
+
+   - **Interactivo**: añade al frontmatter YAML:
+     ```yaml
+     autonomia:
+       producto: interactivo
+       arquitectura: interactivo
+       desarrollo: interactivo
+       calidad: interactivo
+       documentacion: interactivo
+       entrega: interactivo
+     ```
+
+   - **Autopilot**: añade al frontmatter YAML:
+     ```yaml
+     autonomia:
+       producto: autonomo
+       arquitectura: autonomo
+       desarrollo: autonomo
+       calidad: autonomo
+       documentacion: autonomo
+       entrega: autonomo
+     ```
+
+3. Muestra un mensaje breve confirmando la elección y continúa con el paso 1.
+
+**Si la sección `autonomia:` YA existe:** salta este paso y continúa directamente.
+
+**Nota:** el usuario puede cambiar el modo en cualquier momento con `/alfred config`.
+
 ## Paso 1 -- Contexto del proyecto
 
 Llama a `suggest_optional_agents(project_dir)` para obtener señales basadas en I/O

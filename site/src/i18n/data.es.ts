@@ -117,7 +117,7 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'Nuevo en v0.4.0',
+      label: 'Nuevo en v0.4.1',
       items: [
         {
           title: 'Evidencia verificable',
@@ -128,11 +128,6 @@ const data: PageData = {
           title: 'Modo autopilot',
           description: 'Flujos completos sin intervención. Las gates de usuario se aprueban; las de seguridad y tests se evalúan.',
           svgContent: '<path d="M12 16v5"/><path d="M16 14l-4 2-4-2"/><path d="M12 3l9 4.5v5L12 17l-9-4.5v-5L12 3z"/>',
-        },
-        {
-          title: 'Git worktrees',
-          description: 'Trabajo aislado en ramas alfred/*. Si algo falla, se descarta sin tocar la rama principal.',
-          svgContent: '<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
         },
         {
           title: 'Loop iterativo',
@@ -632,16 +627,14 @@ const data: PageData = {
         ],
       },
       {
-        title: '6 módulos core',
+        title: '5 módulos core',
         items: [
           { name: 'orchestrator.py', label: 'Flujos, sesiones, gates, loop iterativo y autopilot' },
           { name: 'personality.py', label: 'Motor de personalidad' },
           { name: 'config_loader.py', label: 'Config y detección de stack' },
           { name: 'memory.py', label: 'Memoria persistente SQLite' },
           { name: 'session_report.py', label: 'Informes de sesión en markdown' },
-          { name: 'worktree.py', label: 'Aislamiento con git worktrees' },
         ],
-        footnote: '530 passing',
       },
     ],
   },
@@ -918,14 +911,12 @@ const data: PageData = {
         category: 'Autonomía',
         color: 'var(--green)',
         background: 'rgba(78,201,126,0.08)',
-        title: 'Modo autopilot con aislamiento',
+        title: 'Modo autopilot',
         command: '/alfred-dev:feature --autopilot',
         steps: [
-          'Se crea un git worktree aislado en una rama alfred/<tipo>/<nombre> para no afectar a la rama principal',
           'El flujo completo se ejecuta sin intervención: las gates de usuario se aprueban automáticamente',
           'Las gates automáticas (tests) y de seguridad se siguen evaluando normalmente',
           'Si una gate automática falla, el loop iterativo reintenta hasta 5 veces antes de escalar',
-          'Al completar, se fusiona el worktree de vuelta; si algo sale mal, se descarta sin afectar al proyecto',
         ],
       },
     ],
@@ -1212,13 +1203,13 @@ personalidad:
 
   changelog: [
     {
-      version: '0.4.0',
+      version: '0.4.1',
       date: '2026-03-13',
       added: [
+        'Configuracion inicial automatica: al usar Alfred por primera vez en un proyecto, pregunta si se quiere modo interactivo o autopilot. Sin pasos manuales previos.',
         'Verificacion de evidencia: hook que registra cada ejecucion de tests como evidencia verificable. Cuando un agente afirma que los tests pasan, el sistema comprueba que efectivamente se ejecutaron.',
         'Informe de sesion al cierre: resumen automatico en docs/alfred-reports/ con fases, evidencia de tests, equipo y artefactos.',
         'Loop iterativo dentro de fases: los agentes iteran hasta 5 veces dentro de una fase hasta superar la gate, habilitando ciclos TDD naturales.',
-        'Aislamiento con git worktrees: ramas alfred/<tipo>/<nombre> para trabajo seguro. Si algo sale mal, se descarta sin afectar la rama principal.',
         'Modo autopilot: ejecucion completa sin interrupcion humana. Las gates de usuario se aprueban automaticamente; las automaticas y de seguridad se evaluan normalmente.',
       ],
       changed: [
@@ -1481,7 +1472,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.0',
+    version: 'v0.4.1',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

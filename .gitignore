@@ -21,8 +21,5 @@ docs/plans/
 htmlcov/
 .coverage
 
-# Worktrees temporales
-.alfred-worktrees/
-
 # Informes generados
 docs/alfred-reports/
