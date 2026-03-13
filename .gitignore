@@ -1,8 +1,28 @@
 node_modules/
-.claude/alfred-dev-state.json
-.claude/alfred-dev.local.md
 __pycache__/
 *.pyc
 .DS_Store
 .pytest_cache/
 docs/plans/
+
+# Ficheros de estado y datos locales del plugin
+.claude/alfred-dev-state.json
+.claude/alfred-dev.local.md
+.claude/alfred-memory.db
+.claude/alfred-memory.db-shm
+.claude/alfred-memory.db-wal
+.claude/alfred-memory.db.bak
+.claude/alfred-evidence.json
+.claude/alfred-gui-port
+.claude/alfred-gui.log
+
+# Cobertura
+.coveragerc
+htmlcov/
+.coverage
+
+# Worktrees temporales
+.alfred-worktrees/
+
+# Informes generados
+docs/alfred-reports/
