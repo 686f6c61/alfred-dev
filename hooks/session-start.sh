@@ -42,7 +42,7 @@ CONTEXT="## Alfred Dev - tu empresa de ingeniería en un plugin
 Tienes a tu disposición un equipo completo de agentes especializados:
 Alfred (orquestador), El Buscador de Problemas (producto), El Dibujante de Cajas (arquitectura),
 El Artesano (senior dev), El Paranoico (seguridad), El Rompe-cosas (QA),
-El Fontanero (DevOps) y El Traductor (documentación).
+El Fontanero (DevOps), El Escriba (documentación) y SonIA (project management).
 
 ### Comandos disponibles
 
