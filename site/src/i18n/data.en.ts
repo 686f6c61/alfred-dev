@@ -1158,7 +1158,7 @@ personality:
 
   changelog: [
     {
-      version: '4.0.0',
+      version: '0.4.0',
       date: '2026-03-13',
       added: [
         'Evidence verification: hook that records each test execution as verifiable evidence. When an agent claims tests pass, the system checks they were actually run.',
@@ -1427,7 +1427,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v4.0.0',
+    version: 'v0.4.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

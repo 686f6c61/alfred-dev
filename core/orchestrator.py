@@ -12,8 +12,8 @@ El orquestador se encarga de:
 - Crear y gestionar sesiones de trabajo.
 - Evaluar las gates de cada fase para decidir si se aprueba el avance.
 - Persistir y recuperar el estado de las sesiones en disco.
-- Gestionar el loop iterativo dentro de cada fase (v4.0.0).
-- Soportar el modo autopilot para ejecucion sin interrupcion (v4.0.0).
+- Gestionar el loop iterativo dentro de cada fase (v0.4.0).
+- Soportar el modo autopilot para ejecucion sin interrupcion (v0.4.0).
 
 Arquitectura de gates:
     Las gates actúan como puntos de control entre fases. Su comportamiento
@@ -22,14 +22,14 @@ Arquitectura de gates:
     métricas objetivas como tests verdes o pipeline OK; las combinadas
     (ej. «automático+seguridad») acumulan ambas condiciones.
 
-Loop iterativo (v4.0.0):
+Loop iterativo (v0.4.0):
     Dentro de cada fase, los agentes pueden iterar hasta que los
     entregables esten completos o se alcance el maximo de iteraciones.
     El loop es interno a la fase: no avanza a la siguiente hasta que
     la gate se supere. Esto permite ciclos TDD (rojo-verde-refactor)
     y pasadas de QA repetidas sin intervencion manual.
 
-Modo autopilot (v4.0.0):
+Modo autopilot (v0.4.0):
     Cuando ``autopilot=True``, el flujo recorre todas las fases sin
     pedir aprobacion al usuario en las gates de tipo «usuario». Las
     gates automaticas y de seguridad siguen evaluandose normalmente.
@@ -872,7 +872,7 @@ def load_state(state_path: str) -> Optional[Dict[str, Any]]:
     return data
 
 
-# --- Loop iterativo (v4.0.0) ------------------------------------------------
+# --- Loop iterativo (v0.4.0) ------------------------------------------------
 # Permite que los agentes iteren dentro de una fase hasta que la gate
 # se supere o se alcance el maximo de iteraciones. Esto habilita ciclos
 # TDD, pasadas de QA repetidas y otros patrones iterativos.
@@ -968,7 +968,7 @@ def reset_phase_iterations(session: Dict[str, Any]) -> None:
     session["iteraciones_fase"] = 0
 
 
-# --- Modo autopilot (v4.0.0) ------------------------------------------------
+# --- Modo autopilot (v0.4.0) ------------------------------------------------
 # Permite ejecutar un flujo completo sin interrupcion humana. Las gates
 # de tipo «usuario» se aprueban automaticamente; las automaticas y de
 # seguridad se evaluan normalmente.

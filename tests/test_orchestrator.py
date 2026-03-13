@@ -236,7 +236,7 @@ class TestRunFlow(unittest.TestCase):
 
 
 class TestLoopIterativo(unittest.TestCase):
-    """Tests para el loop iterativo dentro de fases (v4.0.0)."""
+    """Tests para el loop iterativo dentro de fases (v0.4.0)."""
 
     def test_should_retry_when_gate_fails(self):
         """Si la gate falla y hay iteraciones, recomienda retry."""
@@ -284,7 +284,7 @@ class TestLoopIterativo(unittest.TestCase):
 
 
 class TestAutopilot(unittest.TestCase):
-    """Tests para el modo autopilot (v4.0.0)."""
+    """Tests para el modo autopilot (v0.4.0)."""
 
     def test_run_flow_autopilot_creates_session(self):
         """El modo autopilot crea una sesion con el flag activo."""

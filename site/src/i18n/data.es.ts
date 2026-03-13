@@ -1161,7 +1161,7 @@ personalidad:
 
   changelog: [
     {
-      version: '4.0.0',
+      version: '0.4.0',
       date: '2026-03-13',
       added: [
         'Verificacion de evidencia: hook que registra cada ejecucion de tests como evidencia verificable. Cuando un agente afirma que los tests pasan, el sistema comprueba que efectivamente se ejecutaron.',
@@ -1430,7 +1430,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v4.0.0',
+    version: 'v0.4.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
