@@ -1,6 +1,6 @@
 ---
 name: evaluate-dependencies
-description: "Usar para evaluar si una dependencia merece la pena antes de añadirla"
+description: "Usar para evaluar si una dependencia merece la pena antes de añadirla. Activar cuando el usuario quiera añadir una librería, saber si merece la pena esta dependencia, evaluar un paquete antes de instalarlo, hacer npm install o pip install de algo nuevo, buscar alternativas a una librería o decidir si implementar algo internamente."
 ---
 
 # Evaluar dependencias
@@ -40,6 +40,16 @@ El resultado es una recomendación fundamentada: añadir la dependencia, rechaza
    - **Implementar internamente:** la funcionalidad es suficientemente simple como para no justificar una dependencia.
 
 6. **Documentar la decisión.** Dejar constancia del análisis para que futuras evaluaciones no repitan el trabajo.
+
+## Qué NO hacer
+
+- **No añadir dependencias para funcionalidad trivial** que se resuelve en 20 líneas de código. El coste de gestionar una dependencia (actualizaciones, vulnerabilidades, compatibilidad) supera al beneficio cuando la funcionalidad es simple.
+- **No evaluar solo por popularidad.** Las estrellas de GitHub no son garantía de calidad, seguridad ni mantenimiento a largo plazo. Un proyecto con 50.000 estrellas y un solo mantenedor inactivo es más arriesgado que uno con 500 estrellas y un equipo activo.
+- **No ignorar las dependencias transitivas.** Instalar una librería con 200 subdependencias amplía enormemente la superficie de ataque y el riesgo de rotura.
+
+## Relación con otros skills
+
+Este skill evalúa una dependencia concreta antes de añadirla. Para auditar las dependencias existentes del proyecto, usar `dependency-audit`.
 
 ## Criterios de éxito
 

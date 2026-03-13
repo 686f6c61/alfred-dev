@@ -1,6 +1,6 @@
 ---
 name: ci-cd-pipeline
-description: "Usar para configurar pipeline CI/CD adaptado al proyecto"
+description: "Configurar pipeline CI/CD adaptado al proyecto. Activar cuando el usuario quiera configurar CI, crear GitHub Actions, configurar GitLab CI, montar un pipeline de despliegue, automatizar tests o implementar integracion continua."
 ---
 
 # Configurar pipeline CI/CD
@@ -13,7 +13,7 @@ Un buen pipeline es rápido (feedback en minutos, no en horas), fiable (no falla
 
 ## Proceso
 
-1. **Detectar la plataforma de CI/CD.** Identificar dónde se ejecutará el pipeline:
+1. **Detectar la plataforma de CI/CD.** Consultar el stack detectado en la configuración de Alfred para adaptar el pipeline al lenguaje, framework y herramientas del proyecto. Identificar dónde se ejecutará el pipeline:
 
    - **GitHub Actions:** `.github/workflows/`.
    - **GitLab CI:** `.gitlab-ci.yml`.
@@ -71,3 +71,8 @@ Un buen pipeline es rápido (feedback en minutos, no en horas), fiable (no falla
 - Los triggers están configurados para PRs, pushes y tags.
 - Hay notificaciones de fallo configuradas.
 - El fichero de configuración está documentado con comentarios.
+
+## Que NO hacer
+
+- No crear pipelines sin paso de tests. Un pipeline sin verificación automática no aporta confianza; simplemente automatiza despliegues potencialmente rotos.
+- No guardar secretos en el código del pipeline. Los tokens, contraseñas y API keys se gestionan exclusivamente a través del sistema de secretos de la plataforma (GitHub Secrets, GitLab Variables, etc.), nunca en texto plano en el fichero de configuración.

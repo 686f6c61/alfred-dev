@@ -1,16 +1,19 @@
 ---
-description: "Planificacion de releases: changelog, versionado semantico, notas y calendario"
+name: release-planning
+description: "Planificar y ejecutar releases: inventario de cambios, versionado semantico, changelog, notas de release y publicacion. Usar antes de cada version nueva."
 ---
 
 # Planificacion de releases
 
 El usuario quiere preparar una release del proyecto. Este skill guia el proceso completo desde la definicion de la version hasta la publicacion, asegurando que el changelog, las notas de release y la documentacion estan al dia.
 
-## Contexto
+> **Nota:** Este skill cubre el proceso completo de release. Para generar solo las entradas de changelog, usar `documentacion/changelog`.
+
+## Resumen
 
 Una release bien planificada no es solo un `git tag`. Requiere revisar que se incluye, comunicar los cambios a los usuarios y garantizar que la version sigue un esquema coherente. Este skill sistematiza ese proceso para que ninguna release salga sin changelog, sin notas o con una version incoherente.
 
-## Protocolo
+## Proceso
 
 ### Fase 1: Inventario de cambios (devops-engineer)
 
@@ -73,3 +76,18 @@ Redactar las notas de release para GitHub/GitLab:
 5. Verificar que la release aparece correctamente.
 
 **Artefacto:** release publicada con changelog y notas.
+
+## Criterios de exito
+
+- Todos los commits desde la ultima release estan clasificados por tipo.
+- La version nueva sigue estrictamente semver, con bump coherente respecto a los cambios incluidos.
+- El fichero CHANGELOG.md esta actualizado con la nueva entrada antes de crear el tag.
+- Las notas de release estan redactadas y publicadas en la plataforma correspondiente.
+- Los ficheros de version del proyecto (package.json, plugin.json, etc.) reflejan la nueva version.
+- Los tests pasan antes de crear el tag y publicar la release.
+
+## Que NO hacer
+
+- **No publicar una release sin changelog actualizado.** El changelog es la comunicacion principal con los usuarios del proyecto. Una release sin changelog obliga a los consumidores a leer commits para entender que cambio, lo que genera desconfianza y dificulta las actualizaciones.
+- **No hacer bump de version major sin documentar los breaking changes.** Un bump major sin guia de migracion deja a los usuarios sin saber que rompe ni como adaptarse. Los breaking changes deben estar documentados con instrucciones claras de actualizacion.
+- **No crear tags sin verificar que los tests pasan.** Un tag apunta a un commit concreto y representa un compromiso de estabilidad. Etiquetar codigo que no pasa los tests es publicar software defectuoso con apariencia de version estable.

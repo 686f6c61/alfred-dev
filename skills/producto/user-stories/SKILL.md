@@ -1,6 +1,6 @@
 ---
 name: user-stories
-description: "Usar para descomponer una feature en historias de usuario verificables"
+description: "Descomponer una feature en historias de usuario verificables. Activar cuando el usuario quiera crear historias de usuario, usar el formato como usuario quiero, descomponer una feature o definir requisitos funcionales."
 ---
 
 # Descomponer en historias de usuario
@@ -49,3 +49,9 @@ La descomposición sigue el principio INVEST: cada historia debe ser Independien
 - Ninguna historia supera las 8 horas estimadas de trabajo.
 - Las prioridades MoSCoW están asignadas y son coherentes con el objetivo de la feature.
 - El usuario ha validado la descomposición y las prioridades.
+
+## Que NO hacer
+
+- No escribir historias demasiado grandes. Si una historia no se puede implementar y verificar en un máximo de 8 horas, necesita dividirse en historias más pequeñas.
+- No mezclar múltiples acciones en una sola historia. Cada historia debe representar una unidad de valor independiente que se pueda desplegar por separado.
+- No omitir los criterios de aceptación. Una historia sin criterios de aceptación no es verificable y genera ambigüedad entre producto y desarrollo.

@@ -1,6 +1,6 @@
 ---
 name: onboarding-guide
-description: "Generar una guía de onboarding para nuevos desarrolladores del proyecto"
+description: "Generar una guía de onboarding para nuevos desarrolladores del proyecto. Activar ante: guia para nuevos, como empezar, setup del proyecto, incorporacion al equipo"
 ---
 
 # Guía de onboarding para nuevos desarrolladores

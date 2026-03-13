@@ -1,6 +1,6 @@
 ---
 name: flow-review
-description: "Analizar flujos de usuario: pasos, abandono, simplificación"
+description: "Analizar flujos de usuario: pasos, abandono, simplificación. Activar ante: flujo de usuario, pasos innecesarios, simplificar proceso, experiencia de usuario, conversion, abandono"
 ---
 
 # Revisión de flujos de usuario

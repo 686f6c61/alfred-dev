@@ -1,6 +1,6 @@
 ---
 name: profiling
-description: "Perfilar aplicaciones para encontrar cuellos de botella de CPU y memoria"
+description: "Perfilar aplicaciones para encontrar cuellos de botella de CPU y memoria. Activar cuando la aplicacion este lenta, haya un cuello de botella, problemas de latencia, se necesite un flamegraph, se detecte alto uso de CPU, un memory leak o se quiera analizar el rendimiento."
 ---
 
 # Profiling de aplicaciones
@@ -13,32 +13,34 @@ El proceso se adapta al runtime de la aplicación (Node.js, Python, frontend) y 
 
 ## Proceso
 
-1. **Reproducir el escenario lento.** Antes de perfilar, definir exactamente qué operación es lenta y cómo reproducirla de forma consistente:
+1. **Consultar el stack del proyecto.** Consultar el stack detectado en la configuración de Alfred para seleccionar las herramientas de profiling adecuadas al runtime (Node.js, Python, navegador, etc.).
+
+2. **Reproducir el escenario lento.** Antes de perfilar, definir exactamente qué operación es lenta y cómo reproducirla de forma consistente:
 
    - Identificar el endpoint, la acción de usuario o el proceso que se quiere optimizar.
    - Preparar datos de prueba que representen el volumen real de producción.
    - Ejecutar la operación al menos una vez para descartar efectos de arranque en frío.
 
-2. **Capturar el perfil con las herramientas del runtime.** Seleccionar la herramienta según el entorno:
+3. **Capturar el perfil con las herramientas del runtime.** Seleccionar la herramienta según el entorno:
 
    - **Node.js:** `--inspect` con Chrome DevTools para CPU profiling y heap snapshots. `clinic.js` para diagnóstico automatizado (doctor, flame, bubbleprof). `0x` para generar flamegraphs directamente.
    - **Python:** `cProfile` para perfilado integrado. `py-spy` para perfilado sin instrumentación (sampling profiler, no requiere modificar el código). `memory_profiler` para análisis de memoria línea por línea.
    - **Frontend (navegador):** Chrome DevTools Performance tab para grabar actividad de CPU, layout, paint y scripting. Memory tab para heap snapshots y detección de leaks. Lighthouse para métricas de rendimiento centradas en el usuario (LCP, FID, CLS).
 
-3. **Identificar los hot paths.** Analizar el perfil capturado buscando las funciones y operaciones que consumen más tiempo:
+4. **Identificar los hot paths.** Analizar el perfil capturado buscando las funciones y operaciones que consumen más tiempo:
 
    - En un flamegraph, las barras anchas en la parte superior son las funciones que más tiempo acumulan.
    - En un perfil tabulado, ordenar por "self time" (tiempo propio, no incluyendo llamadas hijas) para encontrar las funciones realmente costosas.
    - En perfiles de memoria, buscar objetos que crecen sin liberarse (memory leaks) o asignaciones excesivas que presionan al garbage collector.
 
-4. **Analizar el call stack de los hot paths.** Una vez identificada la función costosa, entender por qué es costosa:
+5. **Analizar el call stack de los hot paths.** Una vez identificada la función costosa, entender por qué es costosa:
 
    - Se llama demasiadas veces (problema de arquitectura o algoritmo)?
    - Cada llamada individual es lenta (operación de I/O, algoritmo ineficiente)?
    - Genera demasiadas asignaciones de memoria (presión sobre el GC)?
    - Bloquea el event loop (en Node.js o navegador)?
 
-5. **Proponer correcciones específicas.** Según el diagnóstico:
+6. **Proponer correcciones específicas.** Según el diagnóstico:
 
    - **CPU bound:** optimizar el algoritmo, usar cachés, mover a un worker thread.
    - **I/O bound:** paralelizar operaciones independientes, implementar batching, usar streaming en lugar de cargar todo en memoria.
@@ -46,7 +48,7 @@ El proceso se adapta al runtime de la aplicación (Node.js, Python, frontend) y 
    - **GC pressure:** reducir asignaciones innecesarias, reutilizar objetos, evitar la creación de closures en bucles.
    - **Frontend:** reducir layout thrashing, usar requestAnimationFrame para animaciones, virtualizar listas largas.
 
-6. **Verificar la mejora.** Repetir el profiling tras aplicar los cambios:
+7. **Verificar la mejora.** Repetir el profiling tras aplicar los cambios:
 
    - Comparar los flamegraphs antes y después.
    - Medir la mejora en tiempo de ejecución y uso de memoria.

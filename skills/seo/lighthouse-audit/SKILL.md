@@ -1,6 +1,6 @@
 ---
 name: lighthouse-audit
-description: "Analizar resultados de Lighthouse y proponer mejoras priorizadas"
+description: "Analizar resultados de Lighthouse y proponer mejoras priorizadas. Activar ante: rendimiento web, Core Web Vitals, LCP, CLS, FID, puntuacion Lighthouse, velocidad de carga"
 ---
 
 # Analizar resultados de Lighthouse

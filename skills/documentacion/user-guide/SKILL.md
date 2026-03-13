@@ -1,6 +1,6 @@
 ---
 name: user-guide
-description: "Usar para escribir guías de usuario o desarrollador"
+description: "Usar para escribir guías de usuario o desarrollador. Activar ante: guia de usuario, como usar, manual de uso, tutorial, instrucciones para el usuario"
 ---
 
 # Escribir guía de usuario

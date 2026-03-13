@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "alfred-dev",
-      "description": "Plugin de ingeniería de software completa: 17 agentes (9 de núcleo + 8 opcionales), 59 skills, memoria persistente, quality gates y compliance europeo integrado.",
+      "description": "Plugin de ingeniería de software completa: 17 agentes (9 de núcleo + 8 opcionales), 60 skills, memoria persistente, quality gates y compliance europeo integrado.",
       "version": "0.3.7",
       "source": "./",
       "author": {

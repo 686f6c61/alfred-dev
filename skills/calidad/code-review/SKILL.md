@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Usar para revisar código con foco en calidad, legibilidad y errores lógicos"
+description: "Usar para revisar código con foco en calidad, legibilidad y errores lógicos. También: revisar código, buscar errores, calidad del código, revisión de PR, pull request review."
 ---
 
 # Revisión de código
@@ -67,3 +67,14 @@ Si las herramientas del toolkit `pr-review-toolkit` están disponibles, este ski
 - Solo se reportan hallazgos con confianza >= 80%.
 - El tono de la revisión es constructivo y orientado a mejorar el código.
 - Se distingue entre problemas que bloquean y sugerencias de mejora.
+
+## Clarificación
+
+Este skill guía la revisión de código. Para responder a los comentarios de una review recibida, usar `desarrollo/code-review-response`.
+
+## Qué NO hacer
+
+- No centrarse solo en el estilo (formateo, nombres, convenciones). Revisar la lógica primero; los problemas de estilo son los menos importantes.
+- No aprobar sin haber entendido el contexto del cambio. Si no se entiende por qué se hizo un cambio, preguntar antes de opinar.
+- No reportar hallazgos sin justificación. Cada comentario debe explicar el problema, el riesgo y la alternativa sugerida.
+- No convertir la revisión en una lista de preferencias personales. Ceñirse a problemas objetivos de calidad, no a gustos.

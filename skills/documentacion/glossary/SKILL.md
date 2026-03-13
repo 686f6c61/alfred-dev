@@ -1,6 +1,6 @@
 ---
 name: glossary
-description: "Crear y mantener un glosario de términos del proyecto para evitar ambigüedades"
+description: "Crear y mantener un glosario de términos del proyecto para evitar ambigüedades. Activar ante: glosario, definir terminos, vocabulario del proyecto, que significa"
 ---
 
 # Corpus lingüístico / Glosario del proyecto

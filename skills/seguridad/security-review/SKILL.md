@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: "Usar para revisar código contra OWASP Top 10"
+description: "Usar para revisar código contra OWASP Top 10. También: buscar vulnerabilidades, OWASP, inyección SQL, XSS, CSRF, revisión de seguridad del código."
 ---
 
 # Revisión de seguridad OWASP Top 10
@@ -83,3 +83,14 @@ Cada categoría se revisa de forma sistemática, buscando patrones de código vu
 - Los hallazgos están clasificados por severidad (crítica, alta, media, baja).
 - Cada hallazgo incluye la ubicación en el código, el riesgo y la remediación sugerida.
 - No quedan vulnerabilidades críticas o altas sin plan de acción.
+
+## Nota de versión
+
+Basado en OWASP Top 10 (edición 2021). Verificar si existe una edición más reciente antes de ejecutar la revisión, ya que las categorías y su priorización pueden haber cambiado.
+
+## Qué NO hacer
+
+- No tratar esta revisión como un pentest completo. Es una evaluación de código estática basada en patrones conocidos; un atacante real usará técnicas que van más allá de OWASP Top 10.
+- No limitarse a buscar patrones sin entender el contexto. Una función de evaluación dinámica en un script de build no es lo mismo que una con entrada del usuario.
+- No ignorar las categorías que "no aplican" sin verificarlo. A menudo se descarta SSRF o inyección asumiendo que "aquí no pasa", cuando sí hay superficie de ataque.
+- No reportar hallazgos sin propuesta de remediación concreta. Un informe de problemas sin soluciones no es accionable.

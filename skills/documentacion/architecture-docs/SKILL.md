@@ -1,6 +1,6 @@
 ---
 name: architecture-docs
-description: "Usar para documentar la arquitectura del sistema"
+description: "Usar para documentar la arquitectura del sistema. Activar ante: documentar arquitectura, diagrama del sistema, como funciona el proyecto, vision general tecnica"
 ---
 
 # Documentar arquitectura del sistema

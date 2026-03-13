@@ -1,6 +1,6 @@
 ---
 name: cta-writing
-description: "Redactar CTAs efectivos orientados a accion"
+description: "Redactar CTAs efectivos orientados a accion. Activar ante: escribir botones, call to action, texto de boton, conversion, microcopy"
 ---
 
 # Redactar CTAs efectivos

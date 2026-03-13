@@ -1,6 +1,6 @@
 ---
 name: threat-model
-description: "Usar para modelar amenazas con metodología STRIDE"
+description: "Usar para modelar amenazas con metodología STRIDE. También: análisis de amenazas, STRIDE, superficie de ataque, vectores de ataque, modelado de amenazas."
 ---
 
 # Modelado de amenazas STRIDE
@@ -56,3 +56,15 @@ El modelado de amenazas se hace idealmente al principio del desarrollo (cuando e
 - Cada amenaza tiene al menos una mitigación propuesta.
 - Las mitigaciones están priorizadas por ratio riesgo/esfuerzo.
 - El modelo de amenazas está documentado y es mantenible.
+- Las amenazas y mitigaciones se han registrado en la memoria del proyecto.
+
+## Paso de memoria
+
+Registrar las amenazas identificadas y las mitigaciones propuestas en la memoria del proyecto con `memory_log_decision`. Esto permite hacer seguimiento del estado de las mitigaciones entre sesiones y detectar si aparecen nuevas superficies de ataque con la evolución del sistema.
+
+## Qué NO hacer
+
+- No modelar amenazas en abstracto sin conocer la arquitectura real del sistema. El modelo debe partir de los componentes y flujos de datos concretos, no de una lista genérica.
+- No limitarse a las amenazas técnicas. Las amenazas organizativas (ingeniería social, acceso físico, insiders) también son relevantes si el sistema maneja datos sensibles.
+- No dejar el modelo de amenazas como un documento estático. Debe revisarse cuando cambia la arquitectura, se añaden integraciones o se despliega en un nuevo entorno.
+- No proponer mitigaciones vagas como "mejorar la seguridad". Cada mitigación debe ser concreta, implementable y verificable.

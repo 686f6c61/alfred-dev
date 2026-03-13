@@ -1,6 +1,6 @@
 ---
 name: usability-heuristics
-description: "Evaluar interfaces con las 10 heurísticas de Nielsen"
+description: "Evaluar interfaces con las 10 heurísticas de Nielsen. Activar ante: heuristicas de Nielsen, evaluacion de usabilidad, problemas de UX, interfaz confusa, consistencia de la interfaz"
 ---
 
 # Evaluación heurística de usabilidad

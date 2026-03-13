@@ -1,6 +1,6 @@
 ---
 name: choose-stack
-description: "Usar para evaluar y elegir tecnologías con matriz de decisión ponderada"
+description: "Usar para evaluar y elegir tecnologías con matriz de decisión ponderada. Activar cuando el usuario quiera elegir tecnología, comparar frameworks, decidir entre alternativas técnicas, construir una matriz de decisión, evaluar stack, seleccionar base de datos, elegir lenguaje o comparar herramientas."
 ---
 
 # Elegir stack tecnológico
@@ -13,7 +13,9 @@ La elección de stack es una de las decisiones más costosas de revertir, por lo
 
 ## Proceso
 
-1. **Recopilar requisitos del proyecto.** Antes de evaluar tecnologías, entender qué se necesita: tipo de aplicación, escala esperada, equipo disponible, restricciones de tiempo, presupuesto y requisitos regulatorios.
+1. **Consultar el stack actual del proyecto.** Consultar el stack detectado en la configuración de Alfred (`detect_stack`) como punto de partida. Si no está disponible, detectar manualmente revisando los ficheros de configuración del proyecto (package.json, Cargo.toml, pyproject.toml, etc.). Partir del contexto existente evita proponer tecnologías incompatibles con lo que ya hay.
+
+2. **Recopilar requisitos del proyecto.** Antes de evaluar tecnologías, entender qué se necesita: tipo de aplicación, escala esperada, equipo disponible, restricciones de tiempo, presupuesto y requisitos regulatorios.
 
 2. **Definir los criterios de evaluación y sus pesos.** Los criterios dependen del contexto, pero considerar siempre:
 
@@ -41,6 +43,16 @@ La elección de stack es una de las decisiones más costosas de revertir, por lo
 7. **Emitir una recomendación con justificación.** Indicar la opción recomendada, por qué se elige y qué riesgos se asumen. Si la decisión es ajustada, indicarlo explícitamente.
 
 8. **Documentar como ADR.** Si la decisión es significativa, generar un ADR (Architecture Decision Record) con el skill `write-adr` para que quede constancia en el repositorio.
+
+9. **Registrar la elección en la memoria del proyecto** con `memory_log_decision`. Esto permite que futuros skills consulten qué tecnologías se han elegido y por qué, sin necesidad de buscar el documento original.
+
+## Qué NO hacer
+
+- **No recomendar sin datos.** Las preferencias personales no son criterios de evaluación. Toda puntuación debe estar justificada con evidencia verificable.
+- **No ignorar el contexto del equipo.** La mejor tecnología del mundo es inútil si el equipo no puede ser productivo con ella en el plazo disponible.
+- **No evaluar solo por popularidad.** Las estrellas de GitHub y las tendencias de Twitter no son indicadores fiables de idoneidad para un proyecto concreto.
+- **No limitar la comparación a dos opciones.** Siempre evaluar al menos 3 alternativas para evitar el sesgo de confirmación de una decisión ya tomada.
+- **No olvidar el coste a largo plazo.** Una tecnología puede ser fácil de adoptar pero cara de mantener. Evaluar todo el ciclo de vida.
 
 ## Criterios de éxito
 

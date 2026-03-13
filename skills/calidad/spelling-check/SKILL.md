@@ -1,6 +1,6 @@
 ---
 name: spelling-check
-description: "Verificar ortografía en castellano: tildes, concordancia y erratas en código y documentación"
+description: "Verificar ortografía en castellano: tildes, concordancia y erratas en código y documentación. También: ortografía, tildes, erratas, castellano, acentos."
 ---
 
 # Verificación ortográfica

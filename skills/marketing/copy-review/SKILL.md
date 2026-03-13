@@ -1,6 +1,6 @@
 ---
 name: copy-review
-description: "Revisar textos publicos: claridad, tono, ortografia y CTAs"
+description: "Revisar textos publicos: claridad, tono, ortografia y CTAs. Activar ante: revisar textos, mejorar copy, tono de comunicacion, textos de la web, landing page copy"
 ---
 
 # Revisar textos publicos

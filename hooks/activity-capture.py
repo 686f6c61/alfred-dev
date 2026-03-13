@@ -278,6 +278,57 @@ def _first_meaningful_line(text: str) -> str:
     return ""
 
 
+def _try_sync(db, action: str, **kwargs) -> None:
+    """Ejecuta una sincronizacion incremental a ficheros .md nativos.
+
+    Proyecta los cambios recientes a los ficheros de memoria nativa de
+    Claude Code. Si falla por cualquier razon, continua silenciosamente
+    (politica fail-open).
+
+    Args:
+        db: instancia de MemoryDB.
+        action: tipo de sincronizacion (decision, iteration, commits).
+        **kwargs: argumentos adicionales para el metodo de sync.
+    """
+    try:
+        # Comprobar si sync_to_native esta desactivado
+        config_path = os.path.join(os.getcwd(), ".claude", "alfred-dev.local.md")
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config_content = f.read()
+            if re.search(r"sync_to_native:\s*false", config_content):
+                return
+        except (OSError, FileNotFoundError):
+            pass
+
+        from core.memory_sync import MemorySync, resolve_memory_dir
+
+        memory_dir = resolve_memory_dir(os.getcwd())
+        if memory_dir is None:
+            return
+
+        sync = MemorySync(db, memory_dir)
+
+        if action == "decision":
+            decision_id = kwargs.get("decision_id")
+            if decision_id is not None:
+                sync.sync_decision(decision_id)
+        elif action == "iteration":
+            sync.sync_iteration()
+        elif action == "commits":
+            sync.sync_commits()
+        else:
+            return  # Accion no reconocida: no sincronizar
+
+        sync.sync_summary()
+        sync.update_index()
+    except Exception as e:
+        print(
+            f"{_LOG_PREFIX} Aviso: sync incremental fallida: {e}",
+            file=sys.stderr,
+        )
+
+
 def _load_state_file(file_path: str) -> Optional[dict]:
     """Lee y parsea el fichero de estado de sesion.
 
@@ -347,6 +398,7 @@ def _process_state(db, file_path: str) -> None:
             payload={"comando": comando, "descripcion": descripcion},
             iteration_id=iteration_id,
         )
+        _try_sync(db, "iteration")
         active = db.get_active_iteration()
 
     if active is None:
@@ -403,6 +455,7 @@ def _process_state(db, file_path: str) -> None:
             },
             iteration_id=iteration_id,
         )
+        _try_sync(db, "iteration")
 
 
 
@@ -445,6 +498,7 @@ def _capture_git_commit(db) -> None:
         sha=sha, message=message, author=author,
         files=files, files_changed=len(files),
     )
+    _try_sync(db, "commits")
 
 
 # ---------------------------------------------------------------------------

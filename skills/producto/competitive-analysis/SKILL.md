@@ -1,6 +1,6 @@
 ---
 name: competitive-analysis
-description: "Usar para investigar cómo resuelven el mismo problema otras herramientas"
+description: "Investigar cómo resuelven el mismo problema otras herramientas. Activar cuando el usuario quiera hacer un analisis competitivo, saber que hace la competencia, evaluar alternativas existentes o realizar benchmarking de mercado."
 ---
 
 # Análisis competitivo
@@ -40,7 +40,9 @@ No se trata de una lista superficial de competidores, sino de un análisis con c
 
 6. **Identificar oportunidades de diferenciación.** Basándose en las limitaciones de los competidores, señalar dónde el proyecto del usuario puede aportar valor único. Esto no es obligatorio si el usuario solo quiere entender el panorama.
 
-7. **Documentar conclusiones.** Resumir los hallazgos principales en 3-5 puntos clave que orienten la decisión.
+7. **Registrar hallazgos en la memoria del proyecto.** Registrar los hallazgos del análisis competitivo en la memoria del proyecto con `memory_log_decision` para que estén disponibles en futuras sesiones de trabajo.
+
+8. **Documentar conclusiones.** Resumir los hallazgos principales en 3-5 puntos clave que orienten la decisión.
 
 ## Criterios de éxito
 
@@ -49,3 +51,9 @@ No se trata de una lista superficial de competidores, sino de un análisis con c
 - Las fuentes de información son verificables (documentación oficial, repositorios públicos).
 - Las conclusiones son accionables: ayudan a tomar una decisión concreta.
 - El análisis distingue entre hechos y opiniones.
+
+## Que NO hacer
+
+- No basar el análisis en opiniones sin fuente verificable. Cada afirmación sobre un competidor debe respaldarse con documentación oficial, repositorios públicos o datos contrastables.
+- No limitar el análisis a competidores directos. Las alternativas indirectas y la opción de "no hacer nada" son comparaciones igualmente valiosas para tomar decisiones.
+- No presentar el análisis como una recomendación cerrada. El objetivo es informar la decisión del usuario, no tomarla por él.

@@ -1,6 +1,6 @@
 ---
 name: dockerize
-description: "Usar para generar Dockerfile optimizado"
+description: "Generar Dockerfile optimizado. Activar cuando el usuario quiera crear contenedor, generar imagen Docker, configurar Docker Compose, contenerizar aplicacion o crear un Dockerfile multi-stage."
 ---
 
 # Generar Dockerfile optimizado
@@ -13,7 +13,7 @@ Un buen Dockerfile no es solo "que funcione", sino que sea seguro, rápido de co
 
 ## Proceso
 
-1. **Detectar el stack del proyecto.** Identificar el lenguaje, framework y runtime necesarios para determinar la imagen base adecuada:
+1. **Detectar el stack del proyecto.** Consultar el stack detectado en la configuración de Alfred para seleccionar la imagen base adecuada. Identificar el lenguaje, framework y runtime necesarios:
 
    - Node.js: `node:XX-alpine` o `node:XX-slim`.
    - Python: `python:XX-slim` o `python:XX-alpine`.
@@ -85,3 +85,10 @@ Un buen Dockerfile no es solo "que funcione", sino que sea seguro, rápido de co
 - Hay un health check configurado.
 - Existe un .dockerignore que excluye ficheros innecesarios.
 - La imagen final no incluye herramientas de build, tests ni código fuente innecesario.
+
+## Que NO hacer
+
+- No usar `latest` como tag de imagen base. Siempre fijar la versión concreta (por ejemplo, `node:20.11-alpine`) para garantizar builds reproducibles.
+- No ejecutar la aplicación como root dentro del contenedor. Crear un usuario de sistema dedicado con los permisos mínimos necesarios.
+- No copiar `node_modules` al contenedor desde el host. Instalar las dependencias dentro del contenedor para evitar incompatibilidades de plataforma y binarios nativos.
+- No incluir secretos en la imagen (ficheros `.env`, claves privadas, tokens). Los secretos se pasan en runtime como variables de entorno o mediante sistemas de gestión de secretos.

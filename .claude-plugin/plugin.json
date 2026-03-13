@@ -40,8 +40,8 @@
     "./agents/optional/i18n-specialist.md"
   ],
   "skills": [
-    "./skills/incident-response.md",
-    "./skills/release-planning.md",
-    "./skills/dependency-strategy.md"
+    "./skills/calidad/incident-response/SKILL.md",
+    "./skills/devops/release-planning/SKILL.md",
+    "./skills/seguridad/dependency-strategy/SKILL.md"
   ]
 }

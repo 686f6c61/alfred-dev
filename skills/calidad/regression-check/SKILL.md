@@ -1,6 +1,6 @@
 ---
 name: regression-check
-description: "Usar para verificar que cambios nuevos no rompen funcionalidad existente"
+description: "Usar para verificar que cambios nuevos no rompen funcionalidad existente. También: algo se ha roto, cambio rompe funcionalidad, verificar que no hay regresión, tests de regresión."
 ---
 
 # Verificación de regresiones

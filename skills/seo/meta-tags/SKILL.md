@@ -1,6 +1,6 @@
 ---
 name: meta-tags
-description: "Auditar y corregir meta tags para SEO y redes sociales"
+description: "Auditar y corregir meta tags para SEO y redes sociales. Activar ante: SEO basico, meta description, Open Graph, Twitter Cards, titulo de pagina, etiquetas meta"
 ---
 
 # Auditar y corregir meta tags

@@ -1,6 +1,6 @@
 ---
 name: project-docs
-description: "Documentar el proyecto completo en docs/ para dar contexto absoluto a cualquier desarrollador"
+description: "Documentar el proyecto completo en docs/ para dar contexto absoluto a cualquier desarrollador. Activar ante: documentacion del proyecto, crear docs, organizar documentacion, estructura de docs"
 ---
 
 # Documentación completa del proyecto

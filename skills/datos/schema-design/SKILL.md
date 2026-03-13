@@ -1,6 +1,6 @@
 ---
 name: schema-design
-description: "Diseñar esquemas de base de datos normalizados con índices y documentación"
+description: "Diseñar esquemas de base de datos normalizados con índices y documentación. Activar cuando el usuario quiera diseñar base de datos, crear tablas, definir relaciones, aplicar normalizacion, configurar indices, crear un modelo de datos o generar un ERD."
 ---
 
 # Diseño de esquemas de base de datos
@@ -57,7 +57,9 @@ El esquema resultante debe estar normalizado hasta la tercera forma normal (3NF)
 
 7. **Adaptar al ORM del proyecto.** Traducir el diseño a la sintaxis del ORM utilizado (Prisma, Drizzle, SQLAlchemy, Django ORM, TypeORM). Asegurarse de que las relaciones, índices y constraints se expresan correctamente en el modelo del ORM, ya que no todos soportan las mismas funcionalidades.
 
-8. **Documentar el esquema.** Cada tabla debe tener un comentario que explique su propósito. Las columnas no obvias deben documentar qué representan, sus valores posibles y sus restricciones. Si el motor lo permite, usar comentarios nativos (COMMENT ON); si no, documentar en un fichero adjunto o en el propio código del ORM.
+8. **Registrar las decisiones de modelado.** Registrar las decisiones de modelado en la memoria del proyecto con `memory_log_decision`. Esto incluye el motivo de cada desnormalización, la elección de tipos de datos especiales y las concesiones de rendimiento vs. integridad.
+
+9. **Documentar el esquema.** Cada tabla debe tener un comentario que explique su propósito. Las columnas no obvias deben documentar qué representan, sus valores posibles y sus restricciones. Si el motor lo permite, usar comentarios nativos (COMMENT ON); si no, documentar en un fichero adjunto o en el propio código del ORM.
 
 ## Que NO hacer
 
@@ -66,3 +68,6 @@ El esquema resultante debe estar normalizado hasta la tercera forma normal (3NF)
 - No omitir las migraciones. Todo cambio en el esquema debe pasar por el sistema de migraciones del proyecto.
 - No crear índices en todas las columnas "por si acaso". Cada índice ocupa espacio y ralentiza las escrituras.
 - No ignorar los tipos de datos. Usar el tipo más específico posible: `TIMESTAMP` para fechas, `DECIMAL` para dinero, `UUID` para identificadores distribuidos.
+- No normalizar en exceso para escenarios de alta lectura. A veces una desnormalización controlada y documentada es la decisión correcta cuando el patrón de acceso lo justifica.
+- No diseñar sin conocer los patrones de consulta. El esquema debe servir a las queries que la aplicación ejecutará, no al revés.
+- No olvidar los índices para las queries más frecuentes. Diseñar los índices junto con el esquema, no como una corrección posterior.

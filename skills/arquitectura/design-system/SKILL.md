@@ -1,6 +1,6 @@
 ---
 name: design-system
-description: "Usar para diseñar la arquitectura de un sistema con diagramas y contratos"
+description: "Usar para diseñar la arquitectura de un sistema con diagramas y contratos. Activar cuando el usuario quiera diseñar arquitectura, definir componentes del sistema, crear un diagrama de flujo, establecer contratos entre módulos, planificar la estructura del proyecto o decidir cómo organizar los servicios."
 ---
 
 # Diseñar arquitectura del sistema
@@ -67,7 +67,15 @@ La arquitectura no se diseña para impresionar, sino para comunicar. Los diagram
 
 7. **Documentar decisiones no obvias.** Si se elige un patrón (Event Sourcing, CQRS, Hexagonal, etc.), explicar por qué es adecuado para este caso y qué alternativas se descartaron.
 
-8. **Revisar con el usuario.** La arquitectura es una decisión de equipo. Presentar el diseño, recoger feedback e iterar antes de implementar.
+8. **Registrar las decisiones arquitectónicas principales en la memoria del proyecto.** Usar `memory_log_decision` para cada decisión significativa (elección de patrón, estrategia de comunicación entre servicios, estructura de capas, etc.). Esto permite que futuros skills y sesiones tengan contexto sin releer todo el documento.
+
+9. **Revisar con el usuario.** La arquitectura es una decisión de equipo. Presentar el diseño, recoger feedback e iterar antes de implementar.
+
+## Qué NO hacer
+
+- **No diseñar sin entender los requisitos.** Una arquitectura que no responde a requisitos reales es un ejercicio académico. Leer el PRD o hablar con el usuario antes de dibujar diagramas.
+- **No crear diagramas que nadie mantendrá.** Si un diagrama no se va a actualizar cuando el código cambie, se convertirá en documentación engañosa. Preferir diagramas simples y mantenibles a obras de arte que caducan.
+- **No sobreingeniar con patrones que el equipo no domina.** CQRS, Event Sourcing o microservicios son herramientas potentes, pero si el equipo no tiene experiencia con ellos, el coste de aprendizaje superará al beneficio. Elegir la complejidad que el equipo puede gestionar.
 
 ## Criterios de éxito
 

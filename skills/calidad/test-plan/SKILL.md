@@ -1,6 +1,6 @@
 ---
 name: test-plan
-description: "Usar para generar un plan de testing priorizado por riesgo"
+description: "Usar para generar un plan de testing priorizado por riesgo. También: plan de testing, qué probar, priorizar tests por riesgo, estrategia de testing, cobertura de tests."
 ---
 
 # Generar plan de testing
@@ -51,3 +51,19 @@ El plan cubre desde tests unitarios hasta tests end-to-end, pasando por integrac
 - Las prioridades reflejan el impacto real del fallo, no la facilidad de escribir el test.
 - El esfuerzo está estimado para permitir planificación.
 - El plan cubre escenarios positivos, negativos y edge cases para las áreas críticas.
+- Las decisiones de estrategia de testing se han registrado en la memoria del proyecto.
+
+## Paso de memoria
+
+Registrar las decisiones de estrategia de testing en la memoria del proyecto con `memory_log_decision`. Esto incluye qué áreas se han priorizado, qué se ha descartado y por qué, para que el plan se mantenga coherente entre sesiones.
+
+## Referencia al stack
+
+Consultar el stack detectado en la configuración de Alfred para seleccionar automáticamente el framework de testing adecuado (Jest, Vitest, pytest, etc.) y adaptar las recomendaciones al ecosistema del proyecto.
+
+## Qué NO hacer
+
+- No priorizar tests por facilidad de escritura. Priorizar por riesgo e impacto del fallo, que es el criterio que realmente protege al usuario.
+- No planificar tests E2E para todo. Los tests E2E son lentos y frágiles; reservarlos para flujos críticos y cubrir el resto con tests unitarios y de integración.
+- No generar un plan de testing sin conocer el código. El plan debe basarse en la arquitectura real, no en una plantilla genérica.
+- No ignorar los tests negativos y de edge cases. Los happy paths se prueban solos; los bugs viven en los caminos inesperados.

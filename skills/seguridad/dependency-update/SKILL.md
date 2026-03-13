@@ -1,6 +1,6 @@
 ---
 name: dependency-update
-description: "Revisar dependencias desactualizadas, con CVEs o end-of-life, y proponer actualizaciones seguras"
+description: "Revisar dependencias desactualizadas, con CVEs o end-of-life, y proponer actualizaciones seguras. También: actualizar paquetes, actualizar dependencias, Dependabot, Renovate, versión desactualizada, breaking changes."
 ---
 
 # Actualización segura de dependencias
@@ -77,3 +77,7 @@ Si el usuario aprueba:
 - No ignorar las dependencias de desarrollo. Pueden inyectar código en el build.
 - No forzar actualizaciones a major version sin evaluar breaking changes.
 - No descartar CVEs por ser de severidad baja: el contexto del proyecto puede elevar su impacto.
+
+## Clarificación
+
+Este skill ejecuta actualizaciones concretas. Para auditar el estado de las dependencias primero, usar `dependency-audit`.

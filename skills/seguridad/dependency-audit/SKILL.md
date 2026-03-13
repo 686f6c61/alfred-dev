@@ -1,6 +1,6 @@
 ---
 name: dependency-audit
-description: "Usar para auditar dependencias contra CVEs, versiones desactualizadas y licencias"
+description: "Usar para auditar dependencias contra CVEs, versiones desactualizadas y licencias. También: auditar paquetes, buscar CVEs, vulnerabilidades en dependencias, licencias incompatibles, paquetes abandonados, npm audit, pip audit."
 ---
 
 # Auditoría de dependencias
@@ -59,3 +59,16 @@ HARD-GATE: si se detecta una vulnerabilidad crítica o alta sin parche disponibl
 - Las licencias son compatibles con el proyecto.
 - Los paquetes abandonados están identificados con alternativas propuestas.
 - El informe incluye acciones concretas para cada hallazgo.
+- Los hallazgos críticos se han registrado en la memoria del proyecto.
+
+## Paso de memoria
+
+Registrar los hallazgos críticos en la memoria del proyecto con `memory_log_decision`. Esto permite hacer seguimiento de vulnerabilidades conocidas entre sesiones y verificar que se han resuelto.
+
+## Referencia al stack
+
+Consultar el stack detectado en la configuración de Alfred para seleccionar automáticamente la herramienta de auditoría adecuada (npm audit, pip-audit, cargo audit, etc.), evitando que el usuario tenga que especificarlo manualmente.
+
+## Clarificación
+
+Este skill se centra en la detección puntual de vulnerabilidades y licencias. Para una estrategia de gestión continua de dependencias, usar `dependency-strategy`. Para aplicar actualizaciones concretas, usar `dependency-update`.

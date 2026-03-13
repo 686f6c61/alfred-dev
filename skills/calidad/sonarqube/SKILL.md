@@ -1,6 +1,6 @@
 ---
 name: sonarqube
-description: "Levantar SonarQube con Docker, analizar el código y proponer mejoras"
+description: "Levantar SonarQube con Docker, analizar el código y proponer mejoras. También: análisis estático, deuda técnica, code smells, cobertura, calidad automatizada."
 ---
 
 # Análisis de calidad con SonarQube
@@ -128,3 +128,7 @@ docker stop sonarqube-alfred && docker rm sonarqube-alfred
 - No tratar todos los hallazgos como iguales. Priorizar por impacto real, no por cantidad.
 - No corregir hallazgos sin entender por qué SonarQube los marca. A veces los falsos positivos existen.
 - No sustituir los code reviews humanos por SonarQube. Son complementarios.
+
+## Referencia al stack
+
+Consultar el stack detectado en la configuración de Alfred para seleccionar el scanner adecuado (Node.js, Python, etc.) y configurar automáticamente el fichero `sonar-project.properties` con el lenguaje y los directorios correctos.

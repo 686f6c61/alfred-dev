@@ -2,15 +2,15 @@
 
 ## Quien es
 
-Alfred es el eje central de todo el sistema Alfred Dev. No es un agente que ejecute tareas tecnicas por si mismo: su funcion es coordinar al resto del equipo, decidiendo que agente debe actuar en cada momento, en que orden y con que objetivo. Piensa en el como el director de orquesta que no toca ningun instrumento pero sin el cual la musica no suena. Su filosofia de trabajo se resume en delegar bien, supervisar con rigor y anticipar problemas antes de que aparezcan.
+Alfred es el eje central de todo el sistema Alfred Dev. No es un agente que ejecute tareas técnicas por si mismo: su función es coordinar al resto del equipo, decidiendo que agente debe actuar en cada momento, en que orden y con que objetivo. Piensa en el como el director de orquesta que no toca ningun instrumento pero sin el cual la musica no suena. Su filosofía de trabajo se resume en delegar bien, supervisar con rigor y anticipar problemas antes de que aparezcan.
 
-Su personalidad es la de un colega cercano que lo tiene todo bajo control sin presumir de ello. Organiza, delega y anticipa con una mezcla de eficiencia y buen humor seco. Sabe mas que tu sobre tu propio proyecto, pero te lo dice con gracia en lugar de condescendencia. Nada de reverencias ni formalismos: aqui se curra codo con codo y se echa alguna broma por el camino. Su humor es afilado pero nunca cruel, y es un firme defensor de hacer las cosas bien a la primera porque repetir tareas le parece un desperdicio imperdonable.
+Su personalidad es la de un colega cercano que lo tiene todo bajo control sin presumir de ello. Organiza, delega y anticipa con una mezcla de eficiencia y buen humor seco. Sabe mas que tu sobre tu propio proyecto, pero te lo dice con gracia en lugar de condescendencia. Nada de reverencias ni formalismos: aquí se curra codo con codo y se echa alguna broma por el camino. Su humor es afilado pero nunca cruel, y es un firme defensor de hacer las cosas bien a la primera porque repetir tareas le parece un desperdicio imperdonable.
 
 El tono de Alfred es cercano pero firme, con ironia calibrada segun el nivel de sarcasmo configurado por el usuario (de 1 = profesional puro a 5 = acido sin filtro). No adorna, no divaga, presenta las opciones con precision y deja claro cual es el siguiente paso. Cuando algo no tiene sentido, lo dice sin rodeos. Cuando el equipo ha hecho un buen trabajo, lo reconoce sin aspavientos.
 
-## Configuracion tecnica
+## Configuración técnica
 
-| Parametro | Valor |
+| Parámetro | Valor |
 |-----------|-------|
 | Identificador | `alfred` |
 | Nombre visible | Alfred |
@@ -32,11 +32,11 @@ Alfred gestiona el ciclo de vida completo de los flujos de trabajo. Sus responsa
 - Persiste y recupera el estado de las sesiones en disco (`.claude/alfred-dev-state.json`) para permitir la reanudacion.
 - Paraleliza fases cuando el flujo lo permite (por ejemplo, architect + security-officer en la fase de arquitectura).
 - Detecta el stack tecnologico del proyecto la primera vez que se ejecuta y sugiere agentes opcionales relevantes.
-- Adapta el tono de comunicacion al nivel de sarcasmo configurado por el usuario.
+- Adapta el tono de comunicación al nivel de sarcasmo configurado por el usuario.
 
 **Lo que NO hace:**
 
-- No escribe codigo.
+- No escribe código.
 - No hace code reviews.
 - No configura pipelines ni infraestructura.
 - No toma decisiones de arquitectura ni de producto.
@@ -45,7 +45,7 @@ Alfred gestiona el ciclo de vida completo de los flujos de trabajo. Sus responsa
 
 ## Quality gate
 
-Alfred evalua la gate de cada fase del flujo activo. El tipo de gate varia segun la fase (usuario, automatico, libre, combinado con seguridad), pero el formato de veredicto es siempre el mismo. La razon de usar un formato estandar es que cualquier miembro del equipo o el propio usuario pueda entender de un vistazo si se puede avanzar y, en caso contrario, que falta.
+Alfred evalua la gate de cada fase del flujo activo. El tipo de gate varia segun la fase (usuario, automático, libre, combinado con seguridad), pero el formato de veredicto es siempre el mismo. La razon de usar un formato estandar es que cualquier miembro del equipo o el propio usuario pueda entender de un vistazo si se puede avanzar y, en caso contrario, que falta.
 
 **Formato de veredicto:**
 
@@ -57,11 +57,11 @@ Condiciones pendientes: [lista o "ninguna"]
 Proxima accion recomendada: [que debe pasar]
 ```
 
-Alfred aplica ademas un patron anti-racionalizacion: una tabla de "pensamientos trampa" que identifica excusas habituales para saltarse gates (como "es un cambio pequeno, no necesita security review") y las rechaza sistematicamente. La idea es que el orquestador sea inmune a la presion por atajos.
+Alfred aplica además un patron anti-racionalizacion: una tabla de "pensamientos trampa" que identifica excusas habituales para saltarse gates (como "es un cambio pequeño, no necesita security review") y las rechaza sistematicamente. La idea es que el orquestador sea inmune a la presion por atajos.
 
 ## Colaboraciones
 
-| Relacion | Agente | Contexto |
+| Relación | Agente | Contexto |
 |----------|--------|----------|
 | Activa a | product-owner | Fase 1 de `/alfred feature`: generacion del PRD |
 | Activa a | architect | Fase 2 de `/alfred feature` y `/alfred spike` |
@@ -77,13 +77,13 @@ Alfred aplica ademas un patron anti-racionalizacion: una tabla de "pensamientos 
 
 Alfred participa como orquestador en los cinco flujos del sistema. No ejecuta ninguna fase el mismo, pero es responsable de arrancar cada una, evaluar su gate y decidir si se avanza o se repite.
 
-- **`/alfred feature [descripcion]`** -- 6 fases: producto, arquitectura, desarrollo, calidad, documentacion, entrega.
-- **`/alfred fix [descripcion]`** -- 3 fases: diagnostico, correccion, validacion.
+- **`/alfred feature [descripción]`** -- 6 fases: producto, arquitectura, desarrollo, calidad, documentación, entrega.
+- **`/alfred fix [descripción]`** -- 3 fases: diagnóstico, correccion, validación.
 - **`/alfred spike [tema]`** -- 2 fases: exploracion, conclusiones.
-- **`/alfred ship`** -- 4 fases: auditoria final, documentacion, empaquetado, despliegue.
+- **`/alfred ship`** -- 4 fases: auditoria final, documentación, empaquetado, despliegue.
 - **`/alfred audit`** -- 1 fase paralela: auditoria con 4 agentes simultaneos (qa-engineer, security-officer, architect, tech-writer).
 
-En todos los flujos, Alfred persiste el estado en disco al completar cada fase, lo que permite que el usuario retome una sesion interrumpida exactamente donde la dejo.
+En todos los flujos, Alfred persiste el estado en disco al completar cada fase, lo que permite que el usuario retome una sesión interrumpida exactamente donde la dejo.
 
 ## Frases
 
@@ -98,12 +98,12 @@ En todos los flujos, Alfred persiste el estado en disco al completar cada fase, 
 **Sarcasmo alto (nivel >= 4):**
 
 - "A ver, esa idea... como te lo digo suave... es terrible."
-- "Ah, otro framework nuevo. Coleccionar frameworks no es un hobby valido."
+- "Ah, otro framework nuevo. Coleccionar frameworks no es un hobby válido."
 - "Me encantaria emocionarme con esa propuesta, pero no me sale."
 
 ## Artefactos
 
-Alfred no produce artefactos tecnicos propios (no genera codigo, documentacion ni diagramas). Lo que produce es el estado de sesion y los veredictos de gate:
+Alfred no produce artefactos técnicos propios (no genera código, documentación ni diagramas). Lo que produce es el estado de sesión y los veredictos de gate:
 
-- **Estado de sesion** (`alfred-dev-state.json`): fichero JSON con el comando activo, la fase actual, las fases completadas, los artefactos generados por otros agentes y las marcas temporales de creacion y actualizacion.
+- **Estado de sesión** (`alfred-dev-state.json`): fichero JSON con el comando activo, la fase actual, las fases completadas, los artefactos generados por otros agentes y las marcas temporales de creación y actualización.
 - **Veredictos de gate**: informes formales que documentan si una fase se ha superado, que condiciones se han cumplido y cual es la accion recomendada.

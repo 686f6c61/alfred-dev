@@ -1,6 +1,6 @@
 ---
 name: accessibility-audit
-description: "Auditar accesibilidad WCAG 2.1 nivel AA con checklist y correcciones"
+description: "Auditar accesibilidad WCAG 2.1 nivel AA con checklist y correcciones. Activar ante: accesibilidad web, WCAG, lector de pantalla, contraste, navegacion por teclado, a11y"
 ---
 
 # Auditoría de accesibilidad WCAG 2.1 AA
@@ -10,6 +10,8 @@ description: "Auditar accesibilidad WCAG 2.1 nivel AA con checklist y correccion
 Este skill ejecuta una auditoría de accesibilidad basada en las pautas WCAG 2.1 nivel AA. La accesibilidad no es un complemento opcional sino un requisito que garantiza que todas las personas, independientemente de sus capacidades, puedan usar el producto. Además, en muchas jurisdicciones es una obligación legal.
 
 La auditoría se organiza en torno a los cuatro principios WCAG (Perceptible, Operable, Comprensible, Robusto) y produce un informe con los criterios evaluados, los problemas encontrados y las correcciones propuestas con ejemplos de código.
+
+> **Nota de versión:** basado en WCAG 2.1 nivel AA (2018). WCAG 2.2 (octubre 2023) añade criterios adicionales. Verificar si el proyecto requiere conformidad con la versión más reciente.
 
 ## Proceso
 

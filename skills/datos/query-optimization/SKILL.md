@@ -1,6 +1,6 @@
 ---
 name: query-optimization
-description: "Optimizar queries lentas con EXPLAIN, índices y reescritura"
+description: "Optimizar queries lentas con EXPLAIN, índices y reescritura. Activar cuando el usuario tenga una query lenta, quiera optimizar SQL, usar EXPLAIN, crear indices, resolver problemas N+1 o mejorar el rendimiento de consultas."
 ---
 
 # Optimización de queries

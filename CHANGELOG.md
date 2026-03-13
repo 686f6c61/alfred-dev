@@ -7,6 +7,32 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.8] - 2026-03-13
+
+### Added
+
+- **Capa de sincronizacion SQLite a memoria nativa**: nuevo modulo `core/memory_sync.py` que proyecta las decisiones, iteraciones, commits y resumen del proyecto desde `alfred-memory.db` a ficheros `.md` en `~/.claude/projects/<hash>/memory/` con el formato nativo de Claude Code (frontmatter YAML con `name`, `description`, `type` y `source: alfred-memory`). SQLite es la fuente de verdad; los `.md` son proyecciones de lectura que Claude carga automaticamente en cada conversacion.
+- **Sincronizacion hibrida (full + incremental)**: `session-start.sh` ejecuta `sync_all` al arrancar la sesion (regeneracion completa); `activity-capture.py` dispara sincronizaciones incrementales tras cada escritura en SQLite (decisiones, iteraciones, commits).
+- **Gestion segura de MEMORY.md**: seccion delimitada con marcadores `<!-- ALFRED-SYNC:START/END -->` que se actualiza sin tocar el contenido manual del usuario. Validacion de posicion de marcadores para evitar corrupcion por marcadores huerfanos o invertidos.
+- **Limpieza de ficheros huerfanos**: `cleanup_stale()` elimina ficheros de decisiones archivadas o iteraciones cerradas, identificando ficheros autogenerados por el campo `source: alfred-memory` en el frontmatter.
+- **Creacion automatica del directorio de memoria**: `resolve_memory_dir()` crea `~/.claude/projects/<hash>/memory/` si no existe al cargar Alfred por primera vez, eliminando la friccion de activacion manual.
+- **Fichero de decisiones archivadas**: las decisiones con estado `superseded` o `rejected` se consolidan en `alfred-decisions-archived.md` en formato compacto (una linea por decision) en lugar de ficheros individuales.
+- **22 tests para memory_sync**: cobertura de resolucion de directorios, proyeccion de decisiones, sincronizacion completa, gestion de MEMORY.md, limpieza de huerfanos, commits, casos de borde (DB vacia, marcadores corruptos, campos None) y flujo end-to-end.
+- **Skill de testing E2E**: nuevo skill `calidad/e2e-testing` para configurar y escribir tests end-to-end con Playwright o Cypress, incluyendo integracion en CI.
+
+### Changed
+
+- **60 skills revisadas y mejoradas** (antes 56 + 3 protocolos sueltos): revision completa de las 56 skills existentes mas reorganizacion de los 3 protocolos sueltos (`incident-response`, `dependency-strategy`, `release-planning`) en sus categorias logicas (`calidad/`, `seguridad/`, `devops/`).
+- **Descriptions enriquecidas para triggering**: todas las skills incluyen sinonimos y escenarios de activacion en el campo `description` del frontmatter, mejorando la precision con la que los agentes seleccionan la skill adecuada.
+- **Integracion con memoria persistente**: 10 skills que producen decisiones o hallazgos ahora registran automaticamente en `memory_log_decision` para trazabilidad entre sesiones (write-adr, choose-stack, design-system, compliance-check, dependency-audit, threat-model, schema-design, test-plan, competitive-analysis, competitive-analysis).
+- **Seccion "Que NO hacer" en 51 skills**: antipatrones y errores comunes documentados para prevenir malas practicas. Las 9 skills restantes ya cubrian estas restricciones en su estructura interna.
+- **Referencia al stack de Alfred en 9 skills**: las skills que dependen del runtime o lenguaje del proyecto (dockerize, ci-cd-pipeline, deploy-config, profiling, benchmark, dependency-audit, sonarqube, test-plan, monitoring-setup) consultan `detect_stack` en vez de repetir la deteccion.
+- **Clarificacion de solapamientos**: skills que cubren areas adyacentes (dependency-audit vs dependency-strategy vs dependency-update, code-review vs code-review-response, changelog vs release-planning, write-adr vs choose-stack vs design-system) documentan explicitamente su alcance y cuando usar cada una.
+- **Versiones normativas documentadas**: compliance-check (RGPD 2016/679, NIS2 2022/2555, CRA 2024/2847), security-review (OWASP Top 10 edicion 2021), accessibility-audit (WCAG 2.1 AA, nota sobre WCAG 2.2).
+
+- **Configuracion local ampliada**: `alfred-dev.local.md` incluye las opciones `sync_to_native: true` y `sync_commits_limit: 10` para controlar la sincronizacion.
+- **Politica fail-open en sincronizacion**: todas las operaciones de sync capturan excepciones y continuan sin bloquear el flujo de trabajo. Los errores se registran en stderr con el prefijo `[alfred-dev]`.
+
 ## [0.3.7] - 2026-03-12
 
 ### Added
@@ -288,6 +314,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.3.8]: https://github.com/686f6c61/alfred-dev/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/686f6c61/alfred-dev/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/686f6c61/alfred-dev/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/686f6c61/alfred-dev/compare/v0.3.4...v0.3.5
