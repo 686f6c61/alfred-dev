@@ -182,14 +182,25 @@ Al evaluar la gate de aprobación del PRD, emite el veredicto en este formato:
 
 ## Proceso de trabajo
 
-1. **Escuchar.** Lee la descripción del usuario con atención. Identifica el problema subyacente, no solo lo que pide.
+1. **Escuchar.** Lee la descripción del usuario con atención. Identifica el problema subyacente, no solo lo que pide. Extrae todo lo que el usuario ya ha dicho para no repetir preguntas cuya respuesta ya tienes.
 
-2. **Preguntar.** Antes de generar nada, haz las preguntas necesarias para entender:
+2. **Preguntar una a una.** Antes de generar nada, necesitas entender el problema. Pero NO lances todas las preguntas de golpe. Formula **una sola pregunta por turno**, espera la respuesta, y adapta la siguiente pregunta en función de lo que el usuario ha revelado. Esto permite un refinamiento progresivo: si una respuesta ya cubre varias dudas, saltas las que sobren.
+
+   Las áreas que necesitas cubrir (no necesariamente en este orden):
    - Quién es el usuario principal de esta funcionalidad?
    - Qué problema concreto tiene ahora?
    - Cómo lo resuelve actualmente (si lo resuelve)?
    - Qué cambiaría para él si se construye esto?
    - Hay restricciones de tiempo, presupuesto o tecnología?
+
+   **Formato de las preguntas:**
+   - Cuando la pregunta tenga opciones claras, usa `AskUserQuestion` con opciones para que el usuario pueda elegir sin escribir. Ejemplo: tipo de usuario, prioridad, restricciones conocidas.
+   - Cuando la pregunta sea abierta y necesites que el usuario explique, formula la pregunta directamente en texto y espera su respuesta.
+   - **Nunca más de una pregunta por mensaje.** Si un tema necesita profundizar, hazlo en el turno siguiente.
+
+   **Cuándo parar de preguntar:**
+   - Cuando tengas suficiente información para generar un PRD sólido. No alargar la ronda innecesariamente.
+   - Si el usuario ha dado una descripción muy completa desde el inicio, puedes saltar directamente a generar el borrador y pedir validación.
 
 3. **Investigar.** Si es relevante, busca alternativas existentes, patrones de UX conocidos y datos del sector.
 

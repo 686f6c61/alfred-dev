@@ -21,26 +21,65 @@ Si el proyecto no tiene configuración y hay ficheros en el directorio actual, e
 
 ## Sección de agentes opcionales
 
-Alfred Dev tiene 8 agentes de núcleo (siempre activos) y 6 agentes opcionales que el usuario puede activar según las necesidades de su proyecto. Los agentes opcionales son predefinidos: vienen con el plugin pero no se activan hasta que el usuario lo decide.
+Alfred Dev tiene 9 agentes de núcleo (siempre activos) y 8 agentes opcionales que el usuario puede activar según las necesidades de su proyecto. Los agentes opcionales son predefinidos: vienen con el plugin pero no se activan hasta que el usuario lo decide.
 
 ### Agentes opcionales disponibles
+
+**Grupo A -- Técnicos:**
 
 | Agente | Rol | Cuándo es útil |
 |--------|-----|----------------|
 | **data-engineer** | Ingeniero de datos | Proyectos con base de datos, ORM, migraciones |
-| **ux-reviewer** | Revisor de UX | Proyectos con frontend (React, Vue, Svelte, etc.) |
 | **performance-engineer** | Ingeniero de rendimiento | Proyectos grandes o con requisitos de rendimiento |
 | **github-manager** | Gestor de GitHub | Cualquier proyecto con repositorio en GitHub |
+| **librarian** | Bibliotecario | Proyectos con memoria persistente o historial de decisiones |
+
+**Grupo B -- Contenido y UX:**
+
+| Agente | Rol | Cuándo es útil |
+|--------|-----|----------------|
+| **ux-reviewer** | Revisor de UX | Proyectos con frontend (React, Vue, Svelte, etc.) |
 | **seo-specialist** | Especialista SEO | Proyectos web con contenido público |
 | **copywriter** | Copywriter | Proyectos con textos públicos: landing, emails, onboarding |
+| **i18n-specialist** | Especialista i18n | Proyectos multiidioma o que necesitan prepararse para traducción |
 
 ### Descubrimiento contextual
 
 Si es la primera vez que el usuario configura el plugin en un proyecto (o si no tiene agentes opcionales activados), ejecuta el descubrimiento contextual:
 
-1. Analiza el proyecto: stack, presencia de BD/ORM, frontend, contenido web público, remote Git, tamaño del proyecto.
-2. Basándote en el análisis, sugiere qué agentes opcionales podrían ser útiles. Explica brevemente por qué cada uno es relevante para este proyecto concreto.
-3. Presenta las sugerencias al usuario con AskUserQuestion (multiSelect: true) para que elija cuáles activar.
+1. Analiza el proyecto: stack, presencia de BD/ORM, frontend, contenido web público, remote Git, tamaño del proyecto, ficheros i18n.
+2. Basándote en el análisis, sugiere qué agentes opcionales podrían ser útiles. Los recomendados llevan «(Recomendado)» en el label.
+3. Presenta las sugerencias al usuario con **2 preguntas multiSelect** en una sola llamada a `AskUserQuestion` (máximo 4 opciones por pregunta):
+
+```
+AskUserQuestion({
+  questions: [
+    {
+      question: "¿Qué agentes técnicos quieres activar?",
+      header: "Técnicos",
+      multiSelect: true,
+      options: [
+        { label: "Data Engineer", description: "<razón contextual>" },
+        { label: "Performance Engineer", description: "<razón contextual>" },
+        { label: "GitHub Manager", description: "<razón contextual>" },
+        { label: "Librarian", description: "<razón contextual>" },
+      ]
+    },
+    {
+      question: "¿Qué agentes de contenido y UX quieres activar?",
+      header: "Contenido y UX",
+      multiSelect: true,
+      options: [
+        { label: "UX Reviewer", description: "<razón contextual>" },
+        { label: "SEO Specialist", description: "<razón contextual>" },
+        { label: "Copywriter", description: "<razón contextual>" },
+        { label: "i18n Specialist", description: "<razón contextual>" },
+      ]
+    }
+  ]
+})
+```
+
 4. Guarda la selección en el fichero .local.md bajo la clave `agentes_opcionales`.
 
 ### Gestión manual
@@ -48,7 +87,7 @@ Si es la primera vez que el usuario configura el plugin en un proyecto (o si no 
 Si el usuario elige la sección de agentes opcionales desde el menú principal:
 
 1. Muestra el estado actual (activo/inactivo) de cada agente opcional.
-2. Usa AskUserQuestion (multiSelect: true) con los 6 agentes como opciones, preseleccionando los que ya están activos.
+2. Usa `AskUserQuestion` con 2 preguntas multiSelect (4 opciones cada una, igual que el descubrimiento contextual), indicando en la descripción cuáles están activos actualmente.
 3. Actualiza el fichero .local.md con la nueva selección.
 
 ### Formato en el fichero .local.md
@@ -56,11 +95,13 @@ Si el usuario elige la sección de agentes opcionales desde el menú principal:
 ```yaml
 agentes_opcionales:
   data-engineer: true
-  ux-reviewer: false
   performance-engineer: false
   github-manager: true
+  librarian: false
+  ux-reviewer: false
   seo-specialist: true
   copywriter: false
+  i18n-specialist: false
 ```
 
 ## Sección de memoria persistente

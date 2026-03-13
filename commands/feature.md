@@ -60,10 +60,12 @@ Si el proyecto tiene agentes opcionales activados en `.claude/alfred-dev.local.m
 | Agente opcional | Fase | Modo |
 |----------------|------|------|
 | **data-engineer** | Arquitectura, Desarrollo | En paralelo con los de núcleo |
-| **ux-reviewer** | Producto, Calidad | En paralelo con los de núcleo |
 | **performance-engineer** | Calidad | En paralelo con los de núcleo |
 | **github-manager** | Entrega | Después del devops-engineer |
+| **librarian** | Todas (consulta historial) | En paralelo con los de núcleo |
+| **ux-reviewer** | Producto, Calidad | En paralelo con los de núcleo |
 | **seo-specialist** | Calidad | En paralelo con los de núcleo |
 | **copywriter** | Documentación | En paralelo con tech-writer |
+| **i18n-specialist** | Desarrollo, Calidad | En paralelo con los de núcleo |
 
 Comprueba en `.claude/alfred-dev.local.md` qué agentes opcionales están activos antes de cada fase. Si un agente opcional está activo y tiene integración en esa fase, lánzalo con Task usando su subagent_type registrado.
