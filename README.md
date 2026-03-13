@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables, verificacion de evidencia automatica, modo autopilot con aislamiento en worktrees y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -67,6 +67,18 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 ```
 
 Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred fix` con una descripcion del bug o `/alfred spike` para investigar una tecnologia sin compromiso de implementacion.
+
+## Novedades en v0.4.0
+
+La v0.4.0 incorpora cinco capacidades nuevas orientadas a fiabilidad, autonomia controlada y trazabilidad de resultados:
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Verificacion de evidencia** | El hook `evidence-guard.py` intercepta cada ejecucion de tests y registra si hubo exitos o fallos reales. Cuando un agente afirma que «los tests pasan», el orquestador verifica la evidencia registrada antes de aprobar la gate. Sin salida real de tests, no hay aprobacion. |
+| **Loop iterativo en fases** | Si una fase no supera su quality gate, el orquestador puede reintentar hasta 5 veces (`should_retry_phase`) antes de escalar al usuario. Cada reintento incluye el feedback del fallo anterior para que el agente corrija su enfoque. |
+| **Aislamiento con git worktrees** | El modulo `worktree.py` crea ramas aisladas (`alfred/<tipo>/<nombre>`) en worktrees temporales para que el trabajo de Alfred no interfiera con la rama principal. El ciclo completo (crear, trabajar, merge, limpieza) esta gestionado por el orquestador. |
+| **Modo autopilot** | `run_flow_autopilot()` permite ejecutar flujos completos con aprobacion automatica de las gates de usuario, manteniendo las gates de seguridad y calidad intactas. El nivel de autonomia se configura por fase en `/alfred config`. |
+| **Informes de sesion** | Al finalizar cada sesion, `session_report.py` genera un informe Markdown en `docs/alfred-reports/` con las fases completadas, duraciones, equipo de agentes, evidencia recopilada y artefactos producidos. |
 
 ## Comandos
 
@@ -158,15 +170,15 @@ Los hooks interceptan eventos del ciclo de vida de Claude Code para aplicar vali
 | Hook | Evento | Funcion |
 |------|--------|---------|
 | `session-start.sh` | `SessionStart` | Detecta stack tecnologico, inyecta contexto de sesion y memoria persistente |
-| `stop-hook.py` | `Stop` | Genera resumen de sesion con fases completadas y pendientes |
+| `stop-hook.py` | `Stop` | Genera resumen e informe de sesion con fases completadas y pendientes |
 | `secret-guard.sh` | `PreToolUse` (Write/Edit) | Bloquea escritura de secretos (API keys, tokens, passwords) |
 | `dangerous-command-guard.py` | `PreToolUse` (Bash) | Bloquea comandos destructivos (rm -rf /, force push, DROP DATABASE, etc.) |
 | `sensitive-read-guard.py` | `PreToolUse` (Read) | Avisa al leer ficheros sensibles (claves privadas, .env, credenciales) |
 | `quality-gate.py` | `PostToolUse` (Bash) | Verifica que los tests pasen despues de ejecuciones de Bash |
+| `evidence-guard.py` | `PostToolUse` (Bash) | Registra evidencia de ejecucion de tests para verificacion de gates |
 | `dependency-watch.py` | `PostToolUse` (Write/Edit) | Detecta dependencias nuevas y notifica al security officer |
 | `spelling-guard.py` | `PostToolUse` (Write/Edit) | Detecta palabras castellanas sin tilde al escribir o editar ficheros |
-| `memory-capture.py` | `PostToolUse` (Write/Edit) | Captura automatica de eventos en la memoria persistente del proyecto |
-| `commit-capture.py` | `PostToolUse` (Bash) | Auto-captura de commits en la memoria persistente |
+| `activity-capture.py` | Multiples | Captura automatica de actividad, commits e iteraciones en la memoria persistente |
 | `memory-compact.py` | `PreCompact` | Protege decisiones criticas durante la compactacion de contexto |
 
 ### Templates (7)
@@ -181,16 +193,18 @@ Plantillas estandarizadas que los agentes usan para generar artefactos con estru
 - `changelog-entry.md` -- Entrada de changelog (Keep a Changelog)
 - `release-notes.md` -- Notas de release con resumen ejecutivo
 
-### Core (4 modulos)
+### Core (6 modulos)
 
-El nucleo del plugin esta implementado en Python con tests unitarios:
+El nucleo del plugin esta implementado en Python con tests unitarios (530 tests):
 
 | Modulo | Funcion |
 |--------|---------|
-| `orchestrator.py` | Maquina de estados de flujos, gestion de sesiones, evaluacion de gates |
+| `orchestrator.py` | Maquina de estados de flujos, gestion de sesiones, evaluacion de gates, modo autopilot, loop iterativo |
 | `personality.py` | Motor de personalidad: frases, tono, anuncios, formato de veredicto |
 | `config_loader.py` | Carga de configuracion, deteccion de stack, preferencias de proyecto |
 | `memory.py` | Base de datos SQLite de memoria persistente: decisiones, commits, iteraciones, eventos |
+| `worktree.py` | Gestion de git worktrees: creacion, merge y limpieza de ramas aisladas |
+| `session_report.py` | Generacion de informes de sesion en Markdown con fases, evidencia y artefactos |
 
 ```bash
 # Ejecutar tests
@@ -206,6 +220,8 @@ Las quality gates son puntos de control infranqueables entre fases. Si una gate 
 | PRD aprobado | El usuario valida el PRD antes de pasar a arquitectura |
 | Diseño aprobado | El usuario aprueba el diseño Y el security officer lo valida |
 | Tests en verde | Todos los tests pasan antes de pasar a calidad |
+| Evidencia verificada | Las afirmaciones de tests deben estar respaldadas por salida real registrada por `evidence-guard.py` |
+| Loop iterativo | Si una gate falla, se reintenta hasta 5 veces con feedback antes de escalar al usuario |
 | QA + seguridad | El QA engineer y el security officer aprueban en paralelo |
 | Documentación completa | Todos los artefactos están documentados |
 | Pipeline verde | CI/CD verde, sin usuario root en contenedor, sin secretos en imagen |
@@ -243,7 +259,7 @@ El hook `session-start.sh` analiza el directorio de trabajo al iniciar sesión y
 
 A partir de v0.2.0, Alfred Dev puede recordar decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local (`.claude/alfred-memory.db`) dentro de cada proyecto, sin dependencias externas ni servicios remotos. La v0.2.3 anade etiquetas, estado y relaciones entre decisiones, auto-captura de commits, filtros avanzados de busqueda y exportacion/importacion.
 
-La activacion es opcional y se gestiona con `/alfred config`. Una vez activa, dos hooks complementarios capturan eventos automaticamente: `memory-capture.py` registra iteraciones y fases, y `commit-capture.py` detecta cada `git commit` y registra SHA, autor y ficheros afectados. Las decisiones arquitectonicas se registran a traves del agente **El Bibliotecario** o del servidor MCP integrado.
+La activacion es opcional y se gestiona con `/alfred config`. Una vez activa, el hook `activity-capture.py` captura eventos automaticamente en multiples puntos del ciclo de vida: iteraciones, fases, commits (SHA, autor, ficheros afectados) y actividad general de la sesion. Las decisiones arquitectonicas se registran a traves del agente **El Bibliotecario** o del servidor MCP integrado.
 
 Funcionalidades principales:
 
@@ -271,7 +287,7 @@ alfred-dev/
   skills/                 # 60 skills en 13 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos
-  core/                   # Motor de orquestacion y memoria (Python)
+  core/                   # Motor de orquestacion, memoria, worktrees e informes (Python)
   mcp/                    # Servidor MCP stdio (memoria persistente)
   templates/              # 7 plantillas de artefactos
   tests/                  # Tests unitarios (pytest)

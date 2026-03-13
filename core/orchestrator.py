@@ -12,6 +12,8 @@ El orquestador se encarga de:
 - Crear y gestionar sesiones de trabajo.
 - Evaluar las gates de cada fase para decidir si se aprueba el avance.
 - Persistir y recuperar el estado de las sesiones en disco.
+- Gestionar el loop iterativo dentro de cada fase (v0.4.0).
+- Soportar el modo autopilot para ejecucion sin interrupcion (v0.4.0).
 
 Arquitectura de gates:
     Las gates actúan como puntos de control entre fases. Su comportamiento
@@ -19,6 +21,19 @@ Arquitectura de gates:
     requieren aprobación explícita; las «automático» se evalúan contra
     métricas objetivas como tests verdes o pipeline OK; las combinadas
     (ej. «automático+seguridad») acumulan ambas condiciones.
+
+Loop iterativo (v0.4.0):
+    Dentro de cada fase, los agentes pueden iterar hasta que los
+    entregables esten completos o se alcance el maximo de iteraciones.
+    El loop es interno a la fase: no avanza a la siguiente hasta que
+    la gate se supere. Esto permite ciclos TDD (rojo-verde-refactor)
+    y pasadas de QA repetidas sin intervencion manual.
+
+Modo autopilot (v0.4.0):
+    Cuando ``autopilot=True``, el flujo recorre todas las fases sin
+    pedir aprobacion al usuario en las gates de tipo «usuario». Las
+    gates automaticas y de seguridad siguen evaluandose normalmente.
+    Solo se detiene si una gate automatica o de seguridad falla.
 """
 
 import json
@@ -633,9 +648,18 @@ def check_gate(
     if comando not in FLOWS:
         return {"passed": False, "reason": f"Flujo '{comando}' no definido en FLOWS."}
 
+    # Sesion completada: no hay gate que evaluar.
+    if session.get("fase_actual") == "completado":
+        return {"passed": True, "reason": "Sesion completada. No hay gate pendiente."}
+
     flow = FLOWS[comando]
     fase_numero = session["fase_numero"]
-    fase = flow["fases"][fase_numero]
+    fases = flow["fases"]
+
+    if fase_numero >= len(fases):
+        return {"passed": True, "reason": "Sesion completada. No hay gate pendiente."}
+
+    fase = fases[fase_numero]
     gate_tipo = fase["gate_tipo"]
 
     # Se acumulan las condiciones que debe cumplir la gate.
@@ -738,6 +762,9 @@ def advance_phase(
         # No quedan más fases: el flujo está completado
         session["fase_actual"] = "completado"
         session["fase_numero"] = siguiente
+
+    # Reiniciar el contador de iteraciones internas para la nueva fase
+    session["iteraciones_fase"] = 0
 
     session["actualizado_en"] = datetime.now(timezone.utc).isoformat()
     return session
@@ -852,3 +879,193 @@ def load_state(state_path: str) -> Optional[Dict[str, Any]]:
         return None
 
     return data
+
+
+# --- Loop iterativo (v0.4.0) ------------------------------------------------
+# Permite que los agentes iteren dentro de una fase hasta que la gate
+# se supere o se alcance el maximo de iteraciones. Esto habilita ciclos
+# TDD, pasadas de QA repetidas y otros patrones iterativos.
+
+# Maximo de iteraciones internas por fase antes de escalar al usuario.
+MAX_PHASE_ITERATIONS = 5
+
+
+def should_retry_phase(
+    session: Dict[str, Any],
+    resultado: str = "",
+    security_ok: bool = True,
+    tests_ok: bool = True,
+) -> Dict[str, Any]:
+    """Determina si la fase actual debe reintentarse o escalar al usuario.
+
+    Evalua la gate de la fase actual. Si no se supera, comprueba si quedan
+    iteraciones disponibles. Si las hay, incrementa el contador y devuelve
+    instrucciones de reintento. Si se agotaron, devuelve instrucciones de
+    escalado al usuario.
+
+    El contador de iteraciones se almacena en ``session["iteraciones_fase"]``.
+
+    Args:
+        session: estado actual de la sesion.
+        resultado: resultado reportado para la gate.
+        security_ok: si la auditoria de seguridad es favorable.
+        tests_ok: si los tests pasan.
+
+    Returns:
+        Diccionario con:
+        - ``"action"``: ``"advance"`` (gate superada), ``"retry"`` (reintentar)
+          o ``"escalate"`` (escalar al usuario).
+        - ``"reason"``: motivo de la decision.
+        - ``"iteration"``: numero de iteracion actual.
+        - ``"max_iterations"``: maximo permitido.
+    """
+    # Validacion defensiva: si la sesion esta completada o el indice
+    # esta fuera de rango, no tiene sentido reintentar.
+    if session.get("fase_actual") == "completado":
+        return {
+            "action": "advance",
+            "reason": "Sesion completada. No hay gate que evaluar.",
+            "iteration": 0,
+            "max_iterations": 0,
+        }
+
+    gate_result = check_gate(
+        session,
+        resultado=resultado,
+        security_ok=security_ok,
+        tests_ok=tests_ok,
+    )
+
+    iteration = session.get("iteraciones_fase", 0)
+    max_iter = session.get("max_iteraciones_fase", MAX_PHASE_ITERATIONS)
+
+    if gate_result["passed"]:
+        return {
+            "action": "advance",
+            "reason": "Gate superada. Se puede avanzar a la siguiente fase.",
+            "iteration": iteration,
+            "max_iterations": max_iter,
+        }
+
+    if iteration < max_iter:
+        # Incrementar el contador
+        session["iteraciones_fase"] = iteration + 1
+        session["actualizado_en"] = datetime.now(timezone.utc).isoformat()
+
+        return {
+            "action": "retry",
+            "reason": (
+                f"Gate no superada: {gate_result['reason']} "
+                f"Iteracion {iteration + 1}/{max_iter}. "
+                f"Corrige los problemas y vuelve a intentarlo."
+            ),
+            "iteration": iteration + 1,
+            "max_iterations": max_iter,
+        }
+
+    return {
+        "action": "escalate",
+        "reason": (
+            f"Se agotaron las {max_iter} iteraciones sin superar la gate: "
+            f"{gate_result['reason']} "
+            f"Se requiere intervencion del usuario."
+        ),
+        "iteration": iteration,
+        "max_iterations": max_iter,
+    }
+
+
+def reset_phase_iterations(session: Dict[str, Any]) -> None:
+    """Reinicia el contador de iteraciones de la fase actual.
+
+    Se llama automaticamente al avanzar a una nueva fase para que
+    el contador empiece en 0.
+
+    Args:
+        session: estado de la sesion a modificar in-place.
+    """
+    session["iteraciones_fase"] = 0
+
+
+# --- Modo autopilot (v0.4.0) ------------------------------------------------
+# Permite ejecutar un flujo completo sin interrupcion humana. Las gates
+# de tipo «usuario» se aprueban automaticamente; las automaticas y de
+# seguridad se evaluan normalmente.
+
+def is_autopilot_gate_passable(
+    session: Dict[str, Any],
+    security_ok: bool = True,
+    tests_ok: bool = True,
+) -> Dict[str, Any]:
+    """Evalua si una gate puede superarse en modo autopilot.
+
+    En autopilot, las gates de tipo «usuario» se aprueban automaticamente.
+    Las de tipo «automatico» y «seguridad» se evaluan con los parametros
+    proporcionados.
+
+    Args:
+        session: estado de la sesion.
+        security_ok: resultado de la auditoria de seguridad.
+        tests_ok: resultado de los tests.
+
+    Returns:
+        Diccionario con ``"passed"`` (bool) y ``"reason"`` (str).
+    """
+    comando = session["comando"]
+    if comando not in FLOWS:
+        return {"passed": False, "reason": f"Flujo '{comando}' no definido."}
+
+    # Sesion completada: no hay gate que evaluar.
+    if session.get("fase_actual") == "completado":
+        return {"passed": True, "reason": "Sesion completada (autopilot)."}
+
+    flow = FLOWS[comando]
+    fase_numero = session["fase_numero"]
+    fases = flow["fases"]
+
+    if fase_numero >= len(fases):
+        return {"passed": True, "reason": "Sesion completada (autopilot)."}
+
+    fase = fases[fase_numero]
+    gate_tipo = fase["gate_tipo"]
+
+    # En autopilot, las gates de usuario se aprueban automaticamente
+    if gate_tipo == GATE_USUARIO:
+        return {"passed": True, "reason": "Aprobacion automatica (autopilot)."}
+
+    # El resto se evalua normalmente con resultado «aprobado»
+    return check_gate(
+        session,
+        resultado="aprobado",
+        security_ok=security_ok,
+        tests_ok=tests_ok,
+    )
+
+
+def run_flow_autopilot(
+    command: str,
+    description: str,
+    equipo_sesion: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Crea una sesion de flujo en modo autopilot.
+
+    Identica a ``run_flow()`` pero marca la sesion con ``autopilot=True``
+    para que el stop-hook y las gates sepan que deben comportarse de
+    forma autonoma.
+
+    Args:
+        command: identificador del flujo.
+        description: descripcion de la tarea.
+        equipo_sesion: composicion del equipo opcional.
+
+    Returns:
+        Estado de la sesion con ``autopilot=True``.
+
+    Raises:
+        ValueError: si el comando no corresponde a ningun flujo definido.
+    """
+    session = run_flow(command, description, equipo_sesion=equipo_sesion)
+    session["autopilot"] = True
+    session["iteraciones_fase"] = 0
+    session["max_iteraciones_fase"] = MAX_PHASE_ITERATIONS
+    return session

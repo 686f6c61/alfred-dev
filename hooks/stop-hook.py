@@ -19,9 +19,48 @@ import sys
 
 # Se añade el directorio raíz del plugin al path para poder importar core
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PLUGIN_ROOT)
+if HOOKS_DIR not in sys.path:
+    sys.path.insert(0, HOOKS_DIR)
 
 from core.orchestrator import FLOWS, load_state
+from core.session_report import generate_report
+
+
+def _generate_session_report(session):
+    """Genera un informe de sesion si hay datos suficientes.
+
+    Intenta cargar la evidencia de tests y generar el informe en
+    ``docs/alfred-reports/``. Si falla por cualquier razon, el error
+    se imprime en stderr sin bloquear el cierre.
+
+    Args:
+        session: estado de la sesion (diccionario del orquestador).
+    """
+    try:
+        # Cargar evidencia de tests si esta disponible
+        evidence = None
+        try:
+            from evidence_guard_lib import get_evidence
+            evidence = get_evidence()
+        except ImportError:
+            print(
+                "[Alfred Dev] Aviso: no se pudo cargar evidence_guard_lib. "
+                "El informe se generara sin evidencia de tests.",
+                file=sys.stderr,
+            )
+
+        report_path = generate_report(session, evidence=evidence)
+        print(
+            f"[Alfred Dev] Informe de sesion guardado en: {report_path}",
+            file=sys.stderr,
+        )
+    except (OSError, ValueError, RuntimeError) as e:
+        print(
+            f"[Alfred Dev] Aviso: no se pudo generar el informe de sesion: {e}",
+            file=sys.stderr,
+        )
 
 
 def main():
@@ -44,9 +83,10 @@ def main():
     if session is None:
         sys.exit(0)
 
-    # Si la sesión está completada, no hay motivo para bloquear
+    # Si la sesión está completada, generar informe y dejar que Claude pare
     fase_actual = session.get("fase_actual", "completado")
     if fase_actual == "completado":
+        _generate_session_report(session)
         sys.exit(0)
 
     comando = session.get("comando", "")

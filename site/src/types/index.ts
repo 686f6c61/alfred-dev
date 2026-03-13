@@ -72,6 +72,16 @@ export interface HeroCta {
   ariaLabel: string;
 }
 
+/** Feature destacada en el hero (bloque de novedades). */
+export interface HeroFeature {
+  /** Titulo corto de la feature. */
+  title: string;
+  /** Descripcion breve (una frase). */
+  description: string;
+  /** Contenido SVG del icono (paths internos, sin el tag <svg> envolvente). */
+  svgContent: string;
+}
+
 /** Seccion hero de la landing. */
 export interface HeroData {
   /** Titulo principal con HTML inline (soporta <br>, <em>, etc.). */
@@ -82,6 +92,13 @@ export interface HeroData {
   subtitle: string;
   /** Botones CTA con comando de instalacion. */
   ctas: HeroCta[];
+  /** Bloque de features destacadas debajo de los CTAs (opcional). */
+  features?: {
+    /** Etiqueta de version (ej. "Nuevo en v0.4.0"). */
+    label: string;
+    /** Lista de features. */
+    items: HeroFeature[];
+  };
 }
 
 /** Cifra destacada de la barra de stats. */

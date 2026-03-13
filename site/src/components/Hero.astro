@@ -53,6 +53,32 @@ const { hero, copyHint, copiedHint } = Astro.props;
         <span class="copy-hint">{copyHint}</span>
       </button>
     ))}
+
+    {hero.features && (
+      <div class="hero-features">
+        <span class="hero-features-label">{hero.features.label}</span>
+        <div class="hero-features-grid">
+          {hero.features.items.map((feature) => (
+            <div class="hero-feature">
+              <svg
+                class="hero-feature-icon"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <Fragment set:html={feature.svgContent} />
+              </svg>
+              <span class="hero-feature-title">{feature.title}</span>
+              <span class="hero-feature-desc">{feature.description}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
   </div>
 </header>
 
@@ -203,6 +229,74 @@ const { hero, copyHint, copiedHint } = Astro.props;
     letter-spacing: 0.05em;
   }
 
+  /* ── Bloque de features destacadas ───────────────── */
+  .hero-features {
+    margin-top: 48px;
+    text-align: center;
+  }
+
+  .hero-features-label {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 20px;
+    padding: 4px 12px;
+    border: 1px solid rgba(78, 201, 126, 0.25);
+    border-radius: 4px;
+    background: rgba(78, 201, 126, 0.06);
+  }
+
+  .hero-features-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .hero-feature {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: left;
+    transition: border-color 0.2s;
+    width: calc(33.333% - 8px);
+    min-width: 0;
+  }
+
+  .hero-feature:hover {
+    border-color: var(--border-light);
+  }
+
+  .hero-feature-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--blue);
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+
+  .hero-feature-title {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 6px;
+  }
+
+  .hero-feature-desc {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
   /* ── Responsive 768px ────────────────────────────── */
   @media (max-width: 768px) {
     .hero {
@@ -225,6 +319,10 @@ const { hero, copyHint, copiedHint } = Astro.props;
 
     .hero-cta-label {
       font-size: 10px;
+    }
+
+    .hero-feature {
+      width: 100%;
     }
   }
 </style>

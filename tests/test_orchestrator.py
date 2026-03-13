@@ -13,6 +13,9 @@ from core.orchestrator import (
     FLOWS, create_session, advance_phase, check_gate,
     load_state, save_state, get_effective_agents,
     run_flow, _validate_equipo_sesion, _KNOWN_OPTIONAL_AGENTS,
+    should_retry_phase, reset_phase_iterations,
+    is_autopilot_gate_passable, run_flow_autopilot,
+    MAX_PHASE_ITERATIONS,
 )
 
 
@@ -230,6 +233,126 @@ class TestRunFlow(unittest.TestCase):
         """TC-24: get_effective_agents(fase, None) sigue funcionando."""
         result = get_effective_agents("calidad", None)
         self.assertEqual(result, {"paralelo": [], "secuencial": []})
+
+
+class TestLoopIterativo(unittest.TestCase):
+    """Tests para el loop iterativo dentro de fases (v0.4.0)."""
+
+    def test_should_retry_when_gate_fails(self):
+        """Si la gate falla y hay iteraciones, recomienda retry."""
+        session = create_session("feature", "Test loop")
+        # Fase 0 = producto, gate_tipo = usuario
+        result = should_retry_phase(session, resultado="rechazado")
+        self.assertEqual(result["action"], "retry")
+        self.assertEqual(result["iteration"], 1)
+
+    def test_should_advance_when_gate_passes(self):
+        """Si la gate se supera, recomienda avanzar."""
+        session = create_session("feature", "Test loop")
+        result = should_retry_phase(session, resultado="aprobado")
+        self.assertEqual(result["action"], "advance")
+
+    def test_should_escalate_after_max_iterations(self):
+        """Al agotar iteraciones, recomienda escalar al usuario."""
+        session = create_session("feature", "Test loop")
+        session["iteraciones_fase"] = MAX_PHASE_ITERATIONS
+        result = should_retry_phase(session, resultado="rechazado")
+        self.assertEqual(result["action"], "escalate")
+
+    def test_iteration_counter_increments(self):
+        """El contador de iteraciones se incrementa con cada retry."""
+        session = create_session("feature", "Test loop")
+        session["iteraciones_fase"] = 0
+        should_retry_phase(session, resultado="rechazado")
+        self.assertEqual(session["iteraciones_fase"], 1)
+        should_retry_phase(session, resultado="rechazado")
+        self.assertEqual(session["iteraciones_fase"], 2)
+
+    def test_reset_phase_iterations(self):
+        """El reset pone el contador a 0."""
+        session = create_session("feature", "Test loop")
+        session["iteraciones_fase"] = 3
+        reset_phase_iterations(session)
+        self.assertEqual(session["iteraciones_fase"], 0)
+
+    def test_advance_phase_resets_iterations(self):
+        """Avanzar de fase reinicia el contador automaticamente."""
+        session = create_session("feature", "Test loop")
+        session["iteraciones_fase"] = 3
+        session = advance_phase(session, resultado="aprobado")
+        self.assertEqual(session.get("iteraciones_fase", 0), 0)
+
+
+class TestAutopilot(unittest.TestCase):
+    """Tests para el modo autopilot (v0.4.0)."""
+
+    def test_run_flow_autopilot_creates_session(self):
+        """El modo autopilot crea una sesion con el flag activo."""
+        session = run_flow_autopilot("feature", "Login automatico")
+        self.assertTrue(session["autopilot"])
+        self.assertEqual(session["iteraciones_fase"], 0)
+        self.assertEqual(session["max_iteraciones_fase"], MAX_PHASE_ITERATIONS)
+
+    def test_autopilot_approves_user_gates(self):
+        """En autopilot, las gates de usuario se aprueban automaticamente."""
+        session = create_session("feature", "Test autopilot")
+        # Fase 0 = producto, gate_tipo = usuario
+        result = is_autopilot_gate_passable(session)
+        self.assertTrue(result["passed"])
+        self.assertIn("autopilot", result["reason"])
+
+    def test_autopilot_evaluates_automatic_gates(self):
+        """En autopilot, las gates automaticas se evaluan normalmente."""
+        session = create_session("feature", "Test autopilot")
+        # Avanzar a fase 2 = desarrollo, gate_tipo = automatico
+        session = advance_phase(session, resultado="aprobado")  # producto -> arquitectura
+        session = advance_phase(session, resultado="aprobado")  # arquitectura -> desarrollo
+        result = is_autopilot_gate_passable(session, tests_ok=False)
+        self.assertFalse(result["passed"])
+
+    def test_autopilot_evaluates_security_gates(self):
+        """En autopilot, las gates de seguridad se evaluan normalmente."""
+        session = create_session("feature", "Test autopilot")
+        session = advance_phase(session, resultado="aprobado")  # producto -> arquitectura
+        session = advance_phase(session, resultado="aprobado")  # arquitectura -> desarrollo
+        session = advance_phase(session, resultado="aprobado", tests_ok=True)  # desarrollo -> calidad
+        # Fase 3 = calidad, gate_tipo = automatico+seguridad
+        result = is_autopilot_gate_passable(session, security_ok=False)
+        self.assertFalse(result["passed"])
+
+    def test_autopilot_invalid_command(self):
+        """Autopilot con comando invalido lanza ValueError."""
+        with self.assertRaises(ValueError):
+            run_flow_autopilot("inexistente", "Test")
+
+    def test_autopilot_gate_completed_session(self):
+        """is_autopilot_gate_passable no falla con sesion completada."""
+        session = create_session("spike", "Test")
+        session = advance_phase(session, resultado="aprobado")
+        session = advance_phase(session, resultado="aprobado")
+        # Ahora fase_actual == "completado"
+        result = is_autopilot_gate_passable(session)
+        self.assertTrue(result["passed"])
+
+
+class TestCompletedSessionGuards(unittest.TestCase):
+    """Verifica que check_gate no lanza IndexError con sesiones completadas."""
+
+    def test_check_gate_completed_session(self):
+        """check_gate devuelve passed=True para sesiones completadas."""
+        session = create_session("spike", "Investigacion")
+        session = advance_phase(session, resultado="aprobado")
+        session = advance_phase(session, resultado="aprobado")
+        self.assertEqual(session["fase_actual"], "completado")
+        result = check_gate(session, resultado="aprobado")
+        self.assertTrue(result["passed"])
+
+    def test_check_gate_overflowed_fase_numero(self):
+        """check_gate no falla si fase_numero excede el array de fases."""
+        session = create_session("spike", "Test")
+        session["fase_numero"] = 999
+        result = check_gate(session, resultado="aprobado")
+        self.assertTrue(result["passed"])
 
 
 if __name__ == "__main__":

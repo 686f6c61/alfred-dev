@@ -12,15 +12,17 @@ from core.personality import get_agent_intro, get_agent_voice, AGENTS
 
 class TestPersonality(unittest.TestCase):
     def test_all_agents_defined(self):
-        # Núcleo: 8 agentes siempre activos
+        # Núcleo: 9 agentes siempre activos
         core = {
             "alfred", "product-owner", "architect", "senior-dev",
             "security-officer", "qa-engineer", "devops-engineer", "tech-writer",
+            "project-manager",
         }
-        # Opcionales: 7 agentes predefinidos que el usuario activa
+        # Opcionales: 8 agentes predefinidos que el usuario activa
         optional = {
             "data-engineer", "ux-reviewer", "performance-engineer",
             "github-manager", "seo-specialist", "copywriter", "librarian",
+            "i18n-specialist",
         }
         self.assertEqual(set(AGENTS.keys()), core | optional)
 
@@ -29,6 +31,7 @@ class TestPersonality(unittest.TestCase):
         optional_names = {
             "data-engineer", "ux-reviewer", "performance-engineer",
             "github-manager", "seo-specialist", "copywriter", "librarian",
+            "i18n-specialist",
         }
         for name in optional_names:
             self.assertTrue(
@@ -41,6 +44,7 @@ class TestPersonality(unittest.TestCase):
         core_names = {
             "alfred", "product-owner", "architect", "senior-dev",
             "security-officer", "qa-engineer", "devops-engineer", "tech-writer",
+            "project-manager",
         }
         for name in core_names:
             self.assertFalse(

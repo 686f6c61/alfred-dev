@@ -113,6 +113,36 @@ const data: PageData = {
         ariaLabel: 'Copy installation command for Windows',
       },
     ],
+    features: {
+      label: 'New in v0.4.0',
+      items: [
+        {
+          title: 'Verifiable evidence',
+          description: 'Every test execution is recorded. When an agent claims tests pass, the system verifies it.',
+          svgContent: '<path d="M9 12l2 2 4-4"/><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z"/>',
+        },
+        {
+          title: 'Autopilot mode',
+          description: 'Full workflows unattended. User gates auto-approved; security and test gates evaluated normally.',
+          svgContent: '<path d="M12 16v5"/><path d="M16 14l-4 2-4-2"/><path d="M12 3l9 4.5v5L12 17l-9-4.5v-5L12 3z"/>',
+        },
+        {
+          title: 'Git worktrees',
+          description: 'Isolated work on alfred/* branches. If something fails, discard without touching the main branch.',
+          svgContent: '<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
+        },
+        {
+          title: 'Iterative loop',
+          description: 'Up to 5 retries per phase if the gate fails. Natural TDD cycles without manual intervention.',
+          svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
+        },
+        {
+          title: 'Session reports',
+          description: 'On close, a markdown summary is generated with phases, test evidence and artefacts.',
+          svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+        },
+      ],
+    },
   },
 
   // ----------------------------------------------------------------
@@ -125,8 +155,8 @@ const data: PageData = {
     { number: 5, label: 'Workflows' },
     { number: 10, label: 'Commands' },
     { number: 7, label: 'Templates' },
-    { number: 10, label: 'Hooks' },
-    { number: 21, label: 'Gates' },
+    { number: 11, label: 'Hooks' },
+    { number: 23, label: 'Gates' },
   ],
 
   // ----------------------------------------------------------------
@@ -401,6 +431,8 @@ const data: PageData = {
       { text: 'Queries the project\'s persistent memory to contextualise with historical data' },
       { text: 'Monitors every file write looking for secrets, API keys or tokens' },
       { text: 'Detects missing accents in Spanish when writing or editing files' },
+      { text: 'Verifies that tests were actually executed before accepting they pass (verifiable evidence)' },
+      { text: 'Iterates within each phase up to 5 times if the gate fails, enabling natural TDD cycles' },
     ],
     optionalLabel: 'Optional -- extend the coverage',
     optional: [
@@ -569,7 +601,7 @@ const data: PageData = {
     },
     groups: [
       {
-        title: '10 hooks',
+        title: '11 hooks',
         items: [
           { name: 'session-start.sh', label: 'SessionStart' },
           { name: 'stop-hook.py', label: 'Stop' },
@@ -577,6 +609,7 @@ const data: PageData = {
           { name: 'dangerous-command-guard.py', label: 'PreToolUse' },
           { name: 'sensitive-read-guard.py', label: 'PreToolUse' },
           { name: 'quality-gate.py', label: 'PostToolUse' },
+          { name: 'evidence-guard.py', label: 'PostToolUse' },
           { name: 'dependency-watch.py', label: 'PostToolUse' },
           { name: 'spelling-guard.py', label: 'PostToolUse' },
           { name: 'activity-capture.py', label: 'PostToolUse' },
@@ -596,14 +629,16 @@ const data: PageData = {
         ],
       },
       {
-        title: '4 core modules',
+        title: '6 core modules',
         items: [
-          { name: 'orchestrator.py', label: 'Workflows, sessions, gates' },
+          { name: 'orchestrator.py', label: 'Workflows, sessions, gates, iterative loop and autopilot' },
           { name: 'personality.py', label: 'Personality engine' },
           { name: 'config_loader.py', label: 'Config and stack detection' },
           { name: 'memory.py', label: 'SQLite persistent memory' },
+          { name: 'session_report.py', label: 'Markdown session reports' },
+          { name: 'worktree.py', label: 'Git worktree isolation' },
         ],
-        footnote: '114 passing',
+        footnote: '530 passing',
       },
     ],
   },
@@ -867,11 +902,27 @@ const data: PageData = {
         steps: [
           'Secret guard -- blocks writing API keys, tokens or passwords in code',
           'Quality gate -- verifies tests pass after every significant change',
+          'Evidence verification -- records every test execution as verifiable evidence, preventing claims without proof',
           'Dependency watch -- detects new libraries and notifies the security auditor',
           'Spelling guard -- detects Spanish words missing accents when writing or editing files',
           'Memory capture -- automatically records workflow events in persistent memory',
           'Commit capture -- detects every git commit and records SHA, author and files in memory',
           'Protected context -- critical decisions survive context compaction',
+          'Session report -- when a completed session closes, a summary is generated in docs/alfred-reports/ with phases, evidence and artefacts',
+        ],
+      },
+      {
+        category: 'Autonomy',
+        color: 'var(--green)',
+        background: 'rgba(78,201,126,0.08)',
+        title: 'Autopilot mode with isolation',
+        command: '/alfred-dev:feature --autopilot',
+        steps: [
+          'An isolated git worktree is created on an alfred/<type>/<name> branch so the main branch stays untouched',
+          'The full workflow runs unattended: user gates are approved automatically',
+          'Automatic gates (tests) and security gates are still evaluated normally',
+          'If an automatic gate fails, the iterative loop retries up to 5 times before escalating',
+          'On completion, the worktree is merged back; if something goes wrong, it is discarded without affecting the project',
         ],
       },
     ],
@@ -1158,6 +1209,22 @@ personality:
 
   changelog: [
     {
+      version: '0.4.0',
+      date: '2026-03-13',
+      added: [
+        'Evidence verification: hook that records each test execution as verifiable evidence. When an agent claims tests pass, the system checks they were actually run.',
+        'Session report on close: automatic summary in docs/alfred-reports/ with phases, test evidence, team and artifacts.',
+        'Iterative loop within phases: agents iterate up to 5 times within a phase until the gate is passed, enabling natural TDD cycles.',
+        'Git worktree isolation: alfred/<type>/<name> branches for safe work. If something goes wrong, discard the worktree without affecting the main branch.',
+        'Autopilot mode: full execution without human interruption. User gates are auto-approved; automatic and security gates are evaluated normally.',
+      ],
+      changed: [
+        '17 agent personalities rewritten with Alfred Pennyworth tone: impeccable service, subtle irony, technical precision.',
+        'Orchestrator extended with iterative loop functions (should_retry_phase, reset_phase_iterations) and autopilot (is_autopilot_gate_passable, run_flow_autopilot).',
+        'Stop-hook automatically generates session report when closing a completed session.',
+      ],
+    },
+    {
       version: '0.3.9',
       date: '2026-03-13',
       added: [
@@ -1411,7 +1478,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.9',
+    version: 'v0.4.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

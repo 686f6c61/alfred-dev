@@ -7,6 +7,25 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.0] - 2026-03-13
+
+### Added
+
+- **Verificacion de evidencia (evidence guard)**: nuevo hook PostToolUse que registra cada ejecucion de tests como evidencia verificable. Cuando un agente afirma que los tests pasan, el sistema puede comprobar que efectivamente se ejecutaron en los ultimos 10 minutos. Fichero de evidencia en `.claude/alfred-evidence.json` con rotacion a 50 registros.
+- **Informe de sesion al cierre**: al finalizar una sesion de trabajo completada, se genera automaticamente un informe en `docs/alfred-reports/` con resumen de fases completadas, evidencia de tests, equipo de sesion y artefactos generados. Integrado en el stop-hook existente.
+- **Loop iterativo dentro de fases**: los agentes pueden iterar dentro de una fase (hasta 5 intentos por defecto) hasta superar la gate correspondiente. Esto habilita ciclos TDD naturales, pasadas de QA repetidas y correccion iterativa sin intervencion manual. Al agotar las iteraciones, se escala al usuario.
+- **Aislamiento con git worktrees**: nuevo modulo `core/worktree.py` que crea worktrees aislados con ramas `alfred/<tipo>/<nombre>` para trabajo seguro. Si algo sale mal, se descarta el worktree sin afectar a la rama principal. Incluye funciones de creacion, fusion, limpieza y listado.
+- **Modo autopilot**: `run_flow_autopilot()` ejecuta un flujo completo sin interrupcion humana. Las gates de tipo «usuario» se aprueban automaticamente; las gates automaticas y de seguridad se evaluan normalmente. Solo se detiene si una gate automatica o de seguridad falla.
+- **46 tests nuevos**: cobertura completa de evidence guard (deteccion de runners, resultados, almacenamiento), informe de sesion (secciones, duracion, generacion), worktrees (creacion, merge, limpieza), loop iterativo (retry, escalado, reset) y autopilot (gates automaticas, seguridad, usuario).
+
+### Changed
+
+- **Personalidades reescritas**: las 17 personalidades de agentes adoptan el tono Alfred Pennyworth: servicio impecable, ironia sutil, precision tecnica. Eliminadas expresiones coloquiales («bro», «señor», «que pasa»). Añadidos los agentes project-manager (SonIA) e i18n-specialist (La Interprete).
+- **Orquestador ampliado**: `advance_phase()` reinicia automaticamente el contador de iteraciones internas al avanzar. Nuevas funciones publicas: `should_retry_phase()`, `reset_phase_iterations()`, `is_autopilot_gate_passable()`, `run_flow_autopilot()`.
+- **Stop-hook con informe**: al cerrar una sesion completada, el stop-hook genera un informe de sesion automaticamente antes de permitir la salida.
+
+---
+
 ## [0.3.9] - 2026-03-13
 
 ### Added
