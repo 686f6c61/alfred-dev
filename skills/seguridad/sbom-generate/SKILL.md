@@ -1,6 +1,6 @@
 ---
 name: sbom-generate
-description: "Usar para generar Software Bill of Materials para cumplimiento del CRA"
+description: "Usar para generar Software Bill of Materials para cumplimiento del CRA. También: Software Bill of Materials, inventario de componentes, CycloneDX, SPDX, cadena de suministro."
 ---
 
 # Generar SBOM (Software Bill of Materials)

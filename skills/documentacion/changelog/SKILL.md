@@ -1,6 +1,6 @@
 ---
 name: changelog
-description: "Usar para generar entradas de changelog siguiendo Keep a Changelog"
+description: "Usar para generar entradas de changelog siguiendo Keep a Changelog. Activar ante: generar changelog, documentar cambios, Keep a Changelog, notas de version, que ha cambiado"
 ---
 
 # Generar changelog
@@ -10,6 +10,8 @@ description: "Usar para generar entradas de changelog siguiendo Keep a Changelog
 Este skill genera entradas de changelog siguiendo el formato Keep a Changelog (keepachangelog.com). El changelog es el documento que los usuarios consultan para saber qué ha cambiado entre versiones. Está escrito para personas, no para máquinas: el lenguaje debe ser claro y orientado al impacto para el usuario, no a los detalles internos de implementación.
 
 Un buen changelog responde a la pregunta "qué ha cambiado que me afecta" sin requerir que el lector entienda el código.
+
+> **Nota:** este skill genera entradas de changelog individuales. Para el proceso completo de publicación de una release (versionado, changelog, notas, publicación), usar el protocolo release-planning.
 
 ## Proceso
 

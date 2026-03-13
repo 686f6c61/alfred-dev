@@ -1,6 +1,6 @@
 ---
 name: bundle-size
-description: "Analizar y reducir el tamaño de bundles frontend"
+description: "Analizar y reducir el tamaño de bundles frontend. Activar cuando el bundle sea grande, se quiera reducir tamaño, aplicar tree shaking, configurar lazy loading, usar webpack analyzer o analizar el peso de la aplicacion."
 ---
 
 # Análisis y reducción de bundle size

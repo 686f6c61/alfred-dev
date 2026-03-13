@@ -1,6 +1,6 @@
 ---
 name: exploratory-testing
-description: "Usar para testing exploratorio con sesiones documentadas"
+description: "Usar para testing exploratorio con sesiones documentadas. También: probar sin script, buscar bugs, testing manual, edge cases, sesión de testing."
 ---
 
 # Testing exploratorio

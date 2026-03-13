@@ -1,6 +1,6 @@
 ---
 name: code-review-response
-description: "Usar al recibir feedback de code review para responder técnicamente"
+description: "Usar al recibir feedback de code review para responder técnicamente. Activar cuando el usuario quiera responder a comentarios de PR, gestionar feedback de code review, resolver comentarios de un revisor, o cuando el revisor pide cambios en el código."
 ---
 
 # Responder a code review
@@ -35,6 +35,16 @@ La clave es tratar cada comentario como una oportunidad de mejorar el código o 
 5. **Implementar los cambios aceptados.** Cada cambio derivado de code review se hace en un commit separado y descriptivo que referencie el comentario original cuando sea posible.
 
 6. **No tomárselo como algo personal.** El code review es sobre el código, no sobre la persona. Si un comentario resulta brusco, responder al contenido técnico e ignorar el tono.
+
+## Relación con otros skills
+
+Este skill guía la respuesta técnica a comentarios de review. Para hacer la revisión de código en sí (como revisor), usar `calidad/code-review`.
+
+## Qué NO hacer
+
+- **No aceptar todas las sugerencias sin evaluar su mérito técnico.** Aceptar ciegamente genera código inconsistente y erosiona la confianza en el proceso de review. Cada cambio debe tener sentido técnico.
+- **No responder de forma defensiva.** El code review es sobre el código, no sobre la persona. Una respuesta defensiva corta la discusión técnica y empeora el resultado.
+- **No ignorar comentarios sin explicar por qué.** Si se decide no implementar un cambio sugerido, documentar la razón con evidencia técnica. Un comentario sin respuesta es peor que un rechazo argumentado.
 
 ## Criterios de éxito
 

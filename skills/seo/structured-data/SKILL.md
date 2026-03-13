@@ -1,6 +1,6 @@
 ---
 name: structured-data
-description: "Generar datos estructurados JSON-LD validados contra schema.org"
+description: "Generar datos estructurados JSON-LD validados contra schema.org. Activar ante: JSON-LD, schema.org, rich snippets, datos estructurados, marcado semantico"
 ---
 
 # Generar datos estructurados JSON-LD

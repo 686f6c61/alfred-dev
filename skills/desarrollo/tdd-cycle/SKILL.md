@@ -1,6 +1,6 @@
 ---
 name: tdd-cycle
-description: "Usar siempre antes de implementar código. Ciclo rojo-verde-refactor estricto."
+description: "Usar siempre antes de implementar código. Ciclo rojo-verde-refactor estricto. Activar cuando el usuario quiera hacer test first, escribir test antes de implementar, seguir el ciclo rojo verde refactor, desarrollo guiado por tests, TDD o implementar una funcionalidad de forma segura con tests."
 ---
 
 # Ciclo TDD (Test-Driven Development)
@@ -51,6 +51,13 @@ El TDD no es solo una técnica de testing, es una técnica de diseño. Escribir 
 - Hacer commit del test y la implementación juntos. El commit debe ser atómico: si se revierte, el proyecto sigue en un estado consistente.
 - Formato del commit: `feat: [descripción]` o `test: [descripción]` según corresponda.
 - Volver al paso 1 con el siguiente comportamiento a implementar.
+
+## Qué NO hacer
+
+- **No escribir el test después de la implementación para "cumplir" con TDD.** El valor del TDD está en que el test guía el diseño. Un test escrito a posteriori solo verifica que el código hace lo que ya hace, no aporta feedback de diseño.
+- **No escribir tests que prueban la implementación en vez del comportamiento.** Un test acoplado a detalles internos (orden de llamadas, variables privadas, estructura interna) se rompe con cada refactoring y no detecta regresiones reales.
+- **No saltarse el paso de verificar que el test falla.** Un test que pasa sin implementación no prueba nada. Si el test ya pasa, o está mal escrito o la funcionalidad ya existía.
+- **No hacer refactoring y añadir funcionalidad en el mismo paso.** El refactoring cambia estructura sin alterar comportamiento; añadir funcionalidad cambia comportamiento. Mezclarlos impide saber si un test roto es por el refactoring o por la nueva funcionalidad.
 
 ## Criterios de éxito
 

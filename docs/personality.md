@@ -27,9 +27,9 @@ La razón de usar un diccionario plano en lugar de clases u objetos más elabora
 | `personalidad` | `str` | Párrafo que define el tono, la actitud y los rasgos de carácter del agente. Se inyecta en el system prompt para que el modelo de lenguaje mantenga la voz a lo largo de la sesión. | *(ver fichero fuente)* |
 | `frases` | `List[str]` | Lista de frases base que representan la voz del agente en niveles de sarcasmo normales (<= 3). Son frases con personalidad pero dentro de un registro profesional. | `["Venga, vamos a ello. Ya tengo un plan."]` |
 | `frases_sarcasmo_alto` | `List[str]` | Frases adicionales que se incorporan al pool cuando el nivel de sarcasmo es >= 4. El tono sube, pero sin cruzar la línea del insulto. | `["A ver, esa idea... cómo te lo digo suave... es terrible."]` |
-| `opcional` | `bool` | Solo presente (y con valor `True`) en los 7 agentes opcionales. Los agentes opcionales están predefinidos en el diccionario pero no participan en los flujos a menos que el usuario los active explícitamente en su configuración local (`alfred-dev.local.md`). Si el campo no existe, el agente es obligatorio. | `True` |
+| `opcional` | `bool` | Solo presente (y con valor `True`) en los 8 agentes opcionales. Los agentes opcionales están predefinidos en el diccionario pero no participan en los flujos a menos que el usuario los active explícitamente en su configuración local (`alfred-dev.local.md`). Si el campo no existe, el agente es obligatorio. | `True` |
 
-Los 8 agentes obligatorios (los que no llevan `opcional: True`) participan siempre en los flujos del plugin. Los 7 opcionales son especialistas de dominio que el usuario activa según las necesidades de su proyecto: un proyecto sin base de datos no necesita a `data-engineer`, una CLI sin interfaz web no necesita a `seo-specialist`.
+Los 9 agentes obligatorios (los que no llevan `opcional: True`) participan siempre en los flujos del plugin. Los 8 opcionales son especialistas de dominio que el usuario activa según las necesidades de su proyecto: un proyecto sin base de datos no necesita a `data-engineer`, una CLI sin interfaz web no necesita a `seo-specialist`.
 
 ---
 
@@ -126,7 +126,7 @@ Función auxiliar que comprueba si el nombre del agente existe en `AGENTS` y dev
 
 ## Distribución de criticidad y autonomía de los agentes
 
-El siguiente diagrama posiciona a los 15 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
+El siguiente diagrama posiciona a los 17 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
 
 Los agentes con alta criticidad y baja autonomía (esquina inferior derecha) son los que trabajan con restricciones estrictas: El Paranoico (seguridad) no puede aprobar por su cuenta, necesita que el orquestador confirme. Los de alta criticidad y alta autonomía (esquina superior derecha) son los que toman decisiones de diseño y escriben código sin pedir permiso en cada línea. Los de baja criticidad y alta autonomía (esquina superior izquierda) son agentes de soporte que pueden operar de forma independiente sin riesgo para el sistema.
 
@@ -186,7 +186,7 @@ La razón de tener tres niveles en lugar de un simple binario (aprobado/rechazad
 
 ## Distribución de modelos
 
-De los 15 agentes, 5 usan el modelo `opus` y los 10 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
+De los 17 agentes, 5 usan el modelo `opus` y los 12 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
 
 ### Criterio de asignación
 

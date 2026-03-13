@@ -1,6 +1,6 @@
 ---
 name: explore-codebase
-description: "Usar antes de modificar código existente para entender el contexto"
+description: "Usar antes de modificar código existente para entender el contexto. Activar cuando el usuario quiera entender el código, saber cómo funciona esto, explorar un repositorio, prepararse antes de modificar, analizar la estructura del proyecto o familiarizarse con una base de código nueva."
 ---
 
 # Explorar base de código
@@ -55,6 +55,11 @@ La exploración no modifica nada. Solo lee, analiza y documenta hallazgos que se
    - Riesgos identificados (áreas sin tests, acoplamiento fuerte).
    - Convenciones de naming y formato a respetar.
    - Cualquier "trampa" o peculiaridad del código.
+
+## Qué NO hacer
+
+- **No proponer cambios sin haber leído el código existente.** Modificar código que no se entiende es la forma más rápida de introducir bugs y romper convenciones establecidas.
+- **No asumir que sabes cómo funciona algo sin verificarlo.** Incluso si el nombre de una función parece obvio, leer la implementación y los tests. El código heredado está lleno de sorpresas.
 
 ## Criterios de éxito
 

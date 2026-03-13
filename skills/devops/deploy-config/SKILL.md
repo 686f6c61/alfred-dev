@@ -1,6 +1,6 @@
 ---
 name: deploy-config
-description: "Usar para configurar despliegue según hosting"
+description: "Configurar despliegue según hosting. Activar cuando el usuario quiera desplegar en Vercel, Railway, AWS, configurar hosting, preparar para produccion o gestionar variables de entorno de despliegue."
 ---
 
 # Configurar despliegue
@@ -13,7 +13,7 @@ Cada proveedor tiene sus particularidades, pero los principios son universales: 
 
 ## Proceso
 
-1. **Identificar el proveedor de hosting.** Detectar la plataforma o preguntar al usuario:
+1. **Identificar el proveedor de hosting.** Consultar el stack detectado en la configuración de Alfred para adaptar la configuración al lenguaje y framework del proyecto. Detectar la plataforma o preguntar al usuario:
 
    - **PaaS:** Vercel, Railway, Fly.io, Render, Heroku.
    - **IaaS/Cloud:** AWS (ECS, Lambda, EC2), GCP (Cloud Run, GKE), Azure.
@@ -73,3 +73,9 @@ Cada proveedor tiene sus particularidades, pero los principios son universales: 
 - Hay una estrategia de despliegue elegida y justificada.
 - Existe un plan de rollback documentado.
 - Los health checks están configurados.
+
+## Que NO hacer
+
+- No desplegar a producción sin haber verificado el despliegue en un entorno de staging o preview con datos representativos.
+- No exponer variables de entorno sensibles en logs, respuestas de API o ficheros de configuración versionados.
+- No desplegar sin una estrategia de rollback documentada y probada. Si algo sale mal, el tiempo de recuperación debe medirse en minutos, no en horas.

@@ -1,6 +1,6 @@
 ---
 name: refactor
-description: "Usar para refactorizar código con tests como red de seguridad"
+description: "Usar para refactorizar código con tests como red de seguridad. Activar cuando el usuario quiera limpiar código, reducir complejidad, extraer función, mejorar nombres, eliminar duplicación, resolver un code smell o reorganizar la estructura interna sin cambiar comportamiento."
 ---
 
 # Refactorizar código

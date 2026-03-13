@@ -1,6 +1,6 @@
 ---
 name: migration-plan
-description: "Planificar migraciones de base de datos con rollback y estimación de impacto"
+description: "Planificar migraciones de base de datos con rollback y estimación de impacto. Activar cuando el usuario quiera migrar base de datos, cambiar esquema, ejecutar ALTER TABLE, planificar un rollback o realizar una migracion segura."
 ---
 
 # Planificación de migraciones de base de datos
@@ -74,3 +74,5 @@ El resultado es un plan de migración que incluye el script forward, el script d
 - No mezclar migraciones de esquema con migraciones de datos en un solo paso si la migración es compleja.
 - No ignorar los bloqueos de tabla. Un ALTER TABLE en una tabla con millones de filas puede bloquear la base de datos durante minutos u horas.
 - No olvidar actualizar los modelos del ORM después de la migración.
+- No ejecutar migraciones sin rollback probado. Si el rollback no se ha verificado en un entorno de prueba, no se puede confiar en él cuando se necesite de verdad.
+- No migrar sin backup previo. Antes de cualquier migración destructiva, asegurar que existe un backup reciente y verificado de la base de datos.

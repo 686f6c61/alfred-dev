@@ -1,6 +1,6 @@
 ---
 name: compliance-check
-description: "Usar para verificar cumplimiento RGPD, NIS2 y CRA"
+description: "Usar para verificar cumplimiento RGPD, NIS2 y CRA. También: verificar RGPD, cumplimiento normativo, NIS2, CRA, Cyber Resilience Act, protección de datos, regulación europea."
 ---
 
 # Verificación de cumplimiento normativo
@@ -64,3 +64,19 @@ No se trata de un dictamen jurídico, sino de una evaluación técnica que ident
 - Cada checklist se ha revisado punto por punto con estado documentado.
 - Las acciones necesarias están priorizadas por riesgo e impacto.
 - El informe es accionable: un desarrollador puede tomar cada acción y ejecutarla.
+- El estado de cumplimiento se ha registrado en la memoria del proyecto.
+
+## Paso final: registro en memoria
+
+Registrar el estado de cumplimiento en la memoria del proyecto con `memory_log_decision` para seguimiento entre sesiones. Esto permite comparar la evolución del cumplimiento a lo largo del tiempo y detectar regresiones normativas.
+
+## Nota de versión
+
+Este skill se basa en RGPD (Reglamento 2016/679), NIS2 (Directiva 2022/2555) y CRA (Reglamento 2024/2847). Verificar si han entrado en vigor actualizaciones posteriores a estas referencias antes de dar por válida la evaluación.
+
+## Qué NO hacer
+
+- No tratar esta evaluación como sustituto de asesoría legal. Es una evaluación técnica que identifica lagunas, pero las decisiones jurídicas requieren un profesional cualificado.
+- No marcar un requisito como cumplido sin evidencia técnica que lo respalde (código, configuración, documentación verificable).
+- No ignorar el CRA por tratarse de software open source. El CRA aplica a OSS con uso comercial; la exención solo cubre al software libre sin ánimo de lucro ni actividad comercial.
+- No dar por cerrada la evaluación sin documentar los requisitos que no aplican y la justificación de por qué no aplican.

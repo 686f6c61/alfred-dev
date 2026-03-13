@@ -1,6 +1,6 @@
 ---
 name: readme-review
-description: "Auditar y mejorar el README del proyecto: estructura, completitud y claridad"
+description: "Auditar y mejorar el README del proyecto: estructura, completitud y claridad. Activar ante: mejorar README, auditar README, primera impresion del proyecto, readme incompleto"
 ---
 
 # Revisión del README

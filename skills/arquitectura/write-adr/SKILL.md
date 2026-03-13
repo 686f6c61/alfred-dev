@@ -1,6 +1,6 @@
 ---
 name: write-adr
-description: "Usar para documentar decisiones arquitectónicas como ADR"
+description: "Usar para documentar decisiones arquitectónicas como ADR. Activar cuando el usuario quiera documentar por qué se tomó una decisión, registrar alternativas descartadas, crear un ADR, un decision record, dejar constancia de una elección técnica o justificar una decisión de diseño ante el equipo."
 ---
 
 # Escribir ADR (Architecture Decision Record)
@@ -38,6 +38,19 @@ Cada ADR es un fichero independiente, numerado secuencialmente, que se guarda en
 6. **Actualizar el índice si existe.** Si hay un fichero índice de ADRs (como `docs/adr/README.md` o `docs/adr/index.md`), añadir la nueva entrada.
 
 7. **Revisar con el usuario.** El ADR es un registro de decisión consensuada. No se da por final hasta que el usuario lo aprueba.
+
+8. **Registrar la decisión en la memoria del proyecto** con `memory_log_decision` incluyendo título, opción elegida, alternativas descartadas y justificación. Esto permite que futuros skills y sesiones tengan acceso rápido a la decisión sin necesidad de buscar el fichero ADR.
+
+## Qué NO hacer
+
+- **No documentar decisiones triviales** que no necesitan justificación. Si la decisión es obvia y nadie la cuestionaría, no necesita un ADR.
+- **No modificar ADRs aceptados.** Si la decisión cambia, crear un nuevo ADR que sustituya al anterior y actualizar el estado del original a `sustituido por [NNN]`.
+- **No omitir las alternativas descartadas.** El valor principal de un ADR está en explicar por qué se descartaron las otras opciones, no solo en registrar la elegida.
+- **No usar el ADR como especificación técnica detallada.** El ADR documenta la decisión y su razonamiento, no los detalles de implementación. Para eso existen otros artefactos.
+
+## Relación con otros skills
+
+Este skill documenta la decisión como artefacto. La evaluación técnica previa de las opciones se hace con `choose-stack` (para tecnologías) o `design-system` (para patrones de arquitectura). Primero se evalúa, luego se documenta.
 
 ## Criterios de éxito
 

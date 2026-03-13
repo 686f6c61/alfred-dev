@@ -1,6 +1,6 @@
 ---
 name: monitoring-setup
-description: "Usar para configurar observabilidad del servicio"
+description: "Configurar observabilidad del servicio. Activar cuando el usuario quiera configurar logging, integrar Sentry, implementar error tracking, definir metricas, configurar alertas, mejorar la observabilidad o monitorizar un servicio."
 ---
 
 # Configurar observabilidad
@@ -75,3 +75,8 @@ Este skill configura las tres patas de la observabilidad: logging estructurado, 
 - Las métricas cubren al menos latencia, tasa de error y una métrica de negocio.
 - Las alertas son accionables y están clasificadas por severidad.
 - Los health endpoints están implementados y responden correctamente.
+
+## Que NO hacer
+
+- No loguear datos personales (PII). Nombres, emails, direcciones IP, tokens de sesión y cualquier dato identificable deben ser redactados o excluidos de los logs para cumplir con GDPR y buenas prácticas de seguridad.
+- No configurar alertas sin definir umbrales concretos. Una alerta sin umbral genera ruido y se acaba ignorando. Cada alerta debe tener un criterio numérico que determine cuándo se dispara y cuándo se resuelve.

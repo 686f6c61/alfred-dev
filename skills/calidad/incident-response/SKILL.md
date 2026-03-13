@@ -1,16 +1,17 @@
 ---
-description: "Protocolo de respuesta ante incidentes: triaje, mitigacion, RCA y postmortem"
+name: incident-response
+description: "Protocolo de respuesta ante incidentes en produccion: triaje, mitigacion, causa raiz y postmortem. Usar ante caidas, errores criticos, incidentes de seguridad o degradacion de servicio."
 ---
 
 # Respuesta ante incidentes
 
 El usuario ha reportado o detectado un incidente en produccion. Sigue este protocolo paso a paso para gestionar la respuesta de forma estructurada, desde el triaje inicial hasta el postmortem final.
 
-## Contexto
+## Resumen
 
 Los incidentes en produccion requieren una respuesta rapida pero ordenada. La tentacion es saltar directamente al codigo, pero sin un triaje previo se pierde tiempo en diagnosticos erroneos. Este protocolo garantiza que cada paso se documenta y que las lecciones aprendidas quedan registradas para evitar recurrencias.
 
-## Protocolo
+## Proceso
 
 ### Fase 1: Triaje (qa-engineer)
 
@@ -82,3 +83,18 @@ Generar un informe postmortem completo:
 ## Lecciones aprendidas
 1. [leccion]
 ```
+
+## Criterios de exito
+
+- El incidente tiene una severidad asignada con criterios objetivos.
+- La mitigacion se aplica antes de investigar la causa raiz (primero apagar el fuego).
+- Existe un documento de RCA que identifica la causa raiz real, no solo el sintoma.
+- El postmortem esta completo con cronologia, acciones correctivas y preventivas.
+- Las lecciones aprendidas quedan registradas en la memoria del proyecto.
+- Las acciones correctivas tienen responsable y fecha limite asignados.
+
+## Que NO hacer
+
+- **No saltar el triaje para ir directamente al codigo.** Sin un triaje previo se pierde tiempo en hipotesis equivocadas y se corre el riesgo de aplicar cambios que empeoren la situacion. El triaje estructura la respuesta y prioriza correctamente.
+- **No cerrar el incidente sin postmortem.** Un incidente sin postmortem es una oportunidad perdida de aprendizaje. Aunque el fix sea trivial, documentar que fallo y por que evita recurrencias y genera conocimiento institucional.
+- **No culpar personas en el postmortem.** El postmortem se enfoca en procesos y sistemas, no en individuos. La pregunta correcta es "que fallo en el sistema que permitio este error" y no "quien cometio el error". Un postmortem punitivo destruye la confianza y desincentiva la transparencia.

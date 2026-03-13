@@ -1,6 +1,6 @@
 ---
 name: tone-guide
-description: "Crear una guia de tono para coherencia en la comunicacion del producto"
+description: "Crear una guia de tono para coherencia en la comunicacion del producto. Activar ante: voz de marca, guia de estilo de escritura, coherencia en comunicacion, copywriting, identidad verbal"
 ---
 
 # Crear guia de tono

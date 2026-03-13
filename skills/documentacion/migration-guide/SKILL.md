@@ -1,6 +1,6 @@
 ---
 name: migration-guide
-description: "Generar guías de migración entre versiones para los usuarios del proyecto"
+description: "Generar guías de migración entre versiones para los usuarios del proyecto. Activar ante: guia de migracion, actualizar version, breaking changes, instrucciones de actualizacion"
 ---
 
 # Guía de migración entre versiones

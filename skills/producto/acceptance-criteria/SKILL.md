@@ -1,6 +1,6 @@
 ---
 name: acceptance-criteria
-description: "Usar para generar criterios de aceptación en formato Given/When/Then"
+description: "Generar criterios de aceptación en formato Given/When/Then. Activar cuando el usuario quiera definir criterios de aceptacion, usar formato Given When Then, escribir en Gherkin, saber como determinar que algo esta terminado o establecer una definicion de hecho."
 ---
 
 # Generar criterios de aceptación
@@ -58,3 +58,9 @@ El valor de unos buenos criterios de aceptación es doble: sirven como especific
 - Los criterios son directamente convertibles en tests automatizados.
 - Se ha cubierto el manejo de errores para los flujos críticos.
 - El usuario ha validado que los criterios reflejan sus expectativas.
+
+## Que NO hacer
+
+- No escribir criterios ambiguos que no se puedan automatizar. Si un criterio usa términos como "rápido", "bonito" o "intuitivo" sin métricas concretas, no es verificable.
+- No cubrir solo el camino feliz. Cada historia necesita al menos un escenario negativo y un edge case para ser robusta.
+- No dar los criterios por finales sin validación del usuario. Los criterios de aceptación son un contrato entre producto y desarrollo; ambas partes deben estar de acuerdo.

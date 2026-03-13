@@ -1,6 +1,6 @@
 ---
 name: api-docs
-description: "Usar para documentar API con endpoints, parámetros y ejemplos"
+description: "Usar para documentar API con endpoints, parámetros y ejemplos. Activar ante: documentar API, endpoints, OpenAPI, Swagger, parametros, respuestas de la API"
 ---
 
 # Documentar API

@@ -21,13 +21,13 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-    description: 'Plugin de Claude Code: 17 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
+    description: 'Plugin de Claude Code: 17 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
     canonical: 'https://alfred-dev.com/',
     locale: 'es_ES',
     og: {
       type: 'website',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '17 agentes especializados, 59 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
+      description: '17 agentes especializados, 60 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
       url: 'https://alfred-dev.com/',
       siteName: 'Alfred Dev',
       locale: 'es_ES',
@@ -39,7 +39,7 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '17 agentes especializados, 59 skills, memoria persistente y quality gates. De la idea a producción.',
+      description: '17 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
@@ -103,7 +103,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales que activas según tu proyecto. Memoria persistente, quality gates, 59 skills, de la idea a producción.',
+    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales que activas según tu proyecto. Memoria persistente, quality gates, 60 skills, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -124,7 +124,7 @@ const data: PageData = {
 
   stats: [
     { number: 17, label: 'Agentes' },
-    { number: 59, label: 'Skills' },
+    { number: 60, label: 'Skills' },
     { number: 5, label: 'Flujos' },
     { number: 10, label: 'Comandos' },
     { number: 7, label: 'Templates' },
@@ -481,7 +481,7 @@ const data: PageData = {
   skills: {
     header: {
       label: 'Capacidades',
-      title: '59 skills en 13 dominios',
+      title: '60 skills en 13 dominios',
       description: 'Cada skill es una habilidad concreta que los agentes ejecutan. Los 7 dominios originales se amplían con 6 nuevos para los agentes opcionales.',
     },
     domains: [
@@ -1157,7 +1157,7 @@ personalidad:
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         question: 'Cuántos skills tiene en total?',
-        answerHtml: '59 skills distribuidos en 13 dominios. Los 7 dominios originales (producto, arquitectura, desarrollo, seguridad, calidad, DevOps, documentación) cubren el ciclo de vida estándar. Los 6 nuevos (datos, UX, rendimiento, GitHub, SEO, marketing) corresponden a los agentes opcionales. Los dominios existentes también se han ampliado: documentación pasó de 4 a 9 skills, seguridad de 5 a 6, y calidad de 4 a 6.',
+        answerHtml: '60 skills distribuidos en 13 dominios. Los 7 dominios originales (producto, arquitectura, desarrollo, seguridad, calidad, DevOps, documentación) cubren el ciclo de vida estándar. Los 6 nuevos (datos, UX, rendimiento, GitHub, SEO, marketing) corresponden a los agentes opcionales. Los dominios existentes también se han ampliado: documentación pasó de 4 a 9 skills, seguridad de 5 a 6, y calidad de 4 a 6.',
       },
       {
         svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
@@ -1212,6 +1212,22 @@ personalidad:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.3.8',
+      date: '2026-03-13',
+      added: [
+        'Capa de sincronizacion SQLite a memoria nativa: las decisiones, iteraciones y commits almacenados en alfred-memory.db se proyectan automaticamente como ficheros .md en ~/.claude/projects/<hash>/memory/ con formato nativo de Claude Code.',
+        'Sincronizacion hibrida: regeneracion completa al arrancar la sesion + actualizaciones incrementales tras cada escritura en SQLite.',
+        'Gestion segura de MEMORY.md con marcadores delimitados que preservan el contenido manual del usuario.',
+        'Creacion automatica del directorio de memoria al cargar Alfred por primera vez.',
+        'Nuevo skill de testing E2E (calidad/e2e-testing) para configurar Playwright o Cypress.',
+      ],
+      changed: [
+        '60 skills revisadas y mejoradas: descriptions enriquecidas para mejor triggering, seccion "Que NO hacer" en 51 skills, integracion con memoria persistente en 10 skills, referencia a detect_stack en 9 skills.',
+        '3 protocolos sueltos (incident-response, dependency-strategy, release-planning) reorganizados en sus categorias logicas (calidad/, seguridad/, devops/).',
+        'Solapamientos entre skills documentados explicitamente. Versiones normativas (RGPD, NIS2, CRA, OWASP, WCAG) añadidas.',
+      ],
+    },
     {
       version: '0.3.7',
       date: '2026-03-12',
@@ -1437,11 +1453,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.7',
+    version: 'v0.3.8',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 17 agentes. 59 skills. 10 hooks. 10 comandos. Memoria persistente. De la idea a producción.',
+    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 10 hooks. 10 comandos. Memoria persistente. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
   },
 };

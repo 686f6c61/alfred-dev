@@ -171,6 +171,8 @@ if [[ ! -f "$LOCAL_CONFIG" ]]; then
 ---
 memoria:
   enabled: true
+  sync_to_native: true
+  sync_commits_limit: 10
   capture_decisions: true
   capture_commits: true
   retention_days: 365
@@ -245,6 +247,33 @@ if active is None:
     )
 db.close()
 " "$MEMORY_DB" "$PLUGIN_ROOT" 2>/dev/null || true
+fi
+
+# --- Sincronizacion de memoria a ficheros nativos de Claude Code ---
+#
+# Proyecta las decisiones, iteraciones y commits de la DB a ficheros .md
+# en el directorio de memoria nativa (~/.claude/projects/<hash>/memory/).
+# Esto permite que Claude acceda a la memoria del proyecto sin necesidad
+# de invocar herramientas MCP ni al Bibliotecario.
+
+if [[ -f "$MEMORY_DB" ]]; then
+  # Comprobar si sync_to_native esta desactivado
+  SYNC_DISABLED=$(python3 -c "
+import re, sys
+try:
+    with open(sys.argv[1], 'r') as f:
+        content = f.read()
+    if re.search(r'sync_to_native:\s*false', content):
+        print('yes')
+except Exception:
+    pass
+" "$CONFIG_FILE" 2>/dev/null) || SYNC_DISABLED=""
+
+  if [[ "$SYNC_DISABLED" != "yes" ]]; then
+    PYTHONPATH="${PLUGIN_ROOT}" python3 "${PLUGIN_ROOT}/core/memory_sync.py" \
+      --action sync_all \
+      --project-dir "$PROJECT_DIR" 2>/dev/null || true
+  fi
 fi
 
 # --- Memoria persistente del proyecto ---

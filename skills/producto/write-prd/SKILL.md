@@ -1,6 +1,6 @@
 ---
 name: write-prd
-description: "Usar para generar un PRD completo con problema, solución, historias de usuario y criterios de aceptación"
+description: "Generar un PRD completo con problema, solución, historias de usuario y criterios de aceptación. Activar cuando el usuario quiera definir requisitos de producto, decidir que construir, crear un documento de requisitos, redactar un PRD o elaborar una especificacion funcional."
 ---
 
 # Generar PRD (Product Requirements Document)
@@ -42,3 +42,9 @@ El proceso es iterativo: se genera un borrador que el usuario debe revisar y apr
 - Los criterios de aceptación siguen el formato Given/When/Then y cubren escenarios positivos y negativos.
 - El usuario ha revisado y aprobado el documento explícitamente.
 - El fichero se ha guardado en `docs/prd/` siguiendo la convención de nombres del proyecto.
+
+## Que NO hacer
+
+- No confundir la solución propuesta con una especificación técnica detallada. El PRD describe el qué y el por qué, no el cómo a nivel de implementación.
+- No escribir historias de usuario que describen implementación en vez de valor. "Como usuario, quiero que se use Redis para cachear" no es una historia de usuario; "Como usuario, quiero que la búsqueda responda en menos de 200ms" sí lo es.
+- No dar el PRD por cerrado sin aprobación explícita del usuario. El PRD es un acuerdo entre partes; publicarlo sin validación anula su función como contrato.

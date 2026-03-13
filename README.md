@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 59 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -136,7 +136,7 @@ Agentes predefinidos que el usuario activa segun las necesidades de su proyecto 
 | **El Bibliotecario** | Consultas historicas | Proyectos con memoria persistente activa |
 | **La Interprete** | Especialista i18n | Proyectos multilingues: claves, formatos, cadenas hardcodeadas |
 
-### Skills (59)
+### Skills (60)
 
 Cada skill es una habilidad concreta que un agente ejecuta. Estan organizados por dominio:
 
@@ -268,7 +268,7 @@ alfred-dev/
   agents/                 # 9 agentes de nucleo
   agents/optional/        # 8 agentes opcionales
   commands/               # 10 comandos /alfred
-  skills/                 # 59 skills en 13 dominios
+  skills/                 # 60 skills en 13 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos
   core/                   # Motor de orquestacion y memoria (Python)
