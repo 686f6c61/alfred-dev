@@ -54,6 +54,17 @@ Combina tu razonamiento con las señales del proyecto (paso 1): si el proyecto t
 React y la tarea toca interfaz, ux-reviewer es casi seguro. Si no tiene frontend,
 probablemente no.
 
+## Paso 2b -- Comprobación de autopilot
+
+Antes de presentar las preguntas al usuario, comprueba si el modo autopilot está activo:
+
+1. Lee `.claude/alfred-dev.local.md` y comprueba si todas las fases de autonomía están en `autonomo`.
+2. Lee `.claude/alfred-dev-state.json` y comprueba si tiene `"modo": "autopilot"`.
+
+**Si autopilot está activo:** salta directamente al paso 4. Usa los agentes opcionales configurados en `.claude/alfred-dev.local.md` (si existen) o los que tu razonamiento semántico (paso 2) haya marcado como relevantes. No uses `AskUserQuestion`. Muestra un mensaje breve indicando qué agentes se activan y por qué.
+
+**Si autopilot NO está activo:** continúa con el paso 3 (presentación interactiva al usuario).
+
 ## Paso 3 -- Presentación al usuario
 
 Antes de las preguntas, muestra un mensaje informativo:

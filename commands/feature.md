@@ -13,33 +13,44 @@ Descripción de la feature: $ARGUMENTS
 
 Antes de lanzar la primera fase, lee el fichero `commands/_composicion.md` y sigue el protocolo de composición dinámica (pasos 1 a 4).
 
+## Modo autopilot
+
+Antes de empezar, lee `.claude/alfred-dev.local.md` y comprueba el nivel de autonomía configurado. Si todas las fases están en `autonomo`, o si el estado en `.claude/alfred-dev-state.json` tiene `"modo": "autopilot"`, activa el **modo autopilot**:
+
+- Las **gates de usuario** (las que dicen «el usuario aprueba») se aprueban automáticamente sin usar `AskUserQuestion`. Muestra un resumen breve del resultado de cada fase y avanza.
+- Las **gates de seguridad** se evalúan normalmente: si el security-officer bloquea, el flujo se detiene.
+- Las **gates automáticas** (tests, pipeline) se evalúan normalmente: si fallan, el flujo se detiene.
+- Solo se detiene el flujo si una gate de seguridad o automática falla.
+
+Si el modo autopilot NO está activo, sigue el comportamiento interactivo habitual (pedir aprobación al usuario en cada gate de usuario).
+
 ## Flujo de 6 fases
 
 Ejecuta las siguientes fases en orden, respetando las quality gates:
 
 ### Fase 1: Producto
 Activa el agente `product-owner` usando la herramienta Task con subagent_type apropiado. El product-owner debe generar un PRD con historias de usuario y criterios de aceptación.
-**GATE:** El usuario debe aprobar el PRD antes de avanzar.
+**GATE (usuario):** El usuario debe aprobar el PRD antes de avanzar. En autopilot, se aprueba automáticamente.
 
 ### Fase 2: Arquitectura
 Activa los agentes `architect` y `security-officer` en paralelo. El architect diseña la arquitectura y el security-officer realiza el threat model y audita dependencias propuestas.
-**GATE:** El usuario aprueba el diseño Y el security-officer valida.
+**GATE (usuario+seguridad):** El usuario aprueba el diseño Y el security-officer valida. En autopilot, la parte de usuario se aprueba automáticamente; la de seguridad se evalúa.
 
 ### Fase 3: Desarrollo
 Activa el agente `senior-dev` para implementar con TDD. El security-officer revisa cada dependencia nueva.
-**GATE:** Todos los tests pasan Y el security-officer valida.
+**GATE (automático):** Todos los tests pasan Y el security-officer valida. Se evalúa siempre, incluso en autopilot.
 
 ### Fase 4: Calidad
 Activa los agentes `qa-engineer` y `security-officer` en paralelo. Code review, test plan, OWASP scan, compliance check, SBOM.
-**GATE:** QA aprueba Y seguridad aprueba.
+**GATE (automático+seguridad):** QA aprueba Y seguridad aprueba. Se evalúa siempre, incluso en autopilot.
 
 ### Fase 5: Documentación
 Activa el agente `tech-writer` para documentar API, arquitectura y guías.
-**GATE:** Documentación completa.
+**GATE (libre):** Documentación completa. Se aprueba siempre.
 
 ### Fase 6: Entrega
 Activa el agente `devops-engineer` con revisión del security-officer. CI/CD, Docker, deploy config.
-**GATE:** Pipeline verde Y seguridad valida.
+**GATE (usuario+seguridad):** Pipeline verde Y seguridad valida. En autopilot, la parte de usuario se aprueba automáticamente; la de seguridad se evalúa.
 
 ## HARD-GATES (no saltables)
 
