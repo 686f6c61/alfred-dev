@@ -1161,6 +1161,22 @@ personalidad:
 
   changelog: [
     {
+      version: '4.0.0',
+      date: '2026-03-13',
+      added: [
+        'Verificacion de evidencia: hook que registra cada ejecucion de tests como evidencia verificable. Cuando un agente afirma que los tests pasan, el sistema comprueba que efectivamente se ejecutaron.',
+        'Informe de sesion al cierre: resumen automatico en docs/alfred-reports/ con fases, evidencia de tests, equipo y artefactos.',
+        'Loop iterativo dentro de fases: los agentes iteran hasta 5 veces dentro de una fase hasta superar la gate, habilitando ciclos TDD naturales.',
+        'Aislamiento con git worktrees: ramas alfred/<tipo>/<nombre> para trabajo seguro. Si algo sale mal, se descarta sin afectar la rama principal.',
+        'Modo autopilot: ejecucion completa sin interrupcion humana. Las gates de usuario se aprueban automaticamente; las automaticas y de seguridad se evaluan normalmente.',
+      ],
+      changed: [
+        '17 personalidades reescritas con tono Alfred Pennyworth: servicio impecable, ironia sutil, precision tecnica.',
+        'Orquestador ampliado con funciones de loop iterativo (should_retry_phase, reset_phase_iterations) y autopilot (is_autopilot_gate_passable, run_flow_autopilot).',
+        'Stop-hook genera informe de sesion automaticamente al cerrar una sesion completada.',
+      ],
+    },
+    {
       version: '0.3.9',
       date: '2026-03-13',
       added: [
@@ -1414,7 +1430,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.9',
+    version: 'v4.0.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

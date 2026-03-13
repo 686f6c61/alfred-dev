@@ -1158,6 +1158,22 @@ personality:
 
   changelog: [
     {
+      version: '4.0.0',
+      date: '2026-03-13',
+      added: [
+        'Evidence verification: hook that records each test execution as verifiable evidence. When an agent claims tests pass, the system checks they were actually run.',
+        'Session report on close: automatic summary in docs/alfred-reports/ with phases, test evidence, team and artifacts.',
+        'Iterative loop within phases: agents iterate up to 5 times within a phase until the gate is passed, enabling natural TDD cycles.',
+        'Git worktree isolation: alfred/<type>/<name> branches for safe work. If something goes wrong, discard the worktree without affecting the main branch.',
+        'Autopilot mode: full execution without human interruption. User gates are auto-approved; automatic and security gates are evaluated normally.',
+      ],
+      changed: [
+        '17 agent personalities rewritten with Alfred Pennyworth tone: impeccable service, subtle irony, technical precision.',
+        'Orchestrator extended with iterative loop functions (should_retry_phase, reset_phase_iterations) and autopilot (is_autopilot_gate_passable, run_flow_autopilot).',
+        'Stop-hook automatically generates session report when closing a completed session.',
+      ],
+    },
+    {
       version: '0.3.9',
       date: '2026-03-13',
       added: [
@@ -1411,7 +1427,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.3.9',
+    version: 'v4.0.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

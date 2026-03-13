@@ -110,6 +110,16 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/evidence-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/evidence-guard.py || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit",
         "hooks": [
           {
