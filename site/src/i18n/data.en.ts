@@ -1204,7 +1204,16 @@ personality:
       date: '2026-03-13',
       added: [
         'Automatic initial setup: when using Alfred for the first time in a project, it asks whether you want interactive or autopilot mode. No manual steps required.',
-        'Evidence verification: hook that records each test execution as verifiable evidence. When an agent claims tests pass, the system checks they were actually run.',
+      ],
+      fixed: [
+        'Autopilot mode disconnected from actual flow: autopilot detection was not reaching the composition. Fixed so user gates are auto-approved when mode is autopilot.',
+      ],
+    },
+    {
+      version: '0.4.0',
+      date: '2026-03-13',
+      added: [
+        'Evidence verification (evidence guard): hook that records each test execution as verifiable evidence. When an agent claims tests pass, the system checks they were actually run.',
         'Session report on close: automatic summary in docs/alfred-reports/ with phases, test evidence, team and artifacts.',
         'Iterative loop within phases: agents iterate up to 5 times within a phase until the gate is passed, enabling natural TDD cycles.',
         'Autopilot mode: full execution without human interruption. User gates are auto-approved; automatic and security gates are evaluated normally.',

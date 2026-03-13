@@ -1207,7 +1207,16 @@ personalidad:
       date: '2026-03-13',
       added: [
         'Configuracion inicial automatica: al usar Alfred por primera vez en un proyecto, pregunta si se quiere modo interactivo o autopilot. Sin pasos manuales previos.',
-        'Verificacion de evidencia: hook que registra cada ejecucion de tests como evidencia verificable. Cuando un agente afirma que los tests pasan, el sistema comprueba que efectivamente se ejecutaron.',
+      ],
+      fixed: [
+        'Modo autopilot desconectado del flujo real: la deteccion de autopilot no llegaba a la composicion. Corregido para que las gates de usuario se aprueben automaticamente cuando el modo es autopilot.',
+      ],
+    },
+    {
+      version: '0.4.0',
+      date: '2026-03-13',
+      added: [
+        'Verificacion de evidencia (evidence guard): hook que registra cada ejecucion de tests como evidencia verificable. Cuando un agente afirma que los tests pasan, el sistema comprueba que efectivamente se ejecutaron.',
         'Informe de sesion al cierre: resumen automatico en docs/alfred-reports/ con fases, evidencia de tests, equipo y artefactos.',
         'Loop iterativo dentro de fases: los agentes iteran hasta 5 veces dentro de una fase hasta superar la gate, habilitando ciclos TDD naturales.',
         'Modo autopilot: ejecucion completa sin interrupcion humana. Las gates de usuario se aprueban automaticamente; las automaticas y de seguridad se evaluan normalmente.',
