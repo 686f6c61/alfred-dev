@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from typing import Optional, Tuple
 
 
@@ -118,7 +119,13 @@ def get_current_branch(project_dir: Optional[str] = None) -> Optional[str]:
         result = _run_git(["branch", "--show-current"], cwd=cwd, check=False)
         if result.returncode == 0:
             return result.stdout.strip() or None
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except subprocess.TimeoutExpired:
+        print(
+            "[Alfred Dev] Aviso: git branch --show-current excedio el "
+            "timeout. Puede haber un index.lock huerfano.",
+            file=sys.stderr,
+        )
+    except FileNotFoundError:
         pass
     return None
 
@@ -232,33 +239,29 @@ def merge_worktree(
     """
     cwd = project_dir or os.getcwd()
 
-    try:
-        # Intentar merge
-        result = _run_git(
-            ["merge", branch_name, "--no-edit"],
+    # Intentar merge
+    result = _run_git(
+        ["merge", branch_name, "--no-edit"],
+        cwd=cwd,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        # Abortar si hay conflictos
+        _run_git(["merge", "--abort"], cwd=cwd, check=False)
+        return False
+
+    # Limpiar
+    if delete_after:
+        cleanup_worktree(worktree_path, project_dir=cwd)
+        # Eliminar la rama local
+        _run_git(
+            ["branch", "-d", branch_name],
             cwd=cwd,
             check=False,
         )
 
-        if result.returncode != 0:
-            # Abortar si hay conflictos
-            _run_git(["merge", "--abort"], cwd=cwd, check=False)
-            return False
-
-        # Limpiar
-        if delete_after:
-            cleanup_worktree(worktree_path, project_dir=cwd)
-            # Eliminar la rama local
-            _run_git(
-                ["branch", "-d", branch_name],
-                cwd=cwd,
-                check=False,
-            )
-
-        return True
-
-    except subprocess.CalledProcessError:
-        return False
+    return True
 
 
 def cleanup_worktree(
@@ -285,16 +288,34 @@ def cleanup_worktree(
     )
 
     if result.returncode != 0:
-        # Forzar eliminacion
-        _run_git(
+        print(
+            f"[Alfred Dev] Aviso: eliminacion limpia del worktree fallo "
+            f"({result.stderr.strip()}). Intentando forzar...",
+            file=sys.stderr,
+        )
+        result = _run_git(
             ["worktree", "remove", "--force", worktree_path],
             cwd=cwd,
             check=False,
         )
+        if result.returncode != 0:
+            print(
+                f"[Alfred Dev] Aviso: eliminacion forzada del worktree "
+                f"tambien fallo: {result.stderr.strip()}",
+                file=sys.stderr,
+            )
 
     # Si el directorio sigue existiendo, eliminarlo manualmente
     if os.path.exists(worktree_path):
-        shutil.rmtree(worktree_path, ignore_errors=True)
+        try:
+            shutil.rmtree(worktree_path)
+        except OSError as e:
+            print(
+                f"[Alfred Dev] Error: no se pudo eliminar el directorio "
+                f"del worktree '{worktree_path}': {e}. Puede requerir "
+                f"eliminacion manual.",
+                file=sys.stderr,
+            )
 
     # Limpiar referencias huerfanas
     _run_git(["worktree", "prune"], cwd=cwd, check=False)

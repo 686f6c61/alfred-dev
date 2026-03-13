@@ -14,6 +14,7 @@ punto de entrada ``main()`` con lectura de stdin.
 import json
 import os
 import re
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -56,31 +57,31 @@ TEST_RUNNERS = [
 ]
 
 # Patrones de fallo en salida de tests.
+# Se buscan en contexto de salida de runners, así que usamos patrones
+# específicos para evitar falsos positivos con palabras como «fail-safe»
+# o «OK» en texto genérico.
 FAILURE_PATTERNS = [
-    r"\bFAIL\b",
-    r"\bFAILED\b",
-    r"\bfailures?\b",
+    r"\bFAIL[ED]*\b(?![-_])",      # FAIL, FAILED pero no fail-safe, fail_over
+    r"\d+\s+failures?\b",           # "1 failure", "3 failures"
     r"\bfailing\b",
-    r"Tests?\s+failed",
-    r"tests?\s+failed",
-    r"ERRORS?:",
-    r"AssertionError",
+    r"[Tt]ests?\s+failed",
+    r"ERRORS?\s*[:=]",              # "ERRORS:" o "ERROR=" pero no "ERROR" suelto
+    r"Assertion(?:Error|Failed)",    # AssertionError → typo corregido a ambas formas
     r"test\s+result:\s+FAILED",
     r"Build\s+FAILED",
     r"\d+\s+failed",
-    r"not\s+ok\b",
+    r"not\s+ok\s+\d+",              # TAP format: "not ok 1 - test name"
 ]
 
 # Patrones de exito en salida de tests.
 SUCCESS_PATTERNS = [
     r"\d+\s+passed",
-    r"Tests?\s+passed",
-    r"tests?\s+passed",
-    r"\bOK\b",
-    r"\bPASS\b",
-    r"test\s+result:\s+ok",
+    r"[Tt]ests?\s+passed",
+    r"test\s+result:\s+ok\b",
     r"All\s+tests\s+passed",
     r"\d+\s+passing\b",
+    r"\bPASS(?:ED)?\b",             # PASS o PASSED
+    r"\d+\s+tests?\s+complete",
 ]
 
 
@@ -142,9 +143,28 @@ def _load_evidence(project_dir: Optional[str] = None) -> List[Dict[str, Any]]:
             data = json.load(f)
         if isinstance(data, list):
             return data
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        pass
-    return []
+        print(
+            f"[evidence-guard] Aviso: el fichero de evidencia no contiene "
+            f"una lista. Se descarta el contenido.",
+            file=sys.stderr,
+        )
+        return []
+    except FileNotFoundError:
+        return []
+    except json.JSONDecodeError as e:
+        print(
+            f"[evidence-guard] Aviso: fichero de evidencia corrupto "
+            f"({path}): {e}. Se perdera la evidencia anterior.",
+            file=sys.stderr,
+        )
+        return []
+    except OSError as e:
+        print(
+            f"[evidence-guard] Aviso: no se pudo leer la evidencia "
+            f"({path}): {e}.",
+            file=sys.stderr,
+        )
+        return []
 
 
 def _save_evidence(
@@ -160,8 +180,13 @@ def _save_evidence(
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(trimmed, f, ensure_ascii=False, indent=2)
-    except OSError:
-        pass
+    except OSError as e:
+        print(
+            f"[evidence-guard] Error: no se pudo guardar la evidencia "
+            f"en '{path}': {e}. Los resultados de tests de esta "
+            f"ejecucion no quedaran registrados.",
+            file=sys.stderr,
+        )
 
 
 def record_evidence(
@@ -203,6 +228,7 @@ def get_evidence(
     now = datetime.now(timezone.utc)
 
     recent = []
+    skipped = 0
     for record in records:
         try:
             ts_str = record.get("timestamp", "")
@@ -213,7 +239,15 @@ def get_evidence(
             if age <= max_age_seconds:
                 recent.append(record)
         except (ValueError, TypeError):
+            skipped += 1
             continue
+
+    if skipped > 0:
+        print(
+            f"[evidence-guard] Aviso: se descartaron {skipped} registros "
+            f"de evidencia con timestamp invalido.",
+            file=sys.stderr,
+        )
 
     if not recent:
         return {
@@ -242,5 +276,9 @@ def clear_evidence(project_dir: Optional[str] = None) -> None:
     try:
         if os.path.exists(path):
             os.unlink(path)
-    except OSError:
-        pass
+    except OSError as e:
+        print(
+            f"[evidence-guard] Aviso: no se pudo eliminar la evidencia "
+            f"({path}): {e}.",
+            file=sys.stderr,
+        )

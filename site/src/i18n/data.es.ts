@@ -116,6 +116,36 @@ const data: PageData = {
         ariaLabel: 'Copiar comando de instalación para Windows',
       },
     ],
+    features: {
+      label: 'Nuevo en v0.4.0',
+      items: [
+        {
+          title: 'Evidencia verificable',
+          description: 'Cada ejecución de tests queda registrada. Cuando un agente dice que pasan, el sistema lo comprueba.',
+          svgContent: '<path d="M9 12l2 2 4-4"/><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z"/>',
+        },
+        {
+          title: 'Modo autopilot',
+          description: 'Flujos completos sin intervención. Las gates de usuario se aprueban; las de seguridad y tests se evalúan.',
+          svgContent: '<path d="M12 16v5"/><path d="M16 14l-4 2-4-2"/><path d="M12 3l9 4.5v5L12 17l-9-4.5v-5L12 3z"/>',
+        },
+        {
+          title: 'Git worktrees',
+          description: 'Trabajo aislado en ramas alfred/*. Si algo falla, se descarta sin tocar la rama principal.',
+          svgContent: '<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
+        },
+        {
+          title: 'Loop iterativo',
+          description: 'Hasta 5 reintentos por fase si la gate no se supera. Ciclos TDD naturales sin intervención manual.',
+          svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
+        },
+        {
+          title: 'Informes de sesión',
+          description: 'Al cerrar, se genera un resumen en markdown con fases, evidencia de tests y artefactos.',
+          svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+        },
+      ],
+    },
   },
 
   // ----------------------------------------------------------------
@@ -128,8 +158,8 @@ const data: PageData = {
     { number: 5, label: 'Flujos' },
     { number: 10, label: 'Comandos' },
     { number: 7, label: 'Templates' },
-    { number: 10, label: 'Hooks' },
-    { number: 21, label: 'Gates' },
+    { number: 11, label: 'Hooks' },
+    { number: 23, label: 'Gates' },
   ],
 
   // ----------------------------------------------------------------
@@ -404,6 +434,8 @@ const data: PageData = {
       { text: 'Consulta la memoria persistente del proyecto para contextualizar con el histórico' },
       { text: 'Vigila cada escritura de fichero buscando secretos, API keys o tokens' },
       { text: 'Detecta tildes omitidas en castellano al escribir o editar ficheros' },
+      { text: 'Verifica que los tests se ejecutaron realmente antes de aceptar que pasan (evidencia verificable)' },
+      { text: 'Itera dentro de cada fase hasta 5 veces si la gate no se supera, habilitando ciclos TDD naturales' },
     ],
     optionalLabel: 'Opcionales -- amplían el control',
     optional: [
@@ -572,7 +604,7 @@ const data: PageData = {
     },
     groups: [
       {
-        title: '10 hooks',
+        title: '11 hooks',
         items: [
           { name: 'session-start.sh', label: 'SessionStart' },
           { name: 'stop-hook.py', label: 'Stop' },
@@ -580,6 +612,7 @@ const data: PageData = {
           { name: 'dangerous-command-guard.py', label: 'PreToolUse' },
           { name: 'sensitive-read-guard.py', label: 'PreToolUse' },
           { name: 'quality-gate.py', label: 'PostToolUse' },
+          { name: 'evidence-guard.py', label: 'PostToolUse' },
           { name: 'dependency-watch.py', label: 'PostToolUse' },
           { name: 'spelling-guard.py', label: 'PostToolUse' },
           { name: 'activity-capture.py', label: 'PostToolUse' },
@@ -599,14 +632,16 @@ const data: PageData = {
         ],
       },
       {
-        title: '4 módulos core',
+        title: '6 módulos core',
         items: [
-          { name: 'orchestrator.py', label: 'Flujos, sesiones, gates' },
+          { name: 'orchestrator.py', label: 'Flujos, sesiones, gates, loop iterativo y autopilot' },
           { name: 'personality.py', label: 'Motor de personalidad' },
           { name: 'config_loader.py', label: 'Config y detección de stack' },
           { name: 'memory.py', label: 'Memoria persistente SQLite' },
+          { name: 'session_report.py', label: 'Informes de sesión en markdown' },
+          { name: 'worktree.py', label: 'Aislamiento con git worktrees' },
         ],
-        footnote: '114 passing',
+        footnote: '530 passing',
       },
     ],
   },
@@ -870,11 +905,27 @@ const data: PageData = {
         steps: [
           'Guardia de secretos -- bloquea la escritura de API keys, tokens o contraseñas en el código',
           'Quality gate -- verifica que los tests pasen después de cada cambio significativo',
+          'Verificación de evidencia -- registra cada ejecución de tests como evidencia verificable, impidiendo afirmaciones sin pruebas',
           'Vigilancia de dependencias -- detecta nuevas librerías y notifica al auditor de seguridad',
           'Guardia ortográfico -- detecta palabras castellanas sin tilde al escribir o editar ficheros',
           'Captura de memoria -- registra automáticamente eventos del flujo de trabajo en la memoria persistente',
           'Captura de commits -- detecta cada git commit y registra SHA, autor y ficheros en la memoria',
           'Contexto protegido -- las decisiones críticas sobreviven a la compactación de contexto',
+          'Informe de sesión -- al cerrar una sesión completada se genera un resumen en docs/alfred-reports/ con fases, evidencia y artefactos',
+        ],
+      },
+      {
+        category: 'Autonomía',
+        color: 'var(--green)',
+        background: 'rgba(78,201,126,0.08)',
+        title: 'Modo autopilot con aislamiento',
+        command: '/alfred-dev:feature --autopilot',
+        steps: [
+          'Se crea un git worktree aislado en una rama alfred/<tipo>/<nombre> para no afectar a la rama principal',
+          'El flujo completo se ejecuta sin intervención: las gates de usuario se aprueban automáticamente',
+          'Las gates automáticas (tests) y de seguridad se siguen evaluando normalmente',
+          'Si una gate automática falla, el loop iterativo reintenta hasta 5 veces antes de escalar',
+          'Al completar, se fusiona el worktree de vuelta; si algo sale mal, se descarta sin afectar al proyecto',
         ],
       },
     ],

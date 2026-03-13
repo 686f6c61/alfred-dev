@@ -325,6 +325,35 @@ class TestAutopilot(unittest.TestCase):
         with self.assertRaises(ValueError):
             run_flow_autopilot("inexistente", "Test")
 
+    def test_autopilot_gate_completed_session(self):
+        """is_autopilot_gate_passable no falla con sesion completada."""
+        session = create_session("spike", "Test")
+        session = advance_phase(session, resultado="aprobado")
+        session = advance_phase(session, resultado="aprobado")
+        # Ahora fase_actual == "completado"
+        result = is_autopilot_gate_passable(session)
+        self.assertTrue(result["passed"])
+
+
+class TestCompletedSessionGuards(unittest.TestCase):
+    """Verifica que check_gate no lanza IndexError con sesiones completadas."""
+
+    def test_check_gate_completed_session(self):
+        """check_gate devuelve passed=True para sesiones completadas."""
+        session = create_session("spike", "Investigacion")
+        session = advance_phase(session, resultado="aprobado")
+        session = advance_phase(session, resultado="aprobado")
+        self.assertEqual(session["fase_actual"], "completado")
+        result = check_gate(session, resultado="aprobado")
+        self.assertTrue(result["passed"])
+
+    def test_check_gate_overflowed_fase_numero(self):
+        """check_gate no falla si fase_numero excede el array de fases."""
+        session = create_session("spike", "Test")
+        session["fase_numero"] = 999
+        result = check_gate(session, resultado="aprobado")
+        self.assertTrue(result["passed"])
+
 
 if __name__ == "__main__":
     unittest.main()

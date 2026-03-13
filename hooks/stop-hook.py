@@ -45,14 +45,18 @@ def _generate_session_report(session):
             from evidence_guard_lib import get_evidence
             evidence = get_evidence()
         except ImportError:
-            pass
+            print(
+                "[Alfred Dev] Aviso: no se pudo cargar evidence_guard_lib. "
+                "El informe se generara sin evidencia de tests.",
+                file=sys.stderr,
+            )
 
         report_path = generate_report(session, evidence=evidence)
         print(
             f"[Alfred Dev] Informe de sesion guardado en: {report_path}",
             file=sys.stderr,
         )
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         print(
             f"[Alfred Dev] Aviso: no se pudo generar el informe de sesion: {e}",
             file=sys.stderr,

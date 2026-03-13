@@ -648,9 +648,18 @@ def check_gate(
     if comando not in FLOWS:
         return {"passed": False, "reason": f"Flujo '{comando}' no definido en FLOWS."}
 
+    # Sesion completada: no hay gate que evaluar.
+    if session.get("fase_actual") == "completado":
+        return {"passed": True, "reason": "Sesion completada. No hay gate pendiente."}
+
     flow = FLOWS[comando]
     fase_numero = session["fase_numero"]
-    fase = flow["fases"][fase_numero]
+    fases = flow["fases"]
+
+    if fase_numero >= len(fases):
+        return {"passed": True, "reason": "Sesion completada. No hay gate pendiente."}
+
+    fase = fases[fase_numero]
     gate_tipo = fase["gate_tipo"]
 
     # Se acumulan las condiciones que debe cumplir la gate.
@@ -910,6 +919,16 @@ def should_retry_phase(
         - ``"iteration"``: numero de iteracion actual.
         - ``"max_iterations"``: maximo permitido.
     """
+    # Validacion defensiva: si la sesion esta completada o el indice
+    # esta fuera de rango, no tiene sentido reintentar.
+    if session.get("fase_actual") == "completado":
+        return {
+            "action": "advance",
+            "reason": "Sesion completada. No hay gate que evaluar.",
+            "iteration": 0,
+            "max_iterations": 0,
+        }
+
     gate_result = check_gate(
         session,
         resultado=resultado,
@@ -996,9 +1015,18 @@ def is_autopilot_gate_passable(
     if comando not in FLOWS:
         return {"passed": False, "reason": f"Flujo '{comando}' no definido."}
 
+    # Sesion completada: no hay gate que evaluar.
+    if session.get("fase_actual") == "completado":
+        return {"passed": True, "reason": "Sesion completada (autopilot)."}
+
     flow = FLOWS[comando]
     fase_numero = session["fase_numero"]
-    fase = flow["fases"][fase_numero]
+    fases = flow["fases"]
+
+    if fase_numero >= len(fases):
+        return {"passed": True, "reason": "Sesion completada (autopilot)."}
+
+    fase = fases[fase_numero]
     gate_tipo = fase["gate_tipo"]
 
     # En autopilot, las gates de usuario se aprueban automaticamente

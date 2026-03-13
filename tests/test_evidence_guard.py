@@ -83,6 +83,17 @@ class TestDetectTestResult(unittest.TestCase):
     def test_empty_output(self):
         self.assertEqual(detect_test_result(""), "unknown")
 
+    def test_fail_safe_not_detected_as_failure(self):
+        """La palabra 'fail-safe' no debe detectarse como fallo."""
+        output = "System entered fail-safe mode. All checks passed."
+        # Contiene "passed" como exito, "fail-safe" no debe contar como fallo
+        self.assertEqual(detect_test_result(output), "pass")
+
+    def test_failover_not_detected_as_failure(self):
+        """La palabra 'failover' no debe detectarse como fallo."""
+        output = "Failover completed successfully. 5 passed"
+        self.assertEqual(detect_test_result(output), "pass")
+
 
 class TestEvidenceStorage(unittest.TestCase):
     """Verifica el almacenamiento y consulta de evidencia."""

@@ -206,5 +206,52 @@ class TestGenerateReport(unittest.TestCase):
         self.assertTrue(report_path.endswith("-fix.md"))
 
 
+class TestFilenameSanitization(unittest.TestCase):
+    """Verifica que el nombre del comando se sanitiza en el fichero."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_path_traversal_sanitized(self):
+        """Un comando con caracteres de path traversal no escapa del directorio."""
+        session = {
+            "comando": "../../etc/passwd",
+            "descripcion": "Intento de path traversal",
+            "fase_actual": "completado",
+            "fases_completadas": [],
+            "artefactos": [],
+            "creado_en": "2026-03-13T10:00:00+00:00",
+            "actualizado_en": "2026-03-13T10:05:00+00:00",
+        }
+        report_path = generate_report(session, project_dir=self.tmpdir)
+        # El fichero debe estar dentro de docs/alfred-reports/
+        self.assertIn("docs/alfred-reports", report_path)
+        # No debe contener ".." en el nombre del fichero
+        filename = os.path.basename(report_path)
+        self.assertNotIn("..", filename)
+        self.assertTrue(os.path.isfile(report_path))
+
+    def test_special_chars_sanitized(self):
+        """Los caracteres especiales en el comando se reemplazan por _."""
+        session = {
+            "comando": "feat/login & rm -rf",
+            "descripcion": "Comando con chars raros",
+            "fase_actual": "completado",
+            "fases_completadas": [],
+            "artefactos": [],
+            "creado_en": "2026-03-13T10:00:00+00:00",
+            "actualizado_en": "2026-03-13T10:05:00+00:00",
+        }
+        report_path = generate_report(session, project_dir=self.tmpdir)
+        filename = os.path.basename(report_path)
+        self.assertNotIn("/", filename)
+        self.assertNotIn("&", filename)
+        self.assertTrue(os.path.isfile(report_path))
+
+
 if __name__ == "__main__":
     unittest.main()

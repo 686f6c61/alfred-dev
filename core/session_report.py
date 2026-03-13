@@ -19,6 +19,7 @@ Arquitectura:
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -273,10 +274,19 @@ def generate_report(
     os.makedirs(report_dir, exist_ok=True)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    filename = f"{timestamp}-{comando}.md"
+    # Sanitizar el nombre del comando para evitar path traversal
+    safe_comando = re.sub(r"[^a-zA-Z0-9_-]", "_", comando)
+    filename = f"{timestamp}-{safe_comando}.md"
     report_path = os.path.join(report_dir, filename)
 
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(report_content)
+    try:
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(report_content)
+    except OSError as e:
+        raise RuntimeError(
+            f"No se pudo guardar el informe de sesion en '{report_path}': {e}. "
+            f"Comprueba que el directorio '{report_dir}' existe y tiene "
+            f"permisos de escritura."
+        ) from e
 
     return report_path

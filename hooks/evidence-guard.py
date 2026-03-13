@@ -37,6 +37,9 @@ def main():
 
     Lee el JSON de stdin, detecta si el comando ejecutado es un runner
     de tests, analiza su resultado y lo registra como evidencia.
+
+    Politica fail-open: cualquier error inesperado se reporta en stderr
+    pero el hook siempre termina con exit 0 para no bloquear el flujo.
     """
     try:
         data = json.load(sys.stdin)
@@ -47,26 +50,32 @@ def main():
         )
         sys.exit(0)
 
-    tool_input = data.get("tool_input", {})
-    tool_output = data.get("tool_output", {})
+    try:
+        tool_input = data.get("tool_input", {})
+        tool_output = data.get("tool_output", {})
 
-    command = tool_input.get("command", "")
-    if not command or not is_test_command(command):
-        sys.exit(0)
+        command = tool_input.get("command", "")
+        if not command or not is_test_command(command):
+            sys.exit(0)
 
-    # Extraer la salida del comando
-    stdout = tool_output.get("stdout", "")
-    stderr = tool_output.get("stderr", "")
-    output = f"{stdout}\n{stderr}"
+        # Extraer la salida del comando
+        stdout = tool_output.get("stdout", "")
+        stderr = tool_output.get("stderr", "")
+        output = f"{stdout}\n{stderr}"
 
-    # Detectar resultado y registrar evidencia
-    result = detect_test_result(output)
-    record_evidence(command, result)
+        # Detectar resultado y registrar evidencia
+        result = detect_test_result(output)
+        record_evidence(command, result)
 
-    if result == "unknown":
+        if result == "unknown":
+            print(
+                f"{_LOG_PREFIX} Tests ejecutados pero no se pudo determinar "
+                f"el resultado. El comando se ha registrado igualmente.",
+                file=sys.stderr,
+            )
+    except Exception as e:
         print(
-            f"{_LOG_PREFIX} Tests ejecutados pero no se pudo determinar "
-            f"el resultado. El comando se ha registrado igualmente.",
+            f"{_LOG_PREFIX} Error inesperado (fail-open, no bloquea): {e}",
             file=sys.stderr,
         )
 
