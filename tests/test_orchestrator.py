@@ -30,6 +30,12 @@ class TestFlows(unittest.TestCase):
         expected = {"feature", "fix", "spike", "ship", "audit"}
         self.assertEqual(set(FLOWS.keys()), expected)
 
+    def test_architecture_gate_is_usuario_seguridad(self):
+        """La fase de arquitectura debe tener gate usuario+seguridad."""
+        fase_arq = FLOWS["feature"]["fases"][1]
+        self.assertEqual(fase_arq["nombre"], "arquitectura")
+        self.assertEqual(fase_arq["gate_tipo"], "usuario+seguridad")
+
 
 class TestSession(unittest.TestCase):
     def test_create_session(self):
@@ -282,6 +288,14 @@ class TestLoopIterativo(unittest.TestCase):
         session = advance_phase(session, resultado="aprobado")
         self.assertEqual(session.get("iteraciones_fase", 0), 0)
 
+    def test_advance_phase_preserves_iterations(self):
+        """advance_phase guarda el contador de iteraciones en la fase completada."""
+        session = create_session("feature", "Test iteraciones")
+        session["iteraciones_fase"] = 3
+        session = advance_phase(session, resultado="aprobado")
+        fase_completada = session["fases_completadas"][-1]
+        self.assertEqual(fase_completada["iteraciones"], 3)
+
 
 class TestAutopilot(unittest.TestCase):
     """Tests para el modo autopilot (v0.4.0)."""
@@ -333,6 +347,19 @@ class TestAutopilot(unittest.TestCase):
         # Ahora fase_actual == "completado"
         result = is_autopilot_gate_passable(session)
         self.assertTrue(result["passed"])
+
+    def test_autopilot_usuario_seguridad_auto_approves_user_part(self):
+        """En autopilot, GATE_USUARIO_SEGURIDAD aprueba la parte de usuario
+        pero evalua la de seguridad. Test de documentacion del comportamiento."""
+        session = create_session("feature", "Test autopilot")
+        session = advance_phase(session, resultado="aprobado")  # producto -> arquitectura
+        # Ahora en fase arquitectura con gate GATE_USUARIO_SEGURIDAD
+        # Con seguridad OK: debe pasar
+        result = is_autopilot_gate_passable(session, security_ok=True)
+        self.assertTrue(result["passed"])
+        # Con seguridad KO: debe fallar
+        result = is_autopilot_gate_passable(session, security_ok=False)
+        self.assertFalse(result["passed"])
 
 
 class TestCompletedSessionGuards(unittest.TestCase):

@@ -61,15 +61,15 @@ TEST_RUNNERS = [
 # específicos para evitar falsos positivos con palabras como «fail-safe»
 # o «OK» en texto genérico.
 FAILURE_PATTERNS = [
-    r"\bFAIL[ED]*\b(?![-_])",      # FAIL, FAILED pero no fail-safe, fail_over
-    r"\d+\s+failures?\b",           # "1 failure", "3 failures"
+    r"(?<!\d )\bFAIL[ED]*\b(?![-_])",  # FAIL, FAILED pero no fail-safe, fail_over ni "0 failed"
+    r"[1-9]\d*\s+failures?\b",       # "1 failure", "3 failures" (excluye "0 failures")
     r"\bfailing\b",
     r"[Tt]ests?\s+failed",
     r"ERRORS?\s*[:=]",              # "ERRORS:" o "ERROR=" pero no "ERROR" suelto
     r"Assertion(?:Error|Failed)",    # AssertionError → typo corregido a ambas formas
     r"test\s+result:\s+FAILED",
     r"Build\s+FAILED",
-    r"\d+\s+failed",
+    r"[1-9]\d*\s+failed",            # "1 failed", "3 failed" (excluye "0 failed")
     r"not\s+ok\s+\d+",              # TAP format: "not ok 1 - test name"
 ]
 
@@ -82,6 +82,8 @@ SUCCESS_PATTERNS = [
     r"\d+\s+passing\b",
     r"\bPASS(?:ED)?\b",             # PASS o PASSED
     r"\d+\s+tests?\s+complete",
+    r"[Tt]ests?\s+run:\s+\d+",      # "Tests run: N" — formato JUnit/Maven/TestNG
+    r"(?m)^ok\s+\S+",               # go test: "ok  github.com/foo/bar 0.003s" (multiline para anclar ^)
 ]
 
 
@@ -211,13 +213,15 @@ def record_evidence(
 
 
 def get_evidence(
-    max_age_seconds: int = EVIDENCE_MAX_AGE_SECONDS,
+    max_age_seconds: Optional[int] = EVIDENCE_MAX_AGE_SECONDS,
     project_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Consulta el estado actual de la evidencia de tests.
 
     Args:
-        max_age_seconds: ventana temporal en segundos.
+        max_age_seconds: ventana temporal en segundos. Si es ``None``, se
+            devuelven todos los registros sin filtrar por antiguedad, lo que
+            resulta util para informes de sesion completos.
         project_dir: directorio del proyecto.
 
     Returns:
@@ -235,9 +239,11 @@ def get_evidence(
             ts = datetime.fromisoformat(ts_str)
             if ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
-            age = (now - ts).total_seconds()
-            if age <= max_age_seconds:
-                recent.append(record)
+            if max_age_seconds is not None:
+                age = (now - ts).total_seconds()
+                if age > max_age_seconds:
+                    continue
+            recent.append(record)
         except (ValueError, TypeError):
             skipped += 1
             continue

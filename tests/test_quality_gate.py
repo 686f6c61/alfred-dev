@@ -1,106 +1,109 @@
 #!/usr/bin/env python3
-"""Tests para el hook quality-gate.py."""
+"""
+Tests para el hook quality-gate.py.
+
+La logica de deteccion de comandos y resultados esta cubierta por
+``test_evidence_guard.py``. Aqui se verifica unicamente que el hook
+importa correctamente desde ``evidence_guard_lib`` (fuente unica de verdad)
+y que su logica de flujo principal funciona como se espera.
+"""
 
 import importlib.util
+import json
 import os
+import sys
 import unittest
+from io import StringIO
+from unittest.mock import patch
 
-# Importar el hook usando importlib (el nombre tiene guion)
-_hook_path = os.path.join(os.path.dirname(__file__), "..", "hooks", "quality-gate.py")
-_spec = importlib.util.spec_from_file_location("quality_gate", _hook_path)
-_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_mod)
-
-is_test_command = _mod.is_test_command
-has_failures = _mod.has_failures
+# Rutas base para importar modulos con guion en el nombre
+_TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_HOOKS_DIR = os.path.join(_TESTS_DIR, "..", "hooks")
+_HOOK_PATH = os.path.join(_HOOKS_DIR, "quality-gate.py")
 
 
-class TestIsTestCommand(unittest.TestCase):
-    """Verifica que los runners de tests se detectan correctamente."""
-
-    def test_pytest(self):
-        self.assertTrue(is_test_command("pytest tests/"))
-
-    def test_python_m_pytest(self):
-        self.assertTrue(is_test_command("python -m pytest tests/ -v"))
-
-    def test_jest(self):
-        self.assertTrue(is_test_command("jest --coverage"))
-
-    def test_vitest(self):
-        self.assertTrue(is_test_command("vitest run"))
-
-    def test_cargo_test(self):
-        self.assertTrue(is_test_command("cargo test"))
-
-    def test_go_test(self):
-        self.assertTrue(is_test_command("go test ./..."))
-
-    def test_npm_test(self):
-        self.assertTrue(is_test_command("npm test"))
-
-    def test_npm_run_test(self):
-        self.assertTrue(is_test_command("npm run test"))
-
-    def test_bun_test(self):
-        self.assertTrue(is_test_command("bun test"))
-
-    def test_rspec(self):
-        self.assertTrue(is_test_command("rspec spec/"))
-
-    def test_mix_test(self):
-        self.assertTrue(is_test_command("mix test"))
-
-    def test_not_test_command_ls(self):
-        self.assertFalse(is_test_command("ls -la"))
-
-    def test_not_test_command_grep(self):
-        self.assertFalse(is_test_command("grep pytest config.ini"))
-
-    def test_not_test_command_cat(self):
-        self.assertFalse(is_test_command("cat pytest.ini"))
-
-    def test_not_test_command_git(self):
-        self.assertFalse(is_test_command("git commit -m 'fix tests'"))
+def _load_quality_gate():
+    """Carga el modulo quality-gate.py mediante importlib."""
+    spec = importlib.util.spec_from_file_location("quality_gate", _HOOK_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
-class TestHasFailures(unittest.TestCase):
-    """Verifica que la deteccion de fallos funciona correctamente."""
+class TestQualityGateImports(unittest.TestCase):
+    """Verifica que quality-gate reutiliza las funciones de evidence_guard_lib."""
 
-    def test_detects_FAIL(self):
-        self.assertTrue(has_failures("FAIL tests/test_foo.py"))
+    def test_quality_gate_uses_evidence_guard_lib(self):
+        """quality-gate debe usar las funciones de evidence_guard_lib."""
+        qg = _load_quality_gate()
+        # Debe usar la misma funcion que evidence_guard_lib
+        sys.path.insert(0, _HOOKS_DIR)
+        from evidence_guard_lib import is_test_command as lib_fn
+        self.assertIs(qg.is_test_command, lib_fn)
 
-    def test_detects_FAILED(self):
-        self.assertTrue(has_failures("FAILED test_something"))
 
-    def test_detects_failures(self):
-        self.assertTrue(has_failures("2 failures, 1 error"))
+class TestQualityGateMain(unittest.TestCase):
+    """Verifica el flujo de main() ante distintas entradas."""
 
-    def test_detects_n_failed(self):
-        self.assertTrue(has_failures("3 failed, 2 passed"))
+    def _run_main(self, payload: dict) -> tuple[int, str]:
+        """Ejecuta main() con el payload dado y devuelve (exit_code, stderr)."""
+        qg = _load_quality_gate()
+        stdin_data = json.dumps(payload)
+        stderr_capture = StringIO()
 
-    def test_detects_tests_failed(self):
-        self.assertTrue(has_failures("Tests failed: 1"))
+        exit_code = None
+        with patch("sys.stdin", StringIO(stdin_data)):
+            with patch("sys.stderr", stderr_capture):
+                try:
+                    qg.main()
+                except SystemExit as exc:
+                    exit_code = exc.code
 
-    def test_detects_assertion_error(self):
-        self.assertTrue(has_failures("AssertionError: expected True"))
+        return exit_code, stderr_capture.getvalue()
 
-    def test_detects_mixed_case_fail(self):
-        """Verifica que 'Fail' con case mixto tambien se detecta."""
-        self.assertTrue(has_failures("Fail: test_something"))
+    def test_non_test_command_exits_0_silently(self):
+        """Comandos que no son runners de tests no emiten nada por stderr."""
+        payload = {
+            "tool_input": {"command": "ls -la"},
+            "tool_output": {"stdout": "", "stderr": ""},
+        }
+        code, stderr = self._run_main(payload)
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, "")
 
-    def test_detects_mixed_case_failure(self):
-        """Verifica que 'Test Failure' se detecta con case mixto."""
-        self.assertTrue(has_failures("Test Failure in module X"))
+    def test_passing_tests_exits_0_silently(self):
+        """Tests que pasan no emiten aviso."""
+        payload = {
+            "tool_input": {"command": "pytest tests/"},
+            "tool_output": {"stdout": "5 passed in 0.12s", "stderr": ""},
+        }
+        code, stderr = self._run_main(payload)
+        self.assertEqual(code, 0)
+        self.assertNotIn("Rompe-cosas", stderr)
 
-    def test_passing_output(self):
-        self.assertFalse(has_failures("All 42 tests passed"))
+    def test_failing_tests_emits_warning(self):
+        """Tests fallidos emiten el aviso de El Rompe-cosas por stderr."""
+        payload = {
+            "tool_input": {"command": "pytest tests/"},
+            "tool_output": {"stdout": "1 failed, 4 passed in 0.15s", "stderr": ""},
+        }
+        code, stderr = self._run_main(payload)
+        self.assertEqual(code, 0)
+        self.assertIn("Rompe-cosas", stderr)
 
-    def test_empty_output(self):
-        self.assertFalse(has_failures(""))
-
-    def test_normal_output(self):
-        self.assertFalse(has_failures("Compiling project...\nDone."))
+    def test_invalid_json_exits_0_with_warning(self):
+        """Entrada JSON invalida emite aviso pero no bloquea (exit 0)."""
+        qg = _load_quality_gate()
+        stderr_capture = StringIO()
+        exit_code = None
+        with patch("sys.stdin", StringIO("esto no es json")):
+            with patch("sys.stderr", stderr_capture):
+                try:
+                    qg.main()
+                except SystemExit as exc:
+                    exit_code = exc.code
+        self.assertEqual(exit_code, 0)
+        self.assertIn("quality-gate", stderr_capture.getvalue())
 
 
 if __name__ == "__main__":

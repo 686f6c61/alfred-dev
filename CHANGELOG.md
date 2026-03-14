@@ -7,6 +7,36 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.2] - 2026-03-14
+
+### Fixed
+
+- **Falso positivo en evidence guard**: el patron `\d+ failures` detectaba "0 failures" como fallo. Corregido para excluir el cero.
+- **Gate de arquitectura mal tipada**: la fase de arquitectura del flujo feature tenia gate `usuario` en lugar de `usuario+seguridad`, haciendo inoperante la validacion de seguridad.
+- **Patrones divergentes**: `quality-gate.py` tenia patrones de deteccion propios que divergian de `evidence_guard_lib.py`. Unificado para usar una sola fuente de verdad.
+- **Clave de autopilot inconsistente**: los comandos markdown buscaban `"modo": "autopilot"` pero el codigo escribia `"autopilot": true`. Corregido.
+
+### Added
+
+- **Soporte para go test**: la salida de `go test` se detecta correctamente como exito en evidence guard.
+- **Informe de sesiones parciales**: el stop-hook genera informe cuando una sesion se interrumpe, no solo cuando se completa.
+- **Modo autopilot en informes**: los informes de sesion indican si se ejecutaron en modo autopilot o interactivo.
+- **Iteraciones por fase en informes**: los informes muestran cuantos reintentos tuvo cada fase.
+- **Verificacion de evidencia en markdown**: instruccion explicita para que Claude lea `alfred-evidence.json` antes de avanzar gates automaticas.
+- **Loop iterativo documentado**: los comandos feature, fix y ship incluyen instrucciones de loop iterativo (max 5 reintentos por fase).
+- **Persistencia de iteraciones**: instruccion para que Claude persista el estado despues de cada intento de gate.
+- **Gate de deploy siempre interactiva**: refuerzo explicito de que el deploy nunca se auto-aprueba.
+
+### Changed
+
+- **stop-hook refactorizado**: extraidas funciones `should_block`, `build_block_message` y `handle_session_report` para testabilidad.
+- **Mensaje de bloqueo adaptado a autopilot**: en modo autopilot, el stop-hook no pide confirmacion del usuario sino que indica investigar el error.
+- **Evidencia sin ventana temporal para informes**: `get_evidence(max_age_seconds=None)` devuelve todos los registros sin filtrar por antiguedad.
+- **Version dinamica en informes**: el template lee la version de `plugin.json` en lugar de tenerla hardcoded.
+- **Limpieza de evidencia entre sesiones**: al completar una sesion, se limpia el fichero de evidencia para evitar contaminacion cruzada.
+
+---
+
 ## [0.4.1] - 2026-03-13
 
 ### Added

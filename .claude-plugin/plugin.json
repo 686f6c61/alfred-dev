@@ -1,11 +1,11 @@
 {
   "name": "alfred-dev",
   "description": "Plugin de ingeniería de software completa: 9 agentes de núcleo y 8 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": {
     "name": "686f6c61"
   },
-  "homepage": "https://686f6c61.github.io/alfred-dev/",
+  "homepage": "https://alfred-dev.com",
   "repository": "https://github.com/686f6c61/alfred-dev",
   "license": "MIT",
   "keywords": ["sdlc", "agents", "security", "tdd", "devops", "qa", "product", "spanish", "seo", "ux", "data"],

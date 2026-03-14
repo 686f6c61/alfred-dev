@@ -14,6 +14,8 @@ from core.session_report import (
     _section_evidence,
     _section_team,
     _section_artifacts,
+    _section_mode,
+    _section_iterations,
     _estimate_duration,
 )
 
@@ -251,6 +253,93 @@ class TestFilenameSanitization(unittest.TestCase):
         self.assertNotIn("/", filename)
         self.assertNotIn("&", filename)
         self.assertTrue(os.path.isfile(report_path))
+
+
+class TestSectionMode(unittest.TestCase):
+    """Verifica la seccion de modo de sesion."""
+
+    def test_autopilot(self):
+        session = {"autopilot": True}
+        result = _section_mode(session)
+        self.assertIn("autopilot", result.lower())
+
+    def test_interactive(self):
+        session = {}
+        result = _section_mode(session)
+        self.assertIn("interactivo", result.lower())
+
+
+class TestSectionIterations(unittest.TestCase):
+    """Verifica la seccion de iteraciones por fase."""
+
+    def test_with_iterations(self):
+        session = {
+            "fases_completadas": [
+                {"nombre": "producto", "resultado": "aprobado", "iteraciones": 0},
+                {"nombre": "desarrollo", "resultado": "aprobado", "iteraciones": 3},
+            ],
+        }
+        result = _section_iterations(session)
+        self.assertIn("desarrollo", result)
+        self.assertIn("3", result)
+
+    def test_without_iterations(self):
+        session = {
+            "fases_completadas": [
+                {"nombre": "producto", "resultado": "aprobado", "iteraciones": 0},
+            ],
+        }
+        result = _section_iterations(session)
+        self.assertEqual(result, "")
+
+
+class TestGenerateReportExtended(unittest.TestCase):
+    """Tests para las funcionalidades nuevas de generate_report."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_dynamic_version_from_plugin_json(self):
+        """El informe lee la version de plugin.json de forma dinamica."""
+        import json as _json
+        plugin_path = os.path.join(
+            os.path.dirname(__file__), "..", ".claude-plugin", "plugin.json"
+        )
+        with open(plugin_path) as pf:
+            expected_version = _json.load(pf)["version"]
+
+        session = {
+            "comando": "feature",
+            "descripcion": "Test version",
+            "fase_actual": "completado",
+            "fases_completadas": [],
+            "artefactos": [],
+            "creado_en": "2026-03-14T10:00:00+00:00",
+            "actualizado_en": "2026-03-14T10:05:00+00:00",
+        }
+        report_path = generate_report(session, project_dir=self.tmpdir)
+        with open(report_path) as f:
+            content = f.read()
+        self.assertIn(f"Alfred Dev v{expected_version}", content)
+
+    def test_interrupted_report(self):
+        session = {
+            "comando": "feature",
+            "descripcion": "Test interrumpido",
+            "fase_actual": "desarrollo",
+            "fases_completadas": [],
+            "artefactos": [],
+            "creado_en": "2026-03-14T10:00:00+00:00",
+            "actualizado_en": "2026-03-14T10:15:00+00:00",
+        }
+        report_path = generate_report(session, project_dir=self.tmpdir, completed=False)
+        with open(report_path) as f:
+            content = f.read()
+        self.assertIn("interrumpida", content.lower())
 
 
 if __name__ == "__main__":

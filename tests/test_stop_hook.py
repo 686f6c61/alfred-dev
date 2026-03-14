@@ -19,6 +19,17 @@ sys.path.insert(0, _plugin_root)
 
 from core.orchestrator import FLOWS, create_session, load_state, save_state
 
+import importlib.util
+
+_hooks_dir = os.path.join(_plugin_root, "hooks")
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
+
+_stop_hook_path = os.path.join(_hooks_dir, "stop-hook.py")
+_spec = importlib.util.spec_from_file_location("stop_hook", _stop_hook_path)
+stop_hook = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(stop_hook)
+
 
 class TestStopHookLogic(unittest.TestCase):
     """Verifica la logica de bloqueo del hook de Stop."""
@@ -109,6 +120,116 @@ class TestStopHookLogic(unittest.TestCase):
         # El hook verificaria que el flujo existe en FLOWS y, al no existir,
         # permitiria la parada. Aqui verificamos que load_state no falla.
         self.assertNotIn(loaded["comando"], FLOWS)
+
+
+class TestShouldBlock(unittest.TestCase):
+    """Verifica la funcion should_block."""
+
+    def test_completed_session_does_not_block(self):
+        session = create_session("feature", "Test")
+        session["fase_actual"] = "completado"
+        flow = FLOWS["feature"]
+        self.assertFalse(stop_hook.should_block(session, flow))
+
+    def test_active_session_blocks(self):
+        session = create_session("feature", "Test")
+        flow = FLOWS["feature"]
+        self.assertTrue(stop_hook.should_block(session, flow))
+
+    def test_incoherent_fase_numero_does_not_block(self):
+        session = create_session("feature", "Test")
+        session["fase_numero"] = 999
+        flow = FLOWS["feature"]
+        self.assertFalse(stop_hook.should_block(session, flow))
+
+
+class TestBuildBlockMessage(unittest.TestCase):
+    """Verifica la construccion del mensaje de bloqueo."""
+
+    def _make_fase(self, gate_tipo="usuario"):
+        return {
+            "nombre": "producto",
+            "agentes": ["product-owner"],
+            "descripcion": "Fase de prueba",
+            "gate_tipo": gate_tipo,
+        }
+
+    def test_interactive_user_gate_asks_for_approval(self):
+        """En modo interactivo, la gate de usuario pide confirmacion."""
+        session = create_session("feature", "Test")
+        fase = self._make_fase("usuario")
+        msg = stop_hook.build_block_message(session, fase, "usuario")
+        self.assertIn("aprobacion del usuario", msg.lower())
+        self.assertNotIn("autopilot", msg.lower())
+
+    def test_autopilot_user_gate_does_not_ask_for_approval(self):
+        """En autopilot, la gate de usuario no pide confirmacion."""
+        session = create_session("feature", "Test")
+        session["autopilot"] = True
+        fase = self._make_fase("usuario")
+        msg = stop_hook.build_block_message(session, fase, "usuario")
+        self.assertIn("autopilot", msg.lower())
+        self.assertNotIn("aprobacion del usuario", msg.lower())
+
+    def test_automatic_gate_mentions_tests(self):
+        """La gate automatica menciona tests."""
+        session = create_session("feature", "Test")
+        fase = self._make_fase("automatico")
+        msg = stop_hook.build_block_message(session, fase, "automatico")
+        self.assertIn("tests", msg.lower())
+
+
+class TestHandleSessionReport(unittest.TestCase):
+    """Verifica la generacion de informes desde el stop-hook."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_generates_complete_report(self):
+        """Una sesion completada genera informe normal."""
+        session = {
+            "comando": "feature",
+            "descripcion": "Login",
+            "fase_actual": "completado",
+            "fases_completadas": [
+                {"nombre": "producto", "resultado": "aprobado"},
+            ],
+            "artefactos": [],
+            "creado_en": "2026-03-14T10:00:00+00:00",
+            "actualizado_en": "2026-03-14T10:30:00+00:00",
+        }
+        stop_hook.handle_session_report(session, self.tmpdir, completed=True)
+        report_dir = os.path.join(self.tmpdir, "docs", "alfred-reports")
+        self.assertTrue(os.path.isdir(report_dir))
+        reports = os.listdir(report_dir)
+        self.assertEqual(len(reports), 1)
+        with open(os.path.join(report_dir, reports[0])) as f:
+            content = f.read()
+        self.assertIn("Informe de sesion", content)
+
+    def test_generates_partial_report(self):
+        """Una sesion parcial genera informe."""
+        session = {
+            "comando": "feature",
+            "descripcion": "Login",
+            "fase_actual": "desarrollo",
+            "fase_numero": 2,
+            "fases_completadas": [
+                {"nombre": "producto", "resultado": "aprobado"},
+            ],
+            "artefactos": [],
+            "creado_en": "2026-03-14T10:00:00+00:00",
+            "actualizado_en": "2026-03-14T10:30:00+00:00",
+        }
+        stop_hook.handle_session_report(session, self.tmpdir, completed=False)
+        report_dir = os.path.join(self.tmpdir, "docs", "alfred-reports")
+        self.assertTrue(os.path.isdir(report_dir))
+        reports = os.listdir(report_dir)
+        self.assertEqual(len(reports), 1)
 
 
 if __name__ == "__main__":

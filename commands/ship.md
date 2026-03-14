@@ -35,3 +35,9 @@ Activa `devops-engineer` con firma del `security-officer`. Build final, tag de v
 ### Fase 4: Despliegue
 Activa `devops-engineer` para deploy según estrategia configurada.
 **GATE (usuario, siempre interactivo):** El usuario confirma el despliegue. Esta gate NUNCA se auto-aprueba, ni siquiera en autopilot.
+
+## Loop iterativo
+
+Si una gate no se supera al primer intento, corrige los problemas y vuelve a intentarlo. Maximo 5 intentos por fase. Si tras 5 intentos la gate sigue sin superarse, informa al usuario y espera instrucciones. En modo autopilot, si agotas los 5 intentos, deten el flujo e informa del problema -- no sigas reintentando indefinidamente.
+
+**IMPORTANTE -- Gate de despliegue SIEMPRE interactiva:** Incluso en modo autopilot, la fase 4 (despliegue) requiere confirmacion explicita del usuario con `AskUserQuestion`. NUNCA auto-apruebes un despliegue a produccion.

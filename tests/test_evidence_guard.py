@@ -94,6 +94,22 @@ class TestDetectTestResult(unittest.TestCase):
         output = "Failover completed successfully. 5 passed"
         self.assertEqual(detect_test_result(output), "pass")
 
+    def test_zero_failures_not_detected_as_fail(self):
+        """La salida '0 failures' no debe detectarse como fallo."""
+        output = "Tests run: 10, 0 failures, 0 errors"
+        self.assertEqual(detect_test_result(output), "pass")
+
+    def test_zero_failed_not_detected_as_fail(self):
+        """La salida '0 failed' no debe detectarse como fallo."""
+        output = "10 passed, 0 failed in 1.5s"
+        self.assertEqual(detect_test_result(output), "pass")
+
+    def test_go_test_detected_as_pass(self):
+        """La salida de go test se detecta como pass."""
+        # Salida multilinea realista de go test
+        output = "=== RUN   TestFoo\n--- PASS: TestFoo (0.00s)\nPASS\nok  \tgithub.com/foo/bar\t0.003s"
+        self.assertEqual(detect_test_result(output), "pass")
+
 
 class TestEvidenceStorage(unittest.TestCase):
     """Verifica el almacenamiento y consulta de evidencia."""
@@ -160,6 +176,34 @@ class TestEvidenceStorage(unittest.TestCase):
         with open(path, "r") as f:
             data = json.load(f)
         self.assertLessEqual(len(data), 50)
+
+    def test_get_evidence_no_age_filter(self):
+        """max_age_seconds=None devuelve todos los registros sin filtrar."""
+        # Escribir un registro con timestamp antiguo
+        path = os.path.join(self.claude_dir, "alfred-evidence.json")
+        old_ts = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        records = [
+            {"timestamp": old_ts, "command": "pytest", "result": "pass"},
+        ]
+        with open(path, "w") as f:
+            json.dump(records, f)
+
+        # Con ventana normal: no aparece
+        evidence = get_evidence(project_dir=self.tmpdir)
+        self.assertFalse(evidence["has_evidence"])
+
+        # Sin ventana: aparece
+        evidence = get_evidence(max_age_seconds=None, project_dir=self.tmpdir)
+        self.assertTrue(evidence["has_evidence"])
+        self.assertEqual(evidence["count"], 1)
+
+    def test_unknown_result_affects_all_passing(self):
+        """Un resultado unknown hace que all_passing sea False."""
+        record_evidence("pytest -v", "pass", project_dir=self.tmpdir)
+        record_evidence("pytest -v", "unknown", project_dir=self.tmpdir)
+        evidence = get_evidence(project_dir=self.tmpdir)
+        self.assertTrue(evidence["has_evidence"])
+        self.assertFalse(evidence["all_passing"])
 
 
 if __name__ == "__main__":

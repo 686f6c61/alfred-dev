@@ -52,6 +52,10 @@ Activa el agente `tech-writer` para documentar API, arquitectura y guías.
 Activa el agente `devops-engineer` con revisión del security-officer. CI/CD, Docker, deploy config.
 **GATE (usuario+seguridad):** Pipeline verde Y seguridad valida. En autopilot, la parte de usuario se aprueba automáticamente; la de seguridad se evalúa.
 
+## Loop iterativo
+
+Si una gate no se supera al primer intento, corrige los problemas y vuelve a intentarlo. Maximo 5 intentos por fase. Si tras 5 intentos la gate sigue sin superarse, informa al usuario y espera instrucciones. En modo autopilot, si agotas los 5 intentos, deten el flujo e informa del problema -- no sigas reintentando indefinidamente.
+
 ## HARD-GATES (no saltables)
 
 | Pensamiento trampa | Realidad |

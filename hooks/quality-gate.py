@@ -6,105 +6,23 @@ Intercepta la salida de comandos Bash para detectar si se han ejecutado
 tests y, en caso afirmativo, analizar si han fallado. Cuando detecta
 fallos, informa por stderr con la voz de "El Rompe-cosas" (QA).
 
-Solo actúa sobre comandos que coincidan con runners de tests conocidos.
-El resto de comandos Bash pasan sin inspección.
+Delega la deteccion de comandos y resultados a ``evidence_guard_lib``
+para mantener una unica fuente de verdad en los patrones.
+
+Solo actua sobre comandos que coincidan con runners de tests conocidos.
+El resto de comandos Bash pasan sin inspeccion.
 """
 
 import json
-import re
+import os
 import sys
 
+# Anadir el directorio de hooks al path para importar la libreria
+_HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _HOOKS_DIR not in sys.path:
+    sys.path.insert(0, _HOOKS_DIR)
 
-# --- Patrones de runners de tests ---
-
-# Expresiones regulares que identifican comandos de ejecución de tests.
-# Los runners de una sola palabra (pytest, jest, etc.) exigen posición de
-# comando: inicio de cadena o tras un operador shell (|, ;, &, &&, ||).
-# Esto evita falsos positivos como 'grep pytest config.ini'.
-# Los runners de varias palabras (cargo test, npm test, etc.) usan \b
-# porque su prefijo ya los ancla de forma natural.
-_CMD_POS = r"(?:^|[;&|])\s*"
-
-TEST_RUNNERS = [
-    rf"{_CMD_POS}pytest\b",
-    r"\bpython\s+-m\s+pytest\b",
-    rf"{_CMD_POS}vitest\b",
-    rf"{_CMD_POS}jest\b",
-    rf"{_CMD_POS}mocha\b",
-    r"\bcargo\s+test\b",
-    r"\bgo\s+test\b",
-    r"\bnpm\s+test\b",
-    r"\bnpm\s+run\s+test\b",
-    r"\bpnpm\s+test\b",
-    r"\bpnpm\s+run\s+test\b",
-    r"\bbun\s+test\b",
-    r"\bbun\s+run\s+test\b",
-    r"\byarn\s+test\b",
-    r"\byarn\s+run\s+test\b",
-    r"\bpython\s+-m\s+unittest\b",
-    rf"{_CMD_POS}phpunit\b",
-    rf"{_CMD_POS}rspec\b",
-    r"\bmix\s+test\b",
-    r"\bdotnet\s+test\b",
-    r"\bmaven\s+test\b",
-    r"\bmvn\s+test\b",
-    r"\bgradle\s+test\b",
-]
-
-# --- Patrones de fallo en la salida ---
-
-# Indicadores comunes de que los tests han fallado. Se buscan como
-# palabras completas o patrones específicos para minimizar falsos positivos.
-FAILURE_PATTERNS = [
-    r"\bFAIL\b",
-    r"\bFAILED\b",
-    r"\bERROR\b",
-    r"\bfailures?\b",
-    r"\bfailing\b",
-    r"Tests?\s+failed",
-    r"tests?\s+failed",
-    r"ERRORS?:",
-    r"AssertionError",
-    r"test\s+result:\s+FAILED",
-    r"Build\s+FAILED",
-    r"\d+\s+failed",
-    r"not\s+ok\b",
-]
-
-
-def is_test_command(command: str) -> bool:
-    """Determina si un comando corresponde a la ejecución de tests.
-
-    Comprueba el comando contra la lista de runners conocidos. Se usa
-    búsqueda por regex con límites de palabra para evitar que comandos
-    como 'cat pytest.ini' activen el hook.
-
-    Args:
-        command: Comando Bash ejecutado (cadena completa).
-
-    Returns:
-        True si el comando coincide con un runner de tests.
-    """
-    return any(re.search(pattern, command) for pattern in TEST_RUNNERS)
-
-
-def has_failures(output: str) -> bool:
-    """Analiza la salida de un comando de tests en busca de fallos.
-
-    Busca patrones comunes de fallo en la salida del comando usando
-    busqueda case-insensitive para cubrir todas las variantes de
-    formato de los distintos runners (FAIL, Fail, fail, etc.).
-
-    Args:
-        output: Salida estándar del comando Bash.
-
-    Returns:
-        True si se detecta al menos un patrón de fallo.
-    """
-    return any(
-        re.search(pattern, output, re.IGNORECASE)
-        for pattern in FAILURE_PATTERNS
-    )
+from evidence_guard_lib import is_test_command, detect_test_result
 
 
 def main():
@@ -116,10 +34,10 @@ def main():
     """
     try:
         data = json.load(sys.stdin)
-    except ValueError as e:
+    except (ValueError, json.JSONDecodeError) as e:
         print(
             f"[quality-gate] Aviso: no se pudo leer la entrada del hook: {e}. "
-            f"La monitorización de tests está desactivada para este comando.",
+            f"La monitorizacion de tests esta desactivada para este comando.",
             file=sys.stderr,
         )
         sys.exit(0)
@@ -127,33 +45,28 @@ def main():
     tool_input = data.get("tool_input", {})
     tool_output = data.get("tool_output", {})
 
-    # Extraer el comando ejecutado
     command = tool_input.get("command", "")
 
-    # Solo actuar si es un comando de tests
     if not command or not is_test_command(command):
         sys.exit(0)
 
-    # Extraer la salida del comando
     stdout = tool_output.get("stdout", "")
-    stderr = tool_output.get("stderr", "")
-    output = f"{stdout}\n{stderr}"
+    stderr_out = tool_output.get("stderr", "")
+    output = f"{stdout}\n{stderr_out}"
 
-    # Analizar si hay fallos
-    if has_failures(output):
+    if detect_test_result(output) == "fail":
         print(
             "\n"
             "[El Rompe-cosas] He pillado tests rotos\n"
             "\n"
             "Los tests no pasan. Sorpresa: ninguna.\n"
-            "No se avanza con tests en rojo. Así funciona esto.\n"
+            "No se avanza con tests en rojo. Asi funciona esto.\n"
             "\n"
             "Repasa la salida, corrige los fallos y vuelve a ejecutar.\n"
-            "Ese edge case que no contemplaste? Lo encontré.\n",
+            "Ese edge case que no contemplaste? Lo encontre.\n",
             file=sys.stderr,
         )
 
-    # Siempre exit 0 para PostToolUse (solo informa, no bloquea)
     sys.exit(0)
 
 
