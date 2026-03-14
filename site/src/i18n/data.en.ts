@@ -114,7 +114,7 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'New in v0.4.1',
+      label: 'New in v0.4.2',
       items: [
         {
           title: 'Verifiable evidence',
@@ -1200,6 +1200,29 @@ personality:
 
   changelog: [
     {
+      version: '0.4.2',
+      date: '2026-03-14',
+      fixed: [
+        'False positive in evidence guard: the failure detection pattern matched "0 failures" as a failure. Fixed to exclude zero.',
+        'Architecture gate mistyped: the architecture phase had gate "user" instead of "user+security", making security validation inoperative.',
+        'Divergent patterns: quality-gate.py had its own patterns that diverged from evidence_guard_lib.py. Unified to use a single source of truth.',
+        'Inconsistent autopilot key: commands looked for "mode: autopilot" but code wrote "autopilot: true". Fixed.',
+      ],
+      added: [
+        'Go test support in evidence guard: go test output is correctly detected as success.',
+        'Partial session reports: the stop-hook generates a report when a session is interrupted, not only when completed.',
+        'Autopilot mode and iterations in reports: reports show whether the session was autopilot and how many retries each phase had.',
+        'Evidence verification in markdown: explicit instruction to read alfred-evidence.json before advancing automatic gates.',
+        'Iterative loop documented in feature, fix and ship commands (max 5 retries per phase).',
+      ],
+      changed: [
+        'Stop-hook refactored into testable functions: should_block, build_block_message, handle_session_report.',
+        'Block message adapted for autopilot: does not ask for user confirmation but instructs to investigate the error.',
+        'Dynamic version in reports: template reads version from plugin.json.',
+        'Evidence cleanup between sessions to avoid cross-contamination.',
+      ],
+    },
+    {
       version: '0.4.1',
       date: '2026-03-13',
       added: [
@@ -1478,7 +1501,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.1',
+    version: 'v0.4.2',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

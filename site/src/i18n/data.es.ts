@@ -117,7 +117,7 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'Nuevo en v0.4.1',
+      label: 'Nuevo en v0.4.2',
       items: [
         {
           title: 'Evidencia verificable',
@@ -1203,6 +1203,29 @@ personalidad:
 
   changelog: [
     {
+      version: '0.4.2',
+      date: '2026-03-14',
+      fixed: [
+        'Falso positivo en evidence guard: el patron de deteccion de fallos detectaba "0 failures" como fallo. Corregido para excluir el cero.',
+        'Gate de arquitectura mal tipada: la fase de arquitectura tenia gate "usuario" en lugar de "usuario+seguridad", haciendo inoperante la validacion de seguridad.',
+        'Patrones divergentes: quality-gate.py tenia patrones propios que divergian de evidence_guard_lib.py. Unificado para usar una sola fuente de verdad.',
+        'Clave de autopilot inconsistente: los comandos buscaban "modo: autopilot" pero el codigo escribia "autopilot: true". Corregido.',
+      ],
+      added: [
+        'Soporte para go test en evidence guard: la salida de go test se detecta correctamente como exito.',
+        'Informe de sesiones parciales: el stop-hook genera informe cuando una sesion se interrumpe, no solo cuando se completa.',
+        'Modo autopilot e iteraciones en informes: los informes muestran si la sesion fue autopilot y cuantos reintentos tuvo cada fase.',
+        'Verificacion de evidencia en markdown: instruccion explicita para que se lea alfred-evidence.json antes de avanzar gates automaticas.',
+        'Loop iterativo documentado en los comandos feature, fix y ship (max 5 reintentos por fase).',
+      ],
+      changed: [
+        'Stop-hook refactorizado en funciones testables: should_block, build_block_message, handle_session_report.',
+        'Mensaje de bloqueo adaptado a autopilot: no pide confirmacion del usuario sino que indica investigar el error.',
+        'Version dinamica en informes: el template lee la version de plugin.json.',
+        'Limpieza de evidencia entre sesiones para evitar contaminacion cruzada.',
+      ],
+    },
+    {
       version: '0.4.1',
       date: '2026-03-13',
       added: [
@@ -1481,7 +1504,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.1',
+    version: 'v0.4.2',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

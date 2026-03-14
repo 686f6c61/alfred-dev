@@ -68,9 +68,23 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred fix` con una descripcion del bug o `/alfred spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.1
+## Novedades en v0.4.2
 
-La v0.4.1 mejora la experiencia de primer uso y corrige la conexion entre el modo autopilot y los comandos:
+La v0.4.2 es un parche de robustez tras una auditoria exhaustiva del evidence guard, autopilot, loop iterativo e informes de sesion:
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Falso positivo "0 failures" corregido** | El patron de deteccion de fallos ya no considera "0 failures" como un fallo. |
+| **Gate de arquitectura corregida** | La fase de arquitectura ahora evalua seguridad correctamente (gate `usuario+seguridad`). |
+| **Patrones unificados** | `quality-gate.py` importa de `evidence_guard_lib.py` en lugar de mantener patrones propios que divergian. |
+| **Informes de sesiones parciales** | El stop-hook genera informe cuando una sesion se interrumpe, no solo cuando se completa. |
+| **Informes enriquecidos** | Los informes muestran modo (autopilot/interactivo), iteraciones por fase y version dinamica. |
+| **Evidencia en gates documentada** | Los comandos instruyen a Claude para verificar `alfred-evidence.json` antes de aprobar gates automaticas. |
+| **Loop iterativo documentado** | Los comandos `feature`, `fix` y `ship` incluyen instrucciones explicitas de reintento (max 5 por fase). |
+
+### Novedades de v0.4.1
+
+La v0.4.1 mejoro la experiencia de primer uso y corrigio la conexion entre el modo autopilot y los comandos:
 
 | Novedad | Descripcion |
 |---------|-------------|
