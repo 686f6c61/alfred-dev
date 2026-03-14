@@ -177,6 +177,34 @@ class TestEvidenceStorage(unittest.TestCase):
             data = json.load(f)
         self.assertLessEqual(len(data), 50)
 
+    def test_get_evidence_no_age_filter(self):
+        """max_age_seconds=None devuelve todos los registros sin filtrar."""
+        # Escribir un registro con timestamp antiguo
+        path = os.path.join(self.claude_dir, "alfred-evidence.json")
+        old_ts = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        records = [
+            {"timestamp": old_ts, "command": "pytest", "result": "pass"},
+        ]
+        with open(path, "w") as f:
+            json.dump(records, f)
+
+        # Con ventana normal: no aparece
+        evidence = get_evidence(project_dir=self.tmpdir)
+        self.assertFalse(evidence["has_evidence"])
+
+        # Sin ventana: aparece
+        evidence = get_evidence(max_age_seconds=None, project_dir=self.tmpdir)
+        self.assertTrue(evidence["has_evidence"])
+        self.assertEqual(evidence["count"], 1)
+
+    def test_unknown_result_affects_all_passing(self):
+        """Un resultado unknown hace que all_passing sea False."""
+        record_evidence("pytest -v", "pass", project_dir=self.tmpdir)
+        record_evidence("pytest -v", "unknown", project_dir=self.tmpdir)
+        evidence = get_evidence(project_dir=self.tmpdir)
+        self.assertTrue(evidence["has_evidence"])
+        self.assertFalse(evidence["all_passing"])
+
 
 if __name__ == "__main__":
     unittest.main()
