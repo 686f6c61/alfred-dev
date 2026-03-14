@@ -61,15 +61,15 @@ TEST_RUNNERS = [
 # específicos para evitar falsos positivos con palabras como «fail-safe»
 # o «OK» en texto genérico.
 FAILURE_PATTERNS = [
-    r"\bFAIL[ED]*\b(?![-_])",      # FAIL, FAILED pero no fail-safe, fail_over
-    r"\d+\s+failures?\b",           # "1 failure", "3 failures"
+    r"(?<!\d )\bFAIL[ED]*\b(?![-_])",  # FAIL, FAILED pero no fail-safe, fail_over ni "0 failed"
+    r"[1-9]\d*\s+failures?\b",       # "1 failure", "3 failures" (excluye "0 failures")
     r"\bfailing\b",
     r"[Tt]ests?\s+failed",
     r"ERRORS?\s*[:=]",              # "ERRORS:" o "ERROR=" pero no "ERROR" suelto
     r"Assertion(?:Error|Failed)",    # AssertionError → typo corregido a ambas formas
     r"test\s+result:\s+FAILED",
     r"Build\s+FAILED",
-    r"\d+\s+failed",
+    r"[1-9]\d*\s+failed",            # "1 failed", "3 failed" (excluye "0 failed")
     r"not\s+ok\s+\d+",              # TAP format: "not ok 1 - test name"
 ]
 
@@ -82,6 +82,7 @@ SUCCESS_PATTERNS = [
     r"\d+\s+passing\b",
     r"\bPASS(?:ED)?\b",             # PASS o PASSED
     r"\d+\s+tests?\s+complete",
+    r"[Tt]ests?\s+run:\s+\d+",      # "Tests run: N" — formato JUnit/Maven/TestNG
 ]
 
 

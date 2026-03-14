@@ -94,6 +94,16 @@ class TestDetectTestResult(unittest.TestCase):
         output = "Failover completed successfully. 5 passed"
         self.assertEqual(detect_test_result(output), "pass")
 
+    def test_zero_failures_not_detected_as_fail(self):
+        """La salida '0 failures' no debe detectarse como fallo."""
+        output = "Tests run: 10, 0 failures, 0 errors"
+        self.assertEqual(detect_test_result(output), "pass")
+
+    def test_zero_failed_not_detected_as_fail(self):
+        """La salida '0 failed' no debe detectarse como fallo."""
+        output = "10 passed, 0 failed in 1.5s"
+        self.assertEqual(detect_test_result(output), "pass")
+
 
 class TestEvidenceStorage(unittest.TestCase):
     """Verifica el almacenamiento y consulta de evidencia."""
