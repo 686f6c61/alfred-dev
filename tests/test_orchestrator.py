@@ -348,6 +348,19 @@ class TestAutopilot(unittest.TestCase):
         result = is_autopilot_gate_passable(session)
         self.assertTrue(result["passed"])
 
+    def test_autopilot_usuario_seguridad_auto_approves_user_part(self):
+        """En autopilot, GATE_USUARIO_SEGURIDAD aprueba la parte de usuario
+        pero evalua la de seguridad. Test de documentacion del comportamiento."""
+        session = create_session("feature", "Test autopilot")
+        session = advance_phase(session, resultado="aprobado")  # producto -> arquitectura
+        # Ahora en fase arquitectura con gate GATE_USUARIO_SEGURIDAD
+        # Con seguridad OK: debe pasar
+        result = is_autopilot_gate_passable(session, security_ok=True)
+        self.assertTrue(result["passed"])
+        # Con seguridad KO: debe fallar
+        result = is_autopilot_gate_passable(session, security_ok=False)
+        self.assertFalse(result["passed"])
+
 
 class TestCompletedSessionGuards(unittest.TestCase):
     """Verifica que check_gate no lanza IndexError con sesiones completadas."""
