@@ -288,6 +288,14 @@ class TestLoopIterativo(unittest.TestCase):
         session = advance_phase(session, resultado="aprobado")
         self.assertEqual(session.get("iteraciones_fase", 0), 0)
 
+    def test_advance_phase_preserves_iterations(self):
+        """advance_phase guarda el contador de iteraciones en la fase completada."""
+        session = create_session("feature", "Test iteraciones")
+        session["iteraciones_fase"] = 3
+        session = advance_phase(session, resultado="aprobado")
+        fase_completada = session["fases_completadas"][-1]
+        self.assertEqual(fase_completada["iteraciones"], 3)
+
 
 class TestAutopilot(unittest.TestCase):
     """Tests para el modo autopilot (v0.4.0)."""

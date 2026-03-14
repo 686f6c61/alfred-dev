@@ -740,12 +740,14 @@ def advance_phase(
             f"No se puede avanzar: {gate_result['reason']}"
         )
 
-    # Registrar la fase completada
+    # Registrar la fase completada; se preserva el contador de iteraciones
+    # para que los informes de sesión puedan mostrar cuántos ciclos requirió la fase.
     fase_completada = {
         "nombre": fases[session["fase_numero"]]["nombre"],
         "resultado": resultado,
         "artefactos": artefactos,
         "completada_en": datetime.now(timezone.utc).isoformat(),
+        "iteraciones": session.get("iteraciones_fase", 0),
     }
     session["fases_completadas"].append(fase_completada)
 
