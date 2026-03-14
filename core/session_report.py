@@ -40,7 +40,22 @@ _REPORT_TEMPLATE = """# Informe de sesion: {comando}
 
 ---
 
-*Generado automaticamente por Alfred Dev v0.4.1*
+*Generado automaticamente por Alfred Dev v{version}*
+"""
+
+_REPORT_TEMPLATE_INTERRUPTED = """# Sesion interrumpida: {comando}
+
+**Fecha:** {fecha}
+**Duracion estimada:** {duracion}
+**Descripcion:** {descripcion}
+
+---
+
+{secciones}
+
+---
+
+*Generado automaticamente por Alfred Dev v{version}*
 """
 
 
@@ -187,6 +202,62 @@ def _section_artifacts(session: Dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _get_plugin_version() -> str:
+    """Lee la version del plugin desde plugin.json. Fallback a hardcoded."""
+    try:
+        plugin_path = os.path.join(
+            os.path.dirname(__file__), "..", ".claude-plugin", "plugin.json"
+        )
+        with open(plugin_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("version", "0.4.2")
+    except (OSError, json.JSONDecodeError, KeyError):
+        return "0.4.2"
+
+
+def _section_mode(session: Dict[str, Any]) -> str:
+    """Genera la seccion de modo de sesion (autopilot o interactivo).
+
+    Args:
+        session: estado de la sesion.
+
+    Returns:
+        Bloque markdown con el modo de sesion.
+    """
+    is_autopilot = session.get("autopilot", False)
+    modo = "autopilot" if is_autopilot else "interactivo"
+    return f"## Modo de sesion\n\nModo: **{modo}**\n"
+
+
+def _section_iterations(session: Dict[str, Any]) -> str:
+    """Genera la seccion de iteraciones por fase si alguna tuvo reintentos.
+
+    Solo muestra fases que tuvieron al menos una iteracion, lo que
+    indica que la gate correspondiente no se supero a la primera.
+
+    Args:
+        session: estado de la sesion.
+
+    Returns:
+        Bloque markdown con la tabla de iteraciones, o cadena vacia
+        si ninguna fase tuvo reintentos.
+    """
+    fases = session.get("fases_completadas", [])
+    fases_con_iteraciones = [
+        f for f in fases if f.get("iteraciones", 0) > 0
+    ]
+    if not fases_con_iteraciones:
+        return ""
+
+    lines = ["## Iteraciones por fase\n"]
+    lines.append("| Fase | Iteraciones |")
+    lines.append("|------|------------|")
+    for fase in fases_con_iteraciones:
+        lines.append(f"| {fase['nombre']} | {fase['iteraciones']} |")
+
+    return "\n".join(lines) + "\n"
+
+
 def _estimate_duration(session: Dict[str, Any]) -> str:
     """Estima la duracion de la sesion a partir de las marcas temporales.
 
@@ -228,17 +299,23 @@ def generate_report(
     session: Dict[str, Any],
     evidence: Optional[Dict[str, Any]] = None,
     project_dir: Optional[str] = None,
+    completed: bool = True,
 ) -> str:
     """Genera un informe de sesion completo en formato markdown.
 
-    Ensambla las secciones del informe en orden: fases, evidencia de
-    tests, equipo y artefactos. El informe se guarda en el directorio
-    ``docs/alfred-reports/`` del proyecto.
+    Ensambla las secciones del informe en orden: modo, fases, iteraciones,
+    evidencia de tests, equipo y artefactos. El informe se guarda en el
+    directorio ``docs/alfred-reports/`` del proyecto.
+
+    Si ``completed`` es False, se usa un template alternativo que marca
+    la sesion como interrumpida, util para informes parciales generados
+    cuando el hook de stop detecta una sesion en curso.
 
     Args:
         session: estado de la sesion (dict del orquestador).
         evidence: datos de evidencia de tests (opcional).
         project_dir: directorio del proyecto. Si es None, usa cwd.
+        completed: True si la sesion esta completada, False si es parcial.
 
     Returns:
         Ruta del fichero generado.
@@ -247,7 +324,9 @@ def generate_report(
 
     # Ensamblar secciones
     secciones = []
+    secciones.append(_section_mode(session))
     secciones.append(_section_phases(session))
+    secciones.append(_section_iterations(session))
     secciones.append(_section_evidence(evidence))
     secciones.append(_section_team(session))
     secciones.append(_section_artifacts(session))
@@ -260,13 +339,16 @@ def generate_report(
     descripcion = session.get("descripcion", "sin descripcion")
     duracion = _estimate_duration(session)
     fecha = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    version = _get_plugin_version()
 
-    report_content = _REPORT_TEMPLATE.format(
+    template = _REPORT_TEMPLATE if completed else _REPORT_TEMPLATE_INTERRUPTED
+    report_content = template.format(
         comando=comando,
         fecha=fecha,
         duracion=duracion,
         descripcion=descripcion,
         secciones=secciones_text,
+        version=version,
     )
 
     # Guardar el informe

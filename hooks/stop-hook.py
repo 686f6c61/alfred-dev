@@ -151,6 +151,7 @@ def handle_session_report(session, project_dir, completed=True):
             session,
             evidence=evidence,
             project_dir=project_dir,
+            completed=completed,
         )
         print(
             f"[Alfred Dev] Informe de sesion guardado en: {report_path}",
