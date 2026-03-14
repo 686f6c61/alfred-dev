@@ -34,3 +34,7 @@ El `senior-dev` escribe primero un test que reproduce el bug, luego implementa e
 ### Fase 3: Validación
 Activa `qa-engineer` y `security-officer` en paralelo para regression testing y security check.
 **GATE (automático+seguridad):** QA y seguridad aprueban. Se evalúa siempre, incluso en autopilot.
+
+## Loop iterativo
+
+Si una gate no se supera al primer intento, corrige los problemas y vuelve a intentarlo. Maximo 5 intentos por fase. Si tras 5 intentos la gate sigue sin superarse, informa al usuario y espera instrucciones. En modo autopilot, si agotas los 5 intentos, deten el flujo e informa del problema -- no sigas reintentando indefinidamente.
