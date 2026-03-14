@@ -96,7 +96,7 @@ FLOWS: Dict[str, Dict[str, Any]] = {
                 "agentes": ["architect", "security-officer"],
                 "paralelo": True,
                 "gate": "gate_arquitectura",
-                "gate_tipo": GATE_USUARIO,
+                "gate_tipo": GATE_USUARIO_SEGURIDAD,
                 "descripcion": (
                     "Diseño técnico, elección de patrones y validación "
                     "de la propuesta arquitectónica con threat model."

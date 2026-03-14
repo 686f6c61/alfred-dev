@@ -30,6 +30,12 @@ class TestFlows(unittest.TestCase):
         expected = {"feature", "fix", "spike", "ship", "audit"}
         self.assertEqual(set(FLOWS.keys()), expected)
 
+    def test_architecture_gate_is_usuario_seguridad(self):
+        """La fase de arquitectura debe tener gate usuario+seguridad."""
+        fase_arq = FLOWS["feature"]["fases"][1]
+        self.assertEqual(fase_arq["nombre"], "arquitectura")
+        self.assertEqual(fase_arq["gate_tipo"], "usuario+seguridad")
+
 
 class TestSession(unittest.TestCase):
     def test_create_session(self):
