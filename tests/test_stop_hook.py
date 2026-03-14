@@ -143,5 +143,41 @@ class TestShouldBlock(unittest.TestCase):
         self.assertFalse(stop_hook.should_block(session, flow))
 
 
+class TestBuildBlockMessage(unittest.TestCase):
+    """Verifica la construccion del mensaje de bloqueo."""
+
+    def _make_fase(self, gate_tipo="usuario"):
+        return {
+            "nombre": "producto",
+            "agentes": ["product-owner"],
+            "descripcion": "Fase de prueba",
+            "gate_tipo": gate_tipo,
+        }
+
+    def test_interactive_user_gate_asks_for_approval(self):
+        """En modo interactivo, la gate de usuario pide confirmacion."""
+        session = create_session("feature", "Test")
+        fase = self._make_fase("usuario")
+        msg = stop_hook.build_block_message(session, fase, "usuario")
+        self.assertIn("aprobacion del usuario", msg.lower())
+        self.assertNotIn("autopilot", msg.lower())
+
+    def test_autopilot_user_gate_does_not_ask_for_approval(self):
+        """En autopilot, la gate de usuario no pide confirmacion."""
+        session = create_session("feature", "Test")
+        session["autopilot"] = True
+        fase = self._make_fase("usuario")
+        msg = stop_hook.build_block_message(session, fase, "usuario")
+        self.assertIn("autopilot", msg.lower())
+        self.assertNotIn("aprobacion del usuario", msg.lower())
+
+    def test_automatic_gate_mentions_tests(self):
+        """La gate automatica menciona tests."""
+        session = create_session("feature", "Test")
+        fase = self._make_fase("automatico")
+        msg = stop_hook.build_block_message(session, fase, "automatico")
+        self.assertIn("tests", msg.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
