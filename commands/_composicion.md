@@ -120,11 +120,25 @@ probablemente no.
 Antes de presentar las preguntas al usuario, comprueba si el modo autopilot está activo:
 
 1. Lee `.claude/alfred-dev.local.md` y comprueba si todas las fases de autonomía están en `autonomo`.
-2. Lee `.claude/alfred-dev-state.json` y comprueba si tiene `"modo": "autopilot"`.
+2. Lee `.claude/alfred-dev-state.json` y comprueba si tiene `"autopilot": true`.
 
 **Si autopilot está activo:** salta directamente al paso 4. Usa los agentes opcionales configurados en `.claude/alfred-dev.local.md` (si existen) o los que tu razonamiento semántico (paso 2) haya marcado como relevantes. No uses `AskUserQuestion`. Muestra un mensaje breve indicando qué agentes se activan y por qué.
 
 **Si autopilot NO está activo:** continúa con el paso 3 (presentación interactiva al usuario).
+
+## Paso 2c -- Verificación de evidencia antes de gates automáticas
+
+Antes de avanzar una fase con gate automática o automática+seguridad, lee
+`.claude/alfred-evidence.json` y comprueba que el último registro tiene
+`result: "pass"` y un timestamp de los últimos 10 minutos. Si no hay
+evidencia o el último resultado no es `pass`, NO avances. Ejecuta los
+tests primero.
+
+## Paso 2d -- Persistencia de estado tras gates
+
+Después de cada intento de superar una gate (exitoso o no), guarda el estado
+actualizado en `.claude/alfred-dev-state.json`. Esto incluye el contador de
+iteraciones de la fase actual.
 
 ## Paso 3 -- Presentación al usuario
 
