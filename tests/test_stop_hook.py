@@ -19,6 +19,17 @@ sys.path.insert(0, _plugin_root)
 
 from core.orchestrator import FLOWS, create_session, load_state, save_state
 
+import importlib.util
+
+_hooks_dir = os.path.join(_plugin_root, "hooks")
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
+
+_stop_hook_path = os.path.join(_hooks_dir, "stop-hook.py")
+_spec = importlib.util.spec_from_file_location("stop_hook", _stop_hook_path)
+stop_hook = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(stop_hook)
+
 
 class TestStopHookLogic(unittest.TestCase):
     """Verifica la logica de bloqueo del hook de Stop."""
@@ -109,6 +120,27 @@ class TestStopHookLogic(unittest.TestCase):
         # El hook verificaria que el flujo existe en FLOWS y, al no existir,
         # permitiria la parada. Aqui verificamos que load_state no falla.
         self.assertNotIn(loaded["comando"], FLOWS)
+
+
+class TestShouldBlock(unittest.TestCase):
+    """Verifica la funcion should_block."""
+
+    def test_completed_session_does_not_block(self):
+        session = create_session("feature", "Test")
+        session["fase_actual"] = "completado"
+        flow = FLOWS["feature"]
+        self.assertFalse(stop_hook.should_block(session, flow))
+
+    def test_active_session_blocks(self):
+        session = create_session("feature", "Test")
+        flow = FLOWS["feature"]
+        self.assertTrue(stop_hook.should_block(session, flow))
+
+    def test_incoherent_fase_numero_does_not_block(self):
+        session = create_session("feature", "Test")
+        session["fase_numero"] = 999
+        flow = FLOWS["feature"]
+        self.assertFalse(stop_hook.should_block(session, flow))
 
 
 if __name__ == "__main__":
