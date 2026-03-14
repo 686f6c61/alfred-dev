@@ -179,5 +179,58 @@ class TestBuildBlockMessage(unittest.TestCase):
         self.assertIn("tests", msg.lower())
 
 
+class TestHandleSessionReport(unittest.TestCase):
+    """Verifica la generacion de informes desde el stop-hook."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_generates_complete_report(self):
+        """Una sesion completada genera informe normal."""
+        session = {
+            "comando": "feature",
+            "descripcion": "Login",
+            "fase_actual": "completado",
+            "fases_completadas": [
+                {"nombre": "producto", "resultado": "aprobado"},
+            ],
+            "artefactos": [],
+            "creado_en": "2026-03-14T10:00:00+00:00",
+            "actualizado_en": "2026-03-14T10:30:00+00:00",
+        }
+        stop_hook.handle_session_report(session, self.tmpdir, completed=True)
+        report_dir = os.path.join(self.tmpdir, "docs", "alfred-reports")
+        self.assertTrue(os.path.isdir(report_dir))
+        reports = os.listdir(report_dir)
+        self.assertEqual(len(reports), 1)
+        with open(os.path.join(report_dir, reports[0])) as f:
+            content = f.read()
+        self.assertIn("Informe de sesion", content)
+
+    def test_generates_partial_report(self):
+        """Una sesion parcial genera informe."""
+        session = {
+            "comando": "feature",
+            "descripcion": "Login",
+            "fase_actual": "desarrollo",
+            "fase_numero": 2,
+            "fases_completadas": [
+                {"nombre": "producto", "resultado": "aprobado"},
+            ],
+            "artefactos": [],
+            "creado_en": "2026-03-14T10:00:00+00:00",
+            "actualizado_en": "2026-03-14T10:30:00+00:00",
+        }
+        stop_hook.handle_session_report(session, self.tmpdir, completed=False)
+        report_dir = os.path.join(self.tmpdir, "docs", "alfred-reports")
+        self.assertTrue(os.path.isdir(report_dir))
+        reports = os.listdir(report_dir)
+        self.assertEqual(len(reports), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
