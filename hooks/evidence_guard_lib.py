@@ -83,6 +83,7 @@ SUCCESS_PATTERNS = [
     r"\bPASS(?:ED)?\b",             # PASS o PASSED
     r"\d+\s+tests?\s+complete",
     r"[Tt]ests?\s+run:\s+\d+",      # "Tests run: N" — formato JUnit/Maven/TestNG
+    r"(?m)^ok\s+\S+",               # go test: "ok  github.com/foo/bar 0.003s" (multiline para anclar ^)
 ]
 
 

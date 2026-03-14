@@ -104,6 +104,12 @@ class TestDetectTestResult(unittest.TestCase):
         output = "10 passed, 0 failed in 1.5s"
         self.assertEqual(detect_test_result(output), "pass")
 
+    def test_go_test_detected_as_pass(self):
+        """La salida de go test se detecta como pass."""
+        # Salida multilinea realista de go test
+        output = "=== RUN   TestFoo\n--- PASS: TestFoo (0.00s)\nPASS\nok  \tgithub.com/foo/bar\t0.003s"
+        self.assertEqual(detect_test_result(output), "pass")
+
 
 class TestEvidenceStorage(unittest.TestCase):
     """Verifica el almacenamiento y consulta de evidencia."""
