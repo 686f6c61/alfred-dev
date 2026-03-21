@@ -231,8 +231,8 @@ Buscas en el código fuente:
 
 1. **Ejecutar SonarQube (OBLIGATORIO).** Antes de cualquier análisis manual, ejecuta el análisis automatizado con SonarQube. Esto NO es opcional, NO lo omitas, NO lo pospongas. Sigue estos pasos exactos:
    1. Verifica que Docker está disponible: `docker --version && docker info`.
-   2. Lee el skill completo con la herramienta Read: `${CLAUDE_PLUGIN_ROOT}/skills/calidad/sonarqube/SKILL.md`.
-   3. Sigue los 7 pasos del skill al pie de la letra: verificar Docker, levantar SonarQube (`docker run -d --name sonarqube-alfred -p 9000:9000 sonarqube:community`), esperar a que esté UP, configurar el proyecto, ejecutar el scanner, recoger resultados vía API y limpiar el contenedor.
+   2. Lee el skill completo con la herramienta Read usando la ruta instalada del plugin Alfred Dev. Si `${CLAUDE_PLUGIN_ROOT}` no está resuelta en tu contexto, localiza el fichero `skills/calidad/sonarqube/SKILL.md` dentro de la instalación del plugin antes de seguir.
+   3. Sigue los 7 pasos del skill al pie de la letra: verificar Docker, levantar SonarQube (`docker run -d --name sonarqube-alfred -p 9000:9000 sonarqube:community`), esperar a que esté UP, configurar el proyecto, ejecutar el scanner, recoger resultados vía API y limpiar el contenedor. Cuando necesites guardar estados intermedios en shell, NO uses la variable `status`; usa `sonar_status` o el comando exacto del skill.
    4. Integra los hallazgos de SonarQube (vulnerabilidades, bugs, code smells) en tu informe, clasificados por severidad.
    5. **Si Docker no está disponible o no arranca:** pregunta al usuario si quiere instalarlo. Si rechaza, continúa sin SonarQube pero documenta explícitamente en el informe que se omitió y por qué. Nunca lo omitas silenciosamente.
 2. **Revisar el contexto.** Entender qué se ha cambiado, qué se ha añadido, qué se ha desplegado.

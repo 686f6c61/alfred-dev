@@ -7,6 +7,25 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.3] - 2026-03-21
+
+### Fixed
+
+- **Preflight obligatorio de SonarQube en `/alfred audit`**: la auditoria ahora comprueba Docker antes de lanzar agentes y no deja que SonarQube se omita silenciosamente cuando falta el daemon o hacen falta permisos.
+- **Pregunta interactiva incluso en autopilot**: si hay que instalar Docker, arrancarlo o abrir Docker Desktop, Alfred pide confirmacion explicita al usuario antes de tocar el sistema.
+- **Skill de SonarQube endurecido**: el skill ya no asume permisos, contempla contenedor previo, puerto `9000` ocupado y limpieza final aunque el analisis falle.
+- **Ayuda alineada con el equipo real**: `/alfred help` vuelve a listar los 9 agentes de nucleo incluyendo `project-manager (SonIA)`.
+
+### Added
+
+- **Tests de contrato para prompts operativos**: nueva cobertura de regresion para asegurar que `audit.md` y `skills/calidad/sonarqube/SKILL.md` siguen pidiendo permisos y documentando la omision de SonarQube cuando corresponde.
+
+### Changed
+
+- **Versionado coherente a 0.4.3**: plugin, marketplace, instaladores, paquetes y referencias visibles de la web quedan alineados en una sola version.
+
+---
+
 ## [0.4.2] - 2026-03-14
 
 ### Fixed

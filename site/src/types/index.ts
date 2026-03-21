@@ -94,7 +94,7 @@ export interface HeroData {
   ctas: HeroCta[];
   /** Bloque de features destacadas debajo de los CTAs (opcional). */
   features?: {
-    /** Etiqueta de version (ej. "Nuevo en v0.4.2"). */
+    /** Etiqueta de version (ej. "Nuevo en v0.4.3"). */
     label: string;
     /** Lista de features. */
     items: HeroFeature[];

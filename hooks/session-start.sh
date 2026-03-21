@@ -46,15 +46,15 @@ El Fontanero (DevOps), El Escriba (documentación) y SonIA (project management).
 
 ### Comandos disponibles
 
-- /alfred feature <descripción> - Nuevo desarrollo con flujo completo (producto -> arquitectura -> desarrollo -> calidad -> docs -> entrega)
-- /alfred fix <descripción> - Corregir un bug (diagnóstico -> corrección -> validación)
-- /alfred spike <descripción> - Investigación exploratoria (exploración -> conclusiones)
-- /alfred ship - Preparar release (auditoría -> docs -> empaquetado -> despliegue)
-- /alfred audit - Auditoría completa del código (calidad + seguridad + simplificación)
-- /alfred config - Ver o modificar la configuración del plugin
-- /alfred status - Estado de la sesión de trabajo activa
-- /alfred update - Comprobar y aplicar actualizaciones del plugin
-- /alfred help - Ayuda detallada de todos los comandos
+- /alfred-dev:feature <descripción> - Nuevo desarrollo con flujo completo (producto -> arquitectura -> desarrollo -> calidad -> docs -> entrega)
+- /alfred-dev:fix <descripción> - Corregir un bug (diagnóstico -> corrección -> validación)
+- /alfred-dev:spike <descripción> - Investigación exploratoria (exploración -> conclusiones)
+- /alfred-dev:ship - Preparar release (auditoría -> docs -> empaquetado -> despliegue)
+- /alfred-dev:audit - Auditoría completa del código (calidad + seguridad + simplificación)
+- /alfred-dev:config - Ver o modificar la configuración del plugin
+- /alfred-dev:status - Estado de la sesión de trabajo activa
+- /alfred-dev:update - Comprobar y aplicar actualizaciones del plugin
+- /alfred-dev:help - Ayuda detallada de todos los comandos
 
 ### Reglas de operación
 
@@ -131,7 +131,7 @@ except (json.JSONDecodeError, KeyError) as e:
 
 ${STATE_INFO}
 
-Puedes continuar la sesión con /alfred status o avanzar a la siguiente fase."
+Puedes continuar la sesión con /alfred-dev:status o avanzar a la siguiente fase."
   fi
 fi
 
@@ -418,14 +418,28 @@ except Exception as e:
     print(f'[Alfred Dev] Error comprobando actualizaciones: {e}', file=sys.stderr)
 " 2>/dev/null || echo "")
 
+  UPDATE_AVAILABLE=$(python3 -c "
+import re, sys
+
+def parse(version):
+    match = re.match(r'^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-[A-Za-z0-9.]+)?$', version)
+    if not match:
+        raise ValueError(version)
+    return tuple(int(part) for part in match.groups())
+
+current = parse(sys.argv[1])
+latest = parse(sys.argv[2])
+print('yes' if latest > current else 'no')
+" "$CURRENT_VERSION" "$LATEST_RELEASE" 2>/dev/null || echo "")
+
   # Solo aceptar versiones con formato semántico válido para evitar
   # inyección de contenido arbitrario desde la respuesta de la API.
-  if [[ -n "$LATEST_RELEASE" && "$LATEST_RELEASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ && "$LATEST_RELEASE" != "$CURRENT_VERSION" ]]; then
+  if [[ -n "$LATEST_RELEASE" && "$LATEST_RELEASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ && "$UPDATE_AVAILABLE" == "yes" ]]; then
     CONTEXT="${CONTEXT}
 
 ### Actualización disponible
 
-Hay una nueva versión de Alfred Dev: v${LATEST_RELEASE} (actual: v${CURRENT_VERSION}). Ejecuta /alfred update para actualizar."
+Hay una nueva versión de Alfred Dev: v${LATEST_RELEASE} (actual: v${CURRENT_VERSION}). Ejecuta /alfred-dev:update para actualizar."
   fi
 fi
 

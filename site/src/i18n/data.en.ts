@@ -114,26 +114,26 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'New in v0.4.2',
+      label: 'New in v0.4.3',
       items: [
         {
-          title: 'Verifiable evidence',
-          description: 'Every test execution is recorded. When an agent claims tests pass, the system verifies it.',
+          title: 'Real SonarQube preflight',
+          description: 'The audit checks Docker before launching agents and decides whether SonarQube can actually run.',
           svgContent: '<path d="M9 12l2 2 4-4"/><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z"/>',
         },
         {
-          title: 'Autopilot mode',
-          description: 'Full workflows unattended. User gates auto-approved; security and test gates evaluated normally.',
+          title: 'Explicit permissions',
+          description: 'If Docker must be installed or started, Alfred asks before touching the system, even in autopilot.',
           svgContent: '<path d="M12 16v5"/><path d="M16 14l-4 2-4-2"/><path d="M12 3l9 4.5v5L12 17l-9-4.5v-5L12 3z"/>',
         },
         {
-          title: 'Iterative loop',
-          description: 'Up to 5 retries per phase if the gate fails. Natural TDD cycles without manual intervention.',
+          title: 'No silent SonarQube skip',
+          description: 'If the user chooses to continue without SonarQube or permissions are missing, the audit must document it explicitly.',
           svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
         },
         {
-          title: 'Session reports',
-          description: 'On close, a markdown summary is generated with phases, test evidence and artefacts.',
+          title: 'Prompt contract under test',
+          description: 'Regression coverage now protects the audit and SonarQube prompts so this behavior does not silently degrade again.',
           svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         },
       ],
@@ -1200,6 +1200,22 @@ personality:
 
   changelog: [
     {
+      version: '0.4.3',
+      date: '2026-03-21',
+      fixed: [
+        'Mandatory SonarQube preflight in /alfred audit: the audit checks Docker before launching agents and no longer lets SonarQube be skipped silently.',
+        'Interactive prompt even in autopilot: if Docker must be installed, started, or Docker Desktop opened, Alfred asks for explicit confirmation.',
+        'Hardened SonarQube skill: handles permissions, stale containers, busy port 9000, and final cleanup even if analysis fails.',
+        'Help aligned with the real team: /alfred help now lists the 9 core agents including project-manager (SonIA).',
+      ],
+      added: [
+        'Contract tests for the audit and SonarQube prompts, protecting the interactive behavior and omission reporting.',
+      ],
+      changed: [
+        'Versioning aligned to 0.4.3 across plugin, marketplace, installers, packages, and visible website references.',
+      ],
+    },
+    {
       version: '0.4.2',
       date: '2026-03-14',
       fixed: [
@@ -1501,7 +1517,7 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.2',
+    version: 'v0.4.3',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

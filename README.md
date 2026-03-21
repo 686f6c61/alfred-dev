@@ -68,9 +68,20 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred fix` con una descripcion del bug o `/alfred spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.2
+## Novedades en v0.4.3
 
-La v0.4.2 es un parche de robustez tras una auditoria exhaustiva del evidence guard, autopilot, loop iterativo e informes de sesion:
+La v0.4.3 corrige el punto mas delicado del flujo `/alfred audit`: SonarQube ya no se "olvida" cuando Docker no esta listo y Alfred pregunta antes de tocar el sistema:
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Preflight real de SonarQube** | `/alfred audit` comprueba `docker --version` y `docker info` antes de lanzar la auditoria. |
+| **Confirmacion obligatoria** | Si hace falta instalar Docker o arrancar el daemon, Alfred pide permiso explicito incluso en autopilot. |
+| **Omisiones documentadas** | Si el usuario decide seguir sin SonarQube, el informe debe dejarlo por escrito en vez de saltarselo en silencio. |
+| **Skill endurecido** | El skill de SonarQube contempla permisos, puerto `9000` ocupado, contenedores previos y limpieza final. |
+
+### Novedades de v0.4.2
+
+La v0.4.2 fue un parche de robustez tras una auditoria exhaustiva del evidence guard, autopilot, loop iterativo e informes de sesion:
 
 | Novedad | Descripcion |
 |---------|-------------|

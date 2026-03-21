@@ -24,7 +24,7 @@ Explica brevemente que Alfred Dev es un equipo de **9 agentes de núcleo** (siem
 
 ### Agentes de núcleo
 
-product-owner, architect, senior-dev, security-officer, qa-engineer, devops-engineer, tech-writer y Alfred como orquestador.
+product-owner, architect, senior-dev, security-officer, qa-engineer, devops-engineer, tech-writer, project-manager (SonIA) y Alfred como orquestador.
 
 ### Agentes opcionales
 

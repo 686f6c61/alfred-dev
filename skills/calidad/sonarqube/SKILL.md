@@ -13,16 +13,23 @@ No sustituye al qa-engineer ni al security-officer: complementa su trabajo con u
 
 ## Proceso
 
-### Paso 1: verificar e instalar Docker
+### Paso 1: preflight de Docker y permisos
 
-Comprobar que Docker está instalado y en ejecución:
+Comprobar si Docker está disponible y si el daemon responde:
 
 ```bash
 docker --version
 docker info
 ```
 
-Si Docker no está instalado, pregunta al usuario si quiere que Alfred lo instale. Si acepta, instala la última versión estable según la plataforma:
+Interpreta el resultado con estas reglas:
+
+- **Si `docker --version` falla**: Docker no está instalado. Explica al usuario que SonarQube lo necesita y que la instalación puede requerir permisos de administrador.
+- **Si `docker --version` funciona pero `docker info` falla**: Docker está instalado, pero el daemon no está disponible. Explica al usuario que hay que arrancar Docker Desktop o el servicio del sistema antes de continuar.
+
+**No instales Docker, no abras Docker Desktop y no arranques el daemon sin aprobación explícita del usuario.** Si la orden viene desde `/alfred audit`, respeta la decisión tomada en su preflight. Si no existe una autorización previa, pídela ahora y espera respuesta.
+
+Si el usuario autoriza la instalación, instala la última versión estable según la plataforma:
 
 **macOS:**
 ```bash
@@ -42,17 +49,47 @@ sudo usermod -aG docker $USER
 winget install Docker.DockerDesktop
 ```
 
-Después de la instalación, verificar con `docker info` que el daemon está corriendo. Si Docker está instalado pero no arrancado, iniciarlo automáticamente.
+Si el usuario autoriza arrancar Docker cuando está instalado pero el daemon no responde, usa la estrategia mínima necesaria para la plataforma:
 
-No avanzar hasta que `docker info` responda correctamente.
+**macOS:**
+```bash
+open -a Docker
+```
+
+**Linux (systemd):**
+```bash
+sudo systemctl start docker
+```
+
+**Windows (PowerShell):**
+```powershell
+Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+```
+
+Después de instalar o arrancar Docker, verifica otra vez con `docker info`.
+
+- Si `docker info` responde correctamente, continúa.
+- Si el usuario rechaza la instalación o el arranque, o si el daemon sigue sin responder, **detén aquí la rama de SonarQube** y devuelve un resultado explícito: "SonarQube omitido por decisión del usuario o por falta de permisos". No intentes forzarlo por otras vías.
 
 ### Paso 2: levantar SonarQube
+
+Antes de levantar el contenedor:
+
+- Comprueba si ya existe `sonarqube-alfred`. Si existe de una ejecución anterior, elimínalo primero para evitar conflictos:
+
+```bash
+docker rm -f sonarqube-alfred 2>/dev/null || true
+```
+
+- Comprueba si el puerto `9000` ya está en uso. Si lo está, detén la ejecución y pregunta al usuario si quiere liberar ese puerto o continuar sin SonarQube. No mates procesos por tu cuenta.
 
 ```bash
 docker run -d --name sonarqube-alfred -p 9000:9000 sonarqube:community
 ```
 
 Esperar a que SonarQube esté listo (puede tardar 1-2 minutos):
+
+Usa este bucle exacto o uno equivalente. **No uses la variable `status` en scripts de shell**: en `zsh` es de solo lectura y romperá la espera. Si necesitas guardar el estado en una variable, usa `sonar_status`.
 
 ```bash
 until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
@@ -122,9 +159,12 @@ Cuando el análisis esté completo y los resultados revisados:
 docker stop sonarqube-alfred && docker rm sonarqube-alfred
 ```
 
+Si el análisis falla a mitad del proceso, intenta igualmente la limpieza final del contenedor temporal antes de salir.
+
 ## Qué NO hacer
 
 - No dejar SonarQube corriendo indefinidamente. Es una herramienta de análisis puntual, no un servicio permanente.
+- No instalar Docker, arrancar el daemon ni abrir Docker Desktop sin permiso explícito del usuario.
 - No tratar todos los hallazgos como iguales. Priorizar por impacto real, no por cantidad.
 - No corregir hallazgos sin entender por qué SonarQube los marca. A veces los falsos positivos existen.
 - No sustituir los code reviews humanos por SonarQube. Son complementarios.
