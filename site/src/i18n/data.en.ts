@@ -100,7 +100,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Your development<br>teammates in one <em>plugin</em>',
     platformHtml: 'for <span style="color: var(--blue);">Claude Code</span> and <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(in development)</span>',
-    subtitle: '17 specialised agents with their own personality. 9 core, 8 optional that you activate per project. Persistent memory, quality gates, 60 skills, from idea to production.',
+    subtitle: '17 specialised agents with their own personality. 9 core, 8 optional. 6 execution workflows, 18 commands, persistent memory, operational continuity and quality gates, from idea to production.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -114,26 +114,26 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'New in v0.4.2',
+      label: 'Now on main',
       items: [
         {
-          title: 'Verifiable evidence',
-          description: 'Every test execution is recorded. When an agent claims tests pass, the system verifies it.',
+          title: 'Real operational continuity',
+          description: 'Alfred can now tell you what to do next, pause a session, resume it, and show project state without forcing you to reread half the repo.',
           svgContent: '<path d="M9 12l2 2 4-4"/><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z"/>',
         },
         {
-          title: 'Autopilot mode',
-          description: 'Full workflows unattended. User gates auto-approved; security and test gates evaluated normally.',
+          title: 'Brownfield without flying blind',
+          description: 'Existing repos now start with map-codebase and discuss: Alfred leaves a persistent codebase map before opening implementation workflows.',
           svgContent: '<path d="M12 16v5"/><path d="M16 14l-4 2-4-2"/><path d="M12 3l9 4.5v5L12 17l-9-4.5v-5L12 3z"/>',
         },
         {
-          title: 'Iterative loop',
-          description: 'Up to 5 retries per phase if the gate fails. Natural TDD cycles without manual intervention.',
+          title: 'Quick mode with guardrails',
+          description: 'Small changes now have a dedicated lightweight workflow: less ceremony than feature, but still with tests, local regression checks and security review.',
           svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
         },
         {
-          title: 'Session reports',
-          description: 'On close, a markdown summary is generated with phases, test evidence and artefacts.',
+          title: 'Explicit UAT and traceability',
+          description: 'verify separates automatic tests from human acceptance, while progress exposes kanban, blockers, traceability and UAT state.',
           svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         },
       ],
@@ -147,8 +147,8 @@ const data: PageData = {
   stats: [
     { number: 17, label: 'Agents' },
     { number: 60, label: 'Skills' },
-    { number: 5, label: 'Workflows' },
-    { number: 10, label: 'Commands' },
+    { number: 6, label: 'Workflows' },
+    { number: 18, label: 'Commands' },
     { number: 7, label: 'Templates' },
     { number: 11, label: 'Hooks' },
     { number: 23, label: 'Gates' },
@@ -328,9 +328,9 @@ const data: PageData = {
       label: 'Dynamic composition',
       labelColor: 'var(--gold)',
       title: 'The team you need, when you need it',
-      description: 'Alfred analyzes your task in real time and suggests the most relevant optional agents. Describe what you want to do and the system proposes the ideal team.',
+      description: 'When Alfred detects that it is time to open a multi-agent workflow, it analyzes your task in real time and suggests the most relevant optional agents. If mapping, resuming, verifying or showing progress comes first, it resolves that before composing a full team.',
     },
-    introHtml: 'When you run <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>, Alfred reasons about which specialists fit the work, presents the agent selection and starts the product phase with one question at a time. This is what it looks like in the terminal:',
+    introHtml: 'When <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:alfred</code> or an explicit command decides that the correct route is a multi-agent workflow, Alfred reasons about which specialists fit the work, presents the selection and starts the right phase. This is what it looks like when the chosen route is <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>:',
     terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'Migrate the database from SQLite to PostgreSQL and redesign the checkout interface with accessibility testing',
     coreTeamText: 'Core team (always active): Alfred, Product Owner, Architect, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA.',
@@ -365,8 +365,8 @@ const data: PageData = {
   workflows: {
     header: {
       label: 'Workflows',
-      title: '5 workflows, 16 phases',
-      description: 'Each workflow has sequential phases with quality gates between them. If a gate fails, the workflow doesn\'t advance. Optional agents integrate automatically into their corresponding phases.',
+      title: '6 execution workflows, 18 phases',
+      description: 'Each workflow has sequential phases with quality gates between them. If a gate fails, the workflow doesn\'t advance. On top of these workflows, Alfred adds an operational continuity layer with commands such as next, pause, resume, verify and progress.',
     },
     flows: [
       {
@@ -374,6 +374,12 @@ const data: PageData = {
         subtitle: 'Full or partial cycle',
         description: '6 phases: product, architecture, TDD development, quality + security, documentation, delivery. You can start from any phase.',
         stages: ['Product', 'Architecture', 'Development', 'Quality + Security', 'Documentation', 'Delivery'],
+      },
+      {
+        command: '/alfred-dev:quick',
+        subtitle: 'Small change',
+        description: '2 phases: bounded execution and quick validation. Less ceremony than feature, but still with tests and security review.',
+        stages: ['Bounded execution', 'Quick validation'],
       },
       {
         command: '/alfred-dev:fix',
@@ -592,12 +598,13 @@ const data: PageData = {
     header: {
       label: 'Under the hood',
       title: 'Hooks, templates and core',
-      description: 'The infrastructure that powers the team: hooks that watch, templates that standardise and a core that orchestrates.',
+      description: 'The infrastructure that powers the team: hooks that bootstrap sessions, templates that standardise artifacts, and a core that orchestrates both execution workflows and operational continuity.',
     },
     groups: [
       {
-        title: '11 hooks',
+        title: '12 hooks',
         items: [
+          { name: 'session-bootstrap.sh', label: 'SessionStart' },
           { name: 'session-start.sh', label: 'SessionStart' },
           { name: 'stop-hook.py', label: 'Stop' },
           { name: 'secret-guard.sh', label: 'PreToolUse' },
@@ -624,9 +631,10 @@ const data: PageData = {
         ],
       },
       {
-        title: '5 core modules',
+        title: '6 core modules',
         items: [
           { name: 'orchestrator.py', label: 'Workflows, sessions, gates, iterative loop and autopilot' },
+          { name: 'continuity.py', label: 'map-codebase, discuss, next, pause, resume, verify and progress' },
           { name: 'personality.py', label: 'Personality engine' },
           { name: 'config_loader.py', label: 'Config and stack detection' },
           { name: 'memory.py', label: 'SQLite persistent memory' },
@@ -643,17 +651,29 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interface',
-      title: '10 commands',
-      description: 'Everything is controlled from the Claude Code command line. One prefix, one verb, one description.',
+      title: '18 commands',
+      description: 'Everything is controlled from the Claude Code command line. Alfred combines contextual routing, multi-agent workflows, operational continuity, project visibility and plugin administration.',
     },
     list: [
       {
         command: '/alfred-dev:alfred',
-        description: 'Contextual assistant: detects the stack and active session, asks what you need and launches the appropriate workflow.',
+        description: 'Contextual assistant: detects stack, active session and project state, then decides whether to map, resume, refine, make a small change or open a full workflow.',
+      },
+      {
+        command: '/alfred-dev:map-codebase',
+        description: 'Analyzes an existing repository and creates <code>docs/project/codebase-map.md</code> and <code>docs/project/current.md</code> before touching product code.',
+      },
+      {
+        command: '/alfred-dev:discuss',
+        description: 'Refines an idea or feature before implementation. Leaves <code>discovery.md</code>, <code>current.md</code> and a recommended next command.',
       },
       {
         command: '/alfred-dev:feature',
         description: 'Full 6-phase cycle or from any phase you specify. Alfred asks and adapts: "from development", "documentation only", "full cycle".',
+      },
+      {
+        command: '/alfred-dev:quick',
+        description: 'Small, bounded change with two lightweight phases: execution on the touched surface and quick QA + security validation.',
       },
       {
         command: '/alfred-dev:fix',
@@ -662,6 +682,26 @@ const data: PageData = {
       {
         command: '/alfred-dev:spike',
         description: 'Exploratory investigation with no commitment: prototypes, benchmarks, conclusions.',
+      },
+      {
+        command: '/alfred-dev:next',
+        description: 'Answers “what should happen now” and executes the right route if it is unambiguous: resume, verify, map or suggest the next workflow.',
+      },
+      {
+        command: '/alfred-dev:pause',
+        description: 'Pauses the current work and leaves an explicit handoff in <code>.claude/alfred-handoff.json</code> and <code>docs/project/handoff.md</code>.',
+      },
+      {
+        command: '/alfred-dev:resume',
+        description: 'Resumes an active session or pending handoff without blindly opening a brand-new iteration.',
+      },
+      {
+        command: '/alfred-dev:verify',
+        description: 'Prepares or records manual validation/UAT for the current deliverable, separating human acceptance from automatic tests.',
+      },
+      {
+        command: '/alfred-dev:progress',
+        description: 'Summarises project progress, kanban, blockers, traceability and UAT state in one operational view.',
       },
       {
         command: '/alfred-dev:ship',
@@ -673,11 +713,11 @@ const data: PageData = {
       },
       {
         command: '/alfred-dev:config',
-        description: 'Configure autonomy, stack, compliance, personality, <strong style="color: var(--gold);">optional agents</strong> and <strong style="color: var(--gold);">persistent memory</strong>. Includes contextual discovery: Alfred analyses your project and suggests which agents to enable.',
+        description: 'Configure autonomy, stack, compliance, personality, <strong style="color: var(--gold);">optional agents</strong> and <strong style="color: var(--gold);">persistent memory</strong>. The first session can bootstrap this config automatically.',
       },
       {
         command: '/alfred-dev:status',
-        description: 'Active session: current phase, completed phases with duration, pending gate and active agent.',
+        description: 'Active session state: current phase, completed phases, pending gate, prior refinement and immediate operational focus.',
       },
       {
         command: '/alfred-dev:update',
@@ -688,7 +728,7 @@ const data: PageData = {
         description: 'Full help for all available commands.',
       },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Optional agents in workflows:</strong> the 8 optional agents don\'t have their own commands. They are activated with <strong style="color: var(--blue);">/alfred-dev:config</strong> and from then on integrate automatically into existing workflows. For example, if you activate the <em>data-engineer</em>, it will participate in the architecture phase of <strong style="color: var(--blue);">/alfred-dev:feature</strong>; if you activate the <em>seo-specialist</em>, it will intervene in the quality phase of <strong style="color: var(--blue);">/alfred-dev:ship</strong>; if you activate <em>The Librarian</em>, Alfred will consult the decision history before each workflow. Alfred decides when to invoke each agent based on the workflow context.',
+    optionalNote: '<strong style="color: var(--gold);">Optional agents in workflows:</strong> the 8 optional agents don\'t have their own commands. They are activated with <strong style="color: var(--blue);">/alfred-dev:config</strong> and Alfred integrates them automatically when the command needs them, especially in <strong style="color: var(--blue);">/alfred-dev:feature</strong>, <strong style="color: var(--blue);">/alfred-dev:quick</strong>, <strong style="color: var(--blue);">/alfred-dev:fix</strong>, <strong style="color: var(--blue);">/alfred-dev:spike</strong>, <strong style="color: var(--blue);">/alfred-dev:audit</strong> and <strong style="color: var(--blue);">/alfred-dev:ship</strong>. Operational commands (<em>map-codebase</em>, <em>next</em>, <em>pause</em>, <em>resume</em>, <em>verify</em>, <em>progress</em>) prioritise continuity and context before opening a full team.',
   },
 
   // ----------------------------------------------------------------
@@ -800,10 +840,101 @@ const data: PageData = {
         title: 'Contextual assistant',
         command: '/alfred-dev:alfred',
         steps: [
-          'Alfred detects the project stack and the active session state',
-          'Asks what you need and offers options adapted to the context',
-          'Interprets your natural language response and launches the appropriate workflow',
-          'You can also say "use the Alfred plugin" at any time',
+          'Alfred detects the project stack, active session, pending handoff and whether brownfield mapping is missing',
+          'It decides whether the right route is next, map-codebase, discuss, quick, feature, fix, spike, audit, verify or progress',
+          'If the correct route is operational, it resolves that before opening a multi-agent team',
+          'It only composes agents when it is actually time for an execution workflow',
+        ],
+      },
+      {
+        category: 'Brownfield',
+        color: 'var(--cyan)',
+        background: 'rgba(78,201,201,0.08)',
+        title: 'Enter an existing repository',
+        command: '/alfred-dev:map-codebase checkout',
+        steps: [
+          'Alfred analyzes README, manifests, main structure and sensitive areas without touching product code',
+          'It generates docs/project/codebase-map.md with domains, entrypoints, hotspots, tests, deployment and risks',
+          'It leaves docs/project/current.md with an operational reading and the recommended next command',
+          'From that point on, feature, fix, spike and audit no longer start blind',
+        ],
+      },
+      {
+        category: 'Refinement',
+        color: 'var(--gold)',
+        background: 'rgba(201,169,110,0.08)',
+        title: 'Clarify an idea before building',
+        command: '/alfred-dev:discuss new onboarding for teams',
+        steps: [
+          'Alfred clarifies the real problem, main actor, scope and assumptions before talking implementation',
+          'It persists the refinement in docs/project/discovery.md and updates docs/project/current.md',
+          'If the idea is mature enough, it recommends feature or quick; if technical data is still missing, spike',
+          'It avoids opening PRD, architecture or development too early',
+        ],
+      },
+      {
+        category: 'Small change',
+        color: 'var(--blue)',
+        background: 'rgba(91,156,245,0.08)',
+        title: 'Resolve something small without opening the whole machine',
+        command: '/alfred-dev:quick fix checkout copy and its test',
+        steps: [
+          'Quick opens a lightweight session with two phases: bounded execution and quick validation',
+          'The senior-dev changes only the touched surface and updates the necessary tests',
+          'QA and security review local regression and obvious risks without turning it into a global audit',
+          'The expected next step stays explicit: /alfred-dev:verify',
+        ],
+      },
+      {
+        category: 'Continuity',
+        color: 'var(--green)',
+        background: 'rgba(78,201,144,0.08)',
+        title: 'Know what comes next',
+        command: '/alfred-dev:next',
+        steps: [
+          'It prioritises active session, pending handoff, pending UAT or an unmapped brownfield repo',
+          'If the outcome is unambiguous, it executes the correct route without showing a generic menu',
+          'If there is work to resume, it shows the workflow, current phase, pending gate and exact next action',
+          'If nothing is active, it suggests the most reasonable workflow for the current project state',
+        ],
+      },
+      {
+        category: 'Continuity',
+        color: 'var(--purple)',
+        background: 'rgba(160,126,232,0.08)',
+        title: 'Pause and resume without losing the thread',
+        command: '/alfred-dev:pause',
+        steps: [
+          'Pause writes the handoff to .claude/alfred-handoff.json and docs/project/handoff.md',
+          'Resume reuses state and handoff to return exactly to the point where work stopped',
+          'It does not open a new iteration or push gates by itself: it first makes the next step explicit',
+          'It works equally well for long feature sessions and interrupted quick work',
+        ],
+      },
+      {
+        category: 'Verification',
+        color: 'var(--red)',
+        background: 'rgba(229,86,79,0.08)',
+        title: 'Close manual acceptance',
+        command: '/alfred-dev:verify approved manual smoke looked good',
+        steps: [
+          'Verify prepares or updates UAT for the current deliverable in .claude/alfred-uat.json and docs/project/uat.md',
+          'It clearly separates automatic tests from final human validation',
+          'It records whether UAT is pending, approved or rejected, together with the main note',
+          'If validation fails, the next operational step becomes visible again in current/uat artifacts',
+        ],
+      },
+      {
+        category: 'Project management',
+        color: 'var(--magenta)',
+        background: 'rgba(214,106,214,0.08)',
+        title: 'See the project\'s real state',
+        command: '/alfred-dev:progress',
+        steps: [
+          'Progress exposes SonIA\'s operational layer: general progress, kanban, blockers and traceability',
+          'It summarises the active workflow or pending handoff without reopening the current work',
+          'It shows traceability gaps and UAT state if they exist',
+          'It closes with the recommended next command to keep moving',
         ],
       },
       {
@@ -1004,25 +1135,25 @@ const data: PageData = {
   install: {
     sectionLabel: 'Getting started',
     title: 'Installation',
-    description: 'One command in the terminal and you\'re set. Compatible with macOS, Linux and Windows. The installer is idempotent: running it again updates without conflicts.',
+    description: 'One command in the terminal and you\'re set. Compatible with macOS, Linux and Windows. The installer is idempotent: running it again updates without conflicts. On the first session Alfred can bootstrap your local config and suggest the next step.',
     tabs: [
       {
         id: 'macos',
         label: 'macOS',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requirements:</strong> git, Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requirements:</strong> git, Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'linux',
         label: 'Linux',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requirements:</strong> git, Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requirements:</strong> git, Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'windows',
         label: 'Windows',
         command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
-        requirementsHtml: '<strong>Requirements:</strong> git, PowerShell 5.1+ (pre-installed on Windows 10/11), Claude Code installed.<br>Python not required. After installation, restart Claude Code and run <strong>/alfred-dev:help</strong>.<br>Alternative: you can also use the bash installer with WSL or Git Bash.',
+        requirementsHtml: '<strong>Requirements:</strong> git, PowerShell 5.1+ (pre-installed on Windows 10/11), Claude Code installed.<br>Python not required. After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.<br>Alternative: you can also use the bash installer with WSL or Git Bash.',
       },
     ],
     uninstall: {
@@ -1054,50 +1185,55 @@ const data: PageData = {
   config: {
     sectionLabel: 'Customisation',
     title: 'Per-project configuration',
-    descriptionHtml: 'Each project has its own configuration file at <code>.claude/alfred-dev.local.md</code>. Managed with <strong>/alfred-dev:config</strong>, which includes contextual discovery of optional agents and persistent memory activation.',
+    descriptionHtml: 'Each project has its own configuration file at <code>.claude/alfred-dev.local.md</code>. The first session can generate it automatically with a CLI-friendly baseline; afterwards <strong>/alfred-dev:config</strong> lets you review and expand it with autonomy, optional agents and persistent memory. The file syntax currently follows Alfred\'s Spanish key names because it mirrors the plugin schema.',
     yamlExample: `---
-autonomy:
-  product: interactive
-  architecture: interactive
-  development: semi-autonomous
-  security: autonomous
-  quality: semi-autonomous
-  documentation: autonomous
-  devops: semi-autonomous
+autonomia:
+  producto: autonomo
+  arquitectura: autonomo
+  desarrollo: autonomo
+  calidad: autonomo
+  documentacion: autonomo
+  entrega: autonomo
 
-optional_agents:
-  data-engineer: true
+agentes_opcionales:
+  data-engineer: false
   ux-reviewer: false
   performance-engineer: false
-  github-manager: true
+  github-manager: false
   seo-specialist: false
   copywriter: false
-  librarian: true
+  librarian: false
   i18n-specialist: false
 
-memory:
+memoria:
   enabled: true
+  sync_to_native: true
+  sync_commits_limit: 10
   capture_decisions: true
   capture_commits: true
   retention_days: 365
 
-personality:
-  sarcasm_level: 3
-  celebrate_victories: true
-  call_out_bad_practices: true
+personalidad:
+  nivel_sarcasmo: 3
+  celebrar_victorias: true
+  insultar_malas_practicas: true
 ---`,
     blocks: [
       {
-        title: 'Autonomy per phase',
-        descriptionHtml: 'Control how much intervention you need at each workflow phase. <strong>Interactive</strong> asks for approval at every step, <strong>semi-autonomous</strong> proceeds on its own but consults you on key decisions, and <strong>autonomous</strong> executes without interruptions.',
+        title: 'Automatic bootstrap',
+        descriptionHtml: 'If a project has no local config yet, Alfred can generate <code>.claude/alfred-dev.local.md</code> automatically during the first session so the plugin is usable from CLI without manual prep.',
+      },
+      {
+        title: 'Operational autonomy',
+        descriptionHtml: 'Control how much intervention you need at each phase or slice of the workflow. In autonomous mode Alfred reduces unnecessary interviews and prioritises continuity, brownfield mapping and next-step guidance before opening a full team.',
       },
       {
         title: 'Optional agents',
         descriptionHtml: 'Activate only the ones you need. Alfred analyses your project and suggests which to enable based on the detected stack. They can be changed at any time without reinstalling.',
       },
       {
-        title: 'Persistent memory',
-        descriptionHtml: 'Optional activation. Configure what is captured (decisions, commits), retention in days and the Librarian\'s behaviour.',
+        title: 'Memory and context',
+        descriptionHtml: 'Persistent memory and continuity artifacts coexist: decisions in a per-project SQLite database, plus handoff, UAT and operational docs in <code>docs/project/</code> so work can resume without losing the thread.',
       },
       {
         title: 'Personality',
@@ -1130,6 +1266,36 @@ personality:
         svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
         question: 'How do I update the plugin?',
         answerHtml: 'Run <strong>/alfred-dev:update</strong> inside Claude Code. The command queries GitHub, compares versions and shows the release notes if a new version is available. You can also re-run the installer: it overwrites the previous version without conflicts.',
+      },
+      {
+        svgContent: '<path d="M3 12h18"/><path d="M12 3v18"/><path d="M5 5l14 14"/>',
+        question: 'What does Alfred do in an existing repository?',
+        answerHtml: 'If the project already has code but does not yet have a persistent map, Alfred prioritises <strong>/alfred-dev:map-codebase</strong>. It analyzes the structure, detects the stack, entrypoints, risks and conventions, and leaves the context in <code>docs/project/codebase-map.md</code> and <code>docs/project/current.md</code> before opening <strong>feature</strong>, <strong>fix</strong>, <strong>spike</strong> or <strong>audit</strong>.',
+      },
+      {
+        svgContent: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+        question: 'When should I use quick and when should I use feature?',
+        answerHtml: '<strong>/alfred-dev:quick</strong> is for small, local, bounded changes: two lightweight phases, tests for the touched area and quick security review. <strong>/alfred-dev:feature</strong> is for new functionality or changes that cross domains, need a PRD, architecture decisions or a full product-to-delivery cycle.',
+      },
+      {
+        svgContent: '<path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/>',
+        question: 'Can I pause and resume a session?',
+        answerHtml: 'Yes. <strong>/alfred-dev:pause</strong> stores the current state in <code>.claude/alfred-handoff.json</code> and <code>docs/project/handoff.md</code>. Later you can come back with <strong>/alfred-dev:resume</strong> or simply ask for <strong>/alfred-dev:next</strong>. Alfred restores the workflow, current phase, pending gate and exact next step.',
+      },
+      {
+        svgContent: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+        question: 'What is verify, and why does it exist if tests already run?',
+        answerHtml: '<strong>/alfred-dev:verify</strong> closes human validation for a deliverable. Automatic tests tell you whether the system works technically; verify records whether it actually meets the user\'s expectation in UAT. The state is tracked as <em>pending</em>, <em>approved</em> or <em>rejected</em> in <code>.claude/alfred-uat.json</code> and <code>docs/project/uat.md</code>.',
+      },
+      {
+        svgContent: '<path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/>',
+        question: 'What does progress show?',
+        answerHtml: '<strong>/alfred-dev:progress</strong> makes the project\'s operational state visible: active workflow or handoff, general progress, kanban, blockers, traceability and UAT state. It does not open new work or force a gate; it helps decide what should happen next based on real context.',
+      },
+      {
+        svgContent: '<path d="M12 2l4 4-4 4-4-4 4-4z"/><path d="M4 12l4 4-4 4-4-4 4-4z"/><path d="M20 12l4 4-4 4-4-4 4-4z"/><path d="M12 10v4"/><path d="M10 12h4"/>',
+        question: 'Do I have to configure Alfred manually the first time?',
+        answerHtml: 'Not necessarily. On the first session Alfred can bootstrap <code>.claude/alfred-dev.local.md</code> with a baseline configuration that is already usable from CLI. Afterwards you can fine-tune autonomy, optional agents, memory and personality with <strong>/alfred-dev:config</strong>.',
       },
       {
         svgContent: '<path d="M19.439 5.56a5.018 5.018 0 0 0-7.09 0L11 6.91l-1.35-1.35a5.013 5.013 0 0 0-7.09 7.09L11 21.09l8.44-8.44a5.013 5.013 0 0 0 0-7.09z"/>',
@@ -1199,6 +1365,22 @@ personality:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.4.4',
+      date: '2026-03-22',
+      added: [
+        'Operational continuity layer: new commands /alfred-dev:map-codebase, /alfred-dev:next, /alfred-dev:pause, /alfred-dev:resume, /alfred-dev:verify and /alfred-dev:progress.',
+        'New /alfred-dev:discuss command to refine ideas before building, with discovery.md and current.md artifacts.',
+        'New /alfred-dev:quick 2-phase workflow for small changes with tests and security review.',
+        'Shared memory configuration parser and new coverage for event FTS, purge + health, Git import with "|" and sync beyond 1000 decisions.',
+      ],
+      changed: [
+        '/alfred-dev:alfred becomes a contextual router: it decides whether continuity, brownfield mapping, refinement or a multi-agent workflow should happen next.',
+        'SessionStart bootstraps local configuration and recommends the next step from the very first session.',
+        'The website now reflects the current model: 6 execution workflows, 18 commands and a visible operational layer.',
+        'Persistent memory stops producing false negatives: content-bearing events are searchable, purge cleans FTS, retention_days is read from project config and size_bytes includes WAL.',
+      ],
+    },
     {
       version: '0.4.2',
       date: '2026-03-14',
@@ -1501,11 +1683,11 @@ personality:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.2',
+    version: 'v0.4.4',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Claude Code plugin. 17 agents. 60 skills. 10 hooks. 10 commands. Persistent memory. From idea to production.',
+    tagline: 'Claude Code plugin. 17 agents. 60 skills. 12 hooks. 18 commands. Persistent memory. Operational continuity. From idea to production.',
     slogan: 'Automated software engineering for Claude Code.',
     disclaimer: {
       linkText: 'Disclaimer',
