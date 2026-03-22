@@ -8,6 +8,12 @@ docs/plans/
 # Ficheros de estado y datos locales del plugin
 .claude/alfred-dev-state.json
 .claude/alfred-dev.local.md
+.claude/alfred-handoff.json
+.claude/alfred-uat.json
+.claude/alfred-prefetch.json
+.claude/alfred-prefetch-consumed.json
+.claude/alfred-stop-hook-bypass.json
+.claude/alfred-continuity.py
 .claude/alfred-memory.db
 .claude/alfred-memory.db-shm
 .claude/alfred-memory.db-wal
@@ -15,6 +21,9 @@ docs/plans/
 .claude/alfred-evidence.json
 .claude/alfred-gui-port
 .claude/alfred-gui.log
+.claude/settings.json
+.claude/settings.local.json
+firebase-debug.log
 
 # Cobertura
 .coveragerc
