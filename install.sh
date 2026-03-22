@@ -132,6 +132,13 @@ printf "${DIM}Plugin de ingenieria de software automatizada${NC}\n\n"
 
 info "Registrando marketplace..."
 
+# Si existe una instalacion previa, la quitamos antes de refrescar el
+# marketplace. Esto evita estados intermedios donde el plugin sigue apuntando
+# a un marketplace ya corrupto o incompleto en disco.
+if claude plugin list 2>/dev/null | grep -q "${PLUGIN_NAME}@${PLUGIN_NAME}"; then
+    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" >/dev/null 2>&1 || true
+fi
+
 if claude plugin marketplace list 2>/dev/null | grep -q "${PLUGIN_NAME}"; then
     claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
 fi
@@ -145,14 +152,28 @@ else
     exit 1
 fi
 
+MARKETPLACE_DIR="${HOME}/.claude/plugins/marketplaces/${PLUGIN_NAME}"
+
+# Claude puede dejar la entrada declarada en settings aunque el checkout local
+# no exista. Si ocurre, hacemos un segundo intento desde cero.
+if [[ ! -d "${MARKETPLACE_DIR}" ]]; then
+    info "El marketplace quedo registrado pero no aparecio en disco; reintentando..."
+    claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
+    if claude plugin marketplace add "${REPO}" 2>&1 && [[ -d "${MARKETPLACE_DIR}" ]]; then
+        ok "Marketplace refrescado correctamente en disco"
+    else
+        error "El marketplace se registro, pero Claude Code no materializo el cache local"
+        error "El directorio esperado no existe: ${MARKETPLACE_DIR}"
+        error "Prueba a ejecutar manualmente:"
+        error "  claude plugin marketplace remove ${PLUGIN_NAME}"
+        error "  claude plugin marketplace add ${REPO}"
+        exit 1
+    fi
+fi
+
 # -- 2. Instalar plugin -----------------------------------------------------
 
 info "Instalando plugin..."
-
-# Si hay una version anterior instalada, la eliminamos primero
-if claude plugin list 2>/dev/null | grep -q "${PLUGIN_NAME}@${PLUGIN_NAME}"; then
-    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" >/dev/null 2>&1 || true
-fi
 
 if claude plugin install "${PLUGIN_NAME}@${PLUGIN_NAME}" 2>&1; then
     ok "Plugin instalado y habilitado"
