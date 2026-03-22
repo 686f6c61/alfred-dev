@@ -64,7 +64,7 @@ Si la gate falla, se presenta al usuario un resumen de lo que falta, se hacen pr
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| Activado por | alfred | En la fase de producto de `/alfred feature` |
+| Activado por | alfred | En la fase de producto de `/alfred-dev:feature` |
 | Entrega a | architect | PRD aprobado como input para el diseño técnico |
 | Consumido por | senior-dev | Criterios de aceptacion para escribir tests |
 | Consumido por | qa-engineer | Criterios de aceptacion como base del test plan |
@@ -75,7 +75,7 @@ Si la gate falla, se presenta al usuario un resumen de lo que falta, se hacen pr
 
 El Buscador de Problemas participa exclusivamente en el flujo feature, donde es protagonista de la primera fase:
 
-- **`/alfred feature`** -- Fase 1 (producto): analiza requisitos, define el alcance funcional y genera el PRD completo. Es la única fase donde actua, pero su artefacto (el PRD) condiciona todo el flujo posterior.
+- **`/alfred-dev:feature`** -- Fase 1 (producto): analiza requisitos, define el alcance funcional y genera el PRD completo. Es la única fase donde actua, pero su artefacto (el PRD) condiciona todo el flujo posterior.
 
 También puede invocarse directamente fuera de un flujo cuando el usuario necesita clarificar que construir antes de como construirlo, por ejemplo para evaluar si merece la pena una feature mediante análisis competitivo.
 

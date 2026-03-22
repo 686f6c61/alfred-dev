@@ -6,13 +6,29 @@ description: "Muestra los comandos disponibles de Alfred Dev"
 
 Muestra al usuario la siguiente tabla de comandos disponibles con descripción y ejemplos:
 
+Si existe una sesión activa y solo vas a mostrar ayuda, arma antes un bypass
+transitorio del stop hook para que Claude Code pueda cerrar este comando sin
+reabrir el flujo:
+
+```bash
+python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-dev:help"
+```
+
 | Comando | Argumentos | Descripción |
 |---------|-----------|-------------|
 | `/alfred-dev:feature` | [descripción] | Ciclo completo: producto, arquitectura, desarrollo, QA, documentación, entrega |
+| `/alfred-dev:discuss` | [idea] | Refina una idea o feature antes de abrir un flujo completo |
+| `/alfred-dev:quick` | [descripción] | Cambio pequeño y acotado con menos ceremonia, pero con tests y seguridad |
 | `/alfred-dev:fix` | [descripción] | Corrección de bugs: diagnóstico, corrección TDD, validación |
 | `/alfred-dev:spike` | [tema] | Investigación técnica sin compromiso de implementación |
 | `/alfred-dev:ship` | -- | Preparar entrega: auditoría, docs, empaquetado, despliegue |
 | `/alfred-dev:audit` | -- | Auditoría completa con 4 agentes en paralelo |
+| `/alfred-dev:map-codebase` | [área] | Mapa brownfield persistente del repositorio antes de abrir nuevos flujos |
+| `/alfred-dev:next` | -- | Decide el siguiente paso operativo y actúa si es inequívoco |
+| `/alfred-dev:pause` | -- | Crea un handoff explícito para pausar el trabajo actual |
+| `/alfred-dev:progress` | -- | Resume progreso, kanban, bloqueos y trazabilidad del proyecto |
+| `/alfred-dev:resume` | -- | Retoma una sesión activa o un handoff pendiente |
+| `/alfred-dev:verify` | [estado opcional] | Prepara o registra la validación manual/UAT del último entregable |
 | `/alfred-dev:config` | -- | Configurar autonomía, stack, agentes opcionales y personalidad |
 | `/alfred-dev:status` | -- | Estado de la sesión activa |
 | `/alfred-dev:update` | -- | Comprobar y aplicar actualizaciones del plugin |

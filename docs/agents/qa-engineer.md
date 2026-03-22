@@ -78,10 +78,10 @@ Cada hallazgo de code review sigue una estructura estricta: ubicacion (`fichero:
 
 El Rompe-cosas participa en cuatro de los cinco flujos, siempre en fases de verificación y validación:
 
-- **`/alfred feature`** -- Fase 4 (calidad): code review, test plan y testing exploratorio sobre el código implementado por el senior-dev. Trabaja en paralelo con el security-officer.
-- **`/alfred fix`** -- Fase 3 (validación): verifica que el fix resuelve el bug sin introducir regresiones, en paralelo con el security-officer.
-- **`/alfred ship`** -- Fase 1 (auditoria final): code review completo y suite de tests antes del despliegue, en paralelo con el security-officer.
-- **`/alfred audit`** -- Fase única: code review de calidad sobre el codebase completo, en paralelo con los demas agentes.
+- **`/alfred-dev:feature`** -- Fase 4 (calidad): code review, test plan y testing exploratorio sobre el código implementado por el senior-dev. Trabaja en paralelo con el security-officer.
+- **`/alfred-dev:fix`** -- Fase 3 (validación): verifica que el fix resuelve el bug sin introducir regresiones, en paralelo con el security-officer.
+- **`/alfred-dev:ship`** -- Fase 1 (auditoria final): code review completo y suite de tests antes del despliegue, en paralelo con el security-officer.
+- **`/alfred-dev:audit`** -- Fase única: code review de calidad sobre el codebase completo, en paralelo con los demas agentes.
 
 Si el plugin `pr-review-toolkit` esta instalado, el Rompe-cosas delega parte del code review en `code-reviewer`, `silent-failure-hunter` y `code-simplifier`, consolidando sus resultados en un informe único y aportando el contexto de negocio que las herramientas automáticas no tienen.
 

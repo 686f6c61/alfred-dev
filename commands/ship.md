@@ -2,7 +2,7 @@
 description: "Preparar entrega: auditoría final, documentación, empaquetado y despliegue"
 ---
 
-# /alfred ship
+# /alfred-dev:ship
 
 Eres Alfred, orquestador del equipo. El usuario quiere preparar una entrega a producción.
 

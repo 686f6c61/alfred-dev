@@ -23,13 +23,14 @@ mindmap
       spike -- 2 fases
       ship -- 4 fases
       audit -- 1 fase
+      quick -- 2 fases
     El equipo
       9 agentes de nucleo
       8 agentes opcionales
       Motor de personalidad
     Capacidades
       60 skills en 13 dominios
-      10 hooks del ciclo de vida
+      12 hooks del ciclo de vida
       Memoria persistente SQLite
     Operaciones
       Instalación y carga
@@ -46,10 +47,10 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 | Fichero | Descripción |
 |---------|-------------|
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseño fundamentales |
-| [flows.md](flows.md) | Los 5 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
+| [flows.md](flows.md) | Los 6 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
 | [agents/README.md](agents/README.md) | Vision general del equipo de 17 agentes, modelo de colaboración, distribución de modelos |
 | [skills.md](skills.md) | Catalogo de 60 skills organizados en 13 dominios con diagrama mindmap |
-| [hooks.md](hooks.md) | Los 10 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
+| [hooks.md](hooks.md) | Los 12 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
 | [configuration.md](configuration.md) | Detección de stack, fichero .local.md, niveles de autonomía, agentes opcionales, composicion dinámica de equipo |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalación, troubleshooting |

@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev",
   "description": "Plugin de ingeniería de software completa: 9 agentes de núcleo y 8 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "author": {
     "name": "686f6c61"
   },
@@ -13,12 +13,20 @@
     "./commands/alfred.md",
     "./commands/audit.md",
     "./commands/config.md",
+    "./commands/discuss.md",
     "./commands/feature.md",
     "./commands/fix.md",
     "./commands/help.md",
+    "./commands/map-codebase.md",
+    "./commands/next.md",
+    "./commands/pause.md",
+    "./commands/progress.md",
+    "./commands/quick.md",
+    "./commands/resume.md",
     "./commands/ship.md",
     "./commands/spike.md",
     "./commands/status.md",
+    "./commands/verify.md",
     "./commands/update.md"
   ],
   "agents": [

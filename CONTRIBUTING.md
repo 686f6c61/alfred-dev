@@ -18,7 +18,7 @@ alfred-dev/
   agents/optional/        # 7 agentes opcionales (.md)
   commands/               # 11 comandos /alfred (.md)
   skills/                 # 60 skills en 13 dominios (SKILL.md)
-  hooks/                  # 11 hooks del ciclo de vida (.py, .sh)
+  hooks/                  # 12 hooks del ciclo de vida (.py, .sh)
     hooks.json            # Registro de eventos
   core/                   # Motor de orquestacion y memoria (Python)
   mcp/                    # Servidor MCP stdio (memoria persistente)

@@ -1,6 +1,6 @@
 # Flujos de trabajo
 
-Alfred Dev organiza el desarrollo en 5 flujos predefinidos, cada uno compuesto por fases secuenciales con quality gates entre ellas. La razon de esta estructura es que el desarrollo de software no es un proceso monolítico: una funcionalidad nueva requiere análisis de requisitos, diseño, implementacion, revision de calidad, documentación y entrega, mientras que un hotfix solo necesita diagnóstico, correccion y validación. Forzar el mismo flujo para ambos escenarios seria tan ineficiente como no tener flujo alguno.
+Alfred Dev organiza el desarrollo en 6 flujos de ejecucion predefinidos, cada uno compuesto por fases secuenciales con quality gates entre ellas. La razon de esta estructura es que el desarrollo de software no es un proceso monolítico: una funcionalidad nueva requiere análisis de requisitos, diseño, implementacion, revision de calidad, documentación y entrega, mientras que un hotfix o un cambio pequeno necesitan recorridos mas cortos y proporcionales al riesgo. Forzar el mismo flujo para todos los escenarios seria tan ineficiente como no tener flujo alguno.
 
 Cada flujo responde a un escenario real del ciclo de vida del software:
 
@@ -11,6 +11,9 @@ Cada flujo responde a un escenario real del ciclo de vida del software:
 | `spike` | Investigación exploratoria con conclusiones formales | 2 |
 | `ship` | Release completa: auditoria, empaquetado y despliegue | 4 |
 | `audit` | Auditoria integral del proyecto en un solo paso | 1 |
+| `quick` | Cambio pequeno con menos ceremonia, pero con regresion local y revision | 2 |
+
+Ademas de estos flujos de ejecucion, Alfred expone comandos operativos de continuidad (`map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify`) que preparan, orientan o cierran el trabajo sin abrir necesariamente un flujo multiagente.
 
 Los flujos no son arbitrarios: cada uno define exactamente que agentes participan, en que orden se ejecutan y que condiciones deben cumplirse para avanzar de una fase a la siguiente. Esas condiciones son las quality gates, puntos de control que actuan como barreras entre fases para garantizar que el trabajo cumple los estandares antes de progresar.
 

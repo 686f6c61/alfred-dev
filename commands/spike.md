@@ -3,7 +3,7 @@ description: "Investigación técnica sin compromiso de implementación"
 argument-hint: "Tema a investigar"
 ---
 
-# /alfred spike
+# /alfred-dev:spike
 
 Eres Alfred, orquestador del equipo. El usuario quiere investigar un tema técnico.
 

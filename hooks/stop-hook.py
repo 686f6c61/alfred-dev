@@ -13,7 +13,9 @@ normalmente (exit 0 sin salida).
 
 import json
 import os
+import sqlite3
 import sys
+from datetime import datetime, timezone
 
 # --- Configuracion de rutas ---
 
@@ -24,8 +26,21 @@ sys.path.insert(0, PLUGIN_ROOT)
 if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
+from core.continuity import (
+    HANDOFF_JSON_RELATIVE_PATH,
+    clear_stop_hook_bypass,
+    is_session_paused,
+    load_stop_hook_bypass,
+)
 from core.orchestrator import FLOWS, load_state
 from core.session_report import generate_report
+
+
+READ_ONLY_OPERATIONAL_COMMANDS = frozenset({
+    "/alfred-dev:progress",
+    "/alfred-dev:status",
+    "/alfred-dev:help",
+})
 
 
 def should_block(session, flow):
@@ -50,7 +65,94 @@ def should_block(session, flow):
         return False
     if fase_numero >= len(fases):
         return False
+    if is_session_paused(session):
+        return False
     return True
+
+
+def should_allow_transient_stop(project_dir):
+    """Permite una parada puntual para comandos de continuidad one-shot."""
+    bypass = load_stop_hook_bypass(project_dir)
+    if not bypass:
+        return False
+
+    try:
+        expires_at = datetime.fromisoformat(bypass["expires_at"])
+    except (KeyError, TypeError, ValueError):
+        clear_stop_hook_bypass(project_dir)
+        return False
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at <= datetime.now(timezone.utc):
+        clear_stop_hook_bypass(project_dir)
+        return False
+
+    clear_stop_hook_bypass(project_dir)
+    return True
+
+
+def should_allow_read_only_operational_prompt(
+    project_dir,
+    max_age_seconds=180,
+):
+    """Permite salir si el último prompt reciente fue una vista operativa.
+
+    Se apoya en la memoria persistente del proyecto. Si el último evento
+    `user_prompt` empieza por un comando de solo lectura como
+    `/alfred-dev:progress`, no tiene sentido que el stop-hook bloquee la
+    salida solo por existir una sesión activa.
+    """
+    db_path = os.path.join(project_dir, ".claude", "alfred-memory.db")
+    if not os.path.isfile(db_path):
+        return False
+
+    try:
+        conn = sqlite3.connect(db_path)
+        row = conn.execute(
+            "SELECT content, summary, created_at FROM events "
+            "WHERE event_type = 'user_prompt' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    except sqlite3.Error:
+        return False
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    if not row:
+        return False
+
+    try:
+        created_at = datetime.fromisoformat(row[2])
+    except (TypeError, ValueError):
+        return False
+
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+
+    age_seconds = (datetime.now(timezone.utc) - created_at).total_seconds()
+    if age_seconds < 0 or age_seconds > max_age_seconds:
+        return False
+
+    text = (row[0] or row[1] or "").strip()
+    if not text:
+        return False
+
+    first_line = ""
+    for line in text.splitlines():
+        candidate = line.strip()
+        if candidate:
+            first_line = candidate
+            break
+
+    if not first_line:
+        return False
+
+    return any(first_line.startswith(command) for command in READ_ONLY_OPERATIONAL_COMMANDS)
 
 
 def build_block_message(session, fase, gate_tipo):
@@ -183,6 +285,7 @@ def main():
     """
     project_dir = os.getcwd()
     state_path = os.path.join(project_dir, ".claude", "alfred-dev-state.json")
+    handoff_path = os.path.join(project_dir, HANDOFF_JSON_RELATIVE_PATH)
 
     session = load_state(state_path)
     if session is None:
@@ -207,6 +310,21 @@ def main():
 
     # Generar informe parcial
     handle_session_report(session, project_dir, completed=False)
+
+    if is_session_paused(session):
+        if os.path.isfile(handoff_path):
+            sys.exit(0)
+        print(
+            "[Alfred Dev] Aviso: la sesión está marcada como pausada, pero falta "
+            "el handoff. Se mantiene el bloqueo para no perder contexto.",
+            file=sys.stderr,
+        )
+
+    if should_allow_transient_stop(project_dir):
+        sys.exit(0)
+
+    if should_allow_read_only_operational_prompt(project_dir):
+        sys.exit(0)
 
     if not should_block(session, flow):
         sys.exit(0)

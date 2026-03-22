@@ -210,9 +210,9 @@ def _get_plugin_version() -> str:
         )
         with open(plugin_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get("version", "0.4.3")
+        return data.get("version", "0.4.4")
     except (OSError, json.JSONDecodeError, KeyError):
-        return "0.4.3"
+        return "0.4.4"
 
 
 def _section_mode(session: Dict[str, Any]) -> str:

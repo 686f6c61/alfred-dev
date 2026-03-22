@@ -68,8 +68,8 @@ Proxima accion recomendada: [que debe pasar]
 
 El Fontanero participa en dos flujos, siempre en fases de entrega y despliegue:
 
-- **`/alfred feature`** -- Fase 6 (entrega): prepara el entregable con Docker, pipeline y configuración de despliegue. Trabaja junto al security-officer, que valida la configuración de infraestructura.
-- **`/alfred ship`** -- Fase 3 (empaquetado): genera el artefacto de release con versionado semántico y etiquetado, en colaboración con el security-officer. Fase 4 (despliegue): ejecuta el deploy segun la estrategia configurada, con validación post-deploy y rollback preparado. La gate de despliegue requiere confirmacion explícita del usuario.
+- **`/alfred-dev:feature`** -- Fase 6 (entrega): prepara el entregable con Docker, pipeline y configuración de despliegue. Trabaja junto al security-officer, que valida la configuración de infraestructura.
+- **`/alfred-dev:ship`** -- Fase 3 (empaquetado): genera el artefacto de release con versionado semántico y etiquetado, en colaboración con el security-officer. Fase 4 (despliegue): ejecuta el deploy segun la estrategia configurada, con validación post-deploy y rollback preparado. La gate de despliegue requiere confirmacion explícita del usuario.
 
 El Fontanero usa un árbol de decisión para recomendar la plataforma de despliegue adecuada: webs estaticas van a Vercel; proyectos con Docker y base de datos managed van a Railway; proyectos que necesitan auto-scaling van a Fly.io o AWS; y proyectos con cluster Kubernetes existente se despliegan alli.
 

@@ -19,6 +19,7 @@ import sys
 import tempfile
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -1491,6 +1492,16 @@ class TestHealthCheck(unittest.TestCase):
         self.assertIsInstance(health["size_bytes"], int)
         self.assertGreater(health["size_bytes"], 0)
 
+    def test_health_includes_wal_size(self):
+        """size_bytes debe incluir el WAL cuando hay datos recientes."""
+        self.db.start_iteration("feature", "tamano")
+        self.db.log_event(event_type="custom", content="A" * 100000)
+
+        health = self.db.check_health()
+        main_size = os.path.getsize(self._db_path)
+
+        self.assertGreater(health["size_bytes"], main_size)
+
 
 class TestExportImport(unittest.TestCase):
     """Tests de exportacion e importacion de datos.
@@ -1586,6 +1597,97 @@ class TestExportImport(unittest.TestCase):
 
         second_count = self.db.import_git_history(repo_dir)
         self.assertEqual(second_count, 0)
+
+    def test_import_git_history_handles_pipe_in_subject(self):
+        """No debe romperse si el subject del commit contiene |."""
+        import subprocess
+
+        repo_dir = os.path.join(self._export_dir, "pipe_repo")
+        os.makedirs(repo_dir)
+        subprocess.run(
+            ["git", "init"], cwd=repo_dir,
+            capture_output=True, check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=repo_dir, capture_output=True, check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=repo_dir, capture_output=True, check=True,
+        )
+        with open(os.path.join(repo_dir, "test.txt"), "w", encoding="utf-8") as handle:
+            handle.write("test")
+        subprocess.run(
+            ["git", "add", "."], cwd=repo_dir,
+            capture_output=True, check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "feat | weird separator"],
+            cwd=repo_dir, capture_output=True, check=True,
+        )
+
+        imported = self.db.import_git_history(repo_dir)
+        self.assertEqual(imported, 1)
+
+        results = self.db.search("weird separator", limit=10)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source_type"], "commit")
+        self.assertEqual(results[0]["message"], "feat | weird separator")
+        self.assertEqual(results[0]["author"], "Test")
+
+
+class TestEventSearchAndPurge(unittest.TestCase):
+    """Verifica FTS de eventos y limpieza al purgar."""
+
+    def setUp(self):
+        self._tmpfile = tempfile.NamedTemporaryFile(
+            suffix=".db", delete=False
+        )
+        self._db_path = self._tmpfile.name
+        self._tmpfile.close()
+        self.db = MemoryDB(self._db_path)
+        self.iter_id = self.db.start_iteration("feature", "fts eventos")
+
+    def tearDown(self):
+        self.db.close()
+        for suffix in ("", "-wal", "-shm"):
+            path = self._db_path + suffix
+            if os.path.exists(path):
+                os.unlink(path)
+
+    def test_search_returns_event_content(self):
+        """La busqueda debe devolver eventos si coinciden por texto."""
+        self.db.log_event(
+            event_type="custom",
+            content="token refresh strategy approved",
+            iteration_id=self.iter_id,
+        )
+
+        results = self.db.search("token refresh", limit=10)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["source_type"], "event")
+        self.assertEqual(results[0]["content"], "token refresh strategy approved")
+
+    def test_purge_old_events_removes_fts_entries(self):
+        """Al purgar eventos tambien deben limpiarse sus filas FTS."""
+        event_id = self.db.log_event(
+            event_type="custom",
+            content="legacy rollout note",
+            iteration_id=self.iter_id,
+        )
+        old_date = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
+        self.db._conn.execute(
+            "UPDATE events SET created_at = ? WHERE id = ?",
+            (old_date, event_id),
+        )
+        self.db._conn.commit()
+
+        deleted = self.db.purge_old_events(retention_days=30)
+
+        self.assertEqual(deleted, 1)
+        self.assertEqual(self.db.search("legacy rollout", limit=10), [])
+        self.assertEqual(self.db.check_health()["status"], "healthy")
 
 
 if __name__ == "__main__":

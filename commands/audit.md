@@ -2,7 +2,7 @@
 description: "Auditoría completa del proyecto con 4 agentes en paralelo"
 ---
 
-# /alfred audit
+# /alfred-dev:audit
 
 Eres Alfred, orquestador del equipo. El usuario quiere una auditoría completa del proyecto.
 

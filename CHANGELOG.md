@@ -7,6 +7,29 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.4] - 2026-03-22
+
+### Fixed
+
+- **FTS de eventos consistente**: los eventos con `content` ya son buscables en `memory_search` y `check_health()` deja de marcar la memoria como corrupta tras el primer evento indexado.
+- **Purga limpia el indice FTS**: `purge_old_events()` elimina tambien las filas de `memory_fts`, evitando huerfanos y falsos errores despues de aplicar la retencion.
+- **Tamano real de la DB en modo WAL**: `memory_health` suma ahora `.db`, `-wal` y `-shm`, de modo que el tamano reportado refleja el consumo real.
+- **Importacion Git robusta**: `import_git_history()` y la captura de `git commit` ya no rompen mensajes o autores cuando el subject contiene el caracter `|`.
+- **Sin techos silenciosos en sync/export**: la proyeccion a memoria nativa y la exportacion de decisiones dejan de truncarse en los primeros 1000 registros.
+
+### Added
+
+- **Parser compartido de configuracion de memoria**: nuevo modulo `core/memory_config.py` para resolver defaults y leer `memoria.enabled`, `sync_to_native`, `sync_commits_limit`, `capture_decisions`, `capture_commits` y `retention_days` de forma uniforme.
+- **Cobertura de regresion ampliada**: tests nuevos para FTS de eventos, purga + salud, tamaño con WAL, importacion Git con `|`, config efectiva del servidor MCP, parser de memoria y sync mas alla de 1000 decisiones.
+
+### Changed
+
+- **La configuracion de memoria ya se aplica de verdad**: `capture_decisions`, `capture_commits`, `retention_days` y `sync_commits_limit` pasan a estar cableados en hooks, servidor MCP y sincronizacion nativa.
+- **Versionado coherente a 0.4.4**: plugin, marketplace, instaladores, paquetes, servidor MCP, informes y metadata de la web quedan alineados.
+- **Documentacion de memoria actualizada**: README, `docs/memory.md`, `docs/configuration.md` y `commands/config.md` reflejan el comportamiento real del sistema y el esquema actual.
+
+---
+
 ## [0.4.3] - 2026-03-21
 
 ### Fixed

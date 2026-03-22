@@ -1,7 +1,7 @@
 # Protocolo de composición dinámica de equipo
 
 Este fichero define el protocolo compartido para componer el equipo de cada sesión.
-Lo usan todos los comandos de Alfred (feature, fix, spike, audit, ship). Cualquier
+Lo usan todos los comandos de Alfred (feature, quick, fix, spike, audit, ship). Cualquier
 cambio aquí se refleja en todos los flujos.
 
 ## Paso 0 -- Configuración inicial del proyecto
@@ -12,58 +12,31 @@ el frontmatter YAML.
 
 **Si la sección `autonomia:` NO existe** (primera vez que se usa Alfred en este proyecto):
 
-1. Presenta al usuario las dos opciones con `AskUserQuestion`:
+1. Escribe directamente una configuración por defecto compatible con Claude Code
+   CLI en `.claude/alfred-dev.local.md`:
 
-```
-AskUserQuestion({
-  questions: [
-    {
-      question: "¿Cómo quieres trabajar con Alfred en este proyecto?",
-      header: "Modo de trabajo",
-      options: [
-        {
-          label: "Interactivo",
-          description: "Alfred pide tu aprobación en cada fase. Tienes control total sobre cada decisión."
-        },
-        {
-          label: "Autopilot",
-          description: "Alfred avanza solo aprobando las gates de usuario. Solo se detiene si falla seguridad o tests."
-        }
-      ]
-    }
-  ]
-})
-```
+   ```yaml
+   autonomia:
+     producto: autonomo
+     arquitectura: autonomo
+     desarrollo: autonomo
+     calidad: autonomo
+     documentacion: autonomo
+     entrega: autonomo
+   ```
 
-2. Según la respuesta, escribe la configuración en `.claude/alfred-dev.local.md`:
+2. NO uses `AskUserQuestion` en este bootstrap inicial. El objetivo es que
+   Alfred pueda actuar automáticamente desde la primera sesión si el usuario
+   invoca `/alfred-dev:alfred`, `/alfred-dev:feature`, `/alfred-dev:quick`, `/alfred-dev:fix`,
+   `/alfred-dev:spike`, `/alfred-dev:audit` o `/alfred-dev:ship`.
 
-   - **Interactivo**: añade al frontmatter YAML:
-     ```yaml
-     autonomia:
-       producto: interactivo
-       arquitectura: interactivo
-       desarrollo: interactivo
-       calidad: interactivo
-       documentacion: interactivo
-       entrega: interactivo
-     ```
-
-   - **Autopilot**: añade al frontmatter YAML:
-     ```yaml
-     autonomia:
-       producto: autonomo
-       arquitectura: autonomo
-       desarrollo: autonomo
-       calidad: autonomo
-       documentacion: autonomo
-       entrega: autonomo
-     ```
-
-3. Muestra un mensaje breve confirmando la elección y continúa con el paso 1.
+3. Muestra un mensaje breve indicando que Alfred ha activado el modo
+   autopilot por defecto para evitar bloquear el flujo en la primera sesión
+   y que el usuario puede cambiarlo más tarde con `/alfred-dev:config`.
 
 **Si la sección `autonomia:` YA existe:** salta este paso y continúa directamente.
 
-**Nota:** el usuario puede cambiar el modo en cualquier momento con `/alfred config`.
+**Nota:** el usuario puede cambiar el modo en cualquier momento con `/alfred-dev:config`.
 
 ## Paso 1 -- Contexto del proyecto
 

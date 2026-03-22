@@ -3,7 +3,7 @@
 Orquestador de flujos del plugin Alfred Dev.
 
 Este módulo gestiona el ciclo de vida completo de los flujos de trabajo
-(feature, fix, spike, ship, audit). Cada flujo se compone de fases
+(feature, fix, quick, spike, ship, audit). Cada flujo se compone de fases
 secuenciales con gates de control que determinan si se puede avanzar
 a la siguiente fase.
 
@@ -77,7 +77,7 @@ _KNOWN_OPTIONAL_AGENTS = frozenset({
 # Los agentes listados en cada fase son los responsables de ejecutarla.
 
 FLOWS: Dict[str, Dict[str, Any]] = {
-    "feature": {
+        "feature": {
         "nombre": "feature",
         "fases": [
             {
@@ -182,6 +182,33 @@ FLOWS: Dict[str, Dict[str, Any]] = {
                 "descripcion": (
                     "Validación completa: tests de regresión, "
                     "suite existente y revisión de seguridad."
+                ),
+            },
+        ],
+    },
+    "quick": {
+        "nombre": "quick",
+        "fases": [
+            {
+                "nombre": "ejecucion_acotada",
+                "agentes": ["senior-dev"],
+                "paralelo": False,
+                "gate": "gate_ejecucion_acotada",
+                "gate_tipo": GATE_AUTOMATICO,
+                "descripcion": (
+                    "Implementación acotada para cambios pequeños, "
+                    "locales y de bajo riesgo, con validación automática."
+                ),
+            },
+            {
+                "nombre": "validacion_rapida",
+                "agentes": ["qa-engineer", "security-officer"],
+                "paralelo": True,
+                "gate": "gate_validacion_rapida",
+                "gate_tipo": GATE_AUTOMATICO_SEGURIDAD,
+                "descripcion": (
+                    "Validación rápida del cambio sobre la superficie tocada: "
+                    "regresión local, tests y revisión de seguridad."
                 ),
             },
         ],
@@ -297,15 +324,15 @@ FLOWS: Dict[str, Dict[str, Any]] = {
 
 OPTIONAL_INTEGRATIONS: Dict[str, Dict[str, Any]] = {
     "data-engineer": {
-        "fases": ["arquitectura", "desarrollo"],
+        "fases": ["arquitectura", "desarrollo", "ejecucion_acotada"],
         "posicion": "paralelo",
     },
     "ux-reviewer": {
-        "fases": ["calidad", "producto"],
+        "fases": ["calidad", "producto", "ejecucion_acotada", "validacion_rapida"],
         "posicion": "paralelo",
     },
     "performance-engineer": {
-        "fases": ["calidad"],
+        "fases": ["calidad", "validacion_rapida"],
         "posicion": "paralelo",
     },
     "github-manager": {
@@ -313,11 +340,11 @@ OPTIONAL_INTEGRATIONS: Dict[str, Dict[str, Any]] = {
         "posicion": "secuencial",
     },
     "seo-specialist": {
-        "fases": ["calidad"],
+        "fases": ["calidad", "validacion_rapida"],
         "posicion": "paralelo",
     },
     "copywriter": {
-        "fases": ["documentacion"],
+        "fases": ["documentacion", "ejecucion_acotada"],
         "posicion": "paralelo",
     },
     "librarian": {
@@ -325,7 +352,7 @@ OPTIONAL_INTEGRATIONS: Dict[str, Dict[str, Any]] = {
         "posicion": "none",
     },
     "i18n-specialist": {
-        "fases": ["desarrollo", "calidad"],
+        "fases": ["desarrollo", "calidad", "ejecucion_acotada", "validacion_rapida"],
         "posicion": "paralelo",
     },
 }
@@ -527,7 +554,7 @@ def run_flow(
     dispone de información sobre qué agentes opcionales deben participar.
 
     Args:
-        command: identificador del flujo (feature, fix, spike, ship, audit).
+        command: identificador del flujo (feature, fix, quick, spike, ship, audit).
         description: descripción en lenguaje natural de la tarea.
         equipo_sesion: diccionario con la composición del equipo generada
             por el módulo de composición dinámica. Si es None, la sesión
@@ -589,7 +616,7 @@ def create_session(command: str, description: str) -> Dict[str, Any]:
     se han completado.
 
     Args:
-        command: Identificador del flujo (feature, fix, spike, ship, audit).
+        command: Identificador del flujo (feature, fix, quick, spike, ship, audit).
         description: Descripción en lenguaje natural de la tarea.
 
     Returns:

@@ -2,7 +2,7 @@
 
 Alfred Dev esta disenado para adaptarse a cada proyecto sin que el desarrollador tenga que rellenar formularios ni editar ficheros de configuración a mano. Al iniciarse, el plugin analiza el directorio del proyecto, detecta el stack tecnologico y aplica valores por defecto sensatos para cada apartado: autonomía, personalidad, agentes opcionales y memoria. Todo es opcional. Un proyecto sin fichero de configuración funciona igual de bien que uno con todas las secciones definidas, porque los valores por defecto cubren el caso general.
 
-Cuando el desarrollador quiere personalizar el comportamiento --ajustar el nivel de autonomía, activar agentes especializados o cambiar el tono de las respuestas--, puede hacerlo creando un fichero `.claude/alfred-dev.local.md` en la raiz del proyecto o ejecutando `/alfred config` desde la interfaz del plugin. El formato combina YAML frontmatter para los valores estructurados con Markdown libre para notas de contexto, lo que permite que el mismo fichero sea legible tanto por humanos como por el parser del plugin.
+Cuando el desarrollador quiere personalizar el comportamiento --ajustar el nivel de autonomía, activar agentes especializados o cambiar el tono de las respuestas--, puede hacerlo creando un fichero `.claude/alfred-dev.local.md` en la raiz del proyecto o ejecutando `/alfred-dev:config` desde la interfaz del plugin. El formato combina YAML frontmatter para los valores estructurados con Markdown libre para notas de contexto, lo que permite que el mismo fichero sea legible tanto por humanos como por el parser del plugin.
 
 
 ## Detección automática de stack
@@ -129,7 +129,7 @@ Para proyectos Node, el parser lee `dependencies` y `devDependencies` de `packag
 
 La configuración de Alfred Dev vive en `.claude/alfred-dev.local.md`, dentro del directorio del proyecto. Se utiliza el formato YAML frontmatter (delimitado por `---`) para los valores estructurados, seguido de contenido Markdown libre para notas y contexto adicional.
 
-La razon de este formato hibrido es practica: YAML cubre la configuración tipada (booleanos, números, listas), mientras que el cuerpo Markdown permite al desarrollador añadir instrucciones en lenguaje natural que Alfred inyecta en su contexto. El fichero es editable a mano, pero la forma recomendada de gestionarlo es a traves del comando `/alfred config`, que guia al usuario por cada sección de forma interactiva.
+La razon de este formato hibrido es practica: YAML cubre la configuración tipada (booleanos, números, listas), mientras que el cuerpo Markdown permite al desarrollador añadir instrucciones en lenguaje natural que Alfred inyecta en su contexto. El fichero es editable a mano, pero la forma recomendada de gestionarlo es a traves del comando `/alfred-dev:config`, que guia al usuario por cada sección de forma interactiva.
 
 La fusion con los valores por defecto es recursiva: el desarrollador solo necesita definir las claves que quiere cambiar. El resto se hereda automáticamente del `DEFAULT_CONFIG` del plugin. Esto significa que un fichero con una sola linea (`nivel_sarcasmo: 5`) es perfectamente válido.
 
@@ -238,6 +238,8 @@ Controla la memoria persistente del proyecto. Cuando esta activa, Alfred registr
 | Clave               | Descripción                                      | Valor por defecto |
 |----------------------|--------------------------------------------------|-------------------|
 | `enabled`            | Activa o desactiva la memoria persistente        | `false`           |
+| `sync_to_native`     | Proyectar SQLite a memorias `.md` nativas de Claude Code | `true` |
+| `sync_commits_limit` | Numero de commits recientes a proyectar en la memoria nativa | `10` |
 | `capture_decisions`  | Registrar decisiones de diseño automáticamente   | `true`            |
 | `capture_commits`    | Registrar commits automáticamente                | `true`            |
 | `retention_days`     | Dias de retención de eventos (las decisiones se conservan siempre) | `365` |
@@ -247,6 +249,8 @@ Ejemplo:
 ```yaml
 memoria:
   enabled: true
+  sync_to_native: true
+  sync_commits_limit: 10
   capture_decisions: true
   capture_commits: true
   retention_days: 365
@@ -289,7 +293,7 @@ Alfred Dev define tres niveles de autonomía que se aplican a cada dominio funci
 
 En este nivel, Alfred pide confirmacion en cada gate antes de avanzar. Es el modo mas conservador y el recomendado para fases donde las decisiones tienen impacto directo en el negocio o la arquitectura.
 
-En la practica, durante un flujo `/alfred feature`:
+En la practica, durante un flujo `/alfred-dev:feature`:
 
 - **Producto**: Alfred presenta los requisitos y la historia de usuario, y espera a que el desarrollador los apruebe antes de pasar a arquitectura.
 - **Arquitectura**: El diseño técnico y el threat model se presentan para revision. No se empieza a codificar hasta que el desarrollador da el visto bueno.
@@ -356,7 +360,7 @@ El recuento de ficheros fuente ignora directorios de dependencias y artefactos (
 
 ### Flujo de activacion
 
-El descubrimiento contextual se ejecuta la primera vez que el desarrollador abre `/alfred config` en un proyecto nuevo (o cuando no hay agentes opcionales activados). El flujo es:
+El descubrimiento contextual se ejecuta la primera vez que el desarrollador abre `/alfred-dev:config` en un proyecto nuevo (o cuando no hay agentes opcionales activados). El flujo es:
 
 1. Se detecta el stack con `detect_stack()`.
 2. Se ejecuta `suggest_optional_agents()` con el directorio del proyecto y la configuración actual.
@@ -481,7 +485,7 @@ Los mecanismos de seleccion de agentes opcionales coexisten:
 
 | Mecanismo | Persistencia | Contexto |
 |-----------|--------------|----------|
-| `/alfred config` | Persistente (fichero `.local.md`) | Proyecto |
+| `/alfred-dev:config` | Persistente (fichero `.local.md`) | Proyecto |
 | Descubrimiento (`suggest_optional_agents`) | Persistente (se guarda al confirmar) | Proyecto |
 | Composicion dinámica (Alfred semántico) | Efímera (solo la sesión) | Tarea |
 
@@ -504,7 +508,7 @@ La razon de que sea opcional y este desactivada por defecto es que no todos los 
 
 ### Activacion
 
-Para activar la memoria, se añade la sección `memoria` al frontmatter del fichero de configuración con `enabled: true`. También se puede activar de forma interactiva con `/alfred config` eligiendo la sección de memoria.
+Para activar la memoria, se añade la sección `memoria` al frontmatter del fichero de configuración con `enabled: true`. También se puede activar de forma interactiva con `/alfred-dev:config` eligiendo la sección de memoria.
 
 Al activarse, Alfred crea automáticamente la base de datos SQLite en `.claude/alfred-memory.db` con permisos `0600` (solo el propietario puede leer y escribir). El esquema incluye tablas para iteraciones, decisiones, commits, eventos y vinculos entre commits y decisiones.
 
@@ -512,9 +516,13 @@ Al activarse, Alfred crea automáticamente la base de datos SQLite en `.claude/a
 
 La memoria captura dos tipos de información controlados por su propia clave de configuración:
 
-- **`capture_decisions`**: cuando esta activo, cada decisión de diseño que se toma durante un flujo (que framework usar, que patron aplicar, que alternativa descartar) se registra con su titulo, contexto, opcion elegida, alternativas descartadas, justificacion e impacto. Las decisiones se conservan siempre, independientemente de la retención.
+- **`sync_to_native`**: cuando esta activo, Alfred proyecta decisiones, iteracion activa, resumen y commits recientes a `~/.claude/projects/<hash>/memory/` con formato nativo de Claude Code. Si se desactiva, SQLite sigue siendo la fuente de verdad pero no se generan los `.md`.
 
-- **`capture_commits`**: cuando esta activo, cada commit se registra con su SHA, mensaje, autor, ficheros modificados y lineas anadidas/eliminadas. Los commits se vinculan automáticamente a la iteracion activa y pueden enlazarse con decisiones concretas para establecer trazabilidad completa.
+- **`sync_commits_limit`**: controla cuantos commits recientes se proyectan al fichero nativo `alfred-commits-recent.md`. No limita la memoria SQLite; solo la vista resumida para Claude Code.
+
+- **`capture_decisions`**: cuando esta activo, las llamadas a `memory_log_decision` persisten decisiones en SQLite y quedan disponibles para el Bibliotecario, la sync nativa y las consultas historicas. Si se desactiva, Alfred responde con `skipped` y no escribe la decision.
+
+- **`capture_commits`**: cuando esta activo, el hook de actividad registra `git commit` y la herramienta MCP `memory_log_commit` persiste commits con SHA, mensaje, autor y ficheros afectados. Si se desactiva, la captura se omite sin tocar la DB.
 
 Además, la memoria registra automáticamente eventos del flujo de trabajo (fases completadas, gates superadas, aprobaciones) que permiten reconstruir la cronología detallada de cada iteracion.
 
@@ -528,7 +536,7 @@ El valor por defecto es 365 dias. Para proyectos de larga duracion, se puede aum
 
 La memoria soporta dos modos de busqueda, determinados automáticamente por las capacidades del entorno SQLite:
 
-- **FTS5 (busqueda de texto completo)**: si el entorno SQLite soporta la extensión FTS5, la memoria crea automáticamente una tabla virtual con índice de texto completo que indexa decisiones y commits. Las busquedas son rapidas y soportan frases literales.
+- **FTS5 (busqueda de texto completo)**: si el entorno SQLite soporta la extensión FTS5, la memoria crea automáticamente una tabla virtual con índice de texto completo que indexa decisiones, commits y eventos con contenido. Las busquedas son rapidas y soportan frases literales.
 
 - **LIKE (fallback básico)**: si FTS5 no esta disponible, las busquedas se realizan con `LIKE %termino%`, que es mas lento pero funcional en cualquier entorno SQLite.
 
@@ -602,6 +610,8 @@ agentes_opcionales:
 
 memoria:
   enabled: true
+  sync_to_native: true
+  sync_commits_limit: 10
   capture_decisions: true
   capture_commits: true
   retention_days: 365

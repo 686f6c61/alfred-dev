@@ -9,7 +9,7 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra el marketplace del plugin con claude plugin marketplace add
 #   3. Instala el plugin con claude plugin install
-#   4. Listo para usar: /alfred help
+#   4. Listo para usar: /alfred-dev:help
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para garantizar
@@ -20,7 +20,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.4.3"
+VERSION="0.4.4"
 
 # -- Colores ----------------------------------------------------------------
 
@@ -194,6 +194,6 @@ fi
 
 printf "\n${GREEN}${BOLD}Instalacion completada${NC}\n\n"
 printf "  Reinicia Claude Code y ejecuta:\n"
-printf "  ${BOLD}/alfred help${NC}\n\n"
+printf "  ${BOLD}/alfred-dev:help${NC}\n\n"
 printf "  ${DIM}Repositorio: https://github.com/${REPO}${NC}\n"
 printf "  ${DIM}Documentacion: https://alfred-dev.com${NC}\n\n"

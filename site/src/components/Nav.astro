@@ -21,9 +21,11 @@ interface Props {
   nav: NavLink[];
   /** Idioma activo de la pagina. */
   locale: Locale;
+  /** Version visible en la navegacion. */
+  version: string;
 }
 
-const { nav, locale } = Astro.props;
+const { nav, locale, version } = Astro.props;
 
 /* Literales de UI resueltos para el locale actual. */
 const navAriaLabel = ui.navAriaLabel[locale];
@@ -66,7 +68,7 @@ const langHref = ui.langSwitcherHref[locale];
           id="changelogBtn"
           title={changelogTitle}
         >
-          v0.4.3
+          {version}
         </button>
 
         <button

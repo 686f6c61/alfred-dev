@@ -72,8 +72,34 @@ _TRIVIAL_COMMANDS = frozenset({
     "alias", "unalias", "source", ".", "test", "[",
 })
 
+# Comandos de Alfred que pueden prepararse de forma determinista antes de que
+# el modelo intente resolver el prompt por si mismo.
+_ALFRED_PREFETCH_COMMANDS = frozenset({
+    "alfred",
+    "map-codebase",
+    "discuss",
+    "quick",
+})
+
 # Prefijo para los mensajes de aviso en stderr.
 _LOG_PREFIX = "[activity-capture]"
+
+
+def _ensure_plugin_root_on_path() -> str:
+    """Asegura que la raiz del plugin este disponible para imports.
+
+    Los hooks se ejecutan como scripts sueltos desde Claude Code y no siempre
+    reciben ``PYTHONPATH`` con la raiz del plugin. Sin este ajuste, imports
+    como ``core.memory`` o ``core.memory_config`` pueden fallar incluso cuando
+    el plugin esta bien instalado.
+
+    Returns:
+        Ruta absoluta a la raiz del plugin.
+    """
+    plugin_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if plugin_root not in sys.path:
+        sys.path.insert(0, plugin_root)
+    return plugin_root
 
 
 # ---------------------------------------------------------------------------
@@ -120,16 +146,30 @@ def _is_memory_enabled() -> bool:
     Returns:
         True si la memoria esta habilitada, False en caso contrario.
     """
-    project_dir = os.getcwd()
-    config_path = os.path.join(project_dir, ".claude", "alfred-dev.local.md")
+    _ensure_plugin_root_on_path()
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            content = f.read()
-    except (OSError, FileNotFoundError):
+        from core.memory_config import is_memory_enabled
+    except ImportError:
         return False
 
-    pattern = r"memoria:\s*\n(?:\s*#[^\n]*\n|\s*\w+:[^\n]*\n)*?\s*enabled:\s*true"
-    return bool(re.search(pattern, content))
+    return is_memory_enabled(os.getcwd())
+
+
+def _memory_settings():
+    """Carga la configuracion efectiva de memoria del proyecto."""
+    _ensure_plugin_root_on_path()
+    try:
+        from core.memory_config import load_memory_config
+    except ImportError:
+        return {
+            "enabled": False,
+            "sync_to_native": True,
+            "sync_commits_limit": 10,
+            "capture_decisions": True,
+            "capture_commits": True,
+            "retention_days": 365,
+        }
+    return load_memory_config(os.getcwd())
 
 
 def _is_excluded_path(file_path: str) -> bool:
@@ -200,9 +240,7 @@ def _open_db():
     Returns:
         Instancia de MemoryDB o None si no se pudo abrir.
     """
-    plugin_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if plugin_root not in sys.path:
-        sys.path.insert(0, plugin_root)
+    _ensure_plugin_root_on_path()
 
     try:
         from core.memory import MemoryDB
@@ -291,15 +329,9 @@ def _try_sync(db, action: str, **kwargs) -> None:
         **kwargs: argumentos adicionales para el metodo de sync.
     """
     try:
-        # Comprobar si sync_to_native esta desactivado
-        config_path = os.path.join(os.getcwd(), ".claude", "alfred-dev.local.md")
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config_content = f.read()
-            if re.search(r"sync_to_native:\s*false", config_content):
-                return
-        except (OSError, FileNotFoundError):
-            pass
+        settings = _memory_settings()
+        if not settings.get("sync_to_native", True):
+            return
 
         from core.memory_sync import MemorySync, resolve_memory_dir
 
@@ -307,7 +339,11 @@ def _try_sync(db, action: str, **kwargs) -> None:
         if memory_dir is None:
             return
 
-        sync = MemorySync(db, memory_dir)
+        commits_limit = settings.get("sync_commits_limit", 10)
+        if not isinstance(commits_limit, int) or commits_limit < 1:
+            commits_limit = 10
+
+        sync = MemorySync(db, memory_dir, commits_limit=commits_limit)
 
         if action == "decision":
             decision_id = kwargs.get("decision_id")
@@ -353,6 +389,133 @@ def _load_state_file(file_path: str) -> Optional[dict]:
         return None
 
     return state
+
+
+def _parse_alfred_prefetch_prompt(prompt_text: str) -> Optional[dict]:
+    """Extrae el slash command de Alfred si admite preparación helper-first."""
+    normalized = (prompt_text or "").strip()
+    if not normalized.startswith("/alfred-dev:"):
+        return None
+
+    first_line = normalized.splitlines()[0].strip()
+    match = re.match(
+        r"^/alfred-dev:(?P<command>[a-z0-9-]+)\b(?P<rest>.*)$",
+        first_line,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+
+    command = match.group("command").lower()
+    if command not in _ALFRED_PREFETCH_COMMANDS:
+        return None
+
+    raw_request = " ".join(match.group("rest").split()).strip()
+    return {
+        "source_command": command,
+        "raw_request": raw_request,
+    }
+
+
+def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
+    """Prepara artefactos de continuidad antes del primer razonamiento."""
+    parsed = _parse_alfred_prefetch_prompt(prompt_text)
+    if parsed is None:
+        return None
+
+    _ensure_plugin_root_on_path()
+    try:
+        from core.continuity import (
+            needs_codebase_map,
+            save_prefetch_result,
+            start_quick_session,
+            write_codebase_map_files,
+            write_discovery_files,
+        )
+    except ImportError as exc:
+        print(
+            f"{_LOG_PREFIX} Aviso: no se pudo importar core.continuity: {exc}",
+            file=sys.stderr,
+        )
+        return None
+
+    project_dir = os.getcwd()
+    source_command = parsed["source_command"]
+    raw_request = parsed["raw_request"]
+
+    target_command = source_command
+    action = None
+
+    if source_command == "alfred":
+        if not needs_codebase_map(project_dir):
+            return None
+        target_command = "map-codebase"
+        action = write_codebase_map_files
+    elif source_command == "map-codebase":
+        action = write_codebase_map_files
+    elif source_command == "discuss":
+        action = write_discovery_files
+    elif source_command == "quick":
+        action = start_quick_session
+
+    if action is None:
+        return None
+
+    try:
+        result = action(project_dir, raw_request)
+    except RuntimeError as exc:
+        print(
+            f"{_LOG_PREFIX} Aviso: prefetch /alfred-dev:{source_command} omitido: {exc}",
+            file=sys.stderr,
+        )
+        return None
+    except Exception as exc:
+        print(
+            f"{_LOG_PREFIX} Aviso: fallo en prefetch /alfred-dev:{source_command}: {exc}",
+            file=sys.stderr,
+        )
+        return None
+
+    payload = result.copy() if isinstance(result, dict) else {}
+    payload["source_command"] = source_command
+    payload["prefetched_command"] = target_command
+    save_prefetch_result(project_dir, payload)
+    return payload
+
+
+def _log_prefetch_event(db, project_dir: str, payload: dict) -> None:
+    """Registra en memoria que Alfred dejó listo un helper-first command."""
+    command = payload.get("prefetched_command", "desconocido")
+    source_command = payload.get("source_command", command)
+    artifacts = []
+
+    for key, value in payload.items():
+        if not key.endswith("_path"):
+            continue
+        if not isinstance(value, str) or not value:
+            continue
+        artifacts.append(_relative_path(value, project_dir))
+
+    summary = f"Prefetch Alfred: /alfred-dev:{source_command}"
+    if source_command != command:
+        summary += f" preparó /alfred-dev:{command}"
+    else:
+        summary += " preparado antes del flujo principal"
+
+    event_payload = {
+        "source_command": source_command,
+        "prefetched_command": command,
+        "artifacts": artifacts,
+    }
+    next_command = payload.get("recommended_command") or payload.get("next_command")
+    if isinstance(next_command, str) and next_command.strip():
+        event_payload["next_command"] = next_command.strip()
+
+    db.log_event(
+        event_type="alfred_prefetched",
+        summary=summary,
+        payload=event_payload,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -472,10 +635,13 @@ def _capture_git_commit(db) -> None:
     Args:
         db: instancia de MemoryDB ya abierta.
     """
+    if not _memory_settings().get("capture_commits", True):
+        return
+
     try:
         result = subprocess.run(
             ["git", "log", "-1",
-             "--format=%H|%s|%an|%aI",
+             "--format=%H%x1f%s%x1f%an%x1f%aI",
              "--name-only"],
             capture_output=True, text=True, timeout=5,
         )
@@ -485,10 +651,10 @@ def _capture_git_commit(db) -> None:
         return
 
     lines = result.stdout.strip().split("\n")
-    if not lines or "|" not in lines[0]:
+    if not lines or "\x1f" not in lines[0]:
         return
 
-    parts = lines[0].split("|", 3)
+    parts = lines[0].split("\x1f", 3)
     sha = parts[0]
     message = parts[1] if len(parts) > 1 else ""
     author = parts[2] if len(parts) > 2 else ""
@@ -900,6 +1066,19 @@ def _dispatch_prompt(db, data: dict) -> None:
     if not prompt_text:
         return
 
+    _ensure_plugin_root_on_path()
+    try:
+        from core.continuity import clear_prefetch_consumed_marker
+    except ImportError:
+        clear_prefetch_consumed_marker = None
+
+    if clear_prefetch_consumed_marker is not None:
+        clear_prefetch_consumed_marker(os.getcwd())
+
+    prefetched = _prefetch_alfred_continuity(prompt_text)
+    if prefetched:
+        _log_prefetch_event(db, os.getcwd(), prefetched)
+
     first_line = prompt_text.split("\n")[0][:100]
     summary = f"Prompt: {first_line}"
     if len(prompt_text) > len(first_line):
@@ -947,6 +1126,16 @@ def _dispatch_stop(db, data: dict) -> None:
         summary=summary,
         payload={"source": "Stop"},
     )
+
+    _ensure_plugin_root_on_path()
+    try:
+        from core.continuity import clear_prefetch_consumed_marker
+    except ImportError:
+        clear_prefetch_consumed_marker = None
+
+    if clear_prefetch_consumed_marker is not None:
+        clear_prefetch_consumed_marker(os.getcwd())
+
     active = db.get_active_iteration()
     if active:
         db.complete_iteration(active["id"])

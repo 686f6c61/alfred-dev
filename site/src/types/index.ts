@@ -94,7 +94,7 @@ export interface HeroData {
   ctas: HeroCta[];
   /** Bloque de features destacadas debajo de los CTAs (opcional). */
   features?: {
-    /** Etiqueta de version (ej. "Nuevo en v0.4.3"). */
+    /** Etiqueta de version (ej. "Ahora en main" o "New in v0.4.3"). */
     label: string;
     /** Lista de features. */
     items: HeroFeature[];
@@ -118,7 +118,7 @@ export interface Stat {
  *
  * Cada agente tiene un rol definido, personalidad propia y frase
  * caracteristica. Los agentes de nucleo estan siempre activos; los
- * opcionales se activan con /alfred config.
+ * opcionales se activan con /alfred-dev:config.
  */
 export interface Agent {
   /** Nombre publico del agente. */
@@ -147,7 +147,7 @@ export interface Agent {
  * en las fases que les corresponden.
  */
 export interface WorkflowFlow {
-  /** Comando que inicia el flujo (/alfred feature, /alfred fix...). */
+  /** Comando que inicia el flujo (/alfred-dev:feature, /alfred-dev:fix...). */
   command: string;
   /** Subtitulo corto (Ciclo completo, Correccion rapida...). */
   subtitle: string;
@@ -223,7 +223,7 @@ export interface InfraGroup {
 
 /** Comando de la interfaz de Alfred Dev. */
 export interface Command {
-  /** Texto del comando (/alfred, /alfred feature...). */
+  /** Texto del comando (/alfred-dev:alfred, /alfred-dev:feature...). */
   command: string;
   /** Descripcion de lo que hace. */
   description: string;

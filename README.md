@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 5 flujos de trabajo con quality gates infranqueables, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh
 Reinicia Claude Code después de instalar y verifica con:
 
 ```bash
-/alfred help
+/alfred-dev:help
 ```
 
 En Windows (PowerShell):
@@ -57,27 +57,28 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 ```bash
 # 1. Verificar que el plugin esta cargado
-/alfred help
+/alfred-dev:help
 
 # 2. Configurar el proyecto (detecta el stack automaticamente)
-/alfred config
+/alfred-dev:config
 
 # 3. Arrancar una funcionalidad de ejemplo
-/alfred feature sistema de login con email y password
+/alfred-dev:feature sistema de login con email y password
 ```
 
-Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred fix` con una descripcion del bug o `/alfred spike` para investigar una tecnologia sin compromiso de implementacion.
+Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.3
+## Novedades en v0.4.4
 
-La v0.4.3 corrige el punto mas delicado del flujo `/alfred audit`: SonarQube ya no se "olvida" cuando Docker no esta listo y Alfred pregunta antes de tocar el sistema:
+La v0.4.4 cierra la capa de memoria persistente para uso real: la configuracion del proyecto ya manda de verdad, los eventos son buscables y la salud deja de dar falsos errores con FTS y WAL.
 
 | Novedad | Descripcion |
 |---------|-------------|
-| **Preflight real de SonarQube** | `/alfred audit` comprueba `docker --version` y `docker info` antes de lanzar la auditoria. |
-| **Confirmacion obligatoria** | Si hace falta instalar Docker o arrancar el daemon, Alfred pide permiso explicito incluso en autopilot. |
-| **Omisiones documentadas** | Si el usuario decide seguir sin SonarQube, el informe debe dejarlo por escrito en vez de saltarselo en silencio. |
-| **Skill endurecido** | El skill de SonarQube contempla permisos, puerto `9000` ocupado, contenedores previos y limpieza final. |
+| **FTS de eventos corregido** | Los eventos con `content` ya aparecen en `memory_search` y `memory_health` no los trata como corrupcion. |
+| **Purga completa** | `purge_old_events()` elimina tambien las filas del indice FTS, evitando huerfanos y falsos positivos tras la retencion. |
+| **Config de memoria cableada** | `capture_decisions`, `capture_commits`, `retention_days` y `sync_commits_limit` pasan a aplicarse realmente en hooks, MCP y sync nativa. |
+| **Tamano real en WAL** | La salud de la memoria ya contabiliza `.db`, `-wal` y `-shm`, reflejando el consumo real en disco. |
+| **Import Git robusto** | Los mensajes de commit con `|` dejan de corromperse al importar historial o capturar `git commit`. |
 
 ### Novedades de v0.4.2
 
@@ -110,30 +111,38 @@ La v0.4.0 incorporo cinco capacidades orientadas a fiabilidad, autonomia control
 |---------|-------------|
 | **Verificacion de evidencia** | El hook `evidence-guard.py` intercepta cada ejecucion de tests y registra si hubo exitos o fallos reales. Cuando un agente afirma que «los tests pasan», el orquestador verifica la evidencia registrada antes de aprobar la gate. Sin salida real de tests, no hay aprobacion. |
 | **Loop iterativo en fases** | Si una fase no supera su quality gate, el orquestador puede reintentar hasta 5 veces (`should_retry_phase`) antes de escalar al usuario. Cada reintento incluye el feedback del fallo anterior para que el agente corrija su enfoque. |
-| **Modo autopilot** | `run_flow_autopilot()` permite ejecutar flujos completos con aprobacion automatica de las gates de usuario, manteniendo las gates de seguridad y calidad intactas. El nivel de autonomia se configura por fase en `/alfred config`. |
+| **Modo autopilot** | `run_flow_autopilot()` permite ejecutar flujos completos con aprobacion automatica de las gates de usuario, manteniendo las gates de seguridad y calidad intactas. El nivel de autonomia se configura por fase en `/alfred-dev:config`. |
 | **Informes de sesion** | Al finalizar cada sesion, `session_report.py` genera un informe Markdown en `docs/alfred-reports/` con las fases completadas, duraciones, equipo de agentes, evidencia recopilada y artefactos producidos. |
 
 ## Comandos
 
-Toda la interfaz se controla desde la línea de comandos de Claude Code con el prefijo `/alfred`:
+Toda la interfaz se controla desde la línea de comandos de Claude Code con el prefijo `/alfred-dev:`:
 
 | Comando | Descripcion |
 |---------|-------------|
-| `/alfred` | Asistente contextual: detecta el stack y la sesion activa, pregunta que necesitas. |
-| `/alfred feature <desc>` | Ciclo completo de 6 fases o parcial. Alfred pregunta desde que fase arrancar. |
-| `/alfred fix <desc>` | Correccion de bugs con flujo de 3 fases: diagnostico, correccion TDD, validacion. |
-| `/alfred spike <tema>` | Investigacion tecnica sin compromiso: prototipos, benchmarks, documento de hallazgos. |
-| `/alfred ship` | Release: auditoria final paralela, changelog, versionado semantico, despliegue. |
-| `/alfred audit` | Auditoria completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentacion. |
-| `/alfred config` | Configurar autonomia, stack, compliance, personalidad, agentes opcionales y memoria persistente. |
-| `/alfred status` | Fase actual, fases completadas con duracion, gate pendiente y agente activo. |
-| `/alfred update` | Comprobar si hay version nueva y actualizar el plugin. |
-| `/alfred help` | Referencia completa de comandos, agentes y flujos. |
+| `/alfred-dev:alfred` | Entrada contextual: decide si toca mapear, discutir, continuar, verificar o abrir un flujo multiagente. |
+| `/alfred-dev:map-codebase` | Analiza un repo existente y deja `codebase-map.md` y `current.md` antes de implementar. |
+| `/alfred-dev:discuss <desc>` | Refina una idea o fase concreta y deja discovery persistente antes de abrir `feature`. |
+| `/alfred-dev:next` | Dice que toca ahora segun el estado del proyecto y la sesion activa. |
+| `/alfred-dev:pause` | Pausa el trabajo en curso y genera handoff persistente. |
+| `/alfred-dev:resume` | Retoma una sesion pausada usando el handoff y el estado guardado. |
+| `/alfred-dev:progress` | Resume kanban, bloqueos, trazabilidad, UAT y estado operativo del proyecto. |
+| `/alfred-dev:verify` | Crea o cierra la validacion humana/UAT separada de los tests automaticos. |
+| `/alfred-dev:quick <desc>` | Flujo ligero para cambios pequenos con menos ceremonia que `feature`. |
+| `/alfred-dev:feature <desc>` | Ciclo completo de 6 fases o parcial. Alfred pregunta desde que fase arrancar. |
+| `/alfred-dev:fix <desc>` | Correccion de bugs con flujo de 3 fases: diagnostico, correccion TDD, validacion. |
+| `/alfred-dev:spike <tema>` | Investigacion tecnica sin compromiso: prototipos, benchmarks, documento de hallazgos. |
+| `/alfred-dev:ship` | Release: auditoria final paralela, changelog, versionado semantico, despliegue. |
+| `/alfred-dev:audit` | Auditoria completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentacion. |
+| `/alfred-dev:config` | Configurar autonomia, stack, compliance, personalidad, agentes opcionales y memoria persistente. |
+| `/alfred-dev:status` | Fase actual, fases completadas con duracion, gate pendiente y agente activo. |
+| `/alfred-dev:update` | Comprobar si hay version nueva y actualizar el plugin. |
+| `/alfred-dev:help` | Referencia completa de comandos, agentes y flujos. |
 
 ### Ejemplo de uso
 
 ```
-> /alfred feature sistema de autenticación con OAuth2
+> /alfred-dev:feature sistema de autenticación con OAuth2
 
 Alfred activa el flujo de 6 fases:
   1. Producto    -- PRD con historias de usuario y criterios de aceptación
@@ -168,7 +177,7 @@ Los agentes con modelo `opus` realizan tareas que requieren razonamiento complej
 
 ### Agentes opcionales (8)
 
-Agentes predefinidos que el usuario activa segun las necesidades de su proyecto con `/alfred config`. Se sugieren automaticamente en funcion del stack detectado. Desde v0.3.6, Alfred tambien propone agentes opcionales de forma dinamica al arrancar cada flujo, analizando la descripcion de la tarea con keywords contextuales y combinandolas con las senales del proyecto. La seleccion dinamica es efimera (solo para esa sesion) y no modifica la configuracion persistente. Mas detalles en la [documentacion de configuracion](docs/configuration.md#composicion-dinamica-de-equipo).
+Agentes predefinidos que el usuario activa segun las necesidades de su proyecto con `/alfred-dev:config`. Se sugieren automaticamente en funcion del stack detectado. Desde v0.3.6, Alfred tambien propone agentes opcionales de forma dinamica al arrancar cada flujo, analizando la descripcion de la tarea con keywords contextuales y combinandolas con las senales del proyecto. La seleccion dinamica es efimera (solo para esa sesion) y no modifica la configuracion persistente. Mas detalles en la [documentacion de configuracion](docs/configuration.md#composicion-dinamica-de-equipo).
 
 | Agente | Rol | Cuando es util |
 |--------|-----|----------------|
@@ -196,12 +205,13 @@ skills/
   documentación/     -- api-docs, architecture-docs, user-guide, changelog
 ```
 
-### Hooks (11)
+### Hooks (12)
 
 Los hooks interceptan eventos del ciclo de vida de Claude Code para aplicar validaciones automaticas:
 
 | Hook | Evento | Funcion |
 |------|--------|---------|
+| `session-bootstrap.sh` | `SessionStart` | Bootstrap síncrono del proyecto: config local, memoria, permisos y wrapper de continuidad |
 | `session-start.sh` | `SessionStart` | Detecta stack tecnologico, inyecta contexto de sesion y memoria persistente |
 | `stop-hook.py` | `Stop` | Genera resumen e informe de sesion con fases completadas y pendientes |
 | `secret-guard.sh` | `PreToolUse` (Write/Edit) | Bloquea escritura de secretos (API keys, tokens, passwords) |
@@ -211,7 +221,7 @@ Los hooks interceptan eventos del ciclo de vida de Claude Code para aplicar vali
 | `evidence-guard.py` | `PostToolUse` (Bash) | Registra evidencia de ejecucion de tests para verificacion de gates |
 | `dependency-watch.py` | `PostToolUse` (Write/Edit) | Detecta dependencias nuevas y notifica al security officer |
 | `spelling-guard.py` | `PostToolUse` (Write/Edit) | Detecta palabras castellanas sin tilde al escribir o editar ficheros |
-| `activity-capture.py` | Multiples | Captura automatica de actividad, commits e iteraciones en la memoria persistente |
+| `activity-capture.py` | Multiples | Captura automatica de actividad, commits e iteraciones; en prompts helper-first prepara continuidad operativa antes del razonamiento |
 | `memory-compact.py` | `PreCompact` | Protege decisiones criticas durante la compactacion de contexto |
 
 ### Templates (7)
@@ -226,7 +236,7 @@ Plantillas estandarizadas que los agentes usan para generar artefactos con estru
 - `changelog-entry.md` -- Entrada de changelog (Keep a Changelog)
 - `release-notes.md` -- Notas de release con resumen ejecutivo
 
-### Core (5 modulos)
+### Core (6 modulos)
 
 El nucleo del plugin esta implementado en Python con tests unitarios:
 
@@ -235,6 +245,7 @@ El nucleo del plugin esta implementado en Python con tests unitarios:
 | `orchestrator.py` | Maquina de estados de flujos, gestion de sesiones, evaluacion de gates, modo autopilot, loop iterativo |
 | `personality.py` | Motor de personalidad: frases, tono, anuncios, formato de veredicto |
 | `config_loader.py` | Carga de configuracion, deteccion de stack, preferencias de proyecto |
+| `continuity.py` | Helper-first para continuidad CLI: map-codebase, discuss, next, pause, resume, progress, verify y quick |
 | `memory.py` | Base de datos SQLite de memoria persistente: decisiones, commits, iteraciones, eventos |
 | `session_report.py` | Generacion de informes de sesion en Markdown con fases, evidencia y artefactos |
 
@@ -291,7 +302,7 @@ El hook `session-start.sh` analiza el directorio de trabajo al iniciar sesión y
 
 A partir de v0.2.0, Alfred Dev puede recordar decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local (`.claude/alfred-memory.db`) dentro de cada proyecto, sin dependencias externas ni servicios remotos. La v0.2.3 anade etiquetas, estado y relaciones entre decisiones, auto-captura de commits, filtros avanzados de busqueda y exportacion/importacion.
 
-La activacion es opcional y se gestiona con `/alfred config`. Una vez activa, el hook `activity-capture.py` captura eventos automaticamente en multiples puntos del ciclo de vida: iteraciones, fases, commits (SHA, autor, ficheros afectados) y actividad general de la sesion. Las decisiones arquitectonicas se registran a traves del agente **El Bibliotecario** o del servidor MCP integrado.
+La activacion es opcional y se gestiona con `/alfred-dev:config`. Una vez activa, el hook `activity-capture.py` captura eventos automaticamente en multiples puntos del ciclo de vida: iteraciones, fases, commits (SHA, autor, ficheros afectados) y actividad general de la sesion. En `UserPromptSubmit`, si detecta comandos helper-first de continuidad (`/alfred-dev:map-codebase`, `discuss`, `quick` o el caso brownfield de `/alfred-dev:alfred`), deja preparados los artefactos operativos antes del razonamiento principal. Las decisiones arquitectonicas se registran a traves del agente **El Bibliotecario** o del servidor MCP integrado.
 
 Funcionalidades principales:
 
@@ -315,7 +326,7 @@ alfred-dev/
     mcp.json              # Servidor MCP de memoria persistente
   agents/                 # 9 agentes de nucleo
   agents/optional/        # 8 agentes opcionales
-  commands/               # 10 comandos /alfred
+  commands/               # 18 comandos /alfred-dev
   skills/                 # 60 skills en 13 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos
@@ -328,7 +339,7 @@ alfred-dev/
 
 ## Configuracion
 
-El plugin se configura por proyecto con el fichero `.claude/alfred-dev.local.md` en la raiz del proyecto. Se gestiona con `/alfred config`, que incluye descubrimiento contextual de agentes opcionales y activacion de memoria persistente:
+El plugin se configura por proyecto con el fichero `.claude/alfred-dev.local.md` en la raiz del proyecto. Se gestiona con `/alfred-dev:config`, que incluye descubrimiento contextual de agentes opcionales y activacion de memoria persistente:
 
 ```yaml
 ---
@@ -353,6 +364,8 @@ agentes_opcionales:
 
 memoria:
   enabled: true
+  sync_to_native: true
+  sync_commits_limit: 10
   capture_decisions: true
   capture_commits: true
   retention_days: 365

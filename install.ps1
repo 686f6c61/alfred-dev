@@ -8,7 +8,7 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra el marketplace del plugin con claude plugin marketplace add
 #   3. Instala el plugin con claude plugin install
-#   4. Listo para usar: /alfred help
+#   4. Listo para usar: /alfred-dev:help
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para garantizar
@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.4.3"
+$Version = "0.4.4"
 
 # -- Funciones auxiliares ---------------------------------------------------
 
@@ -103,7 +103,7 @@ Write-Host ""
 Write-Host "Instalacion completada" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Reinicia Claude Code y ejecuta:"
-Write-Host "  /alfred help" -ForegroundColor White
+Write-Host "  /alfred-dev:help" -ForegroundColor White
 Write-Host ""
 Write-Host "  Repositorio: https://github.com/$Repo" -ForegroundColor DarkGray
 Write-Host "  Documentacion: https://alfred-dev.com" -ForegroundColor DarkGray

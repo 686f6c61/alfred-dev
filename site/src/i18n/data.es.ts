@@ -103,7 +103,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales que activas según tu proyecto. Memoria persistente, quality gates, 60 skills, de la idea a producción.',
+    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales. 6 flujos de ejecución, 18 comandos, memoria persistente, continuidad operativa y quality gates, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -117,26 +117,26 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'Nuevo en v0.4.3',
+      label: 'Ahora en main',
       items: [
         {
-          title: 'Preflight real de SonarQube',
-          description: 'La auditoria comprueba Docker antes de lanzar agentes y decide si SonarQube puede ejecutarse de verdad.',
+          title: 'Continuidad operativa real',
+          description: 'Alfred ya sabe decir qué toca ahora, pausar una sesión, retomarla y mostrar el estado del proyecto sin reabrir medio repo.',
           svgContent: '<path d="M9 12l2 2 4-4"/><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z"/>',
         },
         {
-          title: 'Permisos explícitos',
-          description: 'Si hace falta instalar Docker o arrancar el daemon, Alfred pregunta antes de tocar el sistema, incluso en autopilot.',
+          title: 'Brownfield sin empezar a ciegas',
+          description: 'Repos existentes arrancan por map-codebase y discuss: Alfred deja un mapa persistente del codebase antes de abrir flujos de implementación.',
           svgContent: '<path d="M12 16v5"/><path d="M16 14l-4 2-4-2"/><path d="M12 3l9 4.5v5L12 17l-9-4.5v-5L12 3z"/>',
         },
         {
-          title: 'SonarQube no se omite en silencio',
-          description: 'Si el usuario decide seguir sin SonarQube o faltan permisos, la auditoria debe documentarlo en el informe.',
+          title: 'Quick mode con garantías',
+          description: 'Los cambios pequeños ya tienen su propio flujo ligero: menos ceremonia, pero con tests, regresión local y revisión de seguridad.',
           svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
         },
         {
-          title: 'Contrato cubierto por tests',
-          description: 'La suite de regresion protege los prompts de audit y SonarQube para que el comportamiento no vuelva a degradarse.',
+          title: 'UAT explícita y trazable',
+          description: 'verify separa los tests automáticos de la validación humana y progress expone kanban, bloqueos, trazabilidad y estado de UAT.',
           svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         },
       ],
@@ -150,8 +150,8 @@ const data: PageData = {
   stats: [
     { number: 17, label: 'Agentes' },
     { number: 60, label: 'Skills' },
-    { number: 5, label: 'Flujos' },
-    { number: 10, label: 'Comandos' },
+    { number: 6, label: 'Flujos' },
+    { number: 18, label: 'Comandos' },
     { number: 7, label: 'Templates' },
     { number: 11, label: 'Hooks' },
     { number: 23, label: 'Gates' },
@@ -331,9 +331,9 @@ const data: PageData = {
       label: 'Composicion dinamica',
       labelColor: 'var(--gold)',
       title: 'El equipo que necesitas, cuando lo necesitas',
-      description: 'Alfred analiza tu tarea en tiempo real y sugiere los agentes opcionales mas relevantes. Describes lo que quieres hacer y el sistema propone el equipo ideal.',
+    description: 'Cuando Alfred detecta que toca abrir un flujo multiagente, analiza tu tarea en tiempo real y sugiere los agentes opcionales mas relevantes. Si antes toca mapear, retomar, verificar o mostrar progreso, resuelve eso primero.',
     },
-    introHtml: 'Cuando ejecutas <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>, Alfred razona sobre que especialistas encajan con el trabajo, te presenta la seleccion de agentes y arranca la fase de producto con preguntas una a una. Asi se ve en la terminal:',
+    introHtml: 'Cuando <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:alfred</code> o un comando explicito deciden que la ruta correcta es un flujo multiagente, Alfred razona sobre que especialistas encajan con el trabajo, te presenta la seleccion de agentes y arranca la fase adecuada. Asi se ve cuando la ruta elegida es <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>:',
     terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'Migrar la base de datos de SQLite a PostgreSQL y rediseñar la interfaz del checkout con tests de accesibilidad',
     coreTeamText: 'Equipo de nucleo (siempre activos): Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA.',
@@ -368,8 +368,8 @@ const data: PageData = {
   workflows: {
     header: {
       label: 'Flujos de trabajo',
-      title: '5 flujos, 16 fases',
-      description: 'Cada flujo tiene fases secuenciales con quality gates entre ellas. Si una gate no se supera, el flujo no avanza. Los agentes opcionales se integran automáticamente en las fases que les corresponden.',
+      title: '6 flujos de ejecución, 18 fases',
+      description: 'Cada flujo tiene fases secuenciales con quality gates entre ellas. Si una gate no se supera, el flujo no avanza. Además de estos flujos, Alfred añade una capa operativa de continuidad con comandos como next, pause, resume, verify y progress.',
     },
     flows: [
       {
@@ -377,6 +377,12 @@ const data: PageData = {
         subtitle: 'Ciclo completo o parcial',
         description: '6 fases: producto, arquitectura, desarrollo TDD, calidad + seguridad, documentación, entrega. Puedes arrancar desde cualquier fase.',
         stages: ['Producto', 'Arquitectura', 'Desarrollo', 'Calidad + Seguridad', 'Documentación', 'Entrega'],
+      },
+      {
+        command: '/alfred-dev:quick',
+        subtitle: 'Cambio pequeño',
+        description: '2 fases: ejecución acotada y validación rápida. Menos ceremonia que feature, pero con tests y revisión de seguridad.',
+        stages: ['Ejecución acotada', 'Validación rápida'],
       },
       {
         command: '/alfred-dev:fix',
@@ -595,12 +601,13 @@ const data: PageData = {
     header: {
       label: 'Bajo el capó',
       title: 'Hooks, templates y core',
-      description: 'La infraestructura que hace funcionar al equipo: hooks que vigilan, templates que estandarizan y un core que orquesta.',
+      description: 'La infraestructura que hace funcionar al equipo: hooks que arrancan la sesión, templates que estandarizan artefactos y un core que orquesta tanto los flujos de ejecución como la continuidad operativa.',
     },
     groups: [
       {
-        title: '11 hooks',
+        title: '12 hooks',
         items: [
+          { name: 'session-bootstrap.sh', label: 'SessionStart' },
           { name: 'session-start.sh', label: 'SessionStart' },
           { name: 'stop-hook.py', label: 'Stop' },
           { name: 'secret-guard.sh', label: 'PreToolUse' },
@@ -627,9 +634,10 @@ const data: PageData = {
         ],
       },
       {
-        title: '5 módulos core',
+        title: '6 módulos core',
         items: [
           { name: 'orchestrator.py', label: 'Flujos, sesiones, gates, loop iterativo y autopilot' },
+          { name: 'continuity.py', label: 'map-codebase, discuss, next, pause, resume, verify y progress' },
           { name: 'personality.py', label: 'Motor de personalidad' },
           { name: 'config_loader.py', label: 'Config y detección de stack' },
           { name: 'memory.py', label: 'Memoria persistente SQLite' },
@@ -646,17 +654,29 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interfaz',
-      title: '10 comandos',
-      description: 'Todo se controla desde la línea de comandos de Claude Code. Un prefijo, un verbo, una descripción.',
+      title: '18 comandos',
+      description: 'Todo se controla desde la línea de comandos de Claude Code. Alfred combina routing contextual, flujos multiagente, continuidad operativa, visibilidad de proyecto y administración del plugin.',
     },
     list: [
       {
         command: '/alfred-dev:alfred',
-        description: 'Asistente contextual: detecta el stack y la sesión activa, pregunta qué necesitas y lanza el flujo adecuado.',
+        description: 'Asistente contextual: detecta el stack, la sesión activa y el estado del proyecto, y decide si toca mapear, retomar, refinar, cambiar algo pequeño o abrir un flujo completo.',
+      },
+      {
+        command: '/alfred-dev:map-codebase',
+        description: 'Analiza un repositorio existente y crea <code>docs/project/codebase-map.md</code> y <code>docs/project/current.md</code> antes de tocar código.',
+      },
+      {
+        command: '/alfred-dev:discuss',
+        description: 'Refina una idea o feature antes de abrir implementación. Deja <code>discovery.md</code>, <code>current.md</code> y el siguiente comando recomendado.',
       },
       {
         command: '/alfred-dev:feature',
         description: 'Ciclo completo de 6 fases o desde la que indiques. Alfred pregunta y se adapta: "desde desarrollo", "solo documentación", "ciclo completo".',
+      },
+      {
+        command: '/alfred-dev:quick',
+        description: 'Cambio pequeño y acotado con dos fases ligeras: ejecución sobre la superficie tocada y validación rápida con QA + seguridad.',
       },
       {
         command: '/alfred-dev:fix',
@@ -665,6 +685,26 @@ const data: PageData = {
       {
         command: '/alfred-dev:spike',
         description: 'Investigación exploratoria sin compromiso: prototipos, benchmarks, conclusiones.',
+      },
+      {
+        command: '/alfred-dev:next',
+        description: 'Responde a la pregunta “qué toca ahora” y ejecuta la ruta correcta si es inequívoca: retomar, verificar, mapear o sugerir el siguiente flujo.',
+      },
+      {
+        command: '/alfred-dev:pause',
+        description: 'Pausa el trabajo actual y deja un handoff explícito en <code>.claude/alfred-handoff.json</code> y <code>docs/project/handoff.md</code>.',
+      },
+      {
+        command: '/alfred-dev:resume',
+        description: 'Retoma una sesión activa o un handoff pendiente sin abrir una iteración nueva a ciegas.',
+      },
+      {
+        command: '/alfred-dev:verify',
+        description: 'Prepara o registra la validación manual/UAT del entregable actual, separando la aceptación humana de los tests automáticos.',
+      },
+      {
+        command: '/alfred-dev:progress',
+        description: 'Resume progreso, kanban, bloqueos, trazabilidad y estado de UAT del proyecto con una vista operativa compacta.',
       },
       {
         command: '/alfred-dev:ship',
@@ -676,11 +716,11 @@ const data: PageData = {
       },
       {
         command: '/alfred-dev:config',
-        description: 'Configurar autonomía, stack, compliance, personalidad, <strong style="color: var(--gold);">agentes opcionales</strong> y <strong style="color: var(--gold);">memoria persistente</strong>. Incluye descubrimiento contextual: Alfred analiza tu proyecto y sugiere qué agentes activar.',
+        description: 'Configurar autonomía, stack, compliance, personalidad, <strong style="color: var(--gold);">agentes opcionales</strong> y <strong style="color: var(--gold);">memoria persistente</strong>. La primera sesión puede bootstrappear esta config automáticamente.',
       },
       {
         command: '/alfred-dev:status',
-        description: 'Sesión activa: fase actual, fases completadas con duración, gate pendiente y agente activo.',
+        description: 'Estado de la sesión activa: fase actual, fases completadas, gate pendiente, refinado previo y foco operativo inmediato.',
       },
       {
         command: '/alfred-dev:update',
@@ -691,7 +731,7 @@ const data: PageData = {
         description: 'Ayuda completa de todos los comandos disponibles.',
       },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 8 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y a partir de ahí se integran automáticamente en los flujos existentes. Por ejemplo, si activas el <em>data-engineer</em>, participará en la fase de arquitectura de <strong style="color: var(--blue);">/alfred-dev:feature</strong>; si activas el <em>seo-specialist</em>, intervendrá en la fase de calidad de <strong style="color: var(--blue);">/alfred-dev:ship</strong>; si activas <em>El Bibliotecario</em>, Alfred consultará el historial de decisiones antes de cada flujo. Alfred decide cuándo invocar a cada agente según el contexto del flujo.',
+    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 8 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y Alfred los integra automáticamente cuando el comando lo necesita, sobre todo en <strong style="color: var(--blue);">/alfred-dev:feature</strong>, <strong style="color: var(--blue);">/alfred-dev:quick</strong>, <strong style="color: var(--blue);">/alfred-dev:fix</strong>, <strong style="color: var(--blue);">/alfred-dev:spike</strong>, <strong style="color: var(--blue);">/alfred-dev:audit</strong> y <strong style="color: var(--blue);">/alfred-dev:ship</strong>. Los comandos operativos (<em>map-codebase</em>, <em>next</em>, <em>pause</em>, <em>resume</em>, <em>verify</em>, <em>progress</em>) priorizan continuidad y contexto antes de abrir un equipo completo.',
   },
 
   // ----------------------------------------------------------------
@@ -803,10 +843,101 @@ const data: PageData = {
         title: 'Asistente contextual',
         command: '/alfred-dev:alfred',
         steps: [
-          'Alfred detecta el stack del proyecto y el estado de la sesión activa',
-          'Pregunta qué necesitas y ofrece opciones adaptadas al contexto',
-          'Interpreta tu respuesta en lenguaje natural y lanza el flujo adecuado',
-          'También puedes decir "usa el plugin de Alfred" en cualquier momento',
+          'Alfred detecta el stack del proyecto, la sesión activa, el handoff pendiente y si falta mapa brownfield',
+          'Decide si toca next, map-codebase, discuss, quick, feature, fix, spike, audit, verify o progress',
+          'Si la ruta correcta es operativa, la resuelve antes de abrir un equipo multiagente',
+          'Solo compone agentes cuando de verdad toca un flujo de ejecución',
+        ],
+      },
+      {
+        category: 'Brownfield',
+        color: 'var(--cyan)',
+        background: 'rgba(78,201,201,0.08)',
+        title: 'Entrar en un repo existente',
+        command: '/alfred-dev:map-codebase checkout',
+        steps: [
+          'Alfred analiza README, manifiestos, estructura principal y zonas sensibles sin tocar código de producto',
+          'Genera docs/project/codebase-map.md con dominios, entrypoints, hotspots, pruebas, despliegue y riesgos',
+          'Deja docs/project/current.md con lectura operativa y siguiente comando recomendado',
+          'A partir de ahí feature, fix, spike y audit ya no arrancan a ciegas',
+        ],
+      },
+      {
+        category: 'Refinado',
+        color: 'var(--gold)',
+        background: 'rgba(201,169,110,0.08)',
+        title: 'Aterrizar una idea antes de construir',
+        command: '/alfred-dev:discuss nuevo onboarding para equipos',
+        steps: [
+          'Alfred clarifica problema real, actor principal, alcance y supuestos antes de hablar de implementación',
+          'Persiste el refinado en docs/project/discovery.md y actualiza docs/project/current.md',
+          'Si la idea ya está madura, recomienda feature o quick; si faltan datos técnicos, spike',
+          'Evita abrir PRD, arquitectura o desarrollo antes de tiempo',
+        ],
+      },
+      {
+        category: 'Cambio pequeño',
+        color: 'var(--blue)',
+        background: 'rgba(91,156,245,0.08)',
+        title: 'Resolver algo pequeño sin abrir toda la maquinaria',
+        command: '/alfred-dev:quick corregir copy del checkout y su test',
+        steps: [
+          'Quick abre una sesión ligera con dos fases: ejecución acotada y validación rápida',
+          'El senior-dev cambia solo la superficie tocada y actualiza los tests necesarios',
+          'QA y seguridad revisan regresión local y riesgos obvios sin convertirlo en una auditoría global',
+          'El siguiente paso esperado queda explícito: /alfred-dev:verify',
+        ],
+      },
+      {
+        category: 'Continuidad',
+        color: 'var(--green)',
+        background: 'rgba(78,201,144,0.08)',
+        title: 'Saber qué toca ahora',
+        command: '/alfred-dev:next',
+        steps: [
+          'Prioriza sesión activa, handoff pendiente, UAT pendiente o brownfield sin mapear',
+          'Si la salida es inequívoca, ejecuta la ruta correcta sin ofrecer un menú genérico',
+          'Si hay trabajo a retomar, muestra flujo, fase actual, gate pendiente y siguiente acción concreta',
+          'Si no hay nada vivo, sugiere el siguiente flujo razonable para el estado real del proyecto',
+        ],
+      },
+      {
+        category: 'Continuidad',
+        color: 'var(--purple)',
+        background: 'rgba(160,126,232,0.08)',
+        title: 'Pausar y retomar sin perder el hilo',
+        command: '/alfred-dev:pause',
+        steps: [
+          'Pause guarda handoff en .claude/alfred-handoff.json y docs/project/handoff.md',
+          'Resume reutiliza estado e handoff para volver exactamente al punto en que se dejó el trabajo',
+          'No abre una iteración nueva ni empuja gates por su cuenta: primero deja claro qué toca',
+          'Sirve igual para sesiones largas de feature que para quick o trabajo interrumpido',
+        ],
+      },
+      {
+        category: 'Verificación',
+        color: 'var(--red)',
+        background: 'rgba(229,86,79,0.08)',
+        title: 'Cerrar la aceptación manual',
+        command: '/alfred-dev:verify aprobado smoke manual correcto',
+        steps: [
+          'Verify prepara o actualiza la UAT del entregable actual en .claude/alfred-uat.json y docs/project/uat.md',
+          'Separa claramente los tests automáticos de la validación humana final',
+          'Registra si la UAT queda pendiente, aprobada o rechazada, junto con la nota principal',
+          'Si la validación falla, el siguiente paso operativo vuelve a quedar visible en current/uat',
+        ],
+      },
+      {
+        category: 'Project management',
+        color: 'var(--magenta)',
+        background: 'rgba(214,106,214,0.08)',
+        title: 'Ver el estado real del proyecto',
+        command: '/alfred-dev:progress',
+        steps: [
+          'Progress expone la capa operativa de SonIA: progreso general, kanban, bloqueos y trazabilidad',
+          'Resume el flujo activo o el handoff pendiente sin reabrir el trabajo en curso',
+          'Muestra huecos de trazabilidad y el estado de la UAT si existe',
+          'Cierra con el siguiente comando recomendado para seguir avanzando',
         ],
       },
       {
@@ -1007,25 +1138,25 @@ const data: PageData = {
   install: {
     sectionLabel: 'Primeros pasos',
     title: 'Instalación',
-    description: 'Un comando en la terminal y listo. Compatible con macOS, Linux y Windows. El instalador es idempotente: ejecutarlo de nuevo actualiza sin conflictos.',
+    description: 'Un comando en la terminal y listo. Compatible con macOS, Linux y Windows. El instalador es idempotente: ejecutarlo de nuevo actualiza sin conflictos. En la primera sesión Alfred puede bootstrappear tu configuración local y sugerirte el siguiente paso.',
     tabs: [
       {
         id: 'macos',
         label: 'macOS',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:alfred</strong> o <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'linux',
         label: 'Linux',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requisitos:</strong> git, Python 3.10+, Claude Code instalado.<br>Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:alfred</strong> o <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'windows',
         label: 'Windows',
         command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
-        requirementsHtml: '<strong>Requisitos:</strong> git, PowerShell 5.1+ (preinstalado en Windows 10/11), Claude Code instalado.<br>No necesita Python. Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:help</strong>.<br>Alternativa: también puedes usar el instalador bash con WSL o Git Bash.',
+        requirementsHtml: '<strong>Requisitos:</strong> git, PowerShell 5.1+ (preinstalado en Windows 10/11), Claude Code instalado.<br>No necesita Python. Tras la instalación, reinicia Claude Code y ejecuta <strong>/alfred-dev:alfred</strong> o <strong>/alfred-dev:help</strong>.<br>Alternativa: también puedes usar el instalador bash con WSL o Git Bash.',
       },
     ],
     uninstall: {
@@ -1057,29 +1188,30 @@ const data: PageData = {
   config: {
     sectionLabel: 'Personalización',
     title: 'Configuración por proyecto',
-    descriptionHtml: 'Cada proyecto tiene su propio fichero de configuración en <code>.claude/alfred-dev.local.md</code>. Se gestiona con <strong>/alfred-dev:config</strong>, que incluye descubrimiento contextual de agentes opcionales y activación de memoria persistente.',
+    descriptionHtml: 'Cada proyecto tiene su propio fichero de configuración en <code>.claude/alfred-dev.local.md</code>. La primera sesión puede generarlo automáticamente con una configuración usable para CLI; después <strong>/alfred-dev:config</strong> te deja revisarlo y ampliarlo con autonomía, agentes opcionales y memoria persistente.',
     yamlExample: `---
 autonomia:
-  producto: interactivo
-  arquitectura: interactivo
-  desarrollo: semi-autonomo
-  seguridad: autonomo
-  calidad: semi-autonomo
+  producto: autonomo
+  arquitectura: autonomo
+  desarrollo: autonomo
+  calidad: autonomo
   documentacion: autonomo
-  devops: semi-autonomo
+  entrega: autonomo
 
 agentes_opcionales:
-  data-engineer: true
+  data-engineer: false
   ux-reviewer: false
   performance-engineer: false
-  github-manager: true
+  github-manager: false
   seo-specialist: false
   copywriter: false
-  librarian: true
+  librarian: false
   i18n-specialist: false
 
 memoria:
   enabled: true
+  sync_to_native: true
+  sync_commits_limit: 10
   capture_decisions: true
   capture_commits: true
   retention_days: 365
@@ -1091,16 +1223,20 @@ personalidad:
 ---`,
     blocks: [
       {
-        title: 'Autonomía por fase',
-        descriptionHtml: 'Controla cuánta intervención necesitas en cada fase del flujo. <strong>Interactivo</strong> pide aprobación en cada paso, <strong>semi-autónomo</strong> avanza solo pero te consulta las decisiones clave, y <strong>autónomo</strong> ejecuta sin interrupciones.',
+        title: 'Bootstrap automático',
+        descriptionHtml: 'Si un proyecto no tiene configuración local, Alfred puede generar <code>.claude/alfred-dev.local.md</code> automáticamente en la primera sesión para que el plugin sea usable desde CLI sin preparación manual.',
+      },
+      {
+        title: 'Autonomía operativa',
+        descriptionHtml: 'Controla cuánta intervención necesitas en cada fase o tramo del flujo. En modo autónomo Alfred reduce entrevistas innecesarias y prioriza continuidad, brownfield y siguiente paso antes de abrir un equipo completo.',
       },
       {
         title: 'Agentes opcionales',
         descriptionHtml: 'Activa solo los que necesites. Alfred analiza tu proyecto y te sugiere cuáles habilitar según el stack detectado. Se pueden cambiar en cualquier momento sin reinstalar.',
       },
       {
-        title: 'Memoria persistente',
-        descriptionHtml: 'Activación opcional. Configura qué se captura (decisiones, commits), la retención en días y el comportamiento del Bibliotecario.',
+        title: 'Memoria y contexto',
+        descriptionHtml: 'La memoria persistente y los artefactos de continuidad conviven: decisiones en SQLite por proyecto, handoff, UAT y documentos operativos en <code>docs/project/</code> para retomar trabajo sin perder el hilo.',
       },
       {
         title: 'Personalidad',
@@ -1133,6 +1269,36 @@ personalidad:
         svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
         question: 'Cómo actualizo el plugin?',
         answerHtml: 'Ejecuta <strong>/alfred-dev:update</strong> dentro de Claude Code. El comando consulta GitHub, compara versiones y te muestra las notas de la release si hay versión nueva. También puedes volver a ejecutar el instalador: sobreescribe la versión anterior sin conflictos.',
+      },
+      {
+        svgContent: '<path d="M3 12h18"/><path d="M12 3v18"/><path d="M5 5l14 14"/>',
+        question: 'Qué hace Alfred en un repo ya existente?',
+        answerHtml: 'Si el proyecto ya tiene código pero todavía no tiene mapa persistente, Alfred prioriza <strong>/alfred-dev:map-codebase</strong>. Analiza la estructura, detecta stack, entrypoints, riesgos y convenciones, y deja el contexto en <code>docs/project/codebase-map.md</code> y <code>docs/project/current.md</code> antes de abrir <strong>feature</strong>, <strong>fix</strong>, <strong>spike</strong> o <strong>audit</strong>.',
+      },
+      {
+        svgContent: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+        question: 'Cuándo uso quick y cuándo feature?',
+        answerHtml: '<strong>/alfred-dev:quick</strong> es para cambios pequeños, locales y acotados: dos fases ligeras, tests de la zona tocada y revisión rápida de seguridad. <strong>/alfred-dev:feature</strong> es para funcionalidad nueva o cambios que cruzan varios dominios, necesitan PRD, decisiones de arquitectura o un ciclo completo de producto a entrega.',
+      },
+      {
+        svgContent: '<path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/>',
+        question: 'Puedo pausar y retomar una sesión?',
+        answerHtml: 'Sí. <strong>/alfred-dev:pause</strong> guarda el estado actual en <code>.claude/alfred-handoff.json</code> y <code>docs/project/handoff.md</code>. Después puedes volver con <strong>/alfred-dev:resume</strong> o pedir simplemente <strong>/alfred-dev:next</strong>. Alfred recupera el flujo, la fase actual, la gate pendiente y el siguiente paso concreto.',
+      },
+      {
+        svgContent: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+        question: 'Qué es verify y por qué existe si ya hay tests?',
+        answerHtml: '<strong>/alfred-dev:verify</strong> cierra la validación humana del entregable. Los tests automáticos dicen si el sistema funciona técnicamente; verify registra si cumple la expectativa del usuario en UAT. El estado queda trazado como <em>pendiente</em>, <em>aprobado</em> o <em>rechazado</em> en <code>.claude/alfred-uat.json</code> y <code>docs/project/uat.md</code>.',
+      },
+      {
+        svgContent: '<path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/>',
+        question: 'Qué muestra progress?',
+        answerHtml: '<strong>/alfred-dev:progress</strong> hace visible el estado operativo del proyecto: flujo activo o handoff, progreso general, kanban, bloqueos, trazabilidad y estado de UAT. No abre trabajo nuevo ni fuerza una gate; sirve para decidir qué toca ahora con contexto real.',
+      },
+      {
+        svgContent: '<path d="M12 2l4 4-4 4-4-4 4-4z"/><path d="M4 12l4 4-4 4-4-4 4-4z"/><path d="M20 12l4 4-4 4-4-4 4-4z"/><path d="M12 10v4"/><path d="M10 12h4"/>',
+        question: 'Tengo que configurar Alfred a mano la primera vez?',
+        answerHtml: 'No necesariamente. En la primera sesión Alfred puede bootstrappear <code>.claude/alfred-dev.local.md</code> con una configuración base usable para CLI. Después puedes afinar autonomía, agentes opcionales, memoria o personalidad con <strong>/alfred-dev:config</strong>.',
       },
       {
         svgContent: '<path d="M19.439 5.56a5.018 5.018 0 0 0-7.09 0L11 6.91l-1.35-1.35a5.013 5.013 0 0 0-7.09 7.09L11 21.09l8.44-8.44a5.013 5.013 0 0 0 0-7.09z"/>',
@@ -1203,19 +1369,19 @@ personalidad:
 
   changelog: [
     {
-      version: '0.4.3',
-      date: '2026-03-21',
-      fixed: [
-        'Preflight obligatorio de SonarQube en /alfred audit: la auditoria comprueba Docker antes de lanzar agentes y ya no deja que SonarQube se omita silenciosamente.',
-        'Pregunta interactiva incluso en autopilot: si hay que instalar Docker, arrancarlo o abrir Docker Desktop, Alfred pide confirmacion explicita del usuario.',
-        'Skill de SonarQube endurecido: contempla permisos, contenedor previo, puerto 9000 ocupado y limpieza final aunque el analisis falle.',
-        'Ayuda alineada con el equipo real: /alfred help vuelve a listar los 9 agentes de nucleo incluyendo project-manager (SonIA).',
-      ],
+      version: '0.4.4',
+      date: '2026-03-22',
       added: [
-        'Tests de contrato para los prompts de audit y SonarQube, protegiendo el comportamiento interactivo y la documentacion de omisiones.',
+        'Capa operativa de continuidad: nuevos comandos /alfred-dev:map-codebase, /alfred-dev:next, /alfred-dev:pause, /alfred-dev:resume, /alfred-dev:verify y /alfred-dev:progress.',
+        'Comando /alfred-dev:discuss para refinar ideas antes de construir, con artefactos discovery.md y current.md.',
+        'Nuevo flujo /alfred-dev:quick de 2 fases para cambios pequeños con tests y revisión de seguridad.',
+        'Parser compartido de configuración de memoria y nueva cobertura para FTS de eventos, purge + health, import Git con "|" y sync más allá de 1000 decisiones.',
       ],
       changed: [
-        'Versionado coherente a 0.4.3 en plugin, marketplace, instaladores, paquetes y referencias visibles de la web.',
+        '/alfred-dev:alfred pasa a ser un router contextual: decide si toca continuidad, brownfield, refinado o flujo multiagente.',
+        'SessionStart bootstrappea la configuración local y recomienda el siguiente paso desde la primera sesión.',
+        'La web se alinea con el modelo actual: 6 flujos de ejecución, 18 comandos y capa operativa visible.',
+        'La memoria persistente deja de dar falsos errores: los eventos con content son buscables, la purga limpia FTS, retention_days se lee desde la config del proyecto y size_bytes incluye WAL.',
       ],
     },
     {
@@ -1520,11 +1686,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.3',
+    version: 'v0.4.4',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 10 hooks. 10 comandos. Memoria persistente. De la idea a producción.',
+    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 12 hooks. 18 comandos. Memoria persistente. Continuidad operativa. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
     disclaimer: {
       linkText: 'Descargo de responsabilidad',

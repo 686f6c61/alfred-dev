@@ -32,7 +32,7 @@ import stat
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from core.secrets import SECRET_PATTERNS as _SECRET_PATTERNS
 
@@ -247,6 +247,7 @@ class MemoryDB:
         # Activar WAL para mejor concurrencia y foreign keys para integridad
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
+        self._conn.execute("PRAGMA busy_timeout=5000")
 
         self._ensure_schema()
         self._detect_fts5()
@@ -864,6 +865,7 @@ class MemoryDB:
         self,
         iteration_id: Optional[int] = None,
         limit: int = 50,
+        offset: int = 0,
         tags: Optional[List[str]] = None,
         status: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
@@ -879,6 +881,7 @@ class MemoryDB:
         Args:
             iteration_id: si se proporciona, solo decisiones de esa iteracion.
             limit: numero maximo de resultados.
+            offset: desplazamiento para paginacion.
             tags: lista de etiquetas; al menos una debe coincidir con las
                 del registro para que se incluya en los resultados.
             status: si se proporciona, solo decisiones con este estado.
@@ -913,11 +916,68 @@ class MemoryDB:
         if conditions:
             where = "WHERE " + " AND ".join(conditions)
 
-        sql = f"SELECT * FROM decisions {where} ORDER BY decided_at DESC LIMIT ?"
-        params.append(limit)
+        sql = (
+            f"SELECT * FROM decisions {where} "
+            "ORDER BY decided_at DESC LIMIT ? OFFSET ?"
+        )
+        params.extend([limit, offset])
 
         rows = self._conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
+
+    def iter_decisions(
+        self,
+        iteration_id: Optional[int] = None,
+        batch_size: int = 500,
+        tags: Optional[List[str]] = None,
+        status: Optional[str] = None,
+    ) -> Iterable[Dict[str, Any]]:
+        """Itera decisiones paginando para evitar techos silenciosos."""
+        offset = 0
+        while True:
+            batch = self.get_decisions(
+                iteration_id=iteration_id,
+                limit=batch_size,
+                offset=offset,
+                tags=tags,
+                status=status,
+            )
+            if not batch:
+                break
+            for item in batch:
+                yield item
+            if len(batch) < batch_size:
+                break
+            offset += batch_size
+
+    def get_decision(self, decision_id: int) -> Optional[Dict[str, Any]]:
+        """Devuelve una decision por ID, o None si no existe."""
+        row = self._conn.execute(
+            "SELECT * FROM decisions WHERE id = ?",
+            (decision_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_commits(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        iteration_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Devuelve commits recientes con soporte de paginacion."""
+        params: List[Any] = []
+        where = ""
+        if iteration_id is not None:
+            where = "WHERE iteration_id = ?"
+            params.append(iteration_id)
+
+        params.extend([limit, offset])
+        rows = self._conn.execute(
+            f"SELECT * FROM commits {where} "
+            "ORDER BY committed_at DESC LIMIT ? OFFSET ?",
+            params,
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     # --- Lectura: busqueda --------------------------------------------------
 
@@ -1006,9 +1066,12 @@ class MemoryDB:
 
             # --- Filtro por fecha ---
             # Se usa decided_at para decisiones y committed_at para commits
-            date_field = (
-                "decided_at" if source_type == "decision" else "committed_at"
-            )
+            if source_type == "decision":
+                date_field = "decided_at"
+            elif source_type == "event":
+                date_field = "created_at"
+            else:
+                date_field = "committed_at"
             record_date = r.get(date_field, "")
 
             if since and record_date and record_date < since:
@@ -1032,9 +1095,9 @@ class MemoryDB:
                 if status and r.get("status") != status:
                     continue
 
-            # Los commits no tienen tags ni status, asi que si se
-            # especifican esos filtros, los commits se excluyen
-            elif source_type == "commit" and (tags or status):
+            # Commits y eventos no tienen tags ni status; si se
+            # especifican esos filtros, se excluyen.
+            elif source_type in {"commit", "event"} and (tags or status):
                 continue
 
             filtered.append(r)
@@ -1177,6 +1240,28 @@ class MemoryDB:
                 for row in commit_rows:
                     results.append({"source_type": "commit", **dict(row)})
 
+            # Buscar en eventos con contenido indexable
+            remaining = fetch_limit - len(results)
+            if remaining > 0:
+                if iteration_id is not None:
+                    event_rows = self._conn.execute(
+                        "SELECT * FROM events "
+                        "WHERE (summary LIKE ? OR content LIKE ?) "
+                        "  AND iteration_id = ? "
+                        "ORDER BY created_at DESC LIMIT ?",
+                        (like_pattern, like_pattern, iteration_id, remaining),
+                    ).fetchall()
+                else:
+                    event_rows = self._conn.execute(
+                        "SELECT * FROM events "
+                        "WHERE summary LIKE ? OR content LIKE ? "
+                        "ORDER BY created_at DESC LIMIT ?",
+                        (like_pattern, like_pattern, remaining),
+                    ).fetchall()
+
+                for row in event_rows:
+                    results.append({"source_type": "event", **dict(row)})
+
             return results
 
         return self._execute_search(
@@ -1186,8 +1271,15 @@ class MemoryDB:
     def _fetch_source_record(
         self, source_type: str, source_id: int
     ) -> Optional[Dict[str, Any]]:
-        """Obtiene el registro completo de una fuente (decision o commit)."""
-        table = "decisions" if source_type == "decision" else "commits"
+        """Obtiene el registro completo de una fuente indexada en FTS."""
+        tables = {
+            "decision": "decisions",
+            "commit": "commits",
+            "event": "events",
+        }
+        table = tables.get(source_type)
+        if table is None:
+            return None
         row = self._conn.execute(
             f"SELECT * FROM {table} WHERE id = ?", (source_id,)
         ).fetchone()
@@ -1278,21 +1370,65 @@ class MemoryDB:
 
         # FTS5 sincronizado
         if self._fts_enabled:
-            fts_count = self._conn.execute(
-                "SELECT COUNT(*) FROM memory_fts"
-            ).fetchone()[0]
             dec_count = self._conn.execute(
                 "SELECT COUNT(*) FROM decisions"
             ).fetchone()[0]
             commit_count = self._conn.execute(
                 "SELECT COUNT(*) FROM commits"
             ).fetchone()[0]
-            expected = dec_count + commit_count
-            if fts_count != expected:
+            event_count = self._conn.execute(
+                "SELECT COUNT(*) FROM events "
+                "WHERE content IS NOT NULL AND TRIM(content) != ''"
+            ).fetchone()[0]
+            expected_counts = {
+                "decision": dec_count,
+                "commit": commit_count,
+                "event": event_count,
+            }
+
+            for source_type, expected in expected_counts.items():
+                actual = self._conn.execute(
+                    "SELECT COUNT(*) FROM memory_fts WHERE source_type = ?",
+                    (source_type,),
+                ).fetchone()[0]
+                if actual != expected:
+                    issues.append(
+                        f"FTS5 desincronizado en {source_type}: "
+                        f"{actual} entradas vs {expected} esperadas"
+                    )
+
+            unknown_sources = self._conn.execute(
+                "SELECT COUNT(*) FROM memory_fts "
+                "WHERE source_type NOT IN ('decision', 'commit', 'event')"
+            ).fetchone()[0]
+            if unknown_sources:
                 issues.append(
-                    f"FTS5 desincronizado: {fts_count} entradas "
-                    f"vs {expected} esperadas"
+                    f"FTS5 contiene {unknown_sources} entradas con source_type desconocido"
                 )
+
+            orphan_queries = {
+                "decision": (
+                    "SELECT COUNT(*) FROM memory_fts f "
+                    "LEFT JOIN decisions d ON CAST(f.source_id AS INTEGER) = d.id "
+                    "WHERE f.source_type = 'decision' AND d.id IS NULL"
+                ),
+                "commit": (
+                    "SELECT COUNT(*) FROM memory_fts f "
+                    "LEFT JOIN commits c ON CAST(f.source_id AS INTEGER) = c.id "
+                    "WHERE f.source_type = 'commit' AND c.id IS NULL"
+                ),
+                "event": (
+                    "SELECT COUNT(*) FROM memory_fts f "
+                    "LEFT JOIN events e ON CAST(f.source_id AS INTEGER) = e.id "
+                    "WHERE f.source_type = 'event' AND e.id IS NULL"
+                ),
+            }
+            for source_type, sql in orphan_queries.items():
+                orphan_count = self._conn.execute(sql).fetchone()[0]
+                if orphan_count:
+                    issues.append(
+                        f"FTS5 contiene {orphan_count} entradas huerfanas de {source_type}"
+                    )
 
         # Permisos del fichero
         permissions_ok = True
@@ -1312,6 +1448,10 @@ class MemoryDB:
         size_bytes = 0
         try:
             size_bytes = os.path.getsize(self._db_path)
+            for suffix in ("-wal", "-shm"):
+                aux_path = self._db_path + suffix
+                if os.path.exists(aux_path):
+                    size_bytes += os.path.getsize(aux_path)
             if size_bytes > 50 * 1024 * 1024:  # 50 MB
                 issues.append(
                     f"Base de datos grande: {size_bytes / (1024*1024):.1f} MB"
@@ -1352,9 +1492,22 @@ class MemoryDB:
         cutoff = (
             datetime.now(timezone.utc) - timedelta(days=retention_days)
         ).isoformat()
+        event_rows = self._conn.execute(
+            "SELECT id FROM events WHERE created_at < ?",
+            (cutoff,),
+        ).fetchall()
+        event_ids = [row[0] for row in event_rows]
+
         cursor = self._conn.execute(
             "DELETE FROM events WHERE created_at < ?", (cutoff,)
         )
+
+        if self._fts_enabled and event_ids:
+            self._conn.executemany(
+                "DELETE FROM memory_fts "
+                "WHERE source_type = 'event' AND source_id = ?",
+                [(event_id,) for event_id in event_ids],
+            )
         self._conn.commit()
         return cursor.rowcount
 
@@ -1384,6 +1537,12 @@ class MemoryDB:
         decisions = self.get_decisions(
             limit=1000, iteration_id=iteration_id,
         )
+        if iteration_id is None:
+            decisions = list(self.iter_decisions(batch_size=500))
+        else:
+            decisions = list(
+                self.iter_decisions(iteration_id=iteration_id, batch_size=500)
+            )
 
         lines: List[str] = []
         lines.append("# Registro de decisiones de arquitectura\n")
@@ -1475,7 +1634,7 @@ class MemoryDB:
             [
                 "git", "log",
                 f"--max-count={limit}",
-                "--format=%H|%s|%an|%aI",
+                "--format=%H%x1f%s%x1f%an%x1f%aI",
                 "--name-only",
             ],
             cwd=repo_path,
@@ -1492,7 +1651,7 @@ class MemoryDB:
         current_files: List[str] = []
 
         for line in result.stdout.splitlines():
-            if "|" in line:
+            if "\x1f" in line:
                 # Si hay un commit pendiente, registrarlo
                 if current_commit is not None:
                     commit_id = self.log_commit(
@@ -1505,7 +1664,7 @@ class MemoryDB:
                         new_count += 1
 
                 # Nuevo commit
-                parts = line.split("|", 3)
+                parts = line.split("\x1f", 3)
                 current_commit = {
                     "sha": parts[0],
                     "message": parts[1] if len(parts) > 1 else "",

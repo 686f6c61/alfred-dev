@@ -75,6 +75,7 @@ if _PLUGIN_ROOT not in sys.path:
     sys.path.insert(0, _PLUGIN_ROOT)
 
 from core.memory import MemoryDB  # noqa: E402
+from core.memory_config import load_memory_config  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -690,6 +691,11 @@ class MemoryMCPServer:
         self._db_path = db_path
         self._retention_days = retention_days
         self._initialized = False
+        self._project_dir = os.getcwd()
+
+    def _memory_config(self) -> Dict[str, Any]:
+        """Carga la configuracion efectiva de memoria del proyecto actual."""
+        return load_memory_config(self._project_dir)
 
     def _ensure_db(self) -> MemoryDB:
         """
@@ -749,7 +755,7 @@ class MemoryMCPServer:
             "protocolVersion": "2024-11-05",
             "serverInfo": {
                 "name": "alfred-memory",
-                "version": "0.4.3",
+                "version": "0.4.4",
             },
             "capabilities": {
                 "tools": {},
@@ -922,7 +928,17 @@ class MemoryMCPServer:
             impact=args.get("impact"),
             phase=args.get("phase"),
             tags=args.get("tags"),
-        )
+        ) if self._memory_config().get("capture_decisions", True) else None
+
+        if decision_id is None:
+            return {
+                "decision_id": None,
+                "message": (
+                    "La captura automatica de decisiones esta desactivada "
+                    "en la configuracion del proyecto."
+                ),
+                "skipped": True,
+            }
 
         return {
             "decision_id": decision_id,
@@ -951,6 +967,16 @@ class MemoryMCPServer:
 
         if not sha:
             return {"error": "El campo 'sha' es obligatorio."}
+
+        if not self._memory_config().get("capture_commits", True):
+            return {
+                "commit_id": None,
+                "message": (
+                    "La captura automatica de commits esta desactivada "
+                    "en la configuracion del proyecto."
+                ),
+                "skipped": True,
+            }
 
         commit_id = db.log_commit(
             sha=sha,
@@ -1598,6 +1624,20 @@ class MemoryMCPServer:
 MemoryMCPServer._TOOL_HANDLERS = MemoryMCPServer._init_handlers()
 
 
+def resolve_retention_days(project_dir: str) -> int:
+    """Resuelve la retencion efectiva desde env o config del proyecto."""
+    retention_str = os.environ.get("ALFRED_MEMORY_RETENTION_DAYS")
+    if retention_str is None:
+        retention_value = load_memory_config(project_dir).get(
+            "retention_days", 365
+        )
+        retention_str = str(retention_value)
+    try:
+        return int(retention_str)
+    except ValueError:
+        return 365
+
+
 def main() -> None:
     """
     Punto de entrada del servidor MCP.
@@ -1611,11 +1651,7 @@ def main() -> None:
     db_path = os.path.join(os.getcwd(), ".claude", "alfred-memory.db")
 
     # Dias de retencion configurables via variable de entorno (fallback 365)
-    retention_str = os.environ.get("ALFRED_MEMORY_RETENTION_DAYS", "365")
-    try:
-        retention_days = int(retention_str)
-    except ValueError:
-        retention_days = 365
+    retention_days = resolve_retention_days(os.getcwd())
 
     server = MemoryMCPServer(db_path=db_path, retention_days=retention_days)
     server.run()
