@@ -13,6 +13,7 @@ docs/plans/
 .claude/alfred-prefetch.json
 .claude/alfred-prefetch-consumed.json
 .claude/alfred-stop-hook-bypass.json
+.claude/alfred-github-sync.json
 .claude/alfred-continuity.py
 .claude/alfred-memory.db
 .claude/alfred-memory.db-shm

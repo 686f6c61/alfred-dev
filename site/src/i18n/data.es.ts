@@ -103,7 +103,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales. 6 flujos de ejecución, 18 comandos, memoria persistente, continuidad operativa y quality gates, de la idea a producción.',
+    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales. 6 flujos de ejecución, 24 comandos, memoria persistente, continuidad operativa, PM operacional y quality gates, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -139,6 +139,16 @@ const data: PageData = {
           description: 'verify separa los tests automáticos de la validación humana y progress expone kanban, bloqueos, trazabilidad y estado de UAT.',
           svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         },
+        {
+          title: 'SonIA usable desde CLI',
+          description: 'standup, blocked, in-progress, validate y search convierten el kanban local en una interfaz diaria útil, no solo en documentación oculta.',
+          svgContent: '<path d="M4 19h16"/><path d="M4 5h16"/><path d="M9 9h11"/><path d="M9 15h7"/><circle cx="6" cy="9" r="1"/><circle cx="6" cy="15" r="1"/>',
+        },
+        {
+          title: 'GitHub como espejo opcional',
+          description: 'SonIA Sync publica backlog, bloqueos y progreso en GitHub Issues con gh, sin perder la fuente de verdad local en docs/project y SQLite.',
+          svgContent: '<path d="M9 19c-5 1.5-5-2.5-7-3"/><path d="M15 22v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 19 4.77 5.07 5.07 0 0 0 18.91 1S17.73.65 15 2.48a13.38 13.38 0 0 0-6 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77 5.44 5.44 0 0 0 3.5 8.53c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>',
+        },
       ],
     },
   },
@@ -151,9 +161,9 @@ const data: PageData = {
     { number: 17, label: 'Agentes' },
     { number: 60, label: 'Skills' },
     { number: 6, label: 'Flujos' },
-    { number: 18, label: 'Comandos' },
+    { number: 24, label: 'Comandos' },
     { number: 7, label: 'Templates' },
-    { number: 11, label: 'Hooks' },
+    { number: 13, label: 'Hooks' },
     { number: 23, label: 'Gates' },
   ],
 
@@ -605,7 +615,7 @@ const data: PageData = {
     },
     groups: [
       {
-        title: '12 hooks',
+        title: '13 hooks',
         items: [
           { name: 'session-bootstrap.sh', label: 'SessionStart' },
           { name: 'session-start.sh', label: 'SessionStart' },
@@ -613,6 +623,7 @@ const data: PageData = {
           { name: 'secret-guard.sh', label: 'PreToolUse' },
           { name: 'dangerous-command-guard.py', label: 'PreToolUse' },
           { name: 'sensitive-read-guard.py', label: 'PreToolUse' },
+          { name: 'prefetch-finish-guard.py', label: 'PreToolUse' },
           { name: 'quality-gate.py', label: 'PostToolUse' },
           { name: 'evidence-guard.py', label: 'PostToolUse' },
           { name: 'dependency-watch.py', label: 'PostToolUse' },
@@ -637,7 +648,7 @@ const data: PageData = {
         title: '6 módulos core',
         items: [
           { name: 'orchestrator.py', label: 'Flujos, sesiones, gates, loop iterativo y autopilot' },
-          { name: 'continuity.py', label: 'map-codebase, discuss, next, pause, resume, verify y progress' },
+          { name: 'continuity.py', label: 'Continuidad, PM operativo, búsqueda y sync GitHub' },
           { name: 'personality.py', label: 'Motor de personalidad' },
           { name: 'config_loader.py', label: 'Config y detección de stack' },
           { name: 'memory.py', label: 'Memoria persistente SQLite' },
@@ -654,8 +665,8 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interfaz',
-      title: '18 comandos',
-      description: 'Todo se controla desde la línea de comandos de Claude Code. Alfred combina routing contextual, flujos multiagente, continuidad operativa, visibilidad de proyecto y administración del plugin.',
+      title: '24 comandos',
+      description: 'Todo se controla desde la línea de comandos de Claude Code. Alfred combina routing contextual, flujos multiagente, continuidad operativa, PM operativo, sincronización opcional con GitHub y administración del plugin.',
     },
     list: [
       {
@@ -707,6 +718,30 @@ const data: PageData = {
         description: 'Resume progreso, kanban, bloqueos, trazabilidad y estado de UAT del proyecto con una vista operativa compacta.',
       },
       {
+        command: '/alfred-dev:standup',
+        description: 'Standup diario accionable desde SonIA: foco actual, trabajo en curso, bloqueos, evidencia reciente y siguiente paso recomendado.',
+      },
+      {
+        command: '/alfred-dev:blocked',
+        description: 'Vista de tareas bloqueadas con dependencia, nota operativa y responsable cuando exista.',
+      },
+      {
+        command: '/alfred-dev:in-progress',
+        description: 'Vista de trabajo en curso para saber qué está activo sin releer todo el tablero.',
+      },
+      {
+        command: '/alfred-dev:validate',
+        description: 'Valida la salud del tablero y la operación diaria: IDs duplicados, trazabilidad incompleta, UAT pendiente, falta de evidencia o drift del sync local.',
+      },
+      {
+        command: '/alfred-dev:search',
+        description: 'Busca en artefactos de proyecto y memoria SQLite a la vez para responder dudas históricas u operativas sin explorar el repo manualmente.',
+      },
+      {
+        command: '/alfred-dev:sync-github',
+        description: 'Ejecuta SonIA Sync: refleja el tablero local de SonIA en GitHub Issues usando <code>gh</code>, manteniendo el repo local como fuente de verdad.',
+      },
+      {
         command: '/alfred-dev:ship',
         description: 'Preparar release: auditoría final, documentación, empaquetado, despliegue.',
       },
@@ -731,7 +766,7 @@ const data: PageData = {
         description: 'Ayuda completa de todos los comandos disponibles.',
       },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 8 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y Alfred los integra automáticamente cuando el comando lo necesita, sobre todo en <strong style="color: var(--blue);">/alfred-dev:feature</strong>, <strong style="color: var(--blue);">/alfred-dev:quick</strong>, <strong style="color: var(--blue);">/alfred-dev:fix</strong>, <strong style="color: var(--blue);">/alfred-dev:spike</strong>, <strong style="color: var(--blue);">/alfred-dev:audit</strong> y <strong style="color: var(--blue);">/alfred-dev:ship</strong>. Los comandos operativos (<em>map-codebase</em>, <em>next</em>, <em>pause</em>, <em>resume</em>, <em>verify</em>, <em>progress</em>) priorizan continuidad y contexto antes de abrir un equipo completo.',
+    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 8 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y Alfred los integra automáticamente cuando el comando lo necesita, sobre todo en <strong style="color: var(--blue);">/alfred-dev:feature</strong>, <strong style="color: var(--blue);">/alfred-dev:quick</strong>, <strong style="color: var(--blue);">/alfred-dev:fix</strong>, <strong style="color: var(--blue);">/alfred-dev:spike</strong>, <strong style="color: var(--blue);">/alfred-dev:audit</strong> y <strong style="color: var(--blue);">/alfred-dev:ship</strong>. Los comandos operativos y PM (<em>map-codebase</em>, <em>next</em>, <em>pause</em>, <em>resume</em>, <em>verify</em>, <em>progress</em>, <em>standup</em>, <em>blocked</em>, <em>in-progress</em>, <em>validate</em>, <em>search</em>, <em>sync-github</em>) priorizan continuidad, backlog y contexto antes de abrir un equipo completo.',
   },
 
   // ----------------------------------------------------------------
@@ -941,6 +976,64 @@ const data: PageData = {
         ],
       },
       {
+        category: 'Project management',
+        color: 'var(--magenta)',
+        background: 'rgba(214,106,214,0.08)',
+        title: 'Tener un standup diario sin abrir GitHub ni releer docs',
+        command: '/alfred-dev:standup',
+        steps: [
+          'Standup resume foco actual, tareas en curso, bloqueos, evidencia reciente y recomendación operativa',
+          'Lee el kanban de SonIA, el estado de continuidad y la UAT pendiente o aprobada',
+          'Sirve como briefing rápido antes de seguir trabajando o delegar una tarea',
+          'No modifica el tablero: solo hace visible lo importante',
+        ],
+      },
+      {
+        category: 'Project management',
+        color: 'var(--magenta)',
+        background: 'rgba(214,106,214,0.08)',
+        title: 'Validar la salud operativa antes de seguir',
+        command: '/alfred-dev:validate',
+        steps: [
+          'Validate revisa backlog, in-progress, blocked y done buscando IDs duplicados o tareas sin metadatos básicos',
+          'Contrasta trazabilidad, evidencia, UAT y artefactos clave como progress.md o traceability.md',
+          'Si existe sync local con GitHub, también detecta desalineaciones entre tareas e issues',
+          'Devuelve un checklist accionable para corregir el tablero antes de seguir avanzando',
+        ],
+      },
+      {
+        category: 'Project management',
+        color: 'var(--text-muted)',
+        background: 'rgba(110,115,138,0.08)',
+        title: 'Ejecutar SonIA Sync con GitHub',
+        command: '/alfred-dev:sync-github owner/repo',
+        wide: true,
+        image: {
+          src: '/screenshots/sonia-sync-github.png',
+          alt: 'Vista de SonIA Sync en GitHub Issues con el issue paraguas y las tareas sincronizadas',
+          caption: 'SonIA Sync reflejando backlog, trabajo en curso, bloqueos y el issue paraguas en GitHub Issues.',
+        },
+        steps: [
+          'Lee el tablero local y crea o actualiza issues para backlog, trabajo en curso, bloqueos y tareas terminadas',
+          'Asegura labels de Alfred y un issue paraguas de SonIA Sync con el resumen global',
+          'Guarda el mapping local en .claude/alfred-github-sync.json y un resumen humano en docs/project/github-sync.md',
+          'GitHub actúa como espejo colaborativo: la verdad sigue estando en docs/project y SQLite',
+        ],
+      },
+      {
+        category: 'Contexto',
+        color: 'var(--gold)',
+        background: 'rgba(201,169,110,0.08)',
+        title: 'Buscar contexto sin explorar medio repo',
+        command: '/alfred-dev:search login social',
+        steps: [
+          'Search cruza discovery, current, handoff, UAT, kanban y memoria persistente en una sola consulta',
+          'Devuelve coincidencias de artefactos operativos y decisiones históricas con su origen visible',
+          'Es especialmente útil para saber por qué se tomó una decisión o dónde quedó apuntado un bloqueo',
+          'Evita abrir manualmente varios Markdown o consultar SQLite por separado',
+        ],
+      },
+      {
         category: 'Calidad',
         color: 'var(--red)',
         background: 'rgba(229,86,79,0.08)',
@@ -1058,7 +1151,7 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   memory: {
-    sectionLabel: 'Desde v0.2.0 · Mejorada en v0.2.3',
+    sectionLabel: 'Desde v0.2.0 · Mejorada en v0.2.3 y v0.4.4',
     title: 'Memoria persistente',
     descriptionHtml: 'Alfred Dev recuerda decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local dentro de cada proyecto, sin dependencias externas ni servicios remotos. Desde v0.2.3: etiquetas, estado y relaciones entre decisiones, auto-captura de commits, filtros avanzados y export/import.',
     traceability: {
@@ -1078,7 +1171,7 @@ const data: PageData = {
       },
       {
         title: 'Búsqueda inteligente',
-        descriptionHtml: 'Texto completo con FTS5 cuando está disponible, con fallback automático a LIKE para entornos sin extensión FTS. Busca en títulos de decisiones, razones, alternativas descartadas y mensajes de commit.',
+        descriptionHtml: 'Texto completo con FTS5 cuando está disponible, con fallback automático a LIKE para entornos sin extensión FTS. Busca en títulos de decisiones, razones, alternativas descartadas, mensajes de commit y eventos con contenido.',
       },
       {
         title: 'Captura automática',
@@ -1296,6 +1389,16 @@ personalidad:
         answerHtml: '<strong>/alfred-dev:progress</strong> hace visible el estado operativo del proyecto: flujo activo o handoff, progreso general, kanban, bloqueos, trazabilidad y estado de UAT. No abre trabajo nuevo ni fuerza una gate; sirve para decidir qué toca ahora con contexto real.',
       },
       {
+        svgContent: '<path d="M4 19h16"/><path d="M4 5h16"/><path d="M9 9h11"/><path d="M9 15h7"/><circle cx="6" cy="9" r="1"/><circle cx="6" cy="15" r="1"/>',
+        question: 'Qué añade SonIA en 0.4.5?',
+        answerHtml: 'Ahora SonIA no solo mantiene el tablero por debajo. <strong>/alfred-dev:standup</strong>, <strong>/alfred-dev:blocked</strong>, <strong>/alfred-dev:in-progress</strong>, <strong>/alfred-dev:validate</strong> y <strong>/alfred-dev:search</strong> convierten ese estado en una interfaz operativa diaria desde CLI.',
+      },
+      {
+        svgContent: '<path d="M9 19c-5 1.5-5-2.5-7-3"/><path d="M15 22v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 19 4.77 5.07 5.07 0 0 0 18.91 1S17.73.65 15 2.48a13.38 13.38 0 0 0-6 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77 5.44 5.44 0 0 0 3.5 8.53c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>',
+        question: 'GitHub pasa a ser la fuente de verdad del proyecto?',
+        answerHtml: 'No. <strong>/alfred-dev:sync-github</strong> ejecuta SonIA Sync como espejo colaborativo para issues. La fuente de verdad sigue siendo local: <code>docs/project/</code>, <code>.claude/</code> y la memoria SQLite del proyecto.',
+      },
+      {
         svgContent: '<path d="M12 2l4 4-4 4-4-4 4-4z"/><path d="M4 12l4 4-4 4-4-4 4-4z"/><path d="M20 12l4 4-4 4-4-4 4-4z"/><path d="M12 10v4"/><path d="M10 12h4"/>',
         question: 'Tengo que configurar Alfred a mano la primera vez?',
         answerHtml: 'No necesariamente. En la primera sesión Alfred puede bootstrappear <code>.claude/alfred-dev.local.md</code> con una configuración base usable para CLI. Después puedes afinar autonomía, agentes opcionales, memoria o personalidad con <strong>/alfred-dev:config</strong>.',
@@ -1368,6 +1471,19 @@ personalidad:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.4.5',
+      date: '2026-03-22',
+      added: [
+        'Nueva capa PM para SonIA: /alfred-dev:standup, /alfred-dev:blocked, /alfred-dev:in-progress, /alfred-dev:validate y /alfred-dev:search.',
+        'SonIA Sync para GitHub mediante /alfred-dev:sync-github, manteniendo docs/project y SQLite como fuente de verdad.',
+        'Cobertura E2E ampliada para helpers PM, parsing del tablero y sincronización de Issues.',
+      ],
+      changed: [
+        'Alfred expone ahora 24 comandos y 13 hooks visibles: continuidad, PM operativo, memoria persistente y flujos multiagente en una sola interfaz.',
+        'La web, el README y la documentación se alinean con SonIA operativa en CLI y con la nueva capa de colaboración en GitHub.',
+      ],
+    },
     {
       version: '0.4.4',
       date: '2026-03-22',
@@ -1686,11 +1802,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.4',
+    version: 'v0.4.5',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 12 hooks. 18 comandos. Memoria persistente. Continuidad operativa. De la idea a producción.',
+    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 13 hooks. 24 comandos. Memoria persistente. Continuidad operativa. PM operacional. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
     disclaimer: {
       linkText: 'Descargo de responsabilidad',

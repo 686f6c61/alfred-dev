@@ -7,6 +7,23 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.5] - 2026-03-22
+
+### Added
+
+- **PM operativo determinista para SonIA**: nuevos comandos `/alfred-dev:standup`, `/alfred-dev:blocked`, `/alfred-dev:in-progress`, `/alfred-dev:validate` y `/alfred-dev:search` para explotar el kanban local, la trazabilidad y la memoria del proyecto desde CLI sin abrir siempre un flujo multiagente.
+- **SonIA Sync para GitHub**: nuevo `/alfred-dev:sync-github [owner/repo]` para sincronizar backlog, trabajo en curso, bloqueos y tablero de SonIA usando `gh`, manteniendo `docs/project/` y `.claude/` como fuente de verdad local.
+- **Busqueda unificada proyecto + memoria**: `search` cruza artefactos operativos (`docs/project/`) con la SQLite del proyecto y devuelve resultados accionables en una sola vista.
+- **Validacion operativa del tablero**: `validate` detecta IDs de tarea duplicados, huecos de trazabilidad, falta de evidencia en `done`, bloqueos mal descritos, UAT pendiente y drift del sync local con GitHub.
+- **Cobertura PM y GitHub ampliada**: nuevos tests para wrappers helper-first, parser del kanban de SonIA, renderizados operativos, sincronizacion a GitHub y smokes directos del helper CLI.
+
+### Changed
+
+- **SonIA pasa de agente interno a capa operativa visible**: `progress`, `standup`, `blocked`, `in-progress`, `validate` y `search` convierten el backlog local en una interfaz diaria real para Claude Code CLI.
+- **Continuity.py se amplía a PM colaborativo**: la capa determinista ya no cubre solo continuidad y UAT, sino tambien vistas PM, validacion de artefactos y sync opcional con GitHub Issues.
+- **Versionado coherente a 0.4.5**: plugin, marketplace, instaladores, paquetes, metadata estructurada, README, changelog, docs y landing quedan alineados.
+- **Superficie pública actualizada**: Alfred refleja ahora `24` comandos y `13` hooks visibles, con la capa PM/GitHub integrada en help, session-start, documentación y web.
+
 ## [0.4.4] - 2026-03-22
 
 ### Fixed

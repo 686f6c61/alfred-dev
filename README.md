@@ -68,9 +68,22 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.4
+## Novedades en v0.4.5
 
-La v0.4.4 convierte Alfred en un sistema mucho mas usable en Claude Code CLI: ya orienta continuidad y brownfield por si solo, funciona mejor en `claude -p` con comandos helper-first y cierra la memoria persistente para uso real.
+La v0.4.5 extiende a SonIA con una capa PM mas operativa y colaborativa: ahora Alfred puede dar standup, listar bloqueos y trabajo en curso, validar la salud del tablero, buscar en artefactos + memoria y ejecutar **SonIA Sync** para reflejar el kanban local en GitHub sin perder la fuente de verdad en `docs/project/`.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Operaciones PM deterministas** | Llegan `/alfred-dev:standup`, `blocked`, `in-progress`, `validate` y `search` para explotar SonIA como backlog operativo real en CLI, sin abrir siempre un flujo multiagente. |
+| **SonIA Sync para GitHub** | Nuevo `/alfred-dev:sync-github` para reflejar el tablero de SonIA en GitHub con `gh`, manteniendo la verdad local en `docs/project/` y `.claude/`. |
+| **Búsqueda unificada de proyecto** | `/alfred-dev:search` cruza artefactos de SonIA y memoria SQLite en una sola consulta determinista. |
+| **Validación operativa** | `/alfred-dev:validate` detecta tareas duplicadas, huecos de trazabilidad, evidencia ausente en `done`, UAT pendiente y desalineaciones del sync local. |
+| **Standup y visibilidad fina** | `standup`, `blocked` e `in-progress` convierten el estado local de SonIA en vistas rápidas y accionables, al estilo PM operacional. |
+| **End-to-end con GitHub real** | El bloque queda preparado para smoke tests con repo privado y `gh`, además de la suite automatizada. |
+
+### Novedades de v0.4.4
+
+La v0.4.4 convirtió Alfred en un sistema mucho mas usable en Claude Code CLI: ya orienta continuidad y brownfield por si solo, funciona mejor en `claude -p` con comandos helper-first y cierra la memoria persistente para uso real.
 
 | Novedad | Descripcion |
 |---------|-------------|
@@ -129,7 +142,13 @@ Toda la interfaz se controla desde la línea de comandos de Claude Code con el p
 | `/alfred-dev:pause` | Pausa el trabajo en curso y genera handoff persistente. |
 | `/alfred-dev:resume` | Retoma una sesion pausada usando el handoff y el estado guardado. |
 | `/alfred-dev:progress` | Resume kanban, bloqueos, trazabilidad, UAT y estado operativo del proyecto. |
+| `/alfred-dev:standup` | Standup breve y accionable desde SonIA: en curso, bloqueos, progreso y siguiente paso. |
+| `/alfred-dev:blocked` | Lista solo las tareas bloqueadas con su dependencia o motivo visible. |
+| `/alfred-dev:in-progress` | Lista solo las tareas que están en curso. |
 | `/alfred-dev:verify` | Crea o cierra la validacion humana/UAT separada de los tests automaticos. |
+| `/alfred-dev:validate` | Valida la integridad operativa de kanban, trazabilidad, UAT y sync local. |
+| `/alfred-dev:search <texto>` | Busca en artefactos de SonIA y en la memoria SQLite del proyecto. |
+| `/alfred-dev:sync-github [owner/repo]` | Ejecuta SonIA Sync: refleja el tablero local en GitHub Issues usando `gh`. |
 | `/alfred-dev:quick <desc>` | Flujo ligero para cambios pequenos con menos ceremonia que `feature`. |
 | `/alfred-dev:feature <desc>` | Ciclo completo de 6 fases o parcial. Alfred pregunta desde que fase arrancar. |
 | `/alfred-dev:fix <desc>` | Correccion de bugs con flujo de 3 fases: diagnostico, correccion TDD, validacion. |
@@ -328,7 +347,7 @@ alfred-dev/
     mcp.json              # Servidor MCP de memoria persistente
   agents/                 # 9 agentes de nucleo
   agents/optional/        # 8 agentes opcionales
-  commands/               # 18 comandos /alfred-dev
+  commands/               # 24 comandos /alfred-dev
   skills/                 # 60 skills en 13 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos

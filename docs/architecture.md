@@ -16,7 +16,7 @@ Los comandos son la puerta de entrada del usuario al sistema. Cuando alguien esc
 
 Cada fichero de comando tiene dos partes: un frontmatter YAML con metadatos (descripción del comando, hint del argumento) y un cuerpo Markdown con las instrucciones del flujo. El frontmatter le permite a Claude Code mostrar ayuda contextual; el cuerpo define las fases, las gates y las reglas que no se pueden saltar.
 
-El plugin tiene 18 comandos registrados en `plugin.json`:
+El plugin tiene 24 comandos registrados en `plugin.json`:
 
 | Comando | Fichero | Propósito |
 |---------|---------|-----------|
@@ -27,7 +27,13 @@ El plugin tiene 18 comandos registrados en `plugin.json`:
 | `/alfred-dev:pause` | `pause.md` | Pausa del trabajo actual con handoff |
 | `/alfred-dev:resume` | `resume.md` | Reanudacion de una sesion pausada |
 | `/alfred-dev:progress` | `progress.md` | Estado operativo, kanban y trazabilidad |
+| `/alfred-dev:standup` | `standup.md` | Standup operativo breve desde SonIA |
+| `/alfred-dev:blocked` | `blocked.md` | Vista de tareas bloqueadas |
+| `/alfred-dev:in-progress` | `in-progress.md` | Vista de trabajo en curso |
 | `/alfred-dev:verify` | `verify.md` | Validacion humana/UAT |
+| `/alfred-dev:validate` | `validate.md` | Validación operativa de SonIA y continuidad |
+| `/alfred-dev:search` | `search.md` | Búsqueda en artefactos y memoria SQLite |
+| `/alfred-dev:sync-github` | `sync-github.md` | SonIA Sync: espejo del tablero local en GitHub Issues |
 | `/alfred-dev:quick` | `quick.md` | Flujo ligero para cambios pequenos |
 | `/alfred-dev:feature` | `feature.md` | Ciclo completo de desarrollo de una feature |
 | `/alfred-dev:fix` | `fix.md` | Diagnóstico y correccion de bugs |
@@ -82,7 +88,7 @@ La capa se compone de cinco modulos principales:
 
 - **`config_loader.py`** -- Cargador de configuración que lee las preferencias del usuario desde un fichero `.local.md` con frontmatter YAML y detecta automáticamente el stack tecnologico del proyecto (runtime, lenguaje, framework, ORM, test runner, bundler). Incluye un parser YAML básico como fallback para entornos sin PyYAML. Desde v0.3.6, el modulo incorpora la función `match_task_keywords()` y la constante `TASK_KEYWORDS` para la composicion dinámica de equipo: puntuan agentes opcionales segun la descripción de la tarea del usuario combinada con señales del proyecto y la configuración activa.
 
-- **`continuity.py`** -- Capa determinista de continuidad operativa. Implementa `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify` y los artefactos persistentes asociados (`current.md`, `handoff.md`, `uat.md`).
+- **`continuity.py`** -- Capa determinista de continuidad operativa y PM ligero. Implementa `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `standup`, `blocked`, `in-progress`, `verify`, `validate`, `search`, `sync-github` y los artefactos persistentes asociados (`current.md`, `handoff.md`, `uat.md`, `github-sync.md`).
 
 - **`memory_config.py`** -- Parser ligero de la seccion `memoria` del frontmatter local. Permite que hooks, sync y servidor MCP apliquen la misma configuracion efectiva sin duplicar logica.
 
@@ -92,7 +98,7 @@ La capa se compone de cinco modulos principales:
 
 La capa de integración es el puente entre Alfred Dev y el ciclo de vida de Claude Code. Mientras que las capas anteriores definen «que hacer», esta capa define «cuando hacerlo» y «como conectar con el exterior».
 
-**Hooks** (12 ficheros, 6 eventos del ciclo de vida):
+**Hooks** (13 ficheros visibles, 6 eventos del ciclo de vida):
 
 Los hooks son scripts que Claude Code ejecuta automáticamente cuando ocurren eventos específicos. Se registran en `hooks/hooks.json` y cada uno tiene un matcher que filtra cuando se dispara.
 
@@ -104,6 +110,7 @@ Los hooks son scripts que Claude Code ejecuta automáticamente cuando ocurren ev
 | `secret-guard.sh` | PreToolUse | Write, Edit | Bloquea escritura de secretos en ficheros |
 | `dangerous-command-guard.py` | PreToolUse | Bash | Bloquea comandos destructivos |
 | `sensitive-read-guard.py` | PreToolUse | Read | Avisa al leer ficheros con credenciales |
+| `prefetch-finish-guard.py` | PreToolUse | Read, Write, Edit, Glob, Grep | Cierra el paso helper-first y evita exploracion redundante tras el prefetch |
 | `quality-gate.py` | PostToolUse | Bash | Vigila resultados de tests tras ejecución de comandos |
 | `evidence-guard.py` | PostToolUse | Bash | Registra evidencia real de ejecucion de tests para gates automaticas |
 | `dependency-watch.py` | PostToolUse | Write, Edit | Detecta cambios en dependencias (package.json, etc.) |
@@ -139,10 +146,10 @@ C4Context
     System(claude, "Claude Code", "CLI de Anthropic que ejecuta el modelo Claude con herramientas, hooks y plugins")
 
     Container_Boundary(plugin, "Plugin Alfred Dev") {
-        Container(commands, "Commands", "Markdown + YAML", "18 comandos: flujos, continuidad y operaciones")
+        Container(commands, "Commands", "Markdown + YAML", "24 comandos: flujos, continuidad, PM operativo y sync GitHub")
         Container(agents, "Agents", "Markdown", "9 nucleo + 8 opcionales, invocados como subagentes Task")
-        Container(core, "Core", "Python", "Orquestador, config loader, motor de personalidad")
-        Container(hooks, "Hooks", "Shell + Python", "12 hooks en 6 eventos del ciclo de vida")
+        Container(core, "Core", "Python", "Orquestador, continuidad, config, memoria y personalidad")
+        Container(hooks, "Hooks", "Shell + Python", "13 hooks en 6 eventos del ciclo de vida")
         Container(mcp, "MCP Server", "Python stdio", "Servidor JSON-RPC que expone memoria persistente")
     }
 

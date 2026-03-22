@@ -87,11 +87,80 @@ const { header, cases } = Astro.props;
               })}
             </ul>
           )}
+
+          {useCase.image && (
+            <button
+              type="button"
+              class="use-case-image-trigger"
+              data-lightbox-open
+              data-src={useCase.image.src}
+              data-alt={useCase.image.alt}
+              data-caption={useCase.image.caption ?? ''}
+              aria-label={`Ampliar imagen: ${useCase.image.alt}`}
+            >
+              <img
+                class="use-case-image"
+                src={useCase.image.src}
+                alt={useCase.image.alt}
+                loading="lazy"
+              />
+            </button>
+          )}
         </div>
       ))}
     </div>
   </div>
+
+  <dialog class="use-case-lightbox" id="useCaseLightbox">
+    <button type="button" class="use-case-lightbox-close" data-lightbox-close aria-label="Cerrar imagen">
+      ×
+    </button>
+    <figure class="use-case-lightbox-figure">
+      <img id="useCaseLightboxImg" class="use-case-lightbox-image" alt="" />
+      <figcaption id="useCaseLightboxCaption" class="use-case-lightbox-caption"></figcaption>
+    </figure>
+  </dialog>
 </section>
+
+<script>
+  const lightbox = document.getElementById('useCaseLightbox') as HTMLDialogElement | null;
+  const lightboxImg = document.getElementById('useCaseLightboxImg') as HTMLImageElement | null;
+  const lightboxCaption = document.getElementById('useCaseLightboxCaption') as HTMLElement | null;
+  const triggers = document.querySelectorAll('[data-lightbox-open]');
+  const closeBtn = document.querySelector('[data-lightbox-close]') as HTMLButtonElement | null;
+
+  if (lightbox && lightboxImg && lightboxCaption) {
+    triggers.forEach((trigger) => {
+      trigger.addEventListener('click', () => {
+        const src = trigger.getAttribute('data-src') || '';
+        const alt = trigger.getAttribute('data-alt') || '';
+        const caption = trigger.getAttribute('data-caption') || '';
+        lightboxImg.src = src;
+        lightboxImg.alt = alt;
+        lightboxCaption.textContent = caption;
+        if (!lightbox.open) {
+          lightbox.showModal();
+        }
+      });
+    });
+
+    closeBtn?.addEventListener('click', () => {
+      lightbox.close();
+    });
+
+    lightbox.addEventListener('click', (event) => {
+      const bounds = lightbox.getBoundingClientRect();
+      const outside =
+        event.clientX < bounds.left ||
+        event.clientX > bounds.right ||
+        event.clientY < bounds.top ||
+        event.clientY > bounds.bottom;
+      if (outside) {
+        lightbox.close();
+      }
+    });
+  }
+</script>
 
 <style>
   /* ── Contenedor de la seccion ──────────────────────── */
@@ -103,6 +172,8 @@ const { header, cases } = Astro.props;
   .use-cases-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    grid-auto-flow: row dense;
+    align-items: stretch;
     gap: 20px;
     margin-top: 48px;
   }
@@ -113,6 +184,9 @@ const { header, cases } = Astro.props;
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     transition: all 0.25s;
   }
 
@@ -170,10 +244,34 @@ const { header, cases } = Astro.props;
     margin: 10px 0 14px;
   }
 
+  .use-case-image-trigger {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin: 18px 0 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0b1017;
+    cursor: zoom-in;
+  }
+
+  .use-case-image-trigger:hover {
+    border-color: var(--blue);
+  }
+
+  .use-case-image {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
   /* ── Lista de pasos ────────────────────────────────── */
   .use-case-steps {
     list-style: none;
     padding: 0;
+    margin: 0;
   }
 
   .use-case-steps li {
@@ -211,6 +309,55 @@ const { header, cases } = Astro.props;
     gap: 0 24px;
   }
 
+  .use-case-lightbox {
+    width: min(1100px, calc(100vw - 32px));
+    max-width: 1100px;
+    padding: 18px 18px 14px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: rgba(10, 12, 16, 0.96);
+    color: var(--text-bright);
+  }
+
+  .use-case-lightbox::backdrop {
+    background: rgba(4, 7, 12, 0.82);
+    backdrop-filter: blur(6px);
+  }
+
+  .use-case-lightbox-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-bright);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .use-case-lightbox-figure {
+    margin: 0;
+  }
+
+  .use-case-lightbox-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0b1017;
+  }
+
+  .use-case-lightbox-caption {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
   /* ── Responsive 768px ──────────────────────────────── */
   @media (max-width: 768px) {
     .use-cases-grid {
@@ -219,6 +366,11 @@ const { header, cases } = Astro.props;
 
     .protection-grid {
       grid-template-columns: 1fr;
+    }
+
+    .use-case-lightbox {
+      width: calc(100vw - 18px);
+      padding: 14px 14px 12px;
     }
   }
 </style>

@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.4.4"
+$Version = "0.4.5"
 
 # -- Funciones auxiliares ---------------------------------------------------
 

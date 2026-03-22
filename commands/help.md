@@ -27,8 +27,14 @@ python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-d
 | `/alfred-dev:next` | -- | Decide el siguiente paso operativo y actúa si es inequívoco |
 | `/alfred-dev:pause` | -- | Crea un handoff explícito para pausar el trabajo actual |
 | `/alfred-dev:progress` | -- | Resume progreso, kanban, bloqueos y trazabilidad del proyecto |
+| `/alfred-dev:standup` | -- | Standup breve y accionable desde SonIA |
+| `/alfred-dev:blocked` | -- | Lista las tareas bloqueadas del proyecto |
+| `/alfred-dev:in-progress` | -- | Lista las tareas que están en curso |
 | `/alfred-dev:resume` | -- | Retoma una sesión activa o un handoff pendiente |
 | `/alfred-dev:verify` | [estado opcional] | Prepara o registra la validación manual/UAT del último entregable |
+| `/alfred-dev:validate` | -- | Valida la salud operativa de kanban, trazabilidad, UAT y sync local |
+| `/alfred-dev:search` | [texto] | Busca en artefactos de SonIA y memoria SQLite |
+| `/alfred-dev:sync-github` | [owner/repo opcional] | Ejecuta SonIA Sync sobre GitHub Issues |
 | `/alfred-dev:config` | -- | Configurar autonomía, stack, agentes opcionales y personalidad |
 | `/alfred-dev:status` | -- | Estado de la sesión activa |
 | `/alfred-dev:update` | -- | Comprobar y aplicar actualizaciones del plugin |

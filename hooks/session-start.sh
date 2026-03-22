@@ -57,8 +57,14 @@ El Fontanero (DevOps), El Escriba (documentación) y SonIA (project management).
 - /alfred-dev:next - Decidir qué toca hacer ahora y retomar si hay trabajo pendiente
 - /alfred-dev:pause - Guardar handoff explícito para seguir más tarde
 - /alfred-dev:progress - Ver progreso, kanban, bloqueos y trazabilidad del proyecto
+- /alfred-dev:standup - Standup breve y accionable desde SonIA
+- /alfred-dev:blocked - Ver solo las tareas bloqueadas
+- /alfred-dev:in-progress - Ver solo el trabajo en curso
 - /alfred-dev:resume - Retomar una sesión activa o un handoff pendiente
 - /alfred-dev:verify [estado] - Preparar o registrar la verificación manual/UAT del entregable actual
+- /alfred-dev:validate - Validar la salud operativa de kanban, trazabilidad y UAT
+- /alfred-dev:search <texto> - Buscar en artefactos de SonIA y memoria SQLite
+- /alfred-dev:sync-github [owner/repo] - Ejecutar SonIA Sync sobre GitHub Issues
 - /alfred-dev:config - Ver o modificar la configuración del plugin
 - /alfred-dev:status - Estado de la sesión de trabajo activa
 - /alfred-dev:update - Comprobar y aplicar actualizaciones del plugin

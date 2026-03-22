@@ -30,7 +30,7 @@ mindmap
       Motor de personalidad
     Capacidades
       60 skills en 13 dominios
-      12 hooks del ciclo de vida
+      13 hooks del ciclo de vida
       Memoria persistente SQLite
     Operaciones
       Instalación y carga
@@ -50,7 +50,7 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 | [flows.md](flows.md) | Los 6 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
 | [agents/README.md](agents/README.md) | Vision general del equipo de 17 agentes, modelo de colaboración, distribución de modelos |
 | [skills.md](skills.md) | Catalogo de 60 skills organizados en 13 dominios con diagrama mindmap |
-| [hooks.md](hooks.md) | Los 12 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
+| [hooks.md](hooks.md) | Los 13 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
 | [configuration.md](configuration.md) | Detección de stack, fichero .local.md, niveles de autonomía, agentes opcionales, composicion dinámica de equipo |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalación, troubleshooting |

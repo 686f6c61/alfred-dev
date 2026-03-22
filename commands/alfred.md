@@ -29,7 +29,13 @@ Elegir y ejecutar el comando correcto entre:
 - `/alfred-dev:ship`
 - `/alfred-dev:status`
 - `/alfred-dev:pause`
+- `/alfred-dev:standup`
+- `/alfred-dev:blocked`
+- `/alfred-dev:in-progress`
 - `/alfred-dev:config`
+- `/alfred-dev:validate`
+- `/alfred-dev:search`
+- `/alfred-dev:sync-github`
 - `/alfred-dev:help`
 
 ## Protocolo obligatorio
@@ -79,10 +85,16 @@ Usa ese resultado como señal primaria para detectar:
 Si el usuario pide claramente una de estas acciones, ejecútala sin entrevista:
 
 - ver estado, “qué hay abierto”, “cómo va”, “status” → actúa como `/alfred-dev:status`
+- standup, “daily”, “qué tenemos hoy”, “resumen diario” → actúa como `/alfred-dev:standup`
+- bloqueos, “qué está bloqueado”, “blocked” → actúa como `/alfred-dev:blocked`
+- trabajo en curso, “qué está en marcha”, “in progress” → actúa como `/alfred-dev:in-progress`
 - retomar, continuar, seguir, “qué toca ahora”, “usa Alfred y sigue” → actúa como `/alfred-dev:next`
 - pausar, dejarlo para luego, congelar sesión → actúa como `/alfred-dev:pause`
 - verificar, UAT, aceptación manual, validar entregable → actúa como `/alfred-dev:verify`
 - progreso, backlog, kanban, bloqueos, trazabilidad, “cómo va el proyecto” → actúa como `/alfred-dev:progress`
+- validar tablero, integridad, “validate”, “revisa consistencia” → actúa como `/alfred-dev:validate`
+- buscar en SonIA, memoria, trazabilidad, “search” → actúa como `/alfred-dev:search`
+- sincronizar GitHub, issues, tablero remoto, “sync GitHub” → actúa como `/alfred-dev:sync-github`
 - discutir, refinar, aterrizar, aclarar alcance, concretar UX/API antes de construir → actúa como `/alfred-dev:discuss`
 - configurar Alfred, cambiar autonomía o agentes → actúa como `/alfred-dev:config`
 - ayuda o lista de comandos → actúa como `/alfred-dev:help`
@@ -136,8 +148,9 @@ Si preguntas, haz una sola pregunta corta y con las opciones mínimas necesarias
 - NO presentes una tabla de comandos salvo que el usuario la pida.
 - NO ofrezcas un menú genérico si el siguiente paso es evidente.
 - NO uses nombres viejos como `/alfred feature`; usa siempre `/alfred-dev:...`.
-- `map-codebase`, `next`, `pause` y `resume` son comandos operativos. No activan
-  el equipo multiagente completo.
+- `map-codebase`, `next`, `pause`, `resume`, `standup`, `blocked`,
+  `in-progress`, `validate`, `search` y `sync-github` son comandos operativos.
+  No activan el equipo multiagente completo.
 - `verify` es un comando operativo de aceptación humana. No abre por sí mismo
   un flujo multiagente completo.
 - `discuss` es un refinado ligero: intenta resolverlo Alfred primero y solo consulta

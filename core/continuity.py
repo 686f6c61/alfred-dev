@@ -17,10 +17,12 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
 import unicodedata
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 if __package__ in {None, ""}:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -46,6 +48,8 @@ KANBAN_BACKLOG_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "backlo
 KANBAN_IN_PROGRESS_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "in-progress.md")
 KANBAN_DONE_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "done.md")
 KANBAN_BLOCKED_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "blocked.md")
+GITHUB_SYNC_JSON_RELATIVE_PATH = os.path.join(".claude", "alfred-github-sync.json")
+GITHUB_SYNC_MD_RELATIVE_PATH = os.path.join("docs", "project", "github-sync.md")
 
 _CODE_EXTENSIONS = {
     ".py",
@@ -83,6 +87,26 @@ _SKIP_DIRS = {
     ".scannerwork",
 }
 _GREENFIELD_COMMAND = "alfred"
+_KANBAN_RELATIVE_BY_STATUS = {
+    "backlog": KANBAN_BACKLOG_RELATIVE_PATH,
+    "in-progress": KANBAN_IN_PROGRESS_RELATIVE_PATH,
+    "done": KANBAN_DONE_RELATIVE_PATH,
+    "blocked": KANBAN_BLOCKED_RELATIVE_PATH,
+}
+_KANBAN_STATUS_LABELS = {
+    "backlog": "backlog",
+    "in-progress": "in progress",
+    "done": "done",
+    "blocked": "blocked",
+}
+_GH_STATUS_LABELS = {
+    "backlog": "alfred:backlog",
+    "in-progress": "alfred:in-progress",
+    "done": "alfred:done",
+    "blocked": "alfred:blocked",
+}
+_GH_SYNC_LABEL = "alfred:sync"
+_GH_LEGACY_BOARD_LABEL = "alfred:board"
 
 
 def _project_path(project_dir: str, relative_path: str) -> str:
@@ -228,6 +252,974 @@ def _extract_signal_lines(markdown: str, max_items: int = 3) -> List[str]:
         if len(lines) >= max_items:
             break
     return lines
+
+
+def _clean_inline_markdown(text: str) -> str:
+    cleaned = (text or "").replace("**", "").replace("`", "").strip()
+    return re.sub(r"\s+", " ", cleaned)
+
+
+def _extract_criteria_ids(text: str) -> List[str]:
+    found = {
+        match.upper()
+        for match in re.findall(r"\bCA-\d+\b", text or "", flags=re.IGNORECASE)
+    }
+    return sorted(found)
+
+
+def _task_sort_key(task: Dict[str, Any]) -> Tuple[int, Any, str]:
+    task_id = task.get("id") or ""
+    match = re.search(r"(\d+)$", task_id)
+    if match:
+        return (0, int(match.group(1)), task.get("title", ""))
+    return (1, task.get("title", "").lower(), task_id.lower())
+
+
+def _task_reference(task: Dict[str, Any]) -> str:
+    task_id = task.get("id")
+    title = task.get("title", "sin titulo")
+    if task_id:
+        if isinstance(title, str) and title.startswith(f"[{task_id}]"):
+            return title
+        return f"[{task_id}] {title}"
+    return title
+
+
+def _parse_kanban_tasks(markdown: str, status: str, relative_path: str) -> List[Dict[str, Any]]:
+    tasks: List[Dict[str, Any]] = []
+    current: Optional[Dict[str, Any]] = None
+
+    def flush() -> None:
+        nonlocal current
+        if current is None:
+            return
+
+        body_lines = current.get("body_lines", [])
+        body = "\n".join(body_lines).strip()
+        metadata = current.get("metadata", {})
+        criteria = _extract_criteria_ids(" ".join([body] + list(metadata.values())))
+        dependencies = metadata.get("dependencias") or metadata.get("dependencies") or ""
+        evidence = metadata.get("evidencia") or metadata.get("evidence") or ""
+        agent = metadata.get("agente") or metadata.get("agent") or ""
+        notes = metadata.get("notas") or metadata.get("notes") or ""
+
+        current.update(
+            {
+                "body": body,
+                "criteria": criteria,
+                "dependencies": dependencies,
+                "evidence": evidence,
+                "agent": agent,
+                "notes": notes,
+                "status": status,
+                "path": relative_path,
+            }
+        )
+        current.pop("body_lines", None)
+        tasks.append(current)
+        current = None
+
+    heading_re = re.compile(r"^###\s+(?:\[(?P<id>[^\]]+)\]\s+)?(?P<title>.+?)\s*$")
+    metadata_re = re.compile(r"^- \*\*(?P<key>.+?):\*\*\s*(?P<value>.+?)\s*$")
+
+    for raw_line in markdown.splitlines():
+        heading = heading_re.match(raw_line.strip())
+        if heading:
+            flush()
+            current = {
+                "id": (heading.group("id") or "").strip(),
+                "title": heading.group("title").strip(),
+                "metadata": {},
+                "body_lines": [],
+            }
+            continue
+
+        if current is None:
+            continue
+
+        current["body_lines"].append(raw_line.rstrip())
+        metadata = metadata_re.match(raw_line.strip())
+        if metadata:
+            key = _normalize_free_text(metadata.group("key")).replace(" ", "_")
+            current["metadata"][key] = _clean_inline_markdown(metadata.group("value"))
+
+    flush()
+
+    if tasks:
+        return sorted(tasks, key=_task_sort_key)
+
+    fallback_tasks: List[Dict[str, Any]] = []
+    for index, item in enumerate(_extract_markdown_list_items(markdown), start=1):
+        fallback_tasks.append(
+            {
+                "id": "",
+                "title": item,
+                "metadata": {},
+                "body": item,
+                "criteria": _extract_criteria_ids(item),
+                "dependencies": "",
+                "evidence": "",
+                "agent": "",
+                "notes": "",
+                "status": status,
+                "path": relative_path,
+                "fallback_index": index,
+            }
+        )
+    return fallback_tasks
+
+
+def load_kanban_board(project_dir: str) -> Dict[str, List[Dict[str, Any]]]:
+    board: Dict[str, List[Dict[str, Any]]] = {}
+    for status, relative_path in _KANBAN_RELATIVE_BY_STATUS.items():
+        markdown = _read_text_if_exists(project_dir, relative_path)
+        board[status] = _parse_kanban_tasks(markdown, status=status, relative_path=relative_path)
+    return board
+
+
+def _summarize_tasks(tasks: List[Dict[str, Any]], limit: int = 3) -> List[str]:
+    lines: List[str] = []
+    for task in sorted(tasks, key=_task_sort_key)[:limit]:
+        suffix: List[str] = []
+        if task.get("agent"):
+            suffix.append(task["agent"])
+        if task.get("dependencies"):
+            suffix.append(f"dep: {task['dependencies']}")
+        if task.get("notes"):
+            suffix.append(task["notes"])
+        extra = f" — {'; '.join(suffix)}" if suffix else ""
+        lines.append(f"{_task_reference(task)}{extra}")
+    return lines
+
+
+def build_standup_snapshot(project_dir: str) -> Dict[str, Any]:
+    snapshot = build_progress_snapshot(project_dir)
+    board = load_kanban_board(project_dir)
+    snapshot["standup_date"] = _now_utc().date().isoformat()
+    snapshot["board_tasks"] = board
+    snapshot["focus"] = {
+        "in_progress": _summarize_tasks(board.get("in-progress", [])),
+        "blocked": _summarize_tasks(board.get("blocked", [])),
+        "done": _summarize_tasks(board.get("done", [])),
+    }
+    return snapshot
+
+
+def render_standup_markdown(snapshot: Dict[str, Any]) -> str:
+    next_action = snapshot.get("next_action", {"command": "alfred", "reason": ""})
+    focus = snapshot.get("focus", {})
+    kanban = snapshot.get("kanban", {})
+    lines = [
+        f"## Standup diario — {snapshot.get('standup_date', _now_utc().date().isoformat())}",
+        "",
+        f"- Done: {len(kanban.get('done', []))}",
+        f"- In progress: {len(kanban.get('in_progress', []))}",
+        f"- Backlog: {len(kanban.get('backlog', []))}",
+        f"- Blocked: {len(kanban.get('blocked', []))}",
+    ]
+    if kanban.get("progress_pct") is not None:
+        lines.append(f"- Progreso estimado: {kanban['progress_pct']} %")
+
+    if focus.get("in_progress"):
+        lines.extend(["", "### En curso", ""])
+        lines.extend(f"- {item}" for item in focus["in_progress"])
+
+    if focus.get("blocked"):
+        lines.extend(["", "### Bloqueos", ""])
+        lines.extend(f"- {item}" for item in focus["blocked"])
+
+    if focus.get("done"):
+        lines.extend(["", "### Últimos completados", ""])
+        lines.extend(f"- {item}" for item in focus["done"])
+
+    progress_signals = snapshot.get("progress_signals") or snapshot.get("current_signals") or []
+    if progress_signals:
+        lines.extend(["", "### Señales", ""])
+        lines.extend(f"- {item}" for item in progress_signals[:3])
+
+    lines.extend(
+        [
+            "",
+            "### Siguiente paso",
+            "",
+            f"- `/alfred-dev:{next_action.get('command', 'alfred')}`",
+            f"- {next_action.get('reason', 'Sin razón disponible.')}",
+        ]
+    )
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_lane_snapshot(project_dir: str, lane: str) -> Dict[str, Any]:
+    board = load_kanban_board(project_dir)
+    tasks = board.get(lane, [])
+    next_action = suggest_next_action(project_dir)
+    return {
+        "lane": lane,
+        "tasks": sorted(tasks, key=_task_sort_key),
+        "next_action": next_action,
+        "count": len(tasks),
+    }
+
+
+def render_lane_markdown(snapshot: Dict[str, Any]) -> str:
+    lane = snapshot.get("lane", "desconocido")
+    label = _KANBAN_STATUS_LABELS.get(lane, lane)
+    tasks = snapshot.get("tasks", [])
+    next_action = snapshot.get("next_action", {"command": "alfred", "reason": ""})
+    lines = [f"## Tareas en {label}", ""]
+    if not tasks:
+        lines.append("No hay tareas en esta columna.")
+    else:
+        for task in tasks:
+            lines.append(f"### {_task_reference(task)}")
+            lines.append("")
+            lines.append(f"- Estado: {label}")
+            if task.get("agent"):
+                lines.append(f"- Agente: {task['agent']}")
+            if task.get("criteria"):
+                lines.append(f"- Criterios: {', '.join(task['criteria'])}")
+            if task.get("dependencies"):
+                lines.append(f"- Dependencias: {task['dependencies']}")
+            if task.get("notes"):
+                lines.append(f"- Notas: {task['notes']}")
+            if task.get("evidence"):
+                lines.append(f"- Evidencia: {task['evidence']}")
+            lines.append(f"- Fuente: `{task.get('path', '-')}`")
+            lines.append("")
+    lines.extend(
+        [
+            "### Siguiente paso recomendado",
+            "",
+            f"- `/alfred-dev:{next_action.get('command', 'alfred')}`",
+            f"- {next_action.get('reason', 'Sin razón disponible.')}",
+        ]
+    )
+    return "\n".join(lines).strip() + "\n"
+
+
+def validate_operational_artifacts(project_dir: str) -> Dict[str, Any]:
+    board = load_kanban_board(project_dir)
+    tasks = [task for lane in board.values() for task in lane]
+    errors: List[str] = []
+    warnings: List[str] = []
+    checks: List[str] = []
+
+    if not tasks:
+        warnings.append("No hay tareas detectadas en docs/project/kanban/.")
+    else:
+        checks.append(f"Se han detectado {len(tasks)} tareas en el kanban.")
+
+    seen_ids: Dict[str, str] = {}
+    missing_ids = 0
+    for task in tasks:
+        task_id = (task.get("id") or "").strip()
+        if not task_id:
+            missing_ids += 1
+        elif task_id in seen_ids:
+            errors.append(
+                f"La tarea {task_id} aparece duplicada en '{seen_ids[task_id]}' y '{task['status']}'."
+            )
+        else:
+            seen_ids[task_id] = task["status"]
+
+        if task["status"] in {"in-progress", "blocked"} and not task.get("agent"):
+            warnings.append(f"{_task_reference(task)} no tiene agente responsable visible.")
+        if task["status"] == "blocked" and not (task.get("dependencies") or task.get("notes")):
+            warnings.append(
+                f"{_task_reference(task)} está bloqueada, pero no indica dependencia ni motivo."
+            )
+        if task["status"] == "done" and not task.get("evidence"):
+            warnings.append(f"{_task_reference(task)} está en done sin evidencia explícita.")
+
+    if missing_ids:
+        warnings.append(
+            f"Hay {missing_ids} tareas sin identificador [T-XXX]; el sync con GitHub será parcial."
+        )
+
+    traceability_md = _read_text_if_exists(project_dir, TRACEABILITY_MD_RELATIVE_PATH)
+    progress_md = _read_text_if_exists(project_dir, PROGRESS_MD_RELATIVE_PATH)
+    if traceability_md:
+        checks.append("Existe docs/project/traceability.md.")
+    else:
+        warnings.append("Falta docs/project/traceability.md.")
+    if progress_md:
+        checks.append("Existe docs/project/progress.md.")
+    else:
+        warnings.append("Falta docs/project/progress.md.")
+
+    traced_criteria = set(_extract_criteria_ids(traceability_md))
+    referenced_criteria = {
+        criterion
+        for task in tasks
+        for criterion in (task.get("criteria") or [])
+    }
+    missing_traceability = sorted(referenced_criteria - traced_criteria)
+    if missing_traceability:
+        warnings.append(
+            "Hay criterios referenciados en tareas que no aparecen en la trazabilidad: "
+            + ", ".join(missing_traceability)
+        )
+    elif referenced_criteria:
+        checks.append("Los criterios visibles en tareas también aparecen en la trazabilidad.")
+
+    uat = load_uat(project_dir)
+    verify_suggestion = suggest_verify_action(project_dir)
+    if uat:
+        checks.append(f"Existe UAT en estado '{_status_label(uat.get('status', ''))}'.")
+    elif verify_suggestion is not None:
+        warnings.append("La verificación/UAT del último flujo completado sigue pendiente.")
+
+    sync_state = _read_json_file(_project_path(project_dir, GITHUB_SYNC_JSON_RELATIVE_PATH))
+    if isinstance(sync_state, dict):
+        task_map = sync_state.get("tasks")
+        mapped = task_map if isinstance(task_map, dict) else {}
+        sync_missing = [
+            task.get("id")
+            for task in tasks
+            if task.get("id") and task.get("id") not in mapped
+        ]
+        if sync_missing:
+            warnings.append(
+                "Hay tareas no sincronizadas con GitHub: " + ", ".join(sync_missing[:5])
+            )
+        else:
+            checks.append("El mapa de sincronización con GitHub cubre todas las tareas con ID.")
+
+    status = "ok"
+    if errors:
+        status = "error"
+    elif warnings:
+        status = "warning"
+
+    return {
+        "status": status,
+        "errors": errors,
+        "warnings": warnings,
+        "checks": checks,
+        "next_action": suggest_next_action(project_dir),
+    }
+
+
+def render_validation_markdown(report: Dict[str, Any]) -> str:
+    status = report.get("status", "desconocido")
+    verdict = {
+        "ok": "APROBADO",
+        "warning": "APROBADO CON AVISOS",
+        "error": "RECHAZADO",
+    }.get(status, status.upper())
+    next_action = report.get("next_action", {"command": "alfred", "reason": ""})
+    lines = [f"## Validación operativa — {verdict}", ""]
+
+    if report.get("checks"):
+        lines.extend(["### Checks", ""])
+        lines.extend(f"- {item}" for item in report["checks"])
+
+    if report.get("warnings"):
+        lines.extend(["", "### Avisos", ""])
+        lines.extend(f"- {item}" for item in report["warnings"])
+
+    if report.get("errors"):
+        lines.extend(["", "### Errores", ""])
+        lines.extend(f"- {item}" for item in report["errors"])
+
+    lines.extend(
+        [
+            "",
+            "### Siguiente paso recomendado",
+            "",
+            f"- `/alfred-dev:{next_action.get('command', 'alfred')}`",
+            f"- {next_action.get('reason', 'Sin razón disponible.')}",
+        ]
+    )
+    return "\n".join(lines).strip() + "\n"
+
+
+def search_project_context(project_dir: str, query: str, limit: int = 10) -> Dict[str, Any]:
+    if not (query or "").strip():
+        raise RuntimeError("Debes indicar un término de búsqueda para /alfred-dev:search.")
+
+    normalized_query = _normalize_free_text(query)
+    doc_results: List[Dict[str, Any]] = []
+    doc_paths = [
+        CODEBASE_MAP_RELATIVE_PATH,
+        CURRENT_RELATIVE_PATH,
+        DISCOVERY_MD_RELATIVE_PATH,
+        PROGRESS_MD_RELATIVE_PATH,
+        TRACEABILITY_MD_RELATIVE_PATH,
+        UAT_MD_RELATIVE_PATH,
+        GITHUB_SYNC_MD_RELATIVE_PATH,
+        KANBAN_BACKLOG_RELATIVE_PATH,
+        KANBAN_IN_PROGRESS_RELATIVE_PATH,
+        KANBAN_DONE_RELATIVE_PATH,
+        KANBAN_BLOCKED_RELATIVE_PATH,
+    ]
+    for relative_path in doc_paths:
+        markdown = _read_text_if_exists(project_dir, relative_path)
+        if not markdown:
+            continue
+        for line_number, raw_line in enumerate(markdown.splitlines(), start=1):
+            stripped = raw_line.strip()
+            if not stripped:
+                continue
+            if normalized_query not in _normalize_free_text(stripped):
+                continue
+            doc_results.append(
+                {
+                    "path": relative_path,
+                    "line": line_number,
+                    "snippet": stripped,
+                }
+            )
+            if len(doc_results) >= limit:
+                break
+        if len(doc_results) >= limit:
+            break
+
+    memory_results: List[Dict[str, Any]] = []
+    db_path = _project_path(project_dir, os.path.join(".claude", "alfred-memory.db"))
+    if os.path.isfile(db_path):
+        try:
+            from core.memory import MemoryDB
+
+            db = MemoryDB(db_path)
+            try:
+                for item in db.search(query, limit=limit):
+                    source_type = item.get("source_type", "unknown")
+                    if source_type == "decision":
+                        label = f"[D#{item.get('id')}] {item.get('title', 'sin título')}"
+                    elif source_type == "commit":
+                        sha = str(item.get("sha", ""))[:8]
+                        label = f"[commit {sha}] {item.get('message', 'sin mensaje')}"
+                    else:
+                        label = (
+                            f"[evento #{item.get('id')}] "
+                            f"{item.get('summary') or item.get('event_type') or 'sin resumen'}"
+                        )
+                    memory_results.append(
+                        {
+                            "source_type": source_type,
+                            "label": label,
+                        }
+                    )
+            finally:
+                db.close()
+        except Exception:
+            memory_results = []
+
+    return {
+        "query": query.strip(),
+        "docs": doc_results[:limit],
+        "memory": memory_results[:limit],
+    }
+
+
+def render_search_markdown(results: Dict[str, Any]) -> str:
+    query = results.get("query", "")
+    doc_results = results.get("docs", [])
+    memory_results = results.get("memory", [])
+    lines = [f"## Resultados para `{query}`", ""]
+
+    if doc_results:
+        lines.extend(["### Artefactos del proyecto", ""])
+        for item in doc_results:
+            lines.append(
+                f"- `{item['path']}:{item['line']}` — {item['snippet']}"
+            )
+
+    if memory_results:
+        lines.extend(["", "### Memoria SQLite", ""])
+        for item in memory_results:
+            lines.append(f"- {item['label']}")
+
+    if not doc_results and not memory_results:
+        lines.append("No se han encontrado coincidencias en SonIA ni en la memoria del proyecto.")
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def _run_command(
+    args: List[str],
+    cwd: Optional[str] = None,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    proc = subprocess.run(
+        args,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        encoding="utf-8",
+    )
+    if check and proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(detail or f"El comando falló: {' '.join(args)}")
+    return proc
+
+
+def _run_command_json(args: List[str], cwd: Optional[str] = None) -> Any:
+    proc = _run_command(args, cwd=cwd, check=True)
+    output = (proc.stdout or "").strip()
+    if not output:
+        return None
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"Respuesta JSON inesperada de {' '.join(args)}: {exc}"
+        ) from exc
+
+
+def _detect_github_repo(project_dir: str, raw_request: str = "") -> str:
+    candidate = (raw_request or "").strip()
+    if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", candidate):
+        return candidate
+
+    proc = _run_command(
+        ["git", "-C", project_dir, "remote", "get-url", "origin"],
+        check=False,
+    )
+    remote = (proc.stdout or "").strip()
+    if not remote:
+        raise RuntimeError(
+            "No se pudo detectar el repositorio GitHub. Añade un remoto `origin` o pasa `owner/repo`."
+        )
+
+    patterns = [
+        r"github\.com[:/](?P<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$",
+        r"^https://github\.com/(?P<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, remote)
+        if match:
+            return match.group("repo")
+
+    raise RuntimeError(
+        f"El remoto origin no apunta a GitHub o no se pudo parsear: {remote}"
+    )
+
+
+def _ensure_gh_ready() -> None:
+    _run_command(["gh", "--version"])
+    _run_command(["gh", "auth", "status", "-h", "github.com"])
+
+
+def _ensure_github_labels(repo: str) -> None:
+    labels = [
+        ("alfred", "0E8A16", "Artefactos y automatizaciones de Alfred Dev"),
+        ("alfred:task", "1D76DB", "Tarea sincronizada desde el kanban de SonIA"),
+        (_GH_SYNC_LABEL, "5319E7", "Issue paraguas de SonIA Sync"),
+        ("alfred:backlog", "BFD4F2", "Tarea pendiente"),
+        ("alfred:in-progress", "FBCA04", "Tarea en curso"),
+        ("alfred:blocked", "D93F0B", "Tarea bloqueada"),
+        ("alfred:done", "0E8A16", "Tarea completada"),
+    ]
+    for name, color, description in labels:
+        _run_command(
+            [
+                "gh",
+                "label",
+                "create",
+                name,
+                "--repo",
+                repo,
+                "--color",
+                color,
+                "--description",
+                description,
+                "--force",
+            ]
+        )
+
+
+def _get_issue(repo: str, issue_number: int) -> Optional[Dict[str, Any]]:
+    proc = _run_command(
+        [
+            "gh",
+            "issue",
+            "view",
+            str(issue_number),
+            "--repo",
+            repo,
+            "--json",
+            "number,title,state,url,labels",
+        ],
+        cwd=None,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    output = (proc.stdout or "").strip()
+    if not output:
+        return None
+    try:
+        data = json.loads(output)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _find_issue_by_title(repo: str, title: str, label: str) -> Optional[Dict[str, Any]]:
+    data = _run_command_json(
+        [
+            "gh",
+            "issue",
+            "list",
+            "--repo",
+            repo,
+            "--label",
+            label,
+            "--state",
+            "all",
+            "--search",
+            f'"{title}" in:title',
+            "--json",
+            "number,title,state,url,labels",
+        ]
+    )
+    if not isinstance(data, list):
+        return None
+    for item in data:
+        if item.get("title") == title:
+            return item
+    return None
+
+
+def _sync_issue_labels(repo: str, issue_number: int, desired_labels: List[str]) -> None:
+    issue = _get_issue(repo, issue_number)
+    existing = {
+        label.get("name")
+        for label in (issue or {}).get("labels", [])
+        if isinstance(label, dict) and isinstance(label.get("name"), str)
+    }
+    managed = {
+        "alfred",
+        "alfred:task",
+        _GH_SYNC_LABEL,
+        _GH_LEGACY_BOARD_LABEL,
+        *set(_GH_STATUS_LABELS.values()),
+    }
+    to_add = [label for label in desired_labels if label not in existing]
+    to_remove = sorted((existing & managed) - set(desired_labels))
+    if not to_add and not to_remove:
+        return
+
+    args = ["gh", "issue", "edit", str(issue_number), "--repo", repo]
+    for label in to_add:
+        args.extend(["--add-label", label])
+    for label in to_remove:
+        args.extend(["--remove-label", label])
+    _run_command(args)
+
+
+def _set_issue_state(repo: str, issue_number: int, should_close: bool) -> None:
+    issue = _get_issue(repo, issue_number)
+    if not issue:
+        return
+    state = str(issue.get("state", "")).upper()
+    if should_close and state != "CLOSED":
+        _run_command(["gh", "issue", "close", str(issue_number), "--repo", repo])
+    elif not should_close and state == "CLOSED":
+        _run_command(["gh", "issue", "reopen", str(issue_number), "--repo", repo])
+
+
+def _issue_body_for_task(task: Dict[str, Any]) -> str:
+    lines = [
+        "## Sincronizado por Alfred Dev",
+        "",
+        f"- Estado SonIA: `{task.get('status', 'desconocido')}`",
+        f"- Fuente: `{task.get('path', '-')}`",
+    ]
+    if task.get("agent"):
+        lines.append(f"- Agente: {task['agent']}")
+    if task.get("criteria"):
+        lines.append(f"- Criterios: {', '.join(task['criteria'])}")
+    if task.get("dependencies"):
+        lines.append(f"- Dependencias: {task['dependencies']}")
+    if task.get("notes"):
+        lines.append(f"- Notas: {task['notes']}")
+    if task.get("evidence"):
+        lines.append(f"- Evidencia: {task['evidence']}")
+    lines.extend(["", "## Descripción", "", task.get("body") or task.get("title", "Sin descripción.")])
+    return "\n".join(lines).strip() + "\n"
+
+
+def _create_or_update_issue(
+    repo: str,
+    task: Dict[str, Any],
+    sync_state: Dict[str, Any],
+) -> Dict[str, Any]:
+    task_id = task.get("id")
+    if not task_id:
+        raise RuntimeError("No se puede sincronizar una tarea sin identificador.")
+
+    desired_title = _task_reference(task)
+    body = _issue_body_for_task(task)
+    desired_labels = ["alfred", "alfred:task", _GH_STATUS_LABELS[task["status"]]]
+
+    task_map = sync_state.get("tasks", {}) if isinstance(sync_state.get("tasks"), dict) else {}
+    existing_entry = task_map.get(task_id, {}) if isinstance(task_map.get(task_id), dict) else {}
+    issue_number = existing_entry.get("number")
+    issue = None
+    if isinstance(issue_number, int):
+        issue = _get_issue(repo, issue_number)
+    if issue is None:
+        issue = _find_issue_by_title(repo, desired_title, "alfred:task")
+
+    if issue is None:
+        proc = _run_command(
+            [
+                "gh",
+                "issue",
+                "create",
+                "--repo",
+                repo,
+                "--title",
+                desired_title,
+                "--body",
+                body,
+                "--label",
+                "alfred",
+                "--label",
+                "alfred:task",
+                "--label",
+                _GH_STATUS_LABELS[task["status"]],
+            ]
+        )
+        issue_url = (proc.stdout or "").strip().splitlines()[-1].strip()
+        match = re.search(r"/issues/(?P<number>\d+)$", issue_url)
+        if not match:
+            raise RuntimeError(f"No se pudo extraer el número del issue creado: {issue_url}")
+        issue_number = int(match.group("number"))
+    else:
+        issue_number = int(issue["number"])
+        _run_command(
+            [
+                "gh",
+                "issue",
+                "edit",
+                str(issue_number),
+                "--repo",
+                repo,
+                "--title",
+                desired_title,
+                "--body",
+                body,
+            ]
+        )
+        _sync_issue_labels(repo, issue_number, desired_labels)
+
+    _set_issue_state(repo, issue_number, should_close=task["status"] == "done")
+    _sync_issue_labels(repo, issue_number, desired_labels)
+    issue = _get_issue(repo, issue_number)
+    return {
+        "number": issue_number,
+        "url": (issue or {}).get("url", ""),
+        "title": desired_title,
+        "status": task["status"],
+        "updated_at": _now_utc().isoformat(),
+    }
+
+
+def _board_issue_body(
+    project_name: str,
+    repo: str,
+    tasks: List[Dict[str, Any]],
+    task_map: Dict[str, Dict[str, Any]],
+    next_action: Dict[str, str],
+) -> str:
+    grouped: Dict[str, List[str]] = {key: [] for key in _KANBAN_RELATIVE_BY_STATUS}
+    for task in tasks:
+        task_id = task.get("id", "")
+        sync = task_map.get(task_id, {})
+        issue_ref = f"#{sync['number']}" if sync.get("number") else "sin issue"
+        grouped[task["status"]].append(f"- {_task_reference(task)} — {issue_ref}")
+
+    lines = [
+        f"## SonIA Sync para `{project_name}`",
+        "",
+        f"- Repositorio: `{repo}`",
+        f"- Sincronizado en: {_now_utc().isoformat()}",
+        f"- Siguiente paso recomendado: `/alfred-dev:{next_action.get('command', 'alfred')}`",
+        f"- Motivo: {next_action.get('reason', 'Sin razón disponible.')}",
+    ]
+    for status in ("in-progress", "blocked", "backlog", "done"):
+        items = grouped.get(status) or []
+        lines.extend(["", f"### {_KANBAN_STATUS_LABELS[status].title()}", ""])
+        if items:
+            lines.extend(items)
+        else:
+            lines.append("- Sin tareas.")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _ensure_board_issue(
+    repo: str,
+    project_name: str,
+    board_body: str,
+    sync_state: Dict[str, Any],
+) -> Dict[str, Any]:
+    board_title = f"SonIA Sync: {project_name}"
+    legacy_board_title = f"SonIA Board: {project_name}"
+    board_issue_number = None
+    existing_board = sync_state.get("board_issue") if isinstance(sync_state, dict) else None
+    if isinstance(existing_board, dict):
+        value = existing_board.get("number")
+        if isinstance(value, int):
+            board_issue_number = value
+
+    issue = _get_issue(repo, board_issue_number) if board_issue_number else None
+    if issue is None:
+        issue = _find_issue_by_title(repo, board_title, _GH_SYNC_LABEL)
+    if issue is None:
+        issue = _find_issue_by_title(repo, legacy_board_title, _GH_LEGACY_BOARD_LABEL)
+
+    desired_labels = ["alfred", _GH_SYNC_LABEL]
+    if issue is None:
+        proc = _run_command(
+            [
+                "gh",
+                "issue",
+                "create",
+                "--repo",
+                repo,
+                "--title",
+                board_title,
+                "--body",
+                board_body,
+                "--label",
+                "alfred",
+                "--label",
+                _GH_SYNC_LABEL,
+            ]
+        )
+        issue_url = (proc.stdout or "").strip().splitlines()[-1].strip()
+        match = re.search(r"/issues/(?P<number>\d+)$", issue_url)
+        if not match:
+            raise RuntimeError(f"No se pudo extraer el número del issue paraguas de SonIA Sync: {issue_url}")
+        issue_number = int(match.group("number"))
+    else:
+        issue_number = int(issue["number"])
+        _run_command(
+            [
+                "gh",
+                "issue",
+                "edit",
+                str(issue_number),
+                "--repo",
+                repo,
+                "--title",
+                board_title,
+                "--body",
+                board_body,
+            ]
+        )
+        _sync_issue_labels(repo, issue_number, desired_labels)
+
+    _set_issue_state(repo, issue_number, should_close=False)
+    _sync_issue_labels(repo, issue_number, desired_labels)
+    final_issue = _get_issue(repo, issue_number)
+    return {
+        "number": issue_number,
+        "url": (final_issue or {}).get("url", ""),
+        "title": board_title,
+    }
+
+
+def render_github_sync_markdown(result: Dict[str, Any]) -> str:
+    lines = [
+        "## SonIA Sync",
+        "",
+        f"- Repo: `{result.get('repo', '-')}`",
+        f"- Issue paraguas: {result.get('board_issue', {}).get('url', 'pendiente')}",
+        f"- Tareas sincronizadas: {len(result.get('tasks', []))}",
+    ]
+    skipped = result.get("skipped", [])
+    if skipped:
+        lines.append(f"- Tareas omitidas: {len(skipped)}")
+    lines.extend(["", "### Issues", ""])
+    for item in result.get("tasks", []):
+        lines.append(
+            f"- {_task_reference(item)} → #{item.get('number')} ({_KANBAN_STATUS_LABELS.get(item.get('status', ''), item.get('status', ''))})"
+        )
+    if skipped:
+        lines.extend(["", "### Omitidas", ""])
+        for task in skipped:
+            lines.append(f"- {task.get('title', 'sin título')} — sin ID [T-XXX]")
+    return "\n".join(lines).strip() + "\n"
+
+
+def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str, Any]:
+    board = load_kanban_board(project_dir)
+    tasks = [
+        task
+        for status in ("backlog", "in-progress", "blocked", "done")
+        for task in board.get(status, [])
+    ]
+    if not tasks:
+        raise RuntimeError("No hay tareas en docs/project/kanban/ para sincronizar.")
+
+    _ensure_gh_ready()
+    repo = _detect_github_repo(project_dir, raw_request=raw_request)
+    _ensure_github_labels(repo)
+
+    sync_path = _project_path(project_dir, GITHUB_SYNC_JSON_RELATIVE_PATH)
+    sync_state = _read_json_file(sync_path)
+    if not isinstance(sync_state, dict) or sync_state.get("repo") != repo:
+        sync_state = {"version": 1, "repo": repo, "tasks": {}}
+
+    task_map: Dict[str, Dict[str, Any]] = {}
+    synced_tasks: List[Dict[str, Any]] = []
+    skipped: List[Dict[str, Any]] = []
+    for task in tasks:
+        if not task.get("id"):
+            skipped.append(task)
+            continue
+        issue_info = _create_or_update_issue(repo, task, sync_state)
+        merged = {**task, **issue_info}
+        task_map[task["id"]] = issue_info
+        synced_tasks.append(merged)
+
+    project_name = _detect_project_name(project_dir, _load_package_json(project_dir))
+    next_action = suggest_next_action(project_dir)
+    board_body = _board_issue_body(project_name, repo, tasks, task_map, next_action)
+    board_issue = _ensure_board_issue(repo, project_name, board_body, sync_state)
+
+    sync_record = {
+        "version": 1,
+        "repo": repo,
+        "synced_at": _now_utc().isoformat(),
+        "board_issue": board_issue,
+        "tasks": task_map,
+        "skipped": [task.get("title", "") for task in skipped],
+    }
+    os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
+    with open(sync_path, "w", encoding="utf-8") as fh:
+        json.dump(sync_record, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+
+    sync_md_path = _project_path(project_dir, GITHUB_SYNC_MD_RELATIVE_PATH)
+    os.makedirs(os.path.dirname(sync_md_path), exist_ok=True)
+    with open(sync_md_path, "w", encoding="utf-8") as fh:
+        fh.write(render_github_sync_markdown({
+            "repo": repo,
+            "board_issue": board_issue,
+            "tasks": synced_tasks,
+            "skipped": skipped,
+        }))
+
+    state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
+    bypass_path = None
+    if state and state.get("fase_actual") != "completado":
+        bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:sync-github")
+
+    return {
+        "repo": repo,
+        "board_issue": board_issue,
+        "tasks": synced_tasks,
+        "skipped": skipped,
+        "sync_path": sync_path,
+        "sync_md_path": sync_md_path,
+        "bypass_path": bypass_path,
+    }
 
 
 def _extract_recommended_alfred_command(markdown: str) -> Optional[str]:
@@ -1823,6 +2815,54 @@ def _build_parser() -> argparse.ArgumentParser:
     progress_parser.add_argument("project_dir", nargs="?", default=".")
     progress_parser.add_argument("--json", action="store_true", dest="as_json")
 
+    standup_parser = subparsers.add_parser(
+        "standup",
+        help="Genera un standup operativo breve desde SonIA",
+    )
+    standup_parser.add_argument("project_dir", nargs="?", default=".")
+
+    blocked_parser = subparsers.add_parser(
+        "blocked",
+        help="Lista las tareas bloqueadas",
+    )
+    blocked_parser.add_argument("project_dir", nargs="?", default=".")
+
+    in_progress_parser = subparsers.add_parser(
+        "in-progress",
+        help="Lista las tareas en curso",
+    )
+    in_progress_parser.add_argument("project_dir", nargs="?", default=".")
+
+    validate_parser = subparsers.add_parser(
+        "validate",
+        help="Valida la integridad operativa de SonIA y continuidad",
+    )
+    validate_parser.add_argument("project_dir", nargs="?", default=".")
+
+    search_parser = subparsers.add_parser(
+        "search",
+        help="Busca en artefactos de SonIA y memoria SQLite",
+    )
+    search_parser.add_argument("project_dir", nargs="?", default=".")
+    search_parser.add_argument(
+        "--raw",
+        default="",
+        dest="raw_request",
+        help="Texto de búsqueda recibido desde /alfred-dev:search",
+    )
+
+    sync_parser = subparsers.add_parser(
+        "sync-github",
+        help="Ejecuta SonIA Sync sobre GitHub Issues",
+    )
+    sync_parser.add_argument("project_dir", nargs="?", default=".")
+    sync_parser.add_argument(
+        "--raw",
+        default="",
+        dest="raw_request",
+        help="owner/repo opcional recibido desde /alfred-dev:sync-github",
+    )
+
     map_parser = subparsers.add_parser(
         "map-codebase",
         help="Crea un mapa brownfield persistente",
@@ -1940,6 +2980,40 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(json.dumps(snapshot, ensure_ascii=False))
         else:
             print(render_progress_markdown(snapshot))
+        return 0
+
+    if args.command == "standup":
+        print(render_standup_markdown(build_standup_snapshot(project_dir)))
+        return 0
+
+    if args.command == "blocked":
+        print(render_lane_markdown(build_lane_snapshot(project_dir, "blocked")))
+        return 0
+
+    if args.command == "in-progress":
+        print(render_lane_markdown(build_lane_snapshot(project_dir, "in-progress")))
+        return 0
+
+    if args.command == "validate":
+        print(render_validation_markdown(validate_operational_artifacts(project_dir)))
+        return 0
+
+    if args.command == "search":
+        try:
+            results = search_project_context(project_dir, args.raw_request)
+        except RuntimeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(render_search_markdown(results))
+        return 0
+
+    if args.command == "sync-github":
+        try:
+            result = sync_project_to_github(project_dir, raw_request=args.raw_request)
+        except RuntimeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(render_github_sync_markdown(result))
         return 0
 
     if args.command == "map-codebase":

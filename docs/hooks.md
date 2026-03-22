@@ -62,9 +62,9 @@ Cada hook tiene un **timeout configurable** en segundos. Si el script no termina
 
 ---
 
-## Los 12 hooks de Alfred Dev
+## Los 13 hooks de Alfred Dev
 
-Alfred Dev registra doce hooks que cubren los cuatro eventos del ciclo de vida: arranque de sesión, parada, antes de usar una herramienta y despues de usarla. Cada hook tiene una responsabilidad única y esta disenado para fallar de forma segura: si algo va mal internamente, el hook sale con código 0 (sin bloquear) excepto en los casos donde la politica de seguridad exige fail-closed.
+Alfred Dev registra trece hooks visibles que cubren los eventos del ciclo de vida: arranque de sesión, envio de prompt, parada, antes de usar una herramienta, despues de usarla y compactación. Cada hook tiene una responsabilidad única y esta disenado para fallar de forma segura: si algo va mal internamente, el hook sale con código 0 (sin bloquear) excepto en los casos donde la politica de seguridad exige fail-closed.
 
 ### session-bootstrap.sh
 
@@ -152,7 +152,7 @@ Cuando el hook bloquea, emite un mensaje en la voz de "El Paranoico" que explica
 
 Este hook actua como segunda linea de defensa contra comandos destructivos. Se ejecuta antes de cada invocación de Bash, analiza el comando y lo bloquea (exit 2) si coincide con un patron potencialmente catastrofico.
 
-Ademas, desde `0.4.4` autoaprueba una allowlist muy estrecha de helpers
+Ademas, desde `0.4.5` autoaprueba una allowlist muy estrecha de helpers
 deterministas locales de Alfred (`python3 .claude/alfred-continuity.py ...`)
 para que los comandos helper-first puedan arrancar en headless sin pedir
 permiso manual en su primer uso.
