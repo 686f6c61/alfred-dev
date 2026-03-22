@@ -19,13 +19,18 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ### Added
 
+- **Capa operativa de continuidad**: nuevos comandos `/alfred-dev:map-codebase`, `/alfred-dev:discuss`, `/alfred-dev:next`, `/alfred-dev:pause`, `/alfred-dev:resume`, `/alfred-dev:progress`, `/alfred-dev:verify` y `/alfred-dev:quick` para orientar, pausar, retomar, mapear brownfield y cerrar UAT sin abrir siempre un flujo multiagente completo.
+- **Helper determinista `core/continuity.py`**: nueva base común para continuidad CLI, artefactos `codebase-map.md`, `current.md`, `handoff.md`, `uat.md` y sesiones ligeras reproducibles.
 - **Parser compartido de configuracion de memoria**: nuevo modulo `core/memory_config.py` para resolver defaults y leer `memoria.enabled`, `sync_to_native`, `sync_commits_limit`, `capture_decisions`, `capture_commits` y `retention_days` de forma uniforme.
+- **Hardening helper-first en Claude CLI**: bootstrap de sesión, wrapper local `.claude/alfred-continuity.py`, autoallow de helpers seguros y barreras de prefetch para que `map-codebase` y el brownfield de `/alfred-dev:alfred` funcionen de forma natural en `claude -p`.
 - **Cobertura de regresion ampliada**: tests nuevos para FTS de eventos, purga + salud, tamaño con WAL, importacion Git con `|`, config efectiva del servidor MCP, parser de memoria y sync mas alla de 1000 decisiones.
 
 ### Changed
 
+- **Alfred decide mejor el siguiente paso**: el asistente contextual ya no solo clasifica `feature/fix/spike/audit`, sino también continuidad, brownfield, UAT y progreso operativo antes de abrir agentes.
 - **La configuracion de memoria ya se aplica de verdad**: `capture_decisions`, `capture_commits`, `retention_days` y `sync_commits_limit` pasan a estar cableados en hooks, servidor MCP y sincronizacion nativa.
 - **Versionado coherente a 0.4.4**: plugin, marketplace, instaladores, paquetes, servidor MCP, informes y metadata de la web quedan alineados.
+- **Web, README y documentacion alineados**: la landing, el README y los docs reflejan ya el modelo actual de Alfred (`18` comandos, `6` flujos, `12` hooks, continuidad operativa y memoria persistente real).
 - **Documentacion de memoria actualizada**: README, `docs/memory.md`, `docs/configuration.md` y `commands/config.md` reflejan el comportamiento real del sistema y el esquema actual.
 
 ---

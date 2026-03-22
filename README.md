@@ -70,10 +70,12 @@ Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad
 
 ## Novedades en v0.4.4
 
-La v0.4.4 cierra la capa de memoria persistente para uso real: la configuracion del proyecto ya manda de verdad, los eventos son buscables y la salud deja de dar falsos errores con FTS y WAL.
+La v0.4.4 convierte Alfred en un sistema mucho mas usable en Claude Code CLI: ya orienta continuidad y brownfield por si solo, funciona mejor en `claude -p` con comandos helper-first y cierra la memoria persistente para uso real.
 
 | Novedad | Descripcion |
 |---------|-------------|
+| **Continuidad operativa** | Llegan `/alfred-dev:map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify` y `quick` para orientar el trabajo sin abrir siempre un flujo completo. |
+| **Helper-first real en CLI** | `map-codebase` y el caso brownfield de `/alfred-dev:alfred` ya se preparan y consumen de forma determinista, sin rehacer el trabajo a mano en `claude -p`. |
 | **FTS de eventos corregido** | Los eventos con `content` ya aparecen en `memory_search` y `memory_health` no los trata como corrupcion. |
 | **Purga completa** | `purge_old_events()` elimina tambien las filas del indice FTS, evitando huerfanos y falsos positivos tras la retencion. |
 | **Config de memoria cableada** | `capture_decisions`, `capture_commits`, `retention_days` y `sync_commits_limit` pasan a aplicarse realmente en hooks, MCP y sync nativa. |
