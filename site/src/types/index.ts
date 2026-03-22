@@ -269,6 +269,17 @@ export interface UseCase {
   steps?: string[];
   /** Descripcion HTML libre (para casos sin pasos ordenados). */
   description?: string;
+  /** Imagen opcional con miniatura ampliable en lightbox. */
+  image?: {
+    /** Ruta pública de la imagen. */
+    src: string;
+    /** Texto alternativo accesible. */
+    alt: string;
+    /** Pie breve mostrado dentro del popup. */
+    caption?: string;
+    /** Etiqueta corta superpuesta, por ejemplo [img]. */
+    tag?: string;
+  };
   /** Si true, la tarjeta ocupa todo el ancho (grid-column: 1 / -1). */
   wide?: boolean;
 }
