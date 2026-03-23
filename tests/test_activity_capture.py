@@ -723,6 +723,24 @@ class TestDispatchPrompt(_DBTestCase):
         payload = self._parse_payload(prefetched[0])
         self.assertEqual(payload["prefetched_command"], "quick")
 
+    def test_prefetches_memory_ui_from_prompt(self):
+        """`/alfred-dev:memory-ui` debe dejar la UI lista antes del razonamiento."""
+        data = {"prompt": "/alfred-dev:memory-ui"}
+
+        _capture._dispatch_prompt(self._db, data)
+
+        state_path = os.path.join(self._tmpdir, ".claude", "alfred-memory-ui.json")
+        self.assertTrue(os.path.isfile(state_path))
+        with open(state_path, "r", encoding="utf-8") as fh:
+            state = json.load(fh)
+
+        self.assertTrue(str(state.get("url", "")).startswith("http://127.0.0.1:"))
+
+        prefetched = self._get_events("alfred_prefetched")
+        self.assertEqual(len(prefetched), 1)
+        payload = self._parse_payload(prefetched[0])
+        self.assertEqual(payload["prefetched_command"], "memory-ui")
+
     def test_new_prompt_clears_consumed_prefetch_marker(self):
         """Un prompt nuevo debe limpiar barreras transitorias del prompt anterior."""
         payload = {
@@ -873,6 +891,29 @@ class TestHookScriptRuntime(unittest.TestCase):
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, "docs", "project", "codebase-map.md")))
+
+    def test_script_prefetches_memory_ui(self):
+        """El hook runtime debe poder arrancar memory-ui antes del razonamiento."""
+        payload = {
+            "session_id": "runtime-prefetch-memory-ui",
+            "transcript_path": os.path.join(self._tmpdir, "runtime-prefetch-memory-ui.jsonl"),
+            "cwd": self._tmpdir,
+            "permission_mode": "default",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "/alfred-dev:memory-ui",
+        }
+
+        proc = subprocess.run(
+            ["python3", self._hook_path],
+            input=json.dumps(payload),
+            text=True,
+            cwd=self._tmpdir,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, ".claude", "alfred-memory-ui.json")))
 
 
 # ---------------------------------------------------------------------------

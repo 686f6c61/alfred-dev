@@ -133,6 +133,31 @@ class TestPrefetchFinishGuard(unittest.TestCase):
             self.assertEqual(stdout, "")
             self.assertEqual(stderr, "")
 
+    def test_pending_prefetch_for_memory_ui_blocks_until_consumed(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+            prefetch_path = os.path.join(tmpdir, ".claude", "alfred-prefetch.json")
+            with open(prefetch_path, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "source_command": "memory-ui",
+                        "prefetched_command": "memory-ui",
+                        "response_text": "ui lista",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=30)).isoformat(),
+                    },
+                    fh,
+                )
+
+            code, stdout, stderr = self._run_hook(
+                {"tool_name": "Read", "tool_input": {"file_path": "README.md"}},
+                tmpdir,
+            )
+
+            self.assertEqual(code, 2)
+            self.assertIn("consume-prefetch", stdout)
+            self.assertIn("memory-ui", stderr)
+
     def test_resolves_project_dir_from_absolute_file_path(self):
         with tempfile.TemporaryDirectory() as tmpdir, tempfile.TemporaryDirectory() as other_cwd:
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)

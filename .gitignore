@@ -4,6 +4,7 @@ __pycache__/
 .DS_Store
 .pytest_cache/
 docs/plans/
+docs/superpowers/
 
 # Ficheros de estado y datos locales del plugin
 .claude/alfred-dev-state.json
@@ -22,6 +23,7 @@ docs/plans/
 .claude/alfred-evidence.json
 .claude/alfred-gui-port
 .claude/alfred-gui.log
+.claude/alfred-memory-ui.json
 .claude/settings.json
 .claude/settings.local.json
 firebase-debug.log

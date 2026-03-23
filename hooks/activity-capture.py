@@ -79,6 +79,7 @@ _ALFRED_PREFETCH_COMMANDS = frozenset({
     "map-codebase",
     "discuss",
     "quick",
+    "memory-ui",
 })
 
 # Prefijo para los mensajes de aviso en stderr.
@@ -426,6 +427,7 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
     _ensure_plugin_root_on_path()
     try:
         from core.continuity import (
+            launch_memory_ui,
             needs_codebase_map,
             save_prefetch_result,
             start_quick_session,
@@ -457,6 +459,11 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
         action = write_discovery_files
     elif source_command == "quick":
         action = start_quick_session
+    elif source_command == "memory-ui":
+        action = lambda project_dir, raw_request: launch_memory_ui(
+            project_dir,
+            open_browser_window=False,
+        )
 
     if action is None:
         return None

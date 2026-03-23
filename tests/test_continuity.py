@@ -16,10 +16,14 @@ from core.continuity import (
     DISCOVERY_MD_RELATIVE_PATH,
     HANDOFF_JSON_RELATIVE_PATH,
     HANDOFF_MD_RELATIVE_PATH,
+    KANBAN_BACKLOG_RELATIVE_PATH,
+    KANBAN_IN_PROGRESS_RELATIVE_PATH,
+    PROGRESS_MD_RELATIVE_PATH,
     PREFETCH_CONSUMED_RELATIVE_PATH,
     PREFETCH_RELATIVE_PATH,
     STATE_RELATIVE_PATH,
     STOP_BYPASS_RELATIVE_PATH,
+    TRACEABILITY_MD_RELATIVE_PATH,
     UAT_JSON_RELATIVE_PATH,
     UAT_MD_RELATIVE_PATH,
     arm_stop_hook_bypass,
@@ -53,6 +57,7 @@ from core.continuity import (
     write_uat_files,
     write_handoff_files,
 )
+from core.memory import MemoryDB
 from core.orchestrator import advance_phase, create_session, save_state
 
 
@@ -61,6 +66,24 @@ def _complete_session(command: str, description: str):
     while session["fase_actual"] != "completado":
         session = advance_phase(session, resultado="aprobado", artefactos=[])
     return session
+
+
+def _enable_memory(tmpdir: str) -> None:
+    os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+    with open(
+        os.path.join(tmpdir, ".claude", "alfred-dev.local.md"),
+        "w",
+        encoding="utf-8",
+    ) as fh:
+        fh.write(
+            "---\n"
+            "memoria:\n"
+            "  enabled: true\n"
+            "  capture_decisions: true\n"
+            "  capture_commits: true\n"
+            "  retention_days: 365\n"
+            "---\n"
+        )
 
 
 class TestContinuitySuggestions(unittest.TestCase):
@@ -576,6 +599,85 @@ class TestContinuityHelpers(unittest.TestCase):
         self.assertIn("/alfred-dev:feature", discovery_content)
         self.assertIn("Estado: refinado previo preparado", current_content)
 
+    def test_helper_first_commands_capture_richer_memory_when_enabled(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _enable_memory(tmpdir)
+            with open(os.path.join(tmpdir, "package.json"), "w", encoding="utf-8") as fh:
+                json.dump({"name": "demo", "scripts": {"test": "vitest"}}, fh)
+            with open(os.path.join(tmpdir, "README.md"), "w", encoding="utf-8") as fh:
+                fh.write("# Demo\n\nProyecto para validar memoria helper-first.\n")
+
+            write_codebase_map_files(tmpdir, raw_request="login")
+            write_discovery_files(tmpdir, raw_request="Refinar login social")
+            start_quick_session(tmpdir, raw_request="ajustar copy del login")
+
+            db = MemoryDB(os.path.join(tmpdir, ".claude", "alfred-memory.db"))
+            try:
+                decisions = db.get_decisions(limit=10)
+                helper_events = [
+                    event
+                    for event in db.get_events(limit=20)
+                    if event.get("event_type") == "helper_seeded"
+                ]
+            finally:
+                db.close()
+
+            self.assertGreaterEqual(len(decisions), 3)
+            self.assertGreaterEqual(len(helper_events), 3)
+            titles = [item["title"] for item in decisions]
+            self.assertIn("Arrancar por map-codebase antes de implementar", titles)
+            self.assertTrue(any(title.startswith("Refinar antes de implementar:") for title in titles))
+            self.assertTrue(any(title.startswith("Clasificar como quick:") for title in titles))
+
+    def test_helper_first_commands_seed_operational_artifacts_for_ui(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _enable_memory(tmpdir)
+            with open(os.path.join(tmpdir, "package.json"), "w", encoding="utf-8") as fh:
+                json.dump({"name": "demo", "scripts": {"test": "vitest"}}, fh)
+            with open(os.path.join(tmpdir, "README.md"), "w", encoding="utf-8") as fh:
+                fh.write("# Demo\n\nProyecto para validar artefactos helper-first.\n")
+
+            write_codebase_map_files(tmpdir, raw_request="login")
+            write_discovery_files(tmpdir, raw_request="Refinar login social")
+            start_quick_session(tmpdir, raw_request="ajustar copy del login")
+
+            with open(os.path.join(tmpdir, PROGRESS_MD_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                progress_content = fh.read()
+            with open(os.path.join(tmpdir, TRACEABILITY_MD_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                traceability_content = fh.read()
+            with open(os.path.join(tmpdir, KANBAN_BACKLOG_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                backlog_content = fh.read()
+            with open(os.path.join(tmpdir, KANBAN_IN_PROGRESS_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                in_progress_content = fh.read()
+
+        self.assertIn("Flujo activo: `quick`.", progress_content)
+        self.assertIn("Riesgo principal", traceability_content)
+        self.assertIn("/alfred-dev:feature", backlog_content)
+        self.assertIn("ajustar copy del login", in_progress_content)
+
+    def test_start_quick_session_writes_current_and_progress_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "package.json"), "w", encoding="utf-8") as fh:
+                json.dump({"name": "demo"}, fh)
+
+            start_quick_session(tmpdir, raw_request="ajustar copy del login")
+
+            with open(os.path.join(tmpdir, CURRENT_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                current_content = fh.read()
+            with open(os.path.join(tmpdir, PROGRESS_MD_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                progress_content = fh.read()
+            with open(os.path.join(tmpdir, KANBAN_IN_PROGRESS_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                in_progress_content = fh.read()
+            with open(os.path.join(tmpdir, KANBAN_BACKLOG_RELATIVE_PATH), "r", encoding="utf-8") as fh:
+                backlog_content = fh.read()
+
+        self.assertIn("Estado: quick activo", current_content)
+        self.assertIn("/alfred-dev:resume", current_content)
+        self.assertIn("Flujo activo: `quick`.", progress_content)
+        self.assertIn("/alfred-dev:verify", progress_content)
+        self.assertIn("ajustar copy del login", in_progress_content)
+        self.assertIn("/alfred-dev:verify", backlog_content)
+
     def test_write_codebase_map_files_creates_brownfield_artifacts(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             with open(os.path.join(tmpdir, "package.json"), "w", encoding="utf-8") as fh:
@@ -651,6 +753,18 @@ class TestContinuityHelpers(unittest.TestCase):
         self.assertEqual(snapshot["kanban"]["backlog"], ["T-002 Pulir copy"])
         self.assertEqual(snapshot["kanban"]["progress_pct"], 33)
         self.assertIsNotNone(snapshot["bypass_path"])
+
+    def test_build_progress_snapshot_derives_signals_when_artifacts_are_missing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "package.json"), "w", encoding="utf-8") as fh:
+                json.dump({"name": "demo"}, fh)
+
+            snapshot = build_progress_snapshot(tmpdir)
+
+        self.assertTrue(snapshot["current_signals"])
+        self.assertTrue(snapshot["progress_signals"])
+        self.assertTrue(snapshot["traceability_signals"])
+        self.assertIn("/alfred-dev:map-codebase", snapshot["current_signals"][-1])
 
     def test_render_progress_markdown_includes_next_step(self):
         snapshot = {

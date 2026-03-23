@@ -68,7 +68,19 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.5
+## Novedades en v0.4.6
+
+La v0.4.6 introduce una **Memory UI** local pensada para uso real: abre la SQLite del proyecto en el navegador, mezcla memoria persistente con señales operativas de SonIA y evita que la vista nazca vacía gracias a siembra helper-first e import de commits Git cuando hace falta.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Memory UI local** | Nuevo `/alfred-dev:memory-ui` para abrir timeline, decisiones, commits, búsqueda y salud de memoria en el navegador sobre la SQLite real del proyecto. |
+| **Poblado natural de memoria** | `map-codebase`, `discuss` y `quick` ya dejan decisiones, progreso, trazabilidad y kanban útiles para que la UI tenga contexto desde el primer uso real. |
+| **Commits visibles sin fricción** | La UI importa historial Git reciente cuando la memoria todavia no tenia commits enlazados, evitando paneles muertos en repos reales. |
+| **Superficie pública actualizada** | Alfred pasa a reflejar `25` comandos visibles y la web/documentación explican la nueva capa visual de memoria. |
+| **Hardening de release** | Se limpian docs internas de planificación del repo publicado y se alinea homepage/versionado/metadata para la release nueva. |
+
+### Novedades de v0.4.5
 
 La v0.4.5 extiende a SonIA con una capa PM mas operativa y colaborativa: ahora Alfred puede dar standup, listar bloqueos y trabajo en curso, validar la salud del tablero, buscar en artefactos + memoria y ejecutar **SonIA Sync** para reflejar el kanban local en GitHub sin perder la fuente de verdad en `docs/project/`.
 
@@ -142,6 +154,7 @@ Toda la interfaz se controla desde la línea de comandos de Claude Code con el p
 | `/alfred-dev:pause` | Pausa el trabajo en curso y genera handoff persistente. |
 | `/alfred-dev:resume` | Retoma una sesion pausada usando el handoff y el estado guardado. |
 | `/alfred-dev:progress` | Resume kanban, bloqueos, trazabilidad, UAT y estado operativo del proyecto. |
+| `/alfred-dev:memory-ui` | Abre una UI local en navegador para explorar la memoria SQLite con timeline, decisiones, grafo, commits y búsqueda. |
 | `/alfred-dev:standup` | Standup breve y accionable desde SonIA: en curso, bloqueos, progreso y siguiente paso. |
 | `/alfred-dev:blocked` | Lista solo las tareas bloqueadas con su dependencia o motivo visible. |
 | `/alfred-dev:in-progress` | Lista solo las tareas que están en curso. |
@@ -347,7 +360,7 @@ alfred-dev/
     mcp.json              # Servidor MCP de memoria persistente
   agents/                 # 9 agentes de nucleo
   agents/optional/        # 8 agentes opcionales
-  commands/               # 24 comandos /alfred-dev
+  commands/               # 25 comandos /alfred-dev
   skills/                 # 60 skills en 13 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos

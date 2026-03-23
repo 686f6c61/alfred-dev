@@ -17,10 +17,15 @@ import argparse
 import json
 import os
 import re
+import signal
+import socket
 import subprocess
 import sys
 import tempfile
 import unicodedata
+import urllib.error
+import urllib.request
+import webbrowser
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -50,6 +55,10 @@ KANBAN_DONE_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "done.md")
 KANBAN_BLOCKED_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "blocked.md")
 GITHUB_SYNC_JSON_RELATIVE_PATH = os.path.join(".claude", "alfred-github-sync.json")
 GITHUB_SYNC_MD_RELATIVE_PATH = os.path.join("docs", "project", "github-sync.md")
+GUI_PORT_RELATIVE_PATH = os.path.join(".claude", "alfred-gui-port")
+GUI_LOG_RELATIVE_PATH = os.path.join(".claude", "alfred-gui.log")
+MEMORY_UI_JSON_RELATIVE_PATH = os.path.join(".claude", "alfred-memory-ui.json")
+MEMORY_DB_RELATIVE_PATH = os.path.join(".claude", "alfred-memory.db")
 
 _CODE_EXTENSIONS = {
     ".py",
@@ -115,6 +124,109 @@ def _project_path(project_dir: str, relative_path: str) -> str:
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _load_memory_runtime_config(project_dir: str) -> Dict[str, Any]:
+    """Carga la configuración efectiva de memoria sin romper continuidad."""
+    try:
+        from core.memory_config import load_memory_config
+    except Exception:
+        return {
+            "enabled": False,
+            "capture_decisions": True,
+        }
+    return load_memory_config(project_dir)
+
+
+def _open_memory_db(project_dir: str):
+    """Abre la memoria del proyecto si está habilitada o ya existe."""
+    db_path = _project_path(project_dir, MEMORY_DB_RELATIVE_PATH)
+    settings = _load_memory_runtime_config(project_dir)
+    if not settings.get("enabled", False) and not os.path.isfile(db_path):
+        return None
+
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    try:
+        from core.memory import MemoryDB
+    except Exception:
+        return None
+
+    try:
+        return MemoryDB(db_path)
+    except Exception:
+        return None
+
+
+def _capture_helper_memory(
+    project_dir: str,
+    *,
+    helper_name: str,
+    event_summary: str,
+    event_content: str,
+    phase: Optional[str] = None,
+    decision_title: Optional[str] = None,
+    decision_choice: Optional[str] = None,
+    decision_context: Optional[str] = None,
+    decision_rationale: Optional[str] = None,
+    impact: str = "low",
+    tags: Optional[List[str]] = None,
+    payload: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Registra memoria ligera y útil para flujos helper-first."""
+    db = _open_memory_db(project_dir)
+    if db is None:
+        return {"logged": False}
+
+    settings = _load_memory_runtime_config(project_dir)
+    decision_id = None
+    event_id = None
+    created_iteration_id = None
+    helper_tags = ["helper-first", helper_name]
+    if tags:
+        helper_tags.extend(tags)
+
+    try:
+        active_iteration = db.get_active_iteration()
+        iteration_id = int(active_iteration["id"]) if active_iteration else None
+        if iteration_id is None:
+            created_iteration_id = db.start_iteration(
+                helper_name,
+                decision_title or event_summary,
+            )
+            iteration_id = created_iteration_id
+
+        if settings.get("capture_decisions", True) and decision_title and decision_choice:
+            decision_id = db.log_decision(
+                title=decision_title,
+                chosen=decision_choice,
+                context=decision_context,
+                rationale=decision_rationale,
+                impact=impact,
+                phase=phase,
+                iteration_id=iteration_id,
+                tags=helper_tags,
+            )
+
+        event_payload = {
+            "helper": helper_name,
+            **(payload or {}),
+        }
+        if decision_id is not None:
+            event_payload["decision_id"] = decision_id
+
+        event_id = db.log_event(
+            event_type="helper_seeded",
+            phase=phase,
+            payload=event_payload,
+            summary=event_summary,
+            content=event_content,
+            iteration_id=iteration_id,
+        )
+        if created_iteration_id is not None:
+            db.complete_iteration(created_iteration_id)
+        return {"logged": True, "decision_id": decision_id, "event_id": event_id}
+    finally:
+        db.close()
 
 
 def load_handoff(project_dir: str) -> Optional[Dict[str, Any]]:
@@ -734,6 +846,221 @@ def render_search_markdown(results: Dict[str, Any]) -> str:
     if not doc_results and not memory_results:
         lines.append("No se han encontrado coincidencias en SonIA ni en la memoria del proyecto.")
 
+    return "\n".join(lines).strip() + "\n"
+
+
+def _load_memory_ui_state(project_dir: str) -> Optional[Dict[str, Any]]:
+    path = _project_path(project_dir, MEMORY_UI_JSON_RELATIVE_PATH)
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        return None
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _save_memory_ui_state(project_dir: str, payload: Dict[str, Any]) -> str:
+    os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
+    path = _project_path(project_dir, MEMORY_UI_JSON_RELATIVE_PATH)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, ensure_ascii=False)
+    return path
+
+
+def _clear_memory_ui_state(project_dir: str) -> None:
+    for relative_path in (
+        MEMORY_UI_JSON_RELATIVE_PATH,
+        GUI_PORT_RELATIVE_PATH,
+    ):
+        try:
+            os.remove(_project_path(project_dir, relative_path))
+        except FileNotFoundError:
+            continue
+        except OSError:
+            continue
+
+
+def _is_process_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _is_memory_ui_reachable(url: str, timeout: float = 0.35) -> bool:
+    try:
+        with urllib.request.urlopen(f"{url}/api/healthz", timeout=timeout) as response:
+            if response.status != 200:
+                return False
+            payload = json.loads(response.read().decode("utf-8"))
+            return bool(payload.get("ok"))
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, json.JSONDecodeError):
+        return False
+
+
+def _find_available_port(host: str, preferred: int = 4311) -> int:
+    for port in range(preferred, preferred + 40):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind((host, port))
+            except OSError:
+                continue
+            return port
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind((host, 0))
+        return int(sock.getsockname()[1])
+
+
+def _open_browser(url: str) -> None:
+    if webbrowser.open(url, new=2):
+        return
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif os.name == "nt":
+        os.startfile(url)  # type: ignore[attr-defined]
+    else:
+        subprocess.Popen(["xdg-open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def launch_memory_ui(
+    project_dir: str,
+    *,
+    open_browser_window: bool = True,
+    host: str = "127.0.0.1",
+    preferred_port: int = 4311,
+    startup_timeout: float = 6.0,
+) -> Dict[str, Any]:
+    from core.memory import MemoryDB
+
+    os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
+    db_path = _project_path(project_dir, os.path.join(".claude", "alfred-memory.db"))
+    db = MemoryDB(db_path)
+    db.close()
+
+    current_state = _load_memory_ui_state(project_dir)
+    if current_state:
+        url = str(current_state.get("url", "")).rstrip("/")
+        pid = int(current_state.get("pid", 0) or 0)
+        if url and _is_process_alive(pid) and _is_memory_ui_reachable(url):
+            if open_browser_window:
+                _open_browser(url)
+            return {
+                **current_state,
+                "reused": True,
+                "state_path": _project_path(project_dir, MEMORY_UI_JSON_RELATIVE_PATH),
+                "log_path": _project_path(project_dir, GUI_LOG_RELATIVE_PATH),
+            }
+
+    port = _find_available_port(host, preferred=preferred_port)
+    log_path = _project_path(project_dir, GUI_LOG_RELATIVE_PATH)
+    port_path = _project_path(project_dir, GUI_PORT_RELATIVE_PATH)
+    server_script = os.path.join(os.path.dirname(__file__), "memory_ui_server.py")
+
+    with open(log_path, "a", encoding="utf-8") as log_handle:
+        proc = subprocess.Popen(
+            [
+                sys.executable,
+                server_script,
+                "--project-dir",
+                project_dir,
+                "--db-path",
+                db_path,
+                "--host",
+                host,
+                "--port",
+                str(port),
+            ],
+            cwd=project_dir,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+    url = f"http://{host}:{port}"
+    deadline = _now_utc().timestamp() + startup_timeout
+    while _now_utc().timestamp() < deadline:
+        if proc.poll() is not None:
+            detail = _read_text_if_exists(project_dir, GUI_LOG_RELATIVE_PATH).strip()
+            raise RuntimeError(detail or "La Memory UI terminó antes de quedar lista.")
+        if _is_memory_ui_reachable(url):
+            break
+        import time
+        time.sleep(0.15)
+    else:
+        try:
+            os.kill(proc.pid, signal.SIGTERM)
+        except OSError:
+            pass
+        detail = _read_text_if_exists(project_dir, GUI_LOG_RELATIVE_PATH).strip()
+        raise RuntimeError(detail or "La Memory UI no respondió dentro del tiempo esperado.")
+
+    with open(port_path, "w", encoding="utf-8") as fh:
+        fh.write(str(port))
+
+    payload = {
+        "pid": proc.pid,
+        "host": host,
+        "port": port,
+        "url": url,
+        "db_path": db_path,
+        "project_dir": project_dir,
+        "started_at": _now_utc().isoformat(),
+        "reused": False,
+    }
+    state_path = _save_memory_ui_state(project_dir, payload)
+    payload["state_path"] = state_path
+    payload["log_path"] = log_path
+
+    if open_browser_window:
+        _open_browser(url)
+
+    return payload
+
+
+def stop_memory_ui(project_dir: str) -> Dict[str, Any]:
+    state = _load_memory_ui_state(project_dir)
+    if not state:
+        return {"stopped": False, "reason": "not-running"}
+
+    pid = int(state.get("pid", 0) or 0)
+    if _is_process_alive(pid):
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+    _clear_memory_ui_state(project_dir)
+    return {
+        "stopped": True,
+        "pid": pid,
+        "url": state.get("url"),
+    }
+
+
+def render_memory_ui_markdown(result: Dict[str, Any]) -> str:
+    reused = bool(result.get("reused"))
+    lines = [
+        "## Memory UI lista",
+        "",
+        f"- URL: {result.get('url', 'desconocida')}",
+        f"- SQLite: `{result.get('db_path', '.claude/alfred-memory.db')}`",
+        f"- Estado: {'reutilizada' if reused else 'arrancada ahora'}",
+        "- Refresco automático: cada 4 segundos",
+        "- Vistas: overview, timeline, decisiones, grafo, commits y búsqueda",
+        "",
+        "### Qué verás",
+        "",
+        "- Estado operativo del proyecto y siguiente paso recomendado",
+        "- Timeline de iteraciones y eventos",
+        "- Decisiones con sus relaciones visibles",
+        "- Commits recientes y salud de la memoria",
+    ]
     return "\n".join(lines).strip() + "\n"
 
 
@@ -1482,6 +1809,121 @@ def _render_bullet_list(items: List[str]) -> str:
     return "\n".join(f"- {item}" for item in items)
 
 
+def _merge_unique_items(existing: List[str], new_items: List[str]) -> List[str]:
+    merged: List[str] = []
+    seen = set()
+    for item in [*(new_items or []), *(existing or [])]:
+        cleaned = (item or "").strip()
+        if not cleaned:
+            continue
+        normalized = _normalize_free_text(cleaned)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        merged.append(cleaned)
+    return merged
+
+
+def _append_helper_list_artifact(
+    project_dir: str,
+    relative_path: str,
+    *,
+    title: str,
+    intro: str,
+    items: List[str],
+) -> str:
+    path = _project_path(project_dir, relative_path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    existing_markdown = _read_text_if_exists(project_dir, relative_path)
+    existing_items = _extract_markdown_list_items(existing_markdown)
+    merged_items = _merge_unique_items(existing_items, items)
+
+    if existing_markdown.strip():
+        if merged_items == existing_items:
+            return path
+        extra_lines = [f"- {item}" for item in merged_items if item not in existing_items]
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(existing_markdown.rstrip() + "\n" + "\n".join(extra_lines) + "\n")
+        return path
+
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(
+            f"# {title}\n\n"
+            f"{intro}\n\n"
+            f"{_render_bullet_list(merged_items)}\n"
+        )
+    return path
+
+
+def _seed_helper_operational_artifacts(
+    project_dir: str,
+    *,
+    progress_items: Optional[List[str]] = None,
+    traceability_items: Optional[List[str]] = None,
+    backlog_items: Optional[List[str]] = None,
+    in_progress_items: Optional[List[str]] = None,
+    blocked_items: Optional[List[str]] = None,
+) -> List[str]:
+    artifact_paths: List[str] = []
+
+    if progress_items:
+        artifact_paths.append(
+            _append_helper_list_artifact(
+                project_dir,
+                PROGRESS_MD_RELATIVE_PATH,
+                title="Progress",
+                intro="Señales humanas del estado operativo que Alfred ya ha dejado listas.",
+                items=progress_items,
+            )
+        )
+
+    if traceability_items:
+        artifact_paths.append(
+            _append_helper_list_artifact(
+                project_dir,
+                TRACEABILITY_MD_RELATIVE_PATH,
+                title="Traceability",
+                intro="Criterios, riesgos y huecos de cobertura visibles desde los primeros pasos.",
+                items=traceability_items,
+            )
+        )
+
+    if backlog_items:
+        artifact_paths.append(
+            _append_helper_list_artifact(
+                project_dir,
+                KANBAN_BACKLOG_RELATIVE_PATH,
+                title="Backlog",
+                intro="Pendiente por atacar a continuación.",
+                items=backlog_items,
+            )
+        )
+
+    if in_progress_items:
+        artifact_paths.append(
+            _append_helper_list_artifact(
+                project_dir,
+                KANBAN_IN_PROGRESS_RELATIVE_PATH,
+                title="In progress",
+                intro="Trabajo activo visible para SonIA y la Memory UI.",
+                items=in_progress_items,
+            )
+        )
+
+    if blocked_items:
+        artifact_paths.append(
+            _append_helper_list_artifact(
+                project_dir,
+                KANBAN_BLOCKED_RELATIVE_PATH,
+                title="Blocked",
+                intro="Dependencias o riesgos que frenan el avance.",
+                items=blocked_items,
+            )
+        )
+
+    return artifact_paths
+
+
 def render_codebase_map_markdown(record: Dict[str, Any]) -> str:
     previous_notes = record.get("previous_notes") or []
     previous_section = ""
@@ -1616,6 +2058,9 @@ def render_prefetch_response(payload: Dict[str, Any]) -> str:
     if prefetched_command == "quick":
         return render_quick_setup_summary(payload)
 
+    if prefetched_command == "memory-ui":
+        return render_memory_ui_markdown(payload)
+
     return ""
 
 
@@ -1675,9 +2120,72 @@ def write_codebase_map_files(project_dir: str, raw_request: str = "") -> Dict[st
     with open(current_path, "w", encoding="utf-8") as fh:
         fh.write(render_codebase_current_markdown(record))
 
+    stack_summary = ", ".join(record["stack_details"])
+    seeded_artifacts = _seed_helper_operational_artifacts(
+        project_dir,
+        progress_items=[
+            "Mapa brownfield preparado y persistido para orientar el siguiente trabajo.",
+            f"Stack detectado: {stack_summary}.",
+            (
+                f"Foco actual: {focus_area}."
+                if focus_area
+                else "Foco actual: mapa general del codebase."
+            ),
+            f"Siguiente paso recomendado: /alfred-dev:{record['recommended_command']}.",
+        ],
+        traceability_items=[
+            "Todavía faltan criterios de aceptación concretos antes de implementar.",
+            f"Riesgo principal a vigilar: {record['risks'][0]}",
+            "Conviene revisar el mapa brownfield antes de abrir una ejecución larga.",
+        ],
+        backlog_items=[
+            (
+                f"Refinar '{focus_area}' con /alfred-dev:{record['recommended_command']}."
+                if focus_area
+                else "Revisar el mapa brownfield y decidir el flujo siguiente."
+            ),
+            f"Contrastar riesgos y convenciones en `{CODEBASE_MAP_RELATIVE_PATH}`.",
+        ],
+    )
+
+    _capture_helper_memory(
+        project_dir,
+        helper_name="map-codebase",
+        phase="brownfield",
+        event_summary="Mapa brownfield preparado",
+        event_content=(
+            f"Proyecto '{project_name}' analizado. {stack_summary}. "
+            f"Foco: {focus_area or 'general'}. "
+            f"Siguiente comando recomendado: /alfred-dev:{record['recommended_command']}. "
+            f"Artefactos: {CODEBASE_MAP_RELATIVE_PATH} y {CURRENT_RELATIVE_PATH}."
+        ),
+        decision_title="Arrancar por map-codebase antes de implementar",
+        decision_choice=(
+            f"Persistir `{CODEBASE_MAP_RELATIVE_PATH}` y `{CURRENT_RELATIVE_PATH}` "
+            "como base operativa del repo."
+        ),
+        decision_context=(
+            f"Repo brownfield '{project_name}' sin mapa persistente listo para guiar el siguiente trabajo."
+        ),
+        decision_rationale=(
+            "Reducir cambios a ciegas en brownfield y dejar contexto reutilizable antes de refinar o implementar."
+        ),
+        tags=["brownfield", stack.get("runtime", "unknown"), stack.get("framework", "unknown")],
+        payload={
+            "recommended_command": record["recommended_command"],
+            "focus_area": focus_area,
+            "artifacts": [
+                CODEBASE_MAP_RELATIVE_PATH,
+                CURRENT_RELATIVE_PATH,
+                *[os.path.relpath(path, project_dir) for path in seeded_artifacts],
+            ],
+        },
+    )
+
     return {
         "codebase_map_path": codebase_map_path,
         "current_path": current_path,
+        "seeded_artifacts": seeded_artifacts,
         "recommended_command": record["recommended_command"],
         "stack": stack,
         "project_name": project_name,
@@ -2082,11 +2590,67 @@ def build_progress_snapshot(project_dir: str) -> Dict[str, Any]:
     )
     progress_pct = round((len(done_items) / total_items) * 100) if total_items else None
 
+    next_action = suggest_next_action(project_dir)
     progress_signals = _extract_signal_lines(progress_md)
     current_signals = _extract_signal_lines(current_md, max_items=2)
     traceability_signals = _extract_signal_lines(traceability_md)
 
-    next_action = suggest_next_action(project_dir)
+    if not current_signals:
+        current_signals = [
+            item
+            for item in [
+                (
+                    f"Flujo activo: `{state.get('comando', 'desconocido')}` en "
+                    f"`{state.get('fase_actual', 'desconocida')}`."
+                    if state and state.get("fase_actual") != "completado"
+                    else ""
+                ),
+                (
+                    f"Handoff pendiente para `{handoff.get('command', 'desconocido')}` "
+                    f"en `{handoff.get('phase', 'desconocida')}`."
+                    if handoff and not handoff.get("resolved", False)
+                    else ""
+                ),
+                f"Siguiente paso sugerido: `/alfred-dev:{next_action.get('command', 'alfred')}`.",
+            ]
+            if item
+        ]
+
+    if not progress_signals:
+        progress_signals = [
+            item
+            for item in [
+                (
+                    f"Kanban actual: {len(done_items)} done, {len(in_progress_items)} in progress, "
+                    f"{len(backlog_items)} backlog, {len(blocked_items)} blocked."
+                ),
+                (
+                    f"Progreso estimado: {progress_pct} %."
+                    if progress_pct is not None
+                    else "Todavía no hay suficientes señales para estimar progreso."
+                ),
+                next_action.get("reason", ""),
+            ]
+            if item
+        ]
+
+    if not traceability_signals:
+        traceability_signals = [
+            item
+            for item in [
+                (
+                    f"UAT actual: {_status_label(uat.get('status', ''))}."
+                    if uat
+                    else "Todavía no hay UAT registrada."
+                ),
+                (
+                    "La trazabilidad crecerá cuando Alfred deje decisiones enlazadas, criterios o "
+                    "`docs/project/traceability.md`."
+                ),
+            ]
+            if item
+        ]
+
     bypass_path = None
     if state and state.get("fase_actual") != "completado":
         bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:progress")
@@ -2288,6 +2852,42 @@ def render_discovery_current_markdown(record: Dict[str, Any]) -> str:
     )
 
 
+def render_quick_current_markdown(record: Dict[str, Any]) -> str:
+    """Resume en current.md la sesión activa de quick."""
+    warning_line = ""
+    if record.get("needs_codebase_map"):
+        warning_line = (
+            f"- Atención: el repo parece brownfield; revisa `{CODEBASE_MAP_RELATIVE_PATH}` "
+            "si el cambio deja de ser pequeño.\n"
+        )
+    return (
+        "# Current\n\n"
+        f"- Estado: quick activo para `{record['description']}`.\n"
+        f"- Fase actual: `{record['phase']}`.\n"
+        "- Qué está listo: Alfred ya ha sembrado la sesión rápida y el contexto mínimo para continuar.\n"
+        f"{warning_line}"
+        "- Qué falta: ejecutar el cambio acotado, validarlo y cerrar con `/alfred-dev:verify`.\n"
+        "- Siguiente comando recomendado: /alfred-dev:resume\n"
+    )
+
+
+def render_quick_progress_markdown(record: Dict[str, Any]) -> str:
+    """Deja una señal humana mínima para progress y la UI."""
+    guardrail = "Mantener el alcance pequeño y no convertirlo en un feature completo."
+    if record.get("needs_codebase_map"):
+        guardrail = (
+            "Cambio clasificado como quick, pero con aviso brownfield: si el alcance crece, "
+            "conviene volver a map-codebase antes de seguir."
+        )
+    return (
+        "# Progress\n\n"
+        "- Flujo activo: `quick`.\n"
+        f"- Cambio acotado en curso: {record['description']}.\n"
+        f"- Guardrail principal: {guardrail}\n"
+        "- Cierre esperado: `/alfred-dev:verify` tras implementar y comprobar el cambio.\n"
+    )
+
+
 def write_discovery_files(project_dir: str, raw_request: str = "") -> Dict[str, Any]:
     """Crea un refinado ligero reutilizable para /alfred-dev:discuss."""
     state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
@@ -2352,9 +2952,59 @@ def write_discovery_files(project_dir: str, raw_request: str = "") -> Dict[str, 
     with open(current_path, "w", encoding="utf-8") as fh:
         fh.write(render_discovery_current_markdown(record))
 
+    seeded_artifacts = _seed_helper_operational_artifacts(
+        project_dir,
+        progress_items=[
+            f"Refinado previo listo para abrir /alfred-dev:{recommended_command}.",
+            f"Objetivo aterrizado: {description}.",
+            f"Actor principal: {actor}.",
+        ],
+        traceability_items=[
+            f"Quedan preguntas abiertas por cerrar antes de ejecutar /alfred-dev:{recommended_command}.",
+            f"Principal riesgo del refinado: {record['risks'][0]}",
+            "Los criterios y edge cases deberán confirmarse durante implementación y UAT.",
+        ],
+        backlog_items=[
+            f"Abrir /alfred-dev:{recommended_command} para '{description}'.",
+            "Cerrar las preguntas abiertas de docs/project/discovery.md.",
+        ],
+    )
+
+    _capture_helper_memory(
+        project_dir,
+        helper_name="discuss",
+        phase="discovery",
+        event_summary=f"Refinado preparado para /alfred-dev:{recommended_command}",
+        event_content=(
+            f"Refinado previo listo para '{description}'. Actor principal: {actor}. "
+            f"Siguiente comando recomendado: /alfred-dev:{recommended_command}. "
+            f"Artefactos actualizados: {DISCOVERY_MD_RELATIVE_PATH} y {CURRENT_RELATIVE_PATH}."
+        ),
+        decision_title=f"Refinar antes de implementar: {description}",
+        decision_choice=f"Preparar discovery.md y continuar con /alfred-dev:{recommended_command}",
+        decision_context=(
+            "La petición todavía necesitaba aclarar alcance, actor principal y preguntas abiertas "
+            "antes de abrir implementación."
+        ),
+        decision_rationale=(
+            "Cerrar el refinado primero reduce retrabajo y mejora el handoff hacia el flujo de ejecución adecuado."
+        ),
+        tags=["discovery", recommended_command],
+        payload={
+            "recommended_command": recommended_command,
+            "actor": actor,
+            "artifacts": [
+                DISCOVERY_MD_RELATIVE_PATH,
+                CURRENT_RELATIVE_PATH,
+                *[os.path.relpath(path, project_dir) for path in seeded_artifacts],
+            ],
+        },
+    )
+
     return {
         "discovery_path": discovery_path,
         "current_path": current_path,
+        "seeded_artifacts": seeded_artifacts,
         "recommended_command": recommended_command,
         "actor": actor,
         "description": description,
@@ -2403,15 +3053,75 @@ def start_quick_session(project_dir: str, raw_request: str = "") -> Dict[str, An
     os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
     save_state(session, state_path)
     bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:quick")
+    os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
+
+    quick_record = {
+        "description": session["descripcion"],
+        "phase": session["fase_actual"],
+        "needs_codebase_map": needs_codebase_map(project_dir),
+    }
+    with open(_project_path(project_dir, CURRENT_RELATIVE_PATH), "w", encoding="utf-8") as fh:
+        fh.write(render_quick_current_markdown(quick_record))
+    with open(_project_path(project_dir, PROGRESS_MD_RELATIVE_PATH), "w", encoding="utf-8") as fh:
+        fh.write(render_quick_progress_markdown(quick_record))
+
+    seeded_artifacts = _seed_helper_operational_artifacts(
+        project_dir,
+        traceability_items=[
+            "El cambio quick debe seguir siendo acotado y verificable manualmente.",
+            (
+                "Si el alcance crece o afecta varias zonas, conviene volver a map-codebase."
+                if quick_record["needs_codebase_map"]
+                else "Si aparecen dependencias nuevas, conviene promocionarlo a feature o fix."
+            ),
+        ],
+        backlog_items=[
+            f"Validar '{session['descripcion']}' con /alfred-dev:verify.",
+        ],
+        in_progress_items=[
+            session["descripcion"],
+        ],
+    )
+
+    _capture_helper_memory(
+        project_dir,
+        helper_name="quick",
+        phase=session["fase_actual"],
+        event_summary=f"Quick preparado: {session['descripcion']}",
+        event_content=(
+            f"Quick activo para '{session['descripcion']}'. "
+            f"Siguiente cierre esperado: {session['next_after_completion']}. "
+            f"Artefactos actualizados: {CURRENT_RELATIVE_PATH} y {PROGRESS_MD_RELATIVE_PATH}."
+        ),
+        decision_title=f"Clasificar como quick: {session['descripcion']}",
+        decision_choice=f"Resolverlo con /alfred-dev:quick y cerrar con {session['next_after_completion']}",
+        decision_context=(
+            "Se trata como cambio acotado, sin abrir un feature completo, salvo que el alcance crezca."
+        ),
+        decision_rationale=(
+            "Mantener el trabajo pequeño, verificable y con el mínimo ceremonial sin perder trazabilidad."
+        ),
+        tags=["quick", "execution"],
+        payload={
+            "next_command": session["next_after_completion"],
+            "needs_codebase_map": quick_record["needs_codebase_map"],
+            "artifacts": [
+                CURRENT_RELATIVE_PATH,
+                PROGRESS_MD_RELATIVE_PATH,
+                *[os.path.relpath(path, project_dir) for path in seeded_artifacts],
+            ],
+        },
+    )
 
     return {
         "state_path": state_path,
         "command": session["comando"],
         "phase": session["fase_actual"],
         "description": session["descripcion"],
-        "needs_codebase_map": needs_codebase_map(project_dir),
+        "needs_codebase_map": quick_record["needs_codebase_map"],
         "next_command": session["next_after_completion"],
         "bypass_path": bypass_path,
+        "seeded_artifacts": seeded_artifacts,
     }
 
 
@@ -2863,6 +3573,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="owner/repo opcional recibido desde /alfred-dev:sync-github",
     )
 
+    memory_ui_parser = subparsers.add_parser(
+        "memory-ui",
+        help="Arranca la UI local de memoria y la abre en el navegador",
+    )
+    memory_ui_parser.add_argument("project_dir", nargs="?", default=".")
+    memory_ui_parser.add_argument("--json", action="store_true", dest="as_json")
+    memory_ui_parser.add_argument("--no-open", action="store_true", dest="no_open")
+    memory_ui_parser.add_argument("--stop", action="store_true", dest="stop")
+
     map_parser = subparsers.add_parser(
         "map-codebase",
         help="Crea un mapa brownfield persistente",
@@ -3014,6 +3733,34 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(str(exc), file=sys.stderr)
             return 1
         print(render_github_sync_markdown(result))
+        return 0
+
+    if args.command == "memory-ui":
+        try:
+            if args.stop:
+                result = stop_memory_ui(project_dir)
+            else:
+                result = launch_memory_ui(
+                    project_dir,
+                    open_browser_window=not args.no_open,
+                )
+        except RuntimeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            if args.stop:
+                if result.get("stopped"):
+                    print(
+                        "## Memory UI detenida\n\n"
+                        f"- PID: {result.get('pid', 'desconocido')}\n"
+                        f"- URL previa: {result.get('url', 'desconocida')}\n"
+                    )
+                else:
+                    print("La Memory UI no estaba en ejecución.\n")
+            else:
+                print(render_memory_ui_markdown(result))
         return 0
 
     if args.command == "map-codebase":

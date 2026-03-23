@@ -19,6 +19,7 @@ Elegir y ejecutar el comando correcto entre:
 - `/alfred-dev:resume`
 - `/alfred-dev:map-codebase`
 - `/alfred-dev:progress`
+- `/alfred-dev:memory-ui`
 - `/alfred-dev:discuss`
 - `/alfred-dev:feature`
 - `/alfred-dev:quick`
@@ -92,6 +93,7 @@ Si el usuario pide claramente una de estas acciones, ejecútala sin entrevista:
 - pausar, dejarlo para luego, congelar sesión → actúa como `/alfred-dev:pause`
 - verificar, UAT, aceptación manual, validar entregable → actúa como `/alfred-dev:verify`
 - progreso, backlog, kanban, bloqueos, trazabilidad, “cómo va el proyecto” → actúa como `/alfred-dev:progress`
+- memoria visual, dashboard de memoria, grafo de decisiones, “abre la memoria”, “UI de memoria” → actúa como `/alfred-dev:memory-ui`
 - validar tablero, integridad, “validate”, “revisa consistencia” → actúa como `/alfred-dev:validate`
 - buscar en SonIA, memoria, trazabilidad, “search” → actúa como `/alfred-dev:search`
 - sincronizar GitHub, issues, tablero remoto, “sync GitHub” → actúa como `/alfred-dev:sync-github`
@@ -149,7 +151,7 @@ Si preguntas, haz una sola pregunta corta y con las opciones mínimas necesarias
 - NO ofrezcas un menú genérico si el siguiente paso es evidente.
 - NO uses nombres viejos como `/alfred feature`; usa siempre `/alfred-dev:...`.
 - `map-codebase`, `next`, `pause`, `resume`, `standup`, `blocked`,
-  `in-progress`, `validate`, `search` y `sync-github` son comandos operativos.
+  `in-progress`, `validate`, `search`, `memory-ui` y `sync-github` son comandos operativos.
   No activan el equipo multiagente completo.
 - `verify` es un comando operativo de aceptación humana. No abre por sí mismo
   un flujo multiagente completo.

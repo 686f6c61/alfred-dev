@@ -27,6 +27,7 @@ python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-d
 | `/alfred-dev:next` | -- | Decide el siguiente paso operativo y actúa si es inequívoco |
 | `/alfred-dev:pause` | -- | Crea un handoff explícito para pausar el trabajo actual |
 | `/alfred-dev:progress` | -- | Resume progreso, kanban, bloqueos y trazabilidad del proyecto |
+| `/alfred-dev:memory-ui` | -- | Abre una UI local en navegador con memoria SQLite, timeline, decisiones, grafo y búsqueda |
 | `/alfred-dev:standup` | -- | Standup breve y accionable desde SonIA |
 | `/alfred-dev:blocked` | -- | Lista las tareas bloqueadas del proyecto |
 | `/alfred-dev:in-progress` | -- | Lista las tareas que están en curso |

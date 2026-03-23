@@ -7,6 +7,20 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.6] - 2026-03-23
+
+### Added
+
+- **Memory UI local**: nuevo `/alfred-dev:memory-ui` para abrir una vista viva en navegador sobre la SQLite del proyecto con overview, timeline, decisiones, grafo, commits, búsqueda, salud y señales operativas de SonIA.
+- **Memory UI reforzada para produccion**: los flujos helper-first (`map-codebase`, `discuss`, `quick`) ya siembran progreso, trazabilidad y kanban de forma natural, la UI importa commits Git si faltan en memoria y muestra mejor los estados vacios.
+- **Cobertura E2E de Memory UI**: nuevos tests para servidor local, contratos del comando y siembra helper-first que valida timeline, decisiones, commits y señales operativas sin rellenar SQLite a mano.
+
+### Changed
+
+- **Versionado coherente a 0.4.6**: plugin, marketplace, instaladores, paquetes, metadata estructurada, README, changelog, docs y landing quedan alineados.
+- **Superficie pública actualizada**: Alfred refleja ahora `25` comandos y `13` hooks visibles, con `memory-ui` integrada en help, session-start, documentación y web.
+- **Publicación más limpia**: se retiran del repositorio los documentos internos de planificación `docs/superpowers/` y se ignoran para no incluirlos en futuras releases.
+
 ## [0.4.5] - 2026-03-22
 
 ### Added
@@ -453,6 +467,11 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.4.6]: https://github.com/686f6c61/alfred-dev/compare/v0.4.5...v0.4.6
+[0.4.5]: https://github.com/686f6c61/alfred-dev/compare/v0.4.4...v0.4.5
+[0.4.4]: https://github.com/686f6c61/alfred-dev/compare/v0.4.3...v0.4.4
+[0.4.3]: https://github.com/686f6c61/alfred-dev/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/686f6c61/alfred-dev/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/686f6c61/alfred-dev/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/686f6c61/alfred-dev/compare/v0.3.9...v0.4.0
 [0.3.9]: https://github.com/686f6c61/alfred-dev/compare/v0.3.8...v0.3.9

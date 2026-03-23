@@ -859,6 +859,27 @@ class MemoryDB:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_iterations(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Devuelve iteraciones recientes con soporte de paginacion."""
+        params: List[Any] = []
+        where = ""
+        if status is not None:
+            where = "WHERE status = ?"
+            params.append(status)
+
+        params.extend([limit, offset])
+        rows = self._conn.execute(
+            f"SELECT * FROM iterations {where} "
+            "ORDER BY id DESC LIMIT ? OFFSET ?",
+            params,
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     # --- Lectura: decisiones ------------------------------------------------
 
     def get_decisions(
@@ -1309,6 +1330,51 @@ class MemoryDB:
             (iteration_id, limit),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def get_events(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        iteration_id: Optional[int] = None,
+        event_type: Optional[str] = None,
+        ascending: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Devuelve eventos recientes con filtros opcionales."""
+        params: List[Any] = []
+        conditions: List[str] = []
+
+        if iteration_id is not None:
+            conditions.append("iteration_id = ?")
+            params.append(iteration_id)
+
+        if event_type is not None:
+            conditions.append("event_type = ?")
+            params.append(event_type)
+
+        where = ""
+        if conditions:
+            where = "WHERE " + " AND ".join(conditions)
+
+        order = "ASC" if ascending else "DESC"
+        params.extend([limit, offset])
+        rows = self._conn.execute(
+            f"SELECT * FROM events {where} "
+            f"ORDER BY created_at {order} LIMIT ? OFFSET ?",
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_event_counts_by_type(self, limit: int = 12) -> List[Dict[str, Any]]:
+        """Resume eventos agrupados por tipo, ordenados por frecuencia."""
+        rows = self._conn.execute(
+            "SELECT event_type, COUNT(*) AS total "
+            "FROM events "
+            "GROUP BY event_type "
+            "ORDER BY total DESC, event_type ASC "
+            "LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     # --- Lectura: estadisticas ----------------------------------------------
 

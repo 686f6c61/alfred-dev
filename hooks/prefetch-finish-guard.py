@@ -18,7 +18,7 @@ from pathlib import Path
 
 _MARKER_RELATIVE_PATH = os.path.join(".claude", "alfred-prefetch-consumed.json")
 _PREFETCH_RELATIVE_PATH = os.path.join(".claude", "alfred-prefetch.json")
-_PENDING_GUARD_COMMANDS = frozenset({"alfred", "map-codebase", "discuss"})
+_PENDING_GUARD_COMMANDS = frozenset({"alfred", "map-codebase", "discuss", "memory-ui"})
 
 
 def _discover_project_dir(data: dict) -> str:
