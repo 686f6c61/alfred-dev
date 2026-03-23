@@ -103,7 +103,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales. 6 flujos de ejecución, 24 comandos, memoria persistente, continuidad operativa, PM operacional y quality gates, de la idea a producción.',
+    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales. 6 flujos de ejecución, 25 comandos, memoria persistente, Memory UI local, continuidad operativa, PM operacional y quality gates, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -149,6 +149,11 @@ const data: PageData = {
           description: 'SonIA Sync publica backlog, bloqueos y progreso en GitHub Issues con gh, sin perder la fuente de verdad local en docs/project y SQLite.',
           svgContent: '<path d="M9 19c-5 1.5-5-2.5-7-3"/><path d="M15 22v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 19 4.77 5.07 5.07 0 0 0 18.91 1S17.73.65 15 2.48a13.38 13.38 0 0 0-6 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77 5.44 5.44 0 0 0 3.5 8.53c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>',
         },
+        {
+          title: 'Memory UI en navegador',
+          description: 'La memoria SQLite del proyecto ya se puede abrir como UI local viva: overview, timeline, decisiones, commits, búsqueda, salud y señales operativas.',
+          svgContent: '<path d="M3 4h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M6 8h5"/><path d="M6 12h10"/><path d="M16 8h2"/>',
+        },
       ],
     },
   },
@@ -161,7 +166,7 @@ const data: PageData = {
     { number: 17, label: 'Agentes' },
     { number: 60, label: 'Skills' },
     { number: 6, label: 'Flujos' },
-    { number: 24, label: 'Comandos' },
+    { number: 25, label: 'Comandos' },
     { number: 7, label: 'Templates' },
     { number: 13, label: 'Hooks' },
     { number: 23, label: 'Gates' },
@@ -665,8 +670,8 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interfaz',
-      title: '24 comandos',
-      description: 'Todo se controla desde la línea de comandos de Claude Code. Alfred combina routing contextual, flujos multiagente, continuidad operativa, PM operativo, sincronización opcional con GitHub y administración del plugin.',
+      title: '25 comandos',
+      description: 'Todo se controla desde la línea de comandos de Claude Code. Alfred combina routing contextual, flujos multiagente, continuidad operativa, PM operativo, Memory UI local, sincronización opcional con GitHub y administración del plugin.',
     },
     list: [
       {
@@ -718,6 +723,10 @@ const data: PageData = {
         description: 'Resume progreso, kanban, bloqueos, trazabilidad y estado de UAT del proyecto con una vista operativa compacta.',
       },
       {
+        command: '/alfred-dev:memory-ui',
+        description: 'Abre una UI local en navegador para explorar la memoria SQLite del proyecto con overview, timeline, decisiones, commits, búsqueda, health y señales operativas.',
+      },
+      {
         command: '/alfred-dev:standup',
         description: 'Standup diario accionable desde SonIA: foco actual, trabajo en curso, bloqueos, evidencia reciente y siguiente paso recomendado.',
       },
@@ -766,7 +775,7 @@ const data: PageData = {
         description: 'Ayuda completa de todos los comandos disponibles.',
       },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 8 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y Alfred los integra automáticamente cuando el comando lo necesita, sobre todo en <strong style="color: var(--blue);">/alfred-dev:feature</strong>, <strong style="color: var(--blue);">/alfred-dev:quick</strong>, <strong style="color: var(--blue);">/alfred-dev:fix</strong>, <strong style="color: var(--blue);">/alfred-dev:spike</strong>, <strong style="color: var(--blue);">/alfred-dev:audit</strong> y <strong style="color: var(--blue);">/alfred-dev:ship</strong>. Los comandos operativos y PM (<em>map-codebase</em>, <em>next</em>, <em>pause</em>, <em>resume</em>, <em>verify</em>, <em>progress</em>, <em>standup</em>, <em>blocked</em>, <em>in-progress</em>, <em>validate</em>, <em>search</em>, <em>sync-github</em>) priorizan continuidad, backlog y contexto antes de abrir un equipo completo.',
+    optionalNote: '<strong style="color: var(--gold);">Agentes opcionales en los flujos:</strong> los 8 agentes opcionales no tienen comandos propios. Se activan con <strong style="color: var(--blue);">/alfred-dev:config</strong> y Alfred los integra automáticamente cuando el comando lo necesita, sobre todo en <strong style="color: var(--blue);">/alfred-dev:feature</strong>, <strong style="color: var(--blue);">/alfred-dev:quick</strong>, <strong style="color: var(--blue);">/alfred-dev:fix</strong>, <strong style="color: var(--blue);">/alfred-dev:spike</strong>, <strong style="color: var(--blue);">/alfred-dev:audit</strong> y <strong style="color: var(--blue);">/alfred-dev:ship</strong>. Los comandos operativos y PM (<em>map-codebase</em>, <em>next</em>, <em>pause</em>, <em>resume</em>, <em>verify</em>, <em>progress</em>, <em>memory-ui</em>, <em>standup</em>, <em>blocked</em>, <em>in-progress</em>, <em>validate</em>, <em>search</em>, <em>sync-github</em>) priorizan continuidad, backlog y contexto antes de abrir un equipo completo.',
   },
 
   // ----------------------------------------------------------------
@@ -1031,6 +1040,25 @@ const data: PageData = {
           'Devuelve coincidencias de artefactos operativos y decisiones históricas con su origen visible',
           'Es especialmente útil para saber por qué se tomó una decisión o dónde quedó apuntado un bloqueo',
           'Evita abrir manualmente varios Markdown o consultar SQLite por separado',
+        ],
+      },
+      {
+        category: 'Memoria',
+        color: 'var(--blue)',
+        background: 'rgba(84,196,255,0.08)',
+        title: 'Abrir la memoria viva del proyecto',
+        command: '/alfred-dev:memory-ui',
+        wide: true,
+        image: {
+          src: '/screenshots/memory-ui-dashboard.png',
+          alt: 'Memory UI de Alfred Dev mostrando overview, timeline, proyecto, decisiones, commits y búsqueda',
+          caption: 'Memory UI abierta sobre una memoria poblada de forma natural por Alfred, con overview, timeline, decisiones, commits y señales operativas.',
+        },
+        steps: [
+          'Levanta una UI local en el navegador sobre la SQLite real del proyecto, sin duplicar la fuente de verdad',
+          'Muestra overview, timeline, decisiones, commits, búsqueda y salud del almacén en una sola pantalla',
+          'Mezcla memoria persistente con señales operativas de current, progress, traceability y kanban cuando existen',
+          'Se refresca sola mientras Alfred sigue trabajando, así que sirve como panel vivo del proyecto',
         ],
       },
       {
@@ -1399,6 +1427,11 @@ personalidad:
         answerHtml: 'No. <strong>/alfred-dev:sync-github</strong> ejecuta SonIA Sync como espejo colaborativo para issues. La fuente de verdad sigue siendo local: <code>docs/project/</code>, <code>.claude/</code> y la memoria SQLite del proyecto.',
       },
       {
+        svgContent: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M7 9h10"/><path d="M7 12h6"/>',
+        question: 'Qué es Memory UI y cuándo debería usarla?',
+        answerHtml: '<strong>/alfred-dev:memory-ui</strong> abre una vista local en navegador sobre la SQLite real del proyecto. Úsala cuando quieras entender rápido qué ha pasado, qué decisiones hay registradas, qué commits se han capturado, cómo va la continuidad o si la memoria está sana, sin leer la base de datos a mano.',
+      },
+      {
         svgContent: '<path d="M12 2l4 4-4 4-4-4 4-4z"/><path d="M4 12l4 4-4 4-4-4 4-4z"/><path d="M20 12l4 4-4 4-4-4 4-4z"/><path d="M12 10v4"/><path d="M10 12h4"/>',
         question: 'Tengo que configurar Alfred a mano la primera vez?',
         answerHtml: 'No necesariamente. En la primera sesión Alfred puede bootstrappear <code>.claude/alfred-dev.local.md</code> con una configuración base usable para CLI. Después puedes afinar autonomía, agentes opcionales, memoria o personalidad con <strong>/alfred-dev:config</strong>.',
@@ -1471,6 +1504,20 @@ personalidad:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.4.6',
+      date: '2026-03-23',
+      added: [
+        'Nueva Memory UI local: /alfred-dev:memory-ui abre overview, timeline, decisiones, commits, búsqueda y health directamente sobre la SQLite del proyecto.',
+        'La Memory UI ya nace con datos útiles: map-codebase, discuss y quick siembran progreso, trazabilidad, kanban e iteraciones ligeras de forma natural.',
+        'La UI importa commits Git recientes cuando la memoria aún no tenía commits enlazados y muestra mejor los estados vacíos en workspaces temporales o sin repo.',
+        'Cobertura E2E ampliada para Memory UI, siembra helper-first y renderizado visual del servidor local.',
+      ],
+      changed: [
+        'Alfred pasa a reflejar 25 comandos visibles y añade memory-ui como superficie pública de primer nivel en web, README, help y session-start.',
+        'La release limpia docs internas de planificación y alinea homepage, metadata y documentación operativa para 0.4.6.',
+      ],
+    },
     {
       version: '0.4.5',
       date: '2026-03-22',
@@ -1802,11 +1849,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.5',
+    version: 'v0.4.6',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 13 hooks. 24 comandos. Memoria persistente. Continuidad operativa. PM operacional. De la idea a producción.',
+    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 13 hooks. 25 comandos. Memory UI local. Memoria persistente. Continuidad operativa. PM operacional. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
     disclaimer: {
       linkText: 'Descargo de responsabilidad',
