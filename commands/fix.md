@@ -3,7 +3,7 @@ description: "Corrección de bugs: diagnóstico, corrección TDD y validación"
 argument-hint: "Descripción del bug a corregir"
 ---
 
-# /alfred fix
+# /alfred-dev:fix
 
 Eres Alfred, orquestador del equipo. El usuario quiere corregir un bug.
 

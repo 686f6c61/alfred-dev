@@ -12,24 +12,38 @@ La arquitectura de Alfred Dev sigue un modelo de capas donde la comunicación fl
 
 ### Capa de comandos (`commands/*.md`)
 
-Los comandos son la puerta de entrada del usuario al sistema. Cuando alguien escribe `/alfred feature`, `/alfred fix` o cualquier otro comando, Claude Code busca el fichero Markdown correspondiente en el directorio `commands/` y lo inyecta como system prompt en la conversacion. Esto significa que los comandos no son scripts ejecutables: son instrucciones en lenguaje natural que le dicen a Claude que hacer paso a paso, que agentes invocar y en que orden.
+Los comandos son la puerta de entrada del usuario al sistema. Cuando alguien escribe `/alfred-dev:feature`, `/alfred-dev:fix` o cualquier otro comando, Claude Code busca el fichero Markdown correspondiente en el directorio `commands/` y lo inyecta como system prompt en la conversacion. Esto significa que los comandos no son scripts ejecutables: son instrucciones en lenguaje natural que le dicen a Claude que hacer paso a paso, que agentes invocar y en que orden.
 
 Cada fichero de comando tiene dos partes: un frontmatter YAML con metadatos (descripción del comando, hint del argumento) y un cuerpo Markdown con las instrucciones del flujo. El frontmatter le permite a Claude Code mostrar ayuda contextual; el cuerpo define las fases, las gates y las reglas que no se pueden saltar.
 
-El plugin tiene 10 comandos registrados en `plugin.json`:
+El plugin tiene 24 comandos registrados en `plugin.json`:
 
 | Comando | Fichero | Propósito |
 |---------|---------|-----------|
-| `/alfred` | `alfred.md` | Punto de entrada principal, triaje de peticiones |
-| `/alfred audit` | `audit.md` | Auditoria completa del proyecto en paralelo |
-| `/alfred config` | `config.md` | Configuración del plugin y agentes opcionales |
-| `/alfred feature` | `feature.md` | Ciclo completo de desarrollo de una feature |
-| `/alfred fix` | `fix.md` | Diagnóstico y correccion de bugs |
-| `/alfred help` | `help.md` | Ayuda contextual del plugin |
-| `/alfred ship` | `ship.md` | Release, empaquetado y despliegue |
-| `/alfred spike` | `spike.md` | Investigación exploratoria con conclusiones |
-| `/alfred status` | `status.md` | Estado actual del flujo y la sesión |
-| `/alfred update` | `update.md` | Actualización del plugin |
+| `/alfred-dev:alfred` | `alfred.md` | Punto de entrada contextual y triaje |
+| `/alfred-dev:map-codebase` | `map-codebase.md` | Mapeo brownfield del repositorio |
+| `/alfred-dev:discuss` | `discuss.md` | Refinado previo y discovery persistente |
+| `/alfred-dev:next` | `next.md` | Siguiente paso recomendado segun el estado |
+| `/alfred-dev:pause` | `pause.md` | Pausa del trabajo actual con handoff |
+| `/alfred-dev:resume` | `resume.md` | Reanudacion de una sesion pausada |
+| `/alfred-dev:progress` | `progress.md` | Estado operativo, kanban y trazabilidad |
+| `/alfred-dev:standup` | `standup.md` | Standup operativo breve desde SonIA |
+| `/alfred-dev:blocked` | `blocked.md` | Vista de tareas bloqueadas |
+| `/alfred-dev:in-progress` | `in-progress.md` | Vista de trabajo en curso |
+| `/alfred-dev:verify` | `verify.md` | Validacion humana/UAT |
+| `/alfred-dev:validate` | `validate.md` | Validación operativa de SonIA y continuidad |
+| `/alfred-dev:search` | `search.md` | Búsqueda en artefactos y memoria SQLite |
+| `/alfred-dev:sync-github` | `sync-github.md` | SonIA Sync: espejo del tablero local en GitHub Issues |
+| `/alfred-dev:quick` | `quick.md` | Flujo ligero para cambios pequenos |
+| `/alfred-dev:feature` | `feature.md` | Ciclo completo de desarrollo de una feature |
+| `/alfred-dev:fix` | `fix.md` | Diagnóstico y correccion de bugs |
+| `/alfred-dev:spike` | `spike.md` | Investigación exploratoria con conclusiones |
+| `/alfred-dev:ship` | `ship.md` | Release, empaquetado y despliegue |
+| `/alfred-dev:audit` | `audit.md` | Auditoria completa del proyecto en paralelo |
+| `/alfred-dev:config` | `config.md` | Configuración del plugin y agentes opcionales |
+| `/alfred-dev:status` | `status.md` | Estado actual del flujo y la sesión |
+| `/alfred-dev:update` | `update.md` | Actualización del plugin |
+| `/alfred-dev:help` | `help.md` | Ayuda contextual del plugin |
 
 ### Capa de agentes (`agents/*.md`)
 
@@ -68,11 +82,15 @@ La distinción clave en esta capa es la separación entre agentes de nucleo y ag
 
 La capa core contiene la lógica de negocio pura del plugin, escrita en Python. Estos modulos no tienen dependencia directa de Claude Code: son funciones y clases que reciben datos, los procesan y devuelven resultados. Se ejecutan via `python3 -c` desde los hooks o como imports desde el servidor MCP.
 
-La capa se compone de tres modulos:
+La capa se compone de cinco modulos principales:
 
-- **`orchestrator.py`** -- Maquina de estados que define 5 flujos de trabajo (feature, fix, spike, ship, audit), cada uno con sus fases secuenciales y quality gates. El orquestador gestiona la creación de sesiones, la evaluación de gates y el avance entre fases. El estado se persiste en un fichero JSON plano (`.claude/alfred-dev-state.json`). Desde v0.3.6, la función `run_flow()` acepta un parámetro opcional `equipo_sesion` que permite inyectar un equipo efimero de agentes opcionales generado por la composicion dinámica (ver [configuration.md](configuration.md#composicion-dinámica-de-equipo)).
+- **`orchestrator.py`** -- Maquina de estados que define 6 flujos de trabajo (feature, fix, spike, ship, audit, quick), cada uno con sus fases secuenciales y quality gates. El orquestador gestiona la creación de sesiones, la evaluación de gates y el avance entre fases. El estado se persiste en un fichero JSON plano (`.claude/alfred-dev-state.json`). Desde v0.3.6, la función `run_flow()` acepta un parámetro opcional `equipo_sesion` que permite inyectar un equipo efimero de agentes opcionales generado por la composicion dinámica (ver [configuration.md](configuration.md#composicion-dinámica-de-equipo)).
 
 - **`config_loader.py`** -- Cargador de configuración que lee las preferencias del usuario desde un fichero `.local.md` con frontmatter YAML y detecta automáticamente el stack tecnologico del proyecto (runtime, lenguaje, framework, ORM, test runner, bundler). Incluye un parser YAML básico como fallback para entornos sin PyYAML. Desde v0.3.6, el modulo incorpora la función `match_task_keywords()` y la constante `TASK_KEYWORDS` para la composicion dinámica de equipo: puntuan agentes opcionales segun la descripción de la tarea del usuario combinada con señales del proyecto y la configuración activa.
+
+- **`continuity.py`** -- Capa determinista de continuidad operativa y PM ligero. Implementa `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `standup`, `blocked`, `in-progress`, `verify`, `validate`, `search`, `sync-github` y los artefactos persistentes asociados (`current.md`, `handoff.md`, `uat.md`, `github-sync.md`).
+
+- **`memory_config.py`** -- Parser ligero de la seccion `memoria` del frontmatter local. Permite que hooks, sync y servidor MCP apliquen la misma configuracion efectiva sin duplicar logica.
 
 - **`personality.py`** -- Motor de personalidad que define la identidad, voz y frases caracteristicas de cada agente. El tono se adapta a un nivel de sarcasmo configurable (1 = profesional, 5 = acido). Con niveles altos se añaden frases mordaces al repertorio de cada agente.
 
@@ -80,18 +98,21 @@ La capa se compone de tres modulos:
 
 La capa de integración es el puente entre Alfred Dev y el ciclo de vida de Claude Code. Mientras que las capas anteriores definen «que hacer», esta capa define «cuando hacerlo» y «como conectar con el exterior».
 
-**Hooks** (10 ficheros, 6 eventos del ciclo de vida):
+**Hooks** (13 ficheros visibles, 6 eventos del ciclo de vida):
 
 Los hooks son scripts que Claude Code ejecuta automáticamente cuando ocurren eventos específicos. Se registran en `hooks/hooks.json` y cada uno tiene un matcher que filtra cuando se dispara.
 
 | Hook | Evento | Matcher | Función |
 |------|--------|---------|---------|
+| `session-bootstrap.sh` | SessionStart | startup, resume, clear, compact | Bootstrap síncrono del proyecto antes del primer prompt |
 | `session-start.sh` | SessionStart | startup, resume, clear, compact | Inyecta contexto del proyecto al inicio de sesión |
 | `stop-hook.py` | Stop | (todos) | Persiste estado y cierra recursos al terminar |
 | `secret-guard.sh` | PreToolUse | Write, Edit | Bloquea escritura de secretos en ficheros |
 | `dangerous-command-guard.py` | PreToolUse | Bash | Bloquea comandos destructivos |
 | `sensitive-read-guard.py` | PreToolUse | Read | Avisa al leer ficheros con credenciales |
+| `prefetch-finish-guard.py` | PreToolUse | Read, Write, Edit, Glob, Grep | Cierra el paso helper-first y evita exploracion redundante tras el prefetch |
 | `quality-gate.py` | PostToolUse | Bash | Vigila resultados de tests tras ejecución de comandos |
+| `evidence-guard.py` | PostToolUse | Bash | Registra evidencia real de ejecucion de tests para gates automaticas |
 | `dependency-watch.py` | PostToolUse | Write, Edit | Detecta cambios en dependencias (package.json, etc.) |
 | `spelling-guard.py` | PostToolUse | Write, Edit | Comprueba ortografia en ficheros modificados |
 | `activity-capture.py` | PostToolUse + UserPromptSubmit + PreCompact + Stop | (multiples) | Captura centralizada de actividad en la memoria persistente |
@@ -103,7 +124,7 @@ El fichero `mcp/memory_server.py` implementa un servidor MCP (Model Context Prot
 
 | Herramienta MCP | Propósito |
 |-----------------|-----------|
-| `memory_search` | Busqueda textual en decisiones y commits (FTS5 o LIKE) |
+| `memory_search` | Busqueda textual en decisiones, commits y eventos con contenido (FTS5 o LIKE) |
 | `memory_log_decision` | Registra una decisión de diseño formal |
 | `memory_log_commit` | Registra un commit y lo vincula a decisiones |
 | `memory_get_iteration` | Obtiene datos de una iteracion (o la activa) |
@@ -120,15 +141,15 @@ El siguiente diagrama C4 muestra las relaciones entre los actores y contenedores
 C4Context
     title Alfred Dev - Contexto del sistema
 
-    Person(user, "Desarrollador", "Escribe comandos /alfred y revisa artefactos generados")
+    Person(user, "Desarrollador", "Escribe comandos /alfred-dev:* y revisa artefactos generados")
 
     System(claude, "Claude Code", "CLI de Anthropic que ejecuta el modelo Claude con herramientas, hooks y plugins")
 
     Container_Boundary(plugin, "Plugin Alfred Dev") {
-        Container(commands, "Commands", "Markdown + YAML", "10 comandos que definen flujos como system prompts")
+        Container(commands, "Commands", "Markdown + YAML", "24 comandos: flujos, continuidad, PM operativo y sync GitHub")
         Container(agents, "Agents", "Markdown", "9 nucleo + 8 opcionales, invocados como subagentes Task")
-        Container(core, "Core", "Python", "Orquestador, config loader, motor de personalidad")
-        Container(hooks, "Hooks", "Shell + Python", "10 hooks en 6 eventos del ciclo de vida")
+        Container(core, "Core", "Python", "Orquestador, continuidad, config, memoria y personalidad")
+        Container(hooks, "Hooks", "Shell + Python", "13 hooks en 6 eventos del ciclo de vida")
         Container(mcp, "MCP Server", "Python stdio", "Servidor JSON-RPC que expone memoria persistente")
     }
 
@@ -150,7 +171,7 @@ C4Context
 
 ---
 
-## Flujo completo de `/alfred feature`
+## Flujo completo de `/alfred-dev:feature`
 
 El flujo de feature es el mas completo del sistema: 6 fases con gates entre ellas, multiples agentes y coordinación entre hooks, core y MCP. El siguiente diagrama de secuencia muestra el recorrido completo desde que el usuario escribe el comando hasta que se genera el entregable final.
 
@@ -184,8 +205,9 @@ sequenceDiagram
         participant DO as devops-engineer
     end
 
-    U->>CC: /alfred feature "nueva funcionalidad"
+    U->>CC: /alfred-dev:feature "nueva funcionalidad"
     CC->>CMD: Carga feature.md como system prompt
+    CC->>HK: SessionStart -> session-bootstrap.sh (bootstrap local)
     CC->>HK: SessionStart -> session-start.sh (contexto)
 
     Note over ORC: Fase 1: Producto
@@ -277,7 +299,7 @@ Además, el modulo `sqlite3` forma parte de la biblioteca estandar de Python, lo
 
 La memoria del proyecto almacena decisiones de diseño, commits, iteraciones y eventos con relaciones entre ellos (un commit puede implementar varias decisiones, una decisión pertenece a una iteracion, etc.). Un fichero JSON plano no soporta consultas eficientes sobre estos datos, ni índices, ni transacciones atomicas, ni busqueda full-text.
 
-SQLite es una base de datos relacional completa que viene incluida con Python. No requiere servidor, no requiere configuración y el fichero `.db` se puede copiar, respaldar o borrar como cualquier otro fichero. Con la extensión FTS5 (Full-Text Search) se pueden hacer busquedas textuales eficientes sobre decisiones y commits, algo imposible con un JSON plano sin cargar todo en memoria.
+SQLite es una base de datos relacional completa que viene incluida con Python. No requiere servidor, no requiere configuración y el fichero `.db` se puede copiar, respaldar o borrar como cualquier otro fichero. Con la extensión FTS5 (Full-Text Search) se pueden hacer busquedas textuales eficientes sobre decisiones, commits y eventos con contenido, algo imposible con un JSON plano sin cargar todo en memoria.
 
 ### Por que MCP stdio y no herramientas directas
 
@@ -289,7 +311,7 @@ La alternativa seria ejecutar `python3 -c "..."` cada vez que un agente necesite
 
 Los agentes de nucleo (product-owner, architect, senior-dev, security-officer, qa-engineer, devops-engineer, tech-writer, alfred) se invocan programaticamente desde los commands mediante la herramienta Task de Claude Code. No necesitan estar registrados en `plugin.json` porque no son agentes que el usuario invoque directamente: es el system prompt del command quien decide cuando y como activar cada agente.
 
-Los 8 agentes opcionales (data-engineer, ux-reviewer, performance-engineer, github-manager, seo-specialist, copywriter, librarian, i18n-specialist) si se registran en `plugin.json` porque Claude Code necesita conocerlos para que el usuario pueda invocarlos con la herramienta Task desde fuera de un flujo Alfred. El usuario puede activarlos o desactivarlos desde `/alfred config` segun las necesidades de su proyecto.
+Los 8 agentes opcionales (data-engineer, ux-reviewer, performance-engineer, github-manager, seo-specialist, copywriter, librarian, i18n-specialist) si se registran en `plugin.json` porque Claude Code necesita conocerlos para que el usuario pueda invocarlos con la herramienta Task desde fuera de un flujo Alfred. El usuario puede activarlos o desactivarlos desde `/alfred-dev:config` segun las necesidades de su proyecto.
 
 ### El patron de estado
 
@@ -304,7 +326,7 @@ Es un diseño deliberadamente simple: un solo fichero, sin procesos en segundo p
 
 ### Flujo de datos completo
 
-Desde que el usuario escribe `/alfred feature` hasta que se genera el artefacto final, los datos atraviesan todas las capas del sistema en este orden:
+Desde que el usuario escribe `/alfred-dev:feature` hasta que se genera el artefacto final, los datos atraviesan todas las capas del sistema en este orden:
 
 1. **Usuario** -- escribe el comando con su descripción.
 2. **Claude Code** -- localiza el command correspondiente y lo carga como system prompt.

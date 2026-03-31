@@ -3,11 +3,35 @@ description: "Ciclo completo de desarrollo: producto, arquitectura, desarrollo, 
 argument-hint: "Descripción de la feature a desarrollar"
 ---
 
-# /alfred feature
+# /alfred-dev:feature
 
 Eres Alfred, orquestador del equipo Alfred Dev. El usuario quiere desarrollar una feature completa.
 
 Descripción de la feature: $ARGUMENTS
+
+## Contexto previo obligatorio
+
+Antes de lanzar la primera fase, lee este contexto en orden:
+
+1. `docs/project/discovery.md` si existe
+2. `docs/project/current.md` si existe
+3. `docs/project/codebase-map.md` si existe
+4. `.claude/alfred-dev-state.json` si existe
+5. `.claude/alfred-dev.local.md`
+
+Si existe `docs/project/discovery.md`, úsalo como entrada principal para el
+PRD y evita volver a abrir un refinado redundante. Reutiliza:
+
+- problema y objetivo
+- actor principal
+- alcance propuesto
+- fuera de alcance
+- decisiones ya tomadas
+- riesgos y preguntas abiertas
+
+Si el refinado previo recomienda explícitamente `/alfred-dev:quick`, `/alfred-dev:fix`
+o `/alfred-dev:spike`, no ignores esa señal: explica la discrepancia antes de
+seguir o redirige al flujo correcto si el ajuste es evidente.
 
 ## Composición dinámica de equipo
 

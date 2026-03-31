@@ -59,7 +59,7 @@ El Artesano aplica un patron anti-racionalizacion específico para TDD, que rech
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| Activado por | alfred | Fase 3 de `/alfred feature` y fases 1-2 de `/alfred fix` |
+| Activado por | alfred | Fase 3 de `/alfred-dev:feature` y fases 1-2 de `/alfred-dev:fix` |
 | Recibe de | architect | Diseño aprobado como guia de implementacion |
 | Notifica a | security-officer | Cada dependencia nueva para auditoria |
 | Entrega a | qa-engineer | Código implementado para code review y test plan |
@@ -70,10 +70,10 @@ El Artesano aplica un patron anti-racionalizacion específico para TDD, que rech
 
 El Artesano participa en dos flujos, siempre en fases de implementacion o diagnóstico:
 
-- **`/alfred feature`** -- Fase 3 (desarrollo): implementa la funcionalidad completa siguiendo el diseño aprobado por el architect, con TDD estricto, commits atomicos y notificacion al security-officer de cada dependencia nueva.
-- **`/alfred fix`** -- Fase 1 (diagnóstico): reproduce el bug con un test, aisla la causa raiz y la documenta. Fase 2 (correccion): aplica el fix con TDD, verificando que el test de regresión pasa junto con toda la suite.
+- **`/alfred-dev:feature`** -- Fase 3 (desarrollo): implementa la funcionalidad completa siguiendo el diseño aprobado por el architect, con TDD estricto, commits atomicos y notificacion al security-officer de cada dependencia nueva.
+- **`/alfred-dev:fix`** -- Fase 1 (diagnóstico): reproduce el bug con un test, aisla la causa raiz y la documenta. Fase 2 (correccion): aplica el fix con TDD, verificando que el test de regresión pasa junto con toda la suite.
 
-También participa en `/alfred spike` (fase 1, exploracion) junto al architect, cuando la investigación técnica requiere pruebas de concepto con código real.
+También participa en `/alfred-dev:spike` (fase 1, exploracion) junto al architect, cuando la investigación técnica requiere pruebas de concepto con código real.
 
 ## Frases
 

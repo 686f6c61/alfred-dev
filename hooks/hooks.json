@@ -7,6 +7,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/session-bootstrap.sh && ${CLAUDE_PLUGIN_ROOT}/hooks/session-bootstrap.sh || true"
+          },
+          {
+            "type": "command",
             "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh && ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh || true",
             "async": true
           }
@@ -41,6 +45,16 @@
       }
     ],
     "PreToolUse": [
+      {
+        "matcher": "Read|Write|Edit|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/prefetch-finish-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/prefetch-finish-guard.py || true",
+            "timeout": 5
+          }
+        ]
+      },
       {
         "matcher": "Write|Edit",
         "hooks": [

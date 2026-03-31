@@ -9,9 +9,11 @@ y simulan el estado de sesion.
 
 import json
 import os
+import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 
 # Anadir la raiz del plugin al path para importar core
 _plugin_root = os.path.join(os.path.dirname(__file__), "..")
@@ -88,6 +90,15 @@ class TestStopHookLogic(unittest.TestCase):
         loaded = load_state(self.state_path)
         self.assertEqual(loaded["fase_actual"], "exploracion")
 
+    def test_quick_session_blocks_on_ejecucion_acotada(self):
+        """Un quick en ejecución acotada también debe bloquear."""
+        session = create_session("quick", "Ajuste pequeño")
+        save_state(session, self.state_path)
+
+        loaded = load_state(self.state_path)
+        self.assertEqual(loaded["fase_actual"], "ejecucion_acotada")
+        self.assertEqual(loaded["comando"], "quick")
+
     def test_corrupted_state_allows_stop(self):
         """Un fichero de estado corrupto (JSON invalido) permite parar."""
         with open(self.state_path, "w") as f:
@@ -141,6 +152,112 @@ class TestShouldBlock(unittest.TestCase):
         session["fase_numero"] = 999
         flow = FLOWS["feature"]
         self.assertFalse(stop_hook.should_block(session, flow))
+
+    def test_paused_session_does_not_block(self):
+        session = create_session("feature", "Test")
+        session["paused_at"] = "2026-03-21T22:00:00+00:00"
+        flow = FLOWS["feature"]
+        self.assertFalse(stop_hook.should_block(session, flow))
+
+
+class TestTransientStopBypass(unittest.TestCase):
+    """Verifica el bypass transitorio para comandos de continuidad."""
+
+    def test_recent_bypass_allows_stop_once(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+            bypass_path = os.path.join(tmpdir, ".claude", "alfred-stop-hook-bypass.json")
+            with open(bypass_path, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "command": "/alfred-dev:resume",
+                        "created_at": "2026-03-21T22:00:00+00:00",
+                        "expires_at": "2999-03-21T22:02:00+00:00",
+                    },
+                    fh,
+                )
+
+            self.assertTrue(stop_hook.should_allow_transient_stop(tmpdir))
+            self.assertFalse(os.path.exists(bypass_path))
+
+    def test_expired_bypass_is_discarded(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+            bypass_path = os.path.join(tmpdir, ".claude", "alfred-stop-hook-bypass.json")
+            with open(bypass_path, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "command": "/alfred-dev:resume",
+                        "created_at": "2026-03-21T22:00:00+00:00",
+                        "expires_at": "2000-03-21T22:02:00+00:00",
+                    },
+                    fh,
+                )
+
+            self.assertFalse(stop_hook.should_allow_transient_stop(tmpdir))
+            self.assertFalse(os.path.exists(bypass_path))
+
+
+class TestReadOnlyOperationalPrompts(unittest.TestCase):
+    """Permite salir si el último prompt reciente era una vista operativa."""
+
+    def _write_prompt_event(self, project_dir, content, created_at):
+        claude_dir = os.path.join(project_dir, ".claude")
+        os.makedirs(claude_dir, exist_ok=True)
+        db_path = os.path.join(claude_dir, "alfred-memory.db")
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS events ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "event_type TEXT NOT NULL, "
+            "summary TEXT, "
+            "content TEXT, "
+            "created_at TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO events (event_type, summary, content, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("user_prompt", "Prompt", content, created_at),
+        )
+        conn.commit()
+        conn.close()
+
+    def test_recent_progress_prompt_allows_stop(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            created_at = datetime.now(timezone.utc).isoformat()
+            self._write_prompt_event(tmpdir, "/alfred-dev:progress", created_at)
+
+            self.assertTrue(
+                stop_hook.should_allow_read_only_operational_prompt(tmpdir)
+            )
+
+    def test_recent_status_prompt_with_extra_lines_allows_stop(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            created_at = datetime.now(timezone.utc).isoformat()
+            content = "/alfred-dev:status\ntexto adicional"
+            self._write_prompt_event(tmpdir, content, created_at)
+
+            self.assertTrue(
+                stop_hook.should_allow_read_only_operational_prompt(tmpdir)
+            )
+
+    def test_stale_prompt_does_not_allow_stop(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            created_at = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+            self._write_prompt_event(tmpdir, "/alfred-dev:progress", created_at)
+
+            self.assertFalse(
+                stop_hook.should_allow_read_only_operational_prompt(tmpdir)
+            )
+
+    def test_non_read_only_prompt_does_not_allow_stop(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            created_at = datetime.now(timezone.utc).isoformat()
+            self._write_prompt_event(tmpdir, "/alfred-dev:feature login", created_at)
+
+            self.assertFalse(
+                stop_hook.should_allow_read_only_operational_prompt(tmpdir)
+            )
 
 
 class TestBuildBlockMessage(unittest.TestCase):

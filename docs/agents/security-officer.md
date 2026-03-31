@@ -88,10 +88,10 @@ Cada hallazgo sigue una estructura estricta: ubicacion, severidad con confianza 
 
 El Paranoico es el agente con mayor presencia transversal en los flujos. Participa en cuatro de los cinco flujos del sistema, lo que refleja que la seguridad es una preocupacion constante, no una fase aislada:
 
-- **`/alfred feature`** -- Fase 2 (arquitectura): valida el diseño en paralelo con el architect, genera el threat model. Fase 4 (calidad): auditoria de seguridad en paralelo con el qa-engineer. Fase 6 (entrega): validación final antes del merge.
-- **`/alfred fix`** -- Fase 3 (validación): verifica que el fix no introduce nuevas vulnerabilidades, en paralelo con el qa-engineer.
-- **`/alfred ship`** -- Fase 1 (auditoria final): OWASP + dependency audit + SBOM en paralelo con qa-engineer. Fase 3 (empaquetado): firma del artefacto.
-- **`/alfred audit`** -- Fase única: auditoria completa de seguridad en paralelo con los demas agentes.
+- **`/alfred-dev:feature`** -- Fase 2 (arquitectura): valida el diseño en paralelo con el architect, genera el threat model. Fase 4 (calidad): auditoria de seguridad en paralelo con el qa-engineer. Fase 6 (entrega): validación final antes del merge.
+- **`/alfred-dev:fix`** -- Fase 3 (validación): verifica que el fix no introduce nuevas vulnerabilidades, en paralelo con el qa-engineer.
+- **`/alfred-dev:ship`** -- Fase 1 (auditoria final): OWASP + dependency audit + SBOM en paralelo con qa-engineer. Fase 3 (empaquetado): firma del artefacto.
+- **`/alfred-dev:audit`** -- Fase única: auditoria completa de seguridad en paralelo con los demas agentes.
 
 ## Frases
 

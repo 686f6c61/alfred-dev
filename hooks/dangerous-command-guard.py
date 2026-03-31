@@ -26,6 +26,7 @@ Patrones vigilados:
 
 import json
 import re
+import shlex
 import sys
 
 
@@ -110,6 +111,87 @@ _DANGEROUS_PATTERNS = [
     ),
 ]
 
+_SAFE_ALFRED_HELPER_SUBCOMMANDS = frozenset({
+    "allow-stop-once",
+    "consume-prefetch",
+    "discuss",
+    "map-codebase",
+    "next",
+    "pause",
+    "progress",
+    "quick",
+    "resume",
+    "verify",
+})
+
+_SHELL_CONTROL_TOKENS = frozenset({
+    ";",
+    "&&",
+    "||",
+    "|",
+    ">",
+    ">>",
+    "<",
+    "<<",
+    "2>",
+    "&>",
+    "&>>",
+})
+
+_SHELL_CONTROL_SUBSTRINGS = (
+    ";",
+    "&&",
+    "||",
+    "|",
+    ">",
+    "<",
+    "$(",
+    "`",
+)
+
+_SAFE_CAPTURE_SUFFIXES = (
+    "2>&1",
+    "2>/dev/null",
+    "2>/dev/null 2>&1",
+)
+
+
+def _is_safe_alfred_helper_command(command: str) -> bool:
+    """Reconoce helpers deterministas locales que Alfred puede autoaprobar.
+
+    El objetivo es destrabar la primera ejecución headless de Claude Code para
+    los comandos operativos helper-first. La allowlist es estrecha:
+    - `python3`
+    - wrapper local `.claude/alfred-continuity.py`
+    - solo subcomandos deterministas y operativos
+    - sin operadores de control de shell
+    """
+    normalized = command.strip()
+    for suffix in _SAFE_CAPTURE_SUFFIXES:
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)].rstrip()
+            break
+
+    if any(marker in normalized for marker in _SHELL_CONTROL_SUBSTRINGS):
+        return False
+
+    try:
+        tokens = shlex.split(normalized)
+    except ValueError:
+        return False
+
+    if len(tokens) < 3:
+        return False
+    if tokens[0] != "python3":
+        return False
+    if tokens[1] != ".claude/alfred-continuity.py":
+        return False
+    if tokens[2] not in _SAFE_ALFRED_HELPER_SUBCOMMANDS:
+        return False
+    if any(token in _SHELL_CONTROL_TOKENS for token in tokens):
+        return False
+    return True
+
 
 def main():
     """Punto de entrada del hook.
@@ -141,6 +223,18 @@ def main():
     command = tool_input.get("command", "")
 
     if not command:
+        sys.exit(0)
+
+    if _is_safe_alfred_helper_command(command):
+        json.dump(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                }
+            },
+            sys.stdout,
+        )
         sys.exit(0)
 
     # Comprobar cada patron contra el comando

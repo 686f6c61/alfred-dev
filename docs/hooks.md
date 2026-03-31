@@ -62,19 +62,33 @@ Cada hook tiene un **timeout configurable** en segundos. Si el script no termina
 
 ---
 
-## Los 10 hooks de Alfred Dev
+## Los 13 hooks de Alfred Dev
 
-Alfred Dev registra diez hooks que cubren los cuatro eventos del ciclo de vida: arranque de sesión, parada, antes de usar una herramienta y despues de usarla. Cada hook tiene una responsabilidad única y esta disenado para fallar de forma segura: si algo va mal internamente, el hook sale con código 0 (sin bloquear) excepto en los casos donde la politica de seguridad exige fail-closed.
+Alfred Dev registra trece hooks visibles que cubren los eventos del ciclo de vida: arranque de sesión, envio de prompt, parada, antes de usar una herramienta, despues de usarla y compactación. Cada hook tiene una responsabilidad única y esta disenado para fallar de forma segura: si algo va mal internamente, el hook sale con código 0 (sin bloquear) excepto en los casos donde la politica de seguridad exige fail-closed.
+
+### session-bootstrap.sh
+
+**Evento:** `SessionStart` -- **Matcher:** `startup|resume|clear|compact` -- **Asíncrono:** no
+
+Este hook ligero existe para eliminar una carrera del primer arranque en Claude Code CLI. Su misión es puramente operativa: preparar el proyecto antes de que Claude procese el primer prompt. Hace cinco cosas, todas idempotentes y locales al repo:
+
+1. crea o corrige `.claude/alfred-dev.local.md` con autonomía CLI-first y memoria activada;
+2. crea `.claude/alfred-memory.db` si aún no existe;
+3. genera `.claude/settings.local.json` y `.claude/settings.json` con la allowlist mínima para los comandos helper-first;
+4. crea el wrapper local `.claude/alfred-continuity.py`;
+5. asegura una iteración `session` activa en la SQLite del proyecto.
+
+No inyecta contexto adicional en Claude ni hace llamadas de red. Precisamente por eso es síncrono: tiene que terminar antes de que el primer slash command dependa de esos artefactos.
 
 ### session-start.sh
 
 **Evento:** `SessionStart` -- **Matcher:** `startup|resume|clear|compact` -- **Asíncrono:** si
 
-Este es el hook mas complejo del plugin y el primero que se ejecuta. Su mision es construir el contexto inicial que Claude recibe al arrancar, de modo que sepa quien es Alfred, que comandos tiene disponibles, cual es la configuración del proyecto y si hay una sesión de trabajo activa que retomar.
+Este es el hook mas complejo del plugin y se ejecuta justo despues del bootstrap síncrono. Su misión es construir el contexto inicial que Claude recibe al arrancar, de modo que sepa quien es Alfred, que comandos tiene disponibles, cual es la configuración del proyecto y si hay una sesión de trabajo activa que retomar.
 
 El script recorre cinco fuentes de información, cada una opcional y con fallo silencioso:
 
-1. **Presentacion del plugin.** Un bloque estático que describe el equipo de agentes (Alfred, El Buscador de Problemas, El Dibujante de Cajas, El Artesano, El Paranoico, El Rompe-cosas, El Fontanero, El Traductor), los comandos disponibles (`/alfred feature`, `/alfred fix`, `/alfred spike`, `/alfred ship`, `/alfred audit`, `/alfred config`, `/alfred status`, `/alfred update`, `/alfred help`) y las reglas de operación (quality gates infranqueables, TDD estricto, auditoria de seguridad por fase).
+1. **Presentacion del plugin.** Un bloque estático que describe el equipo de agentes (incluyendo SonIA), los comandos disponibles (`/alfred-dev:alfred`, `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit`, `config`, `status`, `update`, `help`) y las reglas de operación (quality gates infranqueables, TDD estricto, auditoria de seguridad por fase).
 
 2. **Configuración local del proyecto.** Lee `.claude/alfred-dev.local.md` si existe. Este fichero permite al usuario definir preferencias por proyecto (lenguaje, framework, convenciones específicas) que Claude incorpora a su comportamiento.
 
@@ -138,6 +152,11 @@ Cuando el hook bloquea, emite un mensaje en la voz de "El Paranoico" que explica
 
 Este hook actua como segunda linea de defensa contra comandos destructivos. Se ejecuta antes de cada invocación de Bash, analiza el comando y lo bloquea (exit 2) si coincide con un patron potencialmente catastrofico.
 
+Ademas, desde `0.4.5` autoaprueba una allowlist muy estrecha de helpers
+deterministas locales de Alfred (`python3 .claude/alfred-continuity.py ...`)
+para que los comandos helper-first puedan arrancar en headless sin pedir
+permiso manual en su primer uso.
+
 A diferencia de `secret-guard.sh`, la politica de este hook es **fail-open**: si no puede parsear la entrada, permite la operación y emite un aviso por stderr. La razon es que la protección contra comandos destructivos es una capa adicional, no el único mecanismo de seguridad del sistema.
 
 El hook vigila 10 familias de patrones peligrosos:
@@ -170,6 +189,24 @@ El hook reconoce dos tipos de patrones:
 **Por ruta completa:** credenciales AWS (`.aws/credentials`, `.aws/config`), directorio SSH (`.ssh/`) y directorio GPG (`.gnupg/`).
 
 La politica es estrictamente informativa: siempre sale con exit 0. Si no puede parsear la entrada, sale silenciosamente sin avisar.
+
+### prefetch-finish-guard.py
+
+**Evento:** `PreToolUse` -- **Matcher:** `Read|Write|Edit|Glob|Grep` -- **Timeout:** 5 s
+
+Este hook cubre dos situaciones complementarias:
+
+1. si existe un prefetch helper-first pendiente para `alfred`, `map-codebase`
+   o `discuss`, bloquea lecturas y exploracion hasta que Claude ejecute
+   `consume-prefetch`;
+2. justo despues de consumir con exito `.claude/alfred-prefetch.json`, bloquea
+   temporalmente lecturas, escrituras y exploracion adicional para forzar que
+   Claude responda con el resultado ya preparado por el helper en vez de rehacer
+   el trabajo manualmente.
+
+La barrera es transitoria: se limpia al llegar un prompt nuevo y tambien al
+cierre de sesion. Si el marcador ha expirado o esta corrupto, el hook lo borra
+y permite seguir sin bloquear.
 
 ### quality-gate.py
 
@@ -222,7 +259,7 @@ El hook solo inspecciona ficheros con extensiones de texto donde es probable enc
 
 **Evento:** `PostToolUse` -- **Matcher:** `Write|Edit|Bash|Read|Glob|Grep|Agent|WebFetch|WebSearch|NotebookEdit` + `UserPromptSubmit` + `PreCompact` + `Stop` -- **Timeout:** 10 s
 
-Este hook centraliza toda la captura de actividad en un único punto de entrada. Sustituye a los antiguos `memory-capture.py` y `commit-capture.py` (unificados en v0.3.6) y además amplia la cobertura a practicamente todas las herramientas de Claude Code, los prompts del usuario, la compactación de contexto y el cierre de sesión.
+Este hook centraliza toda la captura de actividad en un único punto de entrada. Sustituye a los antiguos `memory-capture.py` y `commit-capture.py` (unificados en v0.3.6) y además amplia la cobertura a practicamente todas las herramientas de Claude Code, los prompts del usuario, la compactación de contexto y el cierre de sesión. En `UserPromptSubmit` también hace una preparación helper-first muy acotada para continuidad: puede dejar listo `map-codebase`, `discuss` o `quick` antes de que el modelo entre en el razonamiento principal, e incluso preparar `map-codebase` cuando `/alfred-dev:alfred` entra por un repo brownfield sin mapa previo.
 
 El hook registra cada evento en la base de datos SQLite de memoria persistente (`alfred-memory.db`) con tres niveles de detalle:
 
@@ -246,7 +283,7 @@ La tabla de dispatchers mapea cada tipo de evento a su función de procesamiento
 | `WebFetch` | PostToolUse | Peticion HTTP: URL y respuesta. |
 | `WebSearch` | PostToolUse | Busqueda web: query y resultados. |
 | `NotebookEdit` | PostToolUse | Edicion de notebook Jupyter: ruta y comando. |
-| `UserPromptSubmit` | Evento propio | Prompt del usuario: texto completo. |
+| `UserPromptSubmit` | Evento propio | Prompt del usuario: texto completo. Si es un slash command helper-first de Alfred, prepara antes los artefactos de continuidad y registra `alfred_prefetched`. |
 | `PreCompact` | Evento propio | Marcador de compactación de contexto. |
 | `Stop` | Evento propio | Cierre de sesión: marca el fin y cierra la iteracion activa si existe. |
 
@@ -334,8 +371,10 @@ sequenceDiagram
 
 | Evento | Matcher | Script | Timeout | Asíncrono | Bloquea | Que vigila |
 |--------|---------|--------|---------|-----------|---------|------------|
+| `SessionStart` | `startup\|resume\|clear\|compact` | `session-bootstrap.sh` | -- | No | No | Bootstrap síncrono del proyecto: config local, memoria, permisos y wrapper helper-first. |
 | `SessionStart` | `startup\|resume\|clear\|compact` | `session-start.sh` | -- | Si | No | Inyección de contexto al arrancar: presentacion, configuración, estado de sesión, memoria y actualizaciones. |
 | `Stop` | _(ninguno)_ | `stop-hook.py` | 15 s | No | Si | Sesiones activas con gates pendientes. Impide cerrar Claude Code con trabajo sin terminar. |
+| `PreToolUse` | `Read\|Write\|Edit\|Glob\|Grep` | `prefetch-finish-guard.py` | 5 s | No | Si | Evita deriva tras `consume-prefetch`: si el helper-first ya resolvió el comando, bloquea exploración y reescrituras adicionales. |
 | `PreToolUse` | `Write\|Edit` | `secret-guard.sh` | 5 s | No | Si | Secretos en el contenido de ficheros: claves API, tokens, credenciales hardcodeadas, connection strings, webhooks. |
 | `PreToolUse` | `Bash` | `dangerous-command-guard.py` | 5 s | No | Si | Comandos destructivos: rm -rf /, force push, DROP DATABASE, docker prune, fork bombs, escritura a dispositivos. |
 | `PreToolUse` | `Read` | `sensitive-read-guard.py` | 5 s | No | No | Lectura de ficheros sensibles: claves privadas, .env, credenciales. Avisa sin bloquear. |

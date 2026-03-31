@@ -63,13 +63,13 @@ Alfred aplica además un patron anti-racionalizacion: una tabla de "pensamientos
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| Activa a | product-owner | Fase 1 de `/alfred feature`: generacion del PRD |
-| Activa a | architect | Fase 2 de `/alfred feature` y `/alfred spike` |
-| Activa a | senior-dev | Fase 3 de `/alfred feature` y fases 1-2 de `/alfred fix` |
-| Activa a | qa-engineer | Fase 4 de `/alfred feature`, fase 3 de `/alfred fix`, `/alfred audit` |
-| Activa a | security-officer | Fases 2, 3, 4 y 6 de `/alfred feature` (transversal) |
-| Activa a | devops-engineer | Fase 6 de `/alfred feature`, fases 3-4 de `/alfred ship` |
-| Activa a | tech-writer | Fase 5 de `/alfred feature`, fase 2 de `/alfred ship` |
+| Activa a | product-owner | Fase 1 de `/alfred-dev:feature`: generacion del PRD |
+| Activa a | architect | Fase 2 de `/alfred-dev:feature` y `/alfred-dev:spike` |
+| Activa a | senior-dev | Fase 3 de `/alfred-dev:feature` y fases 1-2 de `/alfred-dev:fix` |
+| Activa a | qa-engineer | Fase 4 de `/alfred-dev:feature`, fase 3 de `/alfred-dev:fix`, `/alfred-dev:audit` |
+| Activa a | security-officer | Fases 2, 3, 4 y 6 de `/alfred-dev:feature` (transversal) |
+| Activa a | devops-engineer | Fase 6 de `/alfred-dev:feature`, fases 3-4 de `/alfred-dev:ship` |
+| Activa a | tech-writer | Fase 5 de `/alfred-dev:feature`, fase 2 de `/alfred-dev:ship` |
 | Recibe de | todos los agentes | Resultados de cada fase y estado de las gates |
 | Reporta a | usuario | Estado del flujo, veredictos de gate y proximos pasos |
 
@@ -77,11 +77,11 @@ Alfred aplica además un patron anti-racionalizacion: una tabla de "pensamientos
 
 Alfred participa como orquestador en los cinco flujos del sistema. No ejecuta ninguna fase el mismo, pero es responsable de arrancar cada una, evaluar su gate y decidir si se avanza o se repite.
 
-- **`/alfred feature [descripción]`** -- 6 fases: producto, arquitectura, desarrollo, calidad, documentación, entrega.
-- **`/alfred fix [descripción]`** -- 3 fases: diagnóstico, correccion, validación.
-- **`/alfred spike [tema]`** -- 2 fases: exploracion, conclusiones.
-- **`/alfred ship`** -- 4 fases: auditoria final, documentación, empaquetado, despliegue.
-- **`/alfred audit`** -- 1 fase paralela: auditoria con 4 agentes simultaneos (qa-engineer, security-officer, architect, tech-writer).
+- **`/alfred-dev:feature [descripción]`** -- 6 fases: producto, arquitectura, desarrollo, calidad, documentación, entrega.
+- **`/alfred-dev:fix [descripción]`** -- 3 fases: diagnóstico, correccion, validación.
+- **`/alfred-dev:spike [tema]`** -- 2 fases: exploracion, conclusiones.
+- **`/alfred-dev:ship`** -- 4 fases: auditoria final, documentación, empaquetado, despliegue.
+- **`/alfred-dev:audit`** -- 1 fase paralela: auditoria con 4 agentes simultaneos (qa-engineer, security-officer, architect, tech-writer).
 
 En todos los flujos, Alfred persiste el estado en disco al completar cada fase, lo que permite que el usuario retome una sesión interrumpida exactamente donde la dejo.
 

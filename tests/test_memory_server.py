@@ -16,7 +16,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.memory import MemoryDB
-from mcp.memory_server import MemoryMCPServer, _TOOLS
+from mcp.memory_server import MemoryMCPServer, _TOOLS, resolve_retention_days
 
 
 class TestMCPTools(unittest.TestCase):
@@ -202,6 +202,67 @@ class TestMCPTools(unittest.TestCase):
     def test_tool_count_is_15(self):
         """El catalogo _TOOLS debe contener exactamente 15 herramientas."""
         self.assertEqual(len(_TOOLS), 15)
+
+
+class TestMCPMemoryConfig(unittest.TestCase):
+    """Verifica que el servidor respeta la configuracion del proyecto."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self._old_cwd = os.getcwd()
+        os.chdir(self._tmpdir)
+        os.makedirs(".claude", exist_ok=True)
+        self._db_path = os.path.join(self._tmpdir, ".claude", "alfred-memory.db")
+
+        with open(
+            os.path.join(self._tmpdir, ".claude", "alfred-dev.local.md"),
+            "w",
+            encoding="utf-8",
+        ) as handle:
+            handle.write(
+                "---\n"
+                "memoria:\n"
+                "  enabled: true\n"
+                "  capture_decisions: false\n"
+                "  capture_commits: false\n"
+                "  retention_days: 42\n"
+                "---\n"
+            )
+
+        self.server = MemoryMCPServer(db_path=self._db_path)
+        self.db = self.server._ensure_db()
+
+    def tearDown(self):
+        if self.server._db:
+            self.server._db.close()
+        os.chdir(self._old_cwd)
+        import shutil
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def test_log_decision_respects_capture_flag(self):
+        """memory_log_decision debe saltarse si capture_decisions es false."""
+        result = self.server._call_memory_log_decision(
+            self.db,
+            {"title": "Decision", "chosen": "Opcion"},
+        )
+
+        self.assertTrue(result["skipped"])
+        self.assertEqual(self.db.get_decisions(), [])
+
+    def test_log_commit_respects_capture_flag(self):
+        """memory_log_commit debe saltarse si capture_commits es false."""
+        result = self.server._call_memory_log_commit(
+            self.db,
+            {"sha": "abc123", "message": "feat: demo"},
+        )
+
+        self.assertTrue(result["skipped"])
+        self.assertEqual(self.db.get_commits(), [])
+
+    def test_retention_comes_from_project_config(self):
+        """Si no hay env, resolve_retention_days usa la config del proyecto."""
+        os.environ.pop("ALFRED_MEMORY_RETENTION_DAYS", None)
+        self.assertEqual(resolve_retention_days(self._tmpdir), 42)
 
 
 if __name__ == "__main__":

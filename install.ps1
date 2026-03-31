@@ -8,7 +8,7 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra el marketplace del plugin con claude plugin marketplace add
 #   3. Instala el plugin con claude plugin install
-#   4. Listo para usar: /alfred help
+#   4. Listo para usar: /alfred-dev:help
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para garantizar
@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.4.2"
+$Version = "0.4.7"
 
 # -- Funciones auxiliares ---------------------------------------------------
 
@@ -59,6 +59,12 @@ Write-Host ""
 
 Write-Info "Registrando marketplace..."
 
+$pluginKey = "$PluginName@$PluginName"
+$pluginList = & claude plugin list 2>&1
+if ($pluginList -match [regex]::Escape($pluginKey)) {
+    & claude plugin uninstall $pluginKey 2>&1 | Out-Null
+}
+
 $marketplaceList = & claude plugin marketplace list 2>&1
 if ($marketplaceList -match $PluginName) {
     & claude plugin marketplace remove $PluginName 2>&1 | Out-Null
@@ -75,15 +81,27 @@ else {
     exit 1
 }
 
+$MarketplaceDir = Join-Path $ClaudeDir "plugins/marketplaces/$PluginName"
+if (-not (Test-Path $MarketplaceDir -PathType Container)) {
+    Write-Info "El marketplace quedo declarado pero no aparecio en disco; reintentando..."
+    & claude plugin marketplace remove $PluginName 2>&1 | Out-Null
+    $marketplaceResult = & claude plugin marketplace add $Repo 2>&1
+    if ($LASTEXITCODE -eq 0 -and (Test-Path $MarketplaceDir -PathType Container)) {
+        Write-Ok "Marketplace refrescado correctamente en disco"
+    }
+    else {
+        Write-Err "El marketplace se registro, pero Claude Code no materializo el cache local"
+        Write-Err "El directorio esperado no existe: $MarketplaceDir"
+        Write-Err "Prueba a ejecutar manualmente:"
+        Write-Err "  claude plugin marketplace remove $PluginName"
+        Write-Err "  claude plugin marketplace add $Repo"
+        exit 1
+    }
+}
+
 # -- 2. Instalar plugin -----------------------------------------------------
 
 Write-Info "Instalando plugin..."
-
-$pluginKey = "$PluginName@$PluginName"
-$pluginList = & claude plugin list 2>&1
-if ($pluginList -match $pluginKey) {
-    & claude plugin uninstall $pluginKey 2>&1 | Out-Null
-}
 
 $installResult = & claude plugin install $pluginKey 2>&1
 if ($LASTEXITCODE -eq 0) {
@@ -103,7 +121,7 @@ Write-Host ""
 Write-Host "Instalacion completada" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Reinicia Claude Code y ejecuta:"
-Write-Host "  /alfred help" -ForegroundColor White
+Write-Host "  /alfred-dev:help" -ForegroundColor White
 Write-Host ""
 Write-Host "  Repositorio: https://github.com/$Repo" -ForegroundColor DarkGray
 Write-Host "  Documentacion: https://alfred-dev.com" -ForegroundColor DarkGray

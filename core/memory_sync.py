@@ -43,6 +43,11 @@ try:
 except ImportError:
     MemoryDB = None  # type: ignore[misc,assignment]
 
+try:
+    from core.memory_config import load_memory_config
+except ImportError:
+    load_memory_config = None  # type: ignore[misc,assignment]
+
 
 # ---------------------------------------------------------------------------
 # Constantes
@@ -203,12 +208,7 @@ class MemorySync:
         Args:
             decision_id: ID de la decision a sincronizar.
         """
-        decisions = self._db.get_decisions(limit=1000)
-        decision = None
-        for d in decisions:
-            if d["id"] == decision_id:
-                decision = d
-                break
+        decision = self._db.get_decision(decision_id)
 
         if decision is None:
             return
@@ -307,11 +307,7 @@ class MemorySync:
         # la conexion interna. Esto acopla al esquema, pero evita anadir
         # un metodo nuevo a MemoryDB solo para esta proyeccion.
         try:
-            rows = self._db._conn.execute(
-                "SELECT sha, message, author, files_changed, committed_at "
-                "FROM commits ORDER BY committed_at DESC LIMIT ?",
-                (limit,),
-            ).fetchall()
+            rows = self._db.get_commits(limit=limit)
         except Exception as e:
             _log(f"Error accediendo a commits: {e}")
             rows = []
@@ -355,7 +351,9 @@ class MemorySync:
         total_iterations = stats.get("total_iterations", 0)
 
         # Contar decisiones activas vs archivadas
-        active_decisions = self._db.get_decisions(status="active", limit=1000)
+        active_decisions = list(
+            self._db.iter_decisions(status="active", batch_size=500)
+        )
         n_active = len(active_decisions)
         n_archived = total_decisions - n_active
 
@@ -466,9 +464,13 @@ class MemorySync:
             Lista de rutas de ficheros eliminados.
         """
         deleted: List[str] = []
-        active_ids = set()
-        for d in self._db.get_decisions(status="active", limit=1000):
-            active_ids.add(d["id"])
+        active_ids = {
+            decision["id"]
+            for decision in self._db.iter_decisions(
+                status="active",
+                batch_size=500,
+            )
+        }
 
         try:
             entries = os.listdir(self._memory_dir)
@@ -516,8 +518,7 @@ class MemorySync:
 
     def _sync_decisions(self) -> None:
         """Genera ficheros individuales para cada decision activa."""
-        decisions = self._db.get_decisions(status="active", limit=1000)
-        for d in decisions:
+        for d in self._db.iter_decisions(status="active", batch_size=500):
             self._write_decision_file(d)
 
     def _sync_archived(self) -> None:
@@ -527,7 +528,7 @@ class MemorySync:
         )
 
         # Obtener decisiones no activas
-        all_decisions = self._db.get_decisions(limit=1000)
+        all_decisions = list(self._db.iter_decisions(batch_size=500))
         archived = [
             d for d in all_decisions if d.get("status") != "active"
         ]
@@ -924,13 +925,20 @@ if __name__ == "__main__":
 
         from core.memory import MemoryDB as _MemoryDB
 
+        commits_limit = args.commits_limit
+        if load_memory_config is not None:
+            project_config = load_memory_config(args.project_dir)
+            configured_limit = project_config.get("sync_commits_limit")
+            if isinstance(configured_limit, int) and configured_limit > 0:
+                commits_limit = configured_limit
+
         db = _MemoryDB(db_path)
-        sync = MemorySync(db, memory_dir, commits_limit=args.commits_limit)
+        sync = MemorySync(db, memory_dir, commits_limit=commits_limit)
 
         if args.action == "sync_all":
             result = sync.sync_all()
             _log(
-                f"sync_all: {result['written']} escritos, "
+                f"sync_all: {result['synced']} bloques sincronizados, "
                 f"{result['deleted']} borrados, "
                 f"{result['errors']} errores"
             )

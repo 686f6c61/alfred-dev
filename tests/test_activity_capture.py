@@ -19,9 +19,11 @@ import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 def _load_module():
@@ -45,6 +47,11 @@ if _plugin_root not in sys.path:
     sys.path.insert(0, _plugin_root)
 
 from core.memory import MemoryDB
+from core.continuity import (
+    PREFETCH_CONSUMED_RELATIVE_PATH,
+    save_prefetch_result,
+    consume_prefetch_result,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -555,6 +562,24 @@ class TestDispatchBash(_DBTestCase):
         events = self._get_events("command_executed")
         self.assertEqual(len(events), 1)
 
+    def test_git_commit_respects_capture_commits_flag(self):
+        """Si capture_commits es false, no debe registrar el commit."""
+        data = {
+            "tool_input": {"command": "git commit -m 'test'"},
+            "tool_result": {"exit_code": 0, "stdout": "[main abc1234] test"},
+        }
+
+        with patch.object(
+            _capture,
+            "_memory_settings",
+            return_value={"capture_commits": False, "sync_to_native": True},
+        ):
+            _capture._dispatch_bash(self._db, data)
+
+        events = self._get_events("command_executed")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(self._db.get_commits(), [])
+
     def test_empty_command_creates_no_event(self):
         """Un comando vacio no crea ningun evento."""
         data = {
@@ -574,6 +599,15 @@ class TestDispatchBash(_DBTestCase):
 
 class TestDispatchPrompt(_DBTestCase):
     """Verifica el dispatcher de UserPromptSubmit."""
+
+    def setUp(self):
+        super().setUp()
+        self._original_cwd = os.getcwd()
+        os.chdir(self._tmpdir)
+
+    def tearDown(self):
+        os.chdir(self._original_cwd)
+        super().tearDown()
 
     def test_prompt_saved_with_full_text(self):
         """El prompt se guarda con el texto completo en content."""
@@ -630,6 +664,257 @@ class TestDispatchPrompt(_DBTestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].get("content"), text)
 
+    def test_prefetches_explicit_map_codebase_prompt(self):
+        """Un slash command helper-first debe dejar el mapa brownfield listo."""
+        data = {"prompt": "/alfred-dev:map-codebase login y usuarios"}
+
+        _capture._dispatch_prompt(self._db, data)
+
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, "docs", "project", "codebase-map.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, "docs", "project", "current.md")))
+
+        prefetched = self._get_events("alfred_prefetched")
+        self.assertEqual(len(prefetched), 1)
+        payload = self._parse_payload(prefetched[0])
+        self.assertEqual(payload["source_command"], "map-codebase")
+        self.assertEqual(payload["prefetched_command"], "map-codebase")
+        self.assertIn("docs/project/codebase-map.md", payload["artifacts"])
+
+    def test_prefetches_brownfield_map_for_contextual_alfred_prompt(self):
+        """`/alfred-dev:alfred` debe preparar el mapa si el repo ya existe."""
+        os.makedirs(os.path.join(self._tmpdir, "src"), exist_ok=True)
+        with open(os.path.join(self._tmpdir, "src", "index.js"), "w", encoding="utf-8") as fh:
+            fh.write("console.log('hola');\n")
+
+        data = {"prompt": "/alfred-dev:alfred añade login y usuarios"}
+
+        _capture._dispatch_prompt(self._db, data)
+
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, "docs", "project", "codebase-map.md")))
+        prefetched = self._get_events("alfred_prefetched")
+        self.assertEqual(len(prefetched), 1)
+        payload = self._parse_payload(prefetched[0])
+        self.assertEqual(payload["source_command"], "alfred")
+        self.assertEqual(payload["prefetched_command"], "map-codebase")
+
+    def test_prefetches_quick_session_from_prompt(self):
+        """El primer `/alfred-dev:quick` debe dejar sesión y bypass preparados."""
+        data = {
+            "prompt": (
+                "/alfred-dev:quick ajustar copy del login\n"
+                "import subprocess\n"
+                "print('wrapper de test')\n"
+            )
+        }
+
+        _capture._dispatch_prompt(self._db, data)
+
+        state_path = os.path.join(self._tmpdir, ".claude", "alfred-dev-state.json")
+        self.assertTrue(os.path.isfile(state_path))
+        with open(state_path, "r", encoding="utf-8") as fh:
+            state = json.load(fh)
+
+        self.assertEqual(state["comando"], "quick")
+        self.assertEqual(state["descripcion"], "ajustar copy del login")
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, ".claude", "alfred-stop-hook-bypass.json")))
+
+        prefetched = self._get_events("alfred_prefetched")
+        self.assertEqual(len(prefetched), 1)
+        payload = self._parse_payload(prefetched[0])
+        self.assertEqual(payload["prefetched_command"], "quick")
+
+    def test_prefetches_memory_ui_from_prompt(self):
+        """`/alfred-dev:memory-ui` debe dejar la UI lista antes del razonamiento."""
+        data = {"prompt": "/alfred-dev:memory-ui"}
+
+        _capture._dispatch_prompt(self._db, data)
+
+        state_path = os.path.join(self._tmpdir, ".claude", "alfred-memory-ui.json")
+        self.assertTrue(os.path.isfile(state_path))
+        with open(state_path, "r", encoding="utf-8") as fh:
+            state = json.load(fh)
+
+        self.assertTrue(str(state.get("url", "")).startswith("http://127.0.0.1:"))
+
+        prefetched = self._get_events("alfred_prefetched")
+        self.assertEqual(len(prefetched), 1)
+        payload = self._parse_payload(prefetched[0])
+        self.assertEqual(payload["prefetched_command"], "memory-ui")
+
+    def test_new_prompt_clears_consumed_prefetch_marker(self):
+        """Un prompt nuevo debe limpiar barreras transitorias del prompt anterior."""
+        payload = {
+            "source_command": "map-codebase",
+            "prefetched_command": "map-codebase",
+            "recommended_command": "discuss",
+            "project_name": "demo",
+            "stack": {"runtime": "node", "framework": "desconocido"},
+        }
+        save_prefetch_result(self._tmpdir, payload)
+        consume_prefetch_result(self._tmpdir, "map-codebase")
+        self.assertTrue(
+            os.path.isfile(os.path.join(self._tmpdir, PREFETCH_CONSUMED_RELATIVE_PATH))
+        )
+
+        _capture._dispatch_prompt(self._db, {"prompt": "/alfred-dev:help"})
+
+        self.assertFalse(
+            os.path.exists(os.path.join(self._tmpdir, PREFETCH_CONSUMED_RELATIVE_PATH))
+        )
+
+
+class TestHookScriptRuntime(unittest.TestCase):
+    """Verifica el hook como proceso real, sin depender de PYTHONPATH externo."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self._original_cwd = os.getcwd()
+        os.chdir(self._tmpdir)
+        os.makedirs(".claude", exist_ok=True)
+
+        with open(".claude/alfred-dev.local.md", "w", encoding="utf-8") as fh:
+            fh.write(
+                "---\n"
+                "memoria:\n"
+                "  enabled: true\n"
+                "  sync_to_native: true\n"
+                "  sync_commits_limit: 10\n"
+                "  capture_decisions: true\n"
+                "  capture_commits: true\n"
+                "  retention_days: 365\n"
+                "---\n"
+            )
+
+        self._db_path = os.path.join(self._tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(self._db_path)
+        db.start_iteration(command="session", description="runtime test")
+        db.close()
+
+        self._hook_path = os.path.join(_plugin_root, "hooks", "activity-capture.py")
+
+    def tearDown(self):
+        os.chdir(self._original_cwd)
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def test_script_logs_user_prompt_without_pythonpath(self):
+        """El script debe resolver core/* por si mismo en runtime real."""
+        payload = {
+            "session_id": "runtime-test",
+            "transcript_path": os.path.join(self._tmpdir, "runtime-test.jsonl"),
+            "cwd": self._tmpdir,
+            "permission_mode": "default",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "Prompt runtime real",
+        }
+
+        proc = subprocess.run(
+            ["python3", self._hook_path],
+            input=json.dumps(payload),
+            text=True,
+            cwd=self._tmpdir,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+        db = MemoryDB(self._db_path)
+        try:
+            active = db.get_active_iteration()
+            self.assertIsNotNone(active)
+            events = db.get_timeline(active["id"])
+        finally:
+            db.close()
+
+        prompt_events = [e for e in events if e.get("event_type") == "user_prompt"]
+        self.assertEqual(len(prompt_events), 1)
+        self.assertEqual(prompt_events[0].get("content"), "Prompt runtime real")
+
+    def test_script_prefetches_map_codebase_on_first_prompt(self):
+        """El hook debe preparar map-codebase antes del razonamiento principal."""
+        payload = {
+            "session_id": "runtime-prefetch-map",
+            "transcript_path": os.path.join(self._tmpdir, "runtime-prefetch-map.jsonl"),
+            "cwd": self._tmpdir,
+            "permission_mode": "default",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "/alfred-dev:map-codebase login y usuarios",
+        }
+
+        proc = subprocess.run(
+            ["python3", self._hook_path],
+            input=json.dumps(payload),
+            text=True,
+            cwd=self._tmpdir,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, "docs", "project", "codebase-map.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, "docs", "project", "current.md")))
+
+        db = MemoryDB(self._db_path)
+        try:
+            active = db.get_active_iteration()
+            self.assertIsNotNone(active)
+            events = db.get_timeline(active["id"])
+        finally:
+            db.close()
+
+        prefetch_events = [e for e in events if e.get("event_type") == "alfred_prefetched"]
+        self.assertEqual(len(prefetch_events), 1)
+
+    def test_script_prefetches_brownfield_map_for_contextual_alfred(self):
+        """El primer `/alfred-dev:alfred` en brownfield debe dejar el mapa listo."""
+        os.makedirs(os.path.join(self._tmpdir, "src"), exist_ok=True)
+        with open(os.path.join(self._tmpdir, "src", "index.js"), "w", encoding="utf-8") as fh:
+            fh.write("console.log('hola');\n")
+
+        payload = {
+            "session_id": "runtime-prefetch-alfred",
+            "transcript_path": os.path.join(self._tmpdir, "runtime-prefetch-alfred.jsonl"),
+            "cwd": self._tmpdir,
+            "permission_mode": "default",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "/alfred-dev:alfred añade login y usuarios",
+        }
+
+        proc = subprocess.run(
+            ["python3", self._hook_path],
+            input=json.dumps(payload),
+            text=True,
+            cwd=self._tmpdir,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, "docs", "project", "codebase-map.md")))
+
+    def test_script_prefetches_memory_ui(self):
+        """El hook runtime debe poder arrancar memory-ui antes del razonamiento."""
+        payload = {
+            "session_id": "runtime-prefetch-memory-ui",
+            "transcript_path": os.path.join(self._tmpdir, "runtime-prefetch-memory-ui.jsonl"),
+            "cwd": self._tmpdir,
+            "permission_mode": "default",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "/alfred-dev:memory-ui",
+        }
+
+        proc = subprocess.run(
+            ["python3", self._hook_path],
+            input=json.dumps(payload),
+            text=True,
+            cwd=self._tmpdir,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, ".claude", "alfred-memory-ui.json")))
+
 
 # ---------------------------------------------------------------------------
 # TestDispatchCompact
@@ -661,6 +946,15 @@ class TestDispatchCompact(_DBTestCase):
 
 class TestDispatchStop(_DBTestCase):
     """Verifica el dispatcher de Stop."""
+
+    def setUp(self):
+        super().setUp()
+        self._original_cwd = os.getcwd()
+        os.chdir(self._tmpdir)
+
+    def tearDown(self):
+        os.chdir(self._original_cwd)
+        super().tearDown()
 
     def test_creates_session_ended_event(self):
         """Crea un evento session_ended."""
@@ -696,6 +990,26 @@ class TestDispatchStop(_DBTestCase):
         )
         rows = cursor.fetchall()
         self.assertEqual(len(rows), 1)
+
+    def test_stop_clears_consumed_prefetch_marker(self):
+        payload = {
+            "source_command": "map-codebase",
+            "prefetched_command": "map-codebase",
+            "recommended_command": "discuss",
+            "project_name": "demo",
+            "stack": {"runtime": "node", "framework": "desconocido"},
+        }
+        save_prefetch_result(self._tmpdir, payload)
+        consume_prefetch_result(self._tmpdir, "map-codebase")
+        self.assertTrue(
+            os.path.isfile(os.path.join(self._tmpdir, PREFETCH_CONSUMED_RELATIVE_PATH))
+        )
+
+        _capture._dispatch_stop(self._db, {})
+
+        self.assertFalse(
+            os.path.exists(os.path.join(self._tmpdir, PREFETCH_CONSUMED_RELATIVE_PATH))
+        )
 
 
 # ---------------------------------------------------------------------------

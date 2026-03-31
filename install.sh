@@ -9,7 +9,7 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra el marketplace del plugin con claude plugin marketplace add
 #   3. Instala el plugin con claude plugin install
-#   4. Listo para usar: /alfred help
+#   4. Listo para usar: /alfred-dev:help
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para garantizar
@@ -20,7 +20,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.4.2"
+VERSION="0.4.7"
 
 # -- Colores ----------------------------------------------------------------
 
@@ -132,6 +132,13 @@ printf "${DIM}Plugin de ingenieria de software automatizada${NC}\n\n"
 
 info "Registrando marketplace..."
 
+# Si existe una instalacion previa, la quitamos antes de refrescar el
+# marketplace. Esto evita estados intermedios donde el plugin sigue apuntando
+# a un marketplace ya corrupto o incompleto en disco.
+if claude plugin list 2>/dev/null | grep -q "${PLUGIN_NAME}@${PLUGIN_NAME}"; then
+    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" >/dev/null 2>&1 || true
+fi
+
 if claude plugin marketplace list 2>/dev/null | grep -q "${PLUGIN_NAME}"; then
     claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
 fi
@@ -145,14 +152,28 @@ else
     exit 1
 fi
 
+MARKETPLACE_DIR="${HOME}/.claude/plugins/marketplaces/${PLUGIN_NAME}"
+
+# Claude puede dejar la entrada declarada en settings aunque el checkout local
+# no exista. Si ocurre, hacemos un segundo intento desde cero.
+if [[ ! -d "${MARKETPLACE_DIR}" ]]; then
+    info "El marketplace quedo registrado pero no aparecio en disco; reintentando..."
+    claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
+    if claude plugin marketplace add "${REPO}" 2>&1 && [[ -d "${MARKETPLACE_DIR}" ]]; then
+        ok "Marketplace refrescado correctamente en disco"
+    else
+        error "El marketplace se registro, pero Claude Code no materializo el cache local"
+        error "El directorio esperado no existe: ${MARKETPLACE_DIR}"
+        error "Prueba a ejecutar manualmente:"
+        error "  claude plugin marketplace remove ${PLUGIN_NAME}"
+        error "  claude plugin marketplace add ${REPO}"
+        exit 1
+    fi
+fi
+
 # -- 2. Instalar plugin -----------------------------------------------------
 
 info "Instalando plugin..."
-
-# Si hay una version anterior instalada, la eliminamos primero
-if claude plugin list 2>/dev/null | grep -q "${PLUGIN_NAME}@${PLUGIN_NAME}"; then
-    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" >/dev/null 2>&1 || true
-fi
 
 if claude plugin install "${PLUGIN_NAME}@${PLUGIN_NAME}" 2>&1; then
     ok "Plugin instalado y habilitado"
@@ -194,6 +215,6 @@ fi
 
 printf "\n${GREEN}${BOLD}Instalacion completada${NC}\n\n"
 printf "  Reinicia Claude Code y ejecuta:\n"
-printf "  ${BOLD}/alfred help${NC}\n\n"
+printf "  ${BOLD}/alfred-dev:help${NC}\n\n"
 printf "  ${DIM}Repositorio: https://github.com/${REPO}${NC}\n"
 printf "  ${DIM}Documentacion: https://alfred-dev.com${NC}\n\n"

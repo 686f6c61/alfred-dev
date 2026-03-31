@@ -16,9 +16,9 @@ No hay dependencias externas: todo el codigo Python usa exclusivamente la stdlib
 alfred-dev/
   agents/                 # 8 agentes de nucleo (.md)
   agents/optional/        # 7 agentes opcionales (.md)
-  commands/               # 11 comandos /alfred (.md)
+  commands/               # 24 comandos /alfred-dev (.md)
   skills/                 # 60 skills en 13 dominios (SKILL.md)
-  hooks/                  # 11 hooks del ciclo de vida (.py, .sh)
+  hooks/                  # 13 hooks del ciclo de vida (.py, .sh)
     hooks.json            # Registro de eventos
   core/                   # Motor de orquestacion y memoria (Python)
   mcp/                    # Servidor MCP stdio (memoria persistente)

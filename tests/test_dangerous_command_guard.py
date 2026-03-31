@@ -2,7 +2,10 @@
 """Tests para el hook dangerous-command-guard.py."""
 
 import importlib.util
+import json
 import os
+import subprocess
+import sys
 import unittest
 
 # Importar el hook usando importlib (el nombre tiene guion)
@@ -14,6 +17,7 @@ _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 
 _DANGEROUS_PATTERNS = _mod._DANGEROUS_PATTERNS
+_is_safe_alfred_helper_command = _mod._is_safe_alfred_helper_command
 
 
 def _is_dangerous(command: str) -> bool:
@@ -167,6 +171,50 @@ class TestDangerousCommands(unittest.TestCase):
 
     def test_cat_file(self):
         self.assertFalse(_is_dangerous("cat /etc/hosts"))
+
+
+class TestSafeAlfredHelpers(unittest.TestCase):
+    """Verifica la autoaprobacion de helpers deterministas de Alfred."""
+
+    def test_safe_consume_prefetch_command(self):
+        command = 'python3 .claude/alfred-continuity.py consume-prefetch "$PWD" --expected map-codebase'
+        self.assertTrue(_is_safe_alfred_helper_command(command))
+
+    def test_safe_map_codebase_command(self):
+        command = 'python3 .claude/alfred-continuity.py map-codebase "$PWD" --raw "login y usuarios"'
+        self.assertTrue(_is_safe_alfred_helper_command(command))
+
+    def test_safe_helper_with_capture_suffix(self):
+        command = 'python3 .claude/alfred-continuity.py consume-prefetch "$PWD" --expected map-codebase 2>&1'
+        self.assertTrue(_is_safe_alfred_helper_command(command))
+
+    def test_rejects_shell_chaining(self):
+        command = 'python3 .claude/alfred-continuity.py map-codebase "$PWD" --raw "login"; rm -rf /'
+        self.assertFalse(_is_safe_alfred_helper_command(command))
+
+    def test_hook_emits_permission_allow_for_safe_helper(self):
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": 'python3 .claude/alfred-continuity.py progress "$PWD"',
+            },
+        }
+
+        result = subprocess.run(
+            [sys.executable, _hook_path],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        response = json.loads(result.stdout)
+        self.assertEqual(
+            response["hookSpecificOutput"]["permissionDecision"],
+            "allow",
+        )
 
 
 if __name__ == "__main__":

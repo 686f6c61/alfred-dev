@@ -7,6 +7,95 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.7] - 2026-03-31
+
+### Fixed
+
+- **Hook SessionStart robusto**: la emisión JSON del contexto de sesión ya no se trunca cuando el contenido supera `ARG_MAX` del kernel o contiene caracteres especiales (tildes, backticks, comillas, barras invertidas). La causa raíz era que `escape_for_json()` pasaba el contexto como `sys.argv[1]`, sujeto al límite de tamaño de argumentos del sistema operativo.
+
+### Changed
+
+- **Emisión JSON por stdin**: la generación del JSON del hook pasa de interpolación en heredoc bash con `escape_for_json()` a emisión directa por stdin con `json.dumps()` en una nueva función `emit_hook_json()`, eliminando la clase de error por completo.
+- **Versionado coherente a 0.4.7**: plugin, marketplace, instaladores, paquetes, metadata estructurada, README, changelog, docs y landing quedan alineados.
+
+## [0.4.6] - 2026-03-23
+
+### Added
+
+- **Memory UI local**: nuevo `/alfred-dev:memory-ui` para abrir una vista viva en navegador sobre la SQLite del proyecto con overview, timeline, decisiones, grafo, commits, búsqueda, salud y señales operativas de SonIA.
+- **Memory UI reforzada para produccion**: los flujos helper-first (`map-codebase`, `discuss`, `quick`) ya siembran progreso, trazabilidad y kanban de forma natural, la UI importa commits Git si faltan en memoria y muestra mejor los estados vacios.
+- **Cobertura E2E de Memory UI**: nuevos tests para servidor local, contratos del comando y siembra helper-first que valida timeline, decisiones, commits y señales operativas sin rellenar SQLite a mano.
+
+### Changed
+
+- **Versionado coherente a 0.4.6**: plugin, marketplace, instaladores, paquetes, metadata estructurada, README, changelog, docs y landing quedan alineados.
+- **Superficie pública actualizada**: Alfred refleja ahora `25` comandos y `13` hooks visibles, con `memory-ui` integrada en help, session-start, documentación y web.
+- **Publicación más limpia**: se retiran del repositorio los documentos internos de planificación `docs/superpowers/` y se ignoran para no incluirlos en futuras releases.
+
+## [0.4.5] - 2026-03-22
+
+### Added
+
+- **PM operativo determinista para SonIA**: nuevos comandos `/alfred-dev:standup`, `/alfred-dev:blocked`, `/alfred-dev:in-progress`, `/alfred-dev:validate` y `/alfred-dev:search` para explotar el kanban local, la trazabilidad y la memoria del proyecto desde CLI sin abrir siempre un flujo multiagente.
+- **SonIA Sync para GitHub**: nuevo `/alfred-dev:sync-github [owner/repo]` para sincronizar backlog, trabajo en curso, bloqueos y tablero de SonIA usando `gh`, manteniendo `docs/project/` y `.claude/` como fuente de verdad local.
+- **Busqueda unificada proyecto + memoria**: `search` cruza artefactos operativos (`docs/project/`) con la SQLite del proyecto y devuelve resultados accionables en una sola vista.
+- **Validacion operativa del tablero**: `validate` detecta IDs de tarea duplicados, huecos de trazabilidad, falta de evidencia en `done`, bloqueos mal descritos, UAT pendiente y drift del sync local con GitHub.
+- **Cobertura PM y GitHub ampliada**: nuevos tests para wrappers helper-first, parser del kanban de SonIA, renderizados operativos, sincronizacion a GitHub y smokes directos del helper CLI.
+
+### Changed
+
+- **SonIA pasa de agente interno a capa operativa visible**: `progress`, `standup`, `blocked`, `in-progress`, `validate` y `search` convierten el backlog local en una interfaz diaria real para Claude Code CLI.
+- **Continuity.py se amplía a PM colaborativo**: la capa determinista ya no cubre solo continuidad y UAT, sino tambien vistas PM, validacion de artefactos y sync opcional con GitHub Issues.
+- **Versionado coherente a 0.4.5**: plugin, marketplace, instaladores, paquetes, metadata estructurada, README, changelog, docs y landing quedan alineados.
+- **Superficie pública actualizada**: Alfred refleja ahora `24` comandos y `13` hooks visibles, con la capa PM/GitHub integrada en help, session-start, documentación y web.
+
+## [0.4.4] - 2026-03-22
+
+### Fixed
+
+- **FTS de eventos consistente**: los eventos con `content` ya son buscables en `memory_search` y `check_health()` deja de marcar la memoria como corrupta tras el primer evento indexado.
+- **Purga limpia el indice FTS**: `purge_old_events()` elimina tambien las filas de `memory_fts`, evitando huerfanos y falsos errores despues de aplicar la retencion.
+- **Tamano real de la DB en modo WAL**: `memory_health` suma ahora `.db`, `-wal` y `-shm`, de modo que el tamano reportado refleja el consumo real.
+- **Importacion Git robusta**: `import_git_history()` y la captura de `git commit` ya no rompen mensajes o autores cuando el subject contiene el caracter `|`.
+- **Sin techos silenciosos en sync/export**: la proyeccion a memoria nativa y la exportacion de decisiones dejan de truncarse en los primeros 1000 registros.
+
+### Added
+
+- **Capa operativa de continuidad**: nuevos comandos `/alfred-dev:map-codebase`, `/alfred-dev:discuss`, `/alfred-dev:next`, `/alfred-dev:pause`, `/alfred-dev:resume`, `/alfred-dev:progress`, `/alfred-dev:verify` y `/alfred-dev:quick` para orientar, pausar, retomar, mapear brownfield y cerrar UAT sin abrir siempre un flujo multiagente completo.
+- **Helper determinista `core/continuity.py`**: nueva base común para continuidad CLI, artefactos `codebase-map.md`, `current.md`, `handoff.md`, `uat.md` y sesiones ligeras reproducibles.
+- **Parser compartido de configuracion de memoria**: nuevo modulo `core/memory_config.py` para resolver defaults y leer `memoria.enabled`, `sync_to_native`, `sync_commits_limit`, `capture_decisions`, `capture_commits` y `retention_days` de forma uniforme.
+- **Hardening helper-first en Claude CLI**: bootstrap de sesión, wrapper local `.claude/alfred-continuity.py`, autoallow de helpers seguros y barreras de prefetch para que `map-codebase` y el brownfield de `/alfred-dev:alfred` funcionen de forma natural en `claude -p`.
+- **Cobertura de regresion ampliada**: tests nuevos para FTS de eventos, purga + salud, tamaño con WAL, importacion Git con `|`, config efectiva del servidor MCP, parser de memoria y sync mas alla de 1000 decisiones.
+
+### Changed
+
+- **Alfred decide mejor el siguiente paso**: el asistente contextual ya no solo clasifica `feature/fix/spike/audit`, sino también continuidad, brownfield, UAT y progreso operativo antes de abrir agentes.
+- **La configuracion de memoria ya se aplica de verdad**: `capture_decisions`, `capture_commits`, `retention_days` y `sync_commits_limit` pasan a estar cableados en hooks, servidor MCP y sincronizacion nativa.
+- **Versionado coherente a 0.4.4**: plugin, marketplace, instaladores, paquetes, servidor MCP, informes y metadata de la web quedan alineados.
+- **Web, README y documentacion alineados**: la landing, el README y los docs reflejan ya el modelo actual de Alfred (`18` comandos, `6` flujos, `12` hooks, continuidad operativa y memoria persistente real).
+- **Documentacion de memoria actualizada**: README, `docs/memory.md`, `docs/configuration.md` y `commands/config.md` reflejan el comportamiento real del sistema y el esquema actual.
+
+---
+
+## [0.4.3] - 2026-03-21
+
+### Fixed
+
+- **Preflight obligatorio de SonarQube en `/alfred audit`**: la auditoria ahora comprueba Docker antes de lanzar agentes y no deja que SonarQube se omita silenciosamente cuando falta el daemon o hacen falta permisos.
+- **Pregunta interactiva incluso en autopilot**: si hay que instalar Docker, arrancarlo o abrir Docker Desktop, Alfred pide confirmacion explicita al usuario antes de tocar el sistema.
+- **Skill de SonarQube endurecido**: el skill ya no asume permisos, contempla contenedor previo, puerto `9000` ocupado y limpieza final aunque el analisis falle.
+- **Ayuda alineada con el equipo real**: `/alfred help` vuelve a listar los 9 agentes de nucleo incluyendo `project-manager (SonIA)`.
+
+### Added
+
+- **Tests de contrato para prompts operativos**: nueva cobertura de regresion para asegurar que `audit.md` y `skills/calidad/sonarqube/SKILL.md` siguen pidiendo permisos y documentando la omision de SonarQube cuando corresponde.
+
+### Changed
+
+- **Versionado coherente a 0.4.3**: plugin, marketplace, instaladores, paquetes y referencias visibles de la web quedan alineados en una sola version.
+
+---
+
 ## [0.4.2] - 2026-03-14
 
 ### Fixed
@@ -389,6 +478,12 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.4.7]: https://github.com/686f6c61/alfred-dev/compare/v0.4.6...v0.4.7
+[0.4.6]: https://github.com/686f6c61/alfred-dev/compare/v0.4.5...v0.4.6
+[0.4.5]: https://github.com/686f6c61/alfred-dev/compare/v0.4.4...v0.4.5
+[0.4.4]: https://github.com/686f6c61/alfred-dev/compare/v0.4.3...v0.4.4
+[0.4.3]: https://github.com/686f6c61/alfred-dev/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/686f6c61/alfred-dev/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/686f6c61/alfred-dev/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/686f6c61/alfred-dev/compare/v0.3.9...v0.4.0
 [0.3.9]: https://github.com/686f6c61/alfred-dev/compare/v0.3.8...v0.3.9

@@ -451,6 +451,30 @@ class TestEdgeCases(unittest.TestCase):
 
         db.close()
 
+    def test_sync_decision_funciona_mas_alla_de_1000_registros(self):
+        """sync_decision debe recuperar una decision fuera del primer batch."""
+        db = MemoryDB(self._db_path)
+        from core.memory_sync import MemorySync
+        sync = MemorySync(db, self._memory_dir)
+
+        db.start_iteration(command="test", description="volumen")
+        last_id = None
+        for index in range(1005):
+            last_id = db.log_decision(
+                title=f"Decision {index}",
+                chosen=f"Opcion {index}",
+            )
+
+        sync.sync_decision(last_id)
+
+        path = os.path.join(self._memory_dir, f"alfred-decision-{last_id}.md")
+        self.assertTrue(os.path.isfile(path))
+        with open(path, "r", encoding="utf-8") as handle:
+            content = handle.read()
+        self.assertIn("Decision 1004", content)
+
+        db.close()
+
 
 class TestE2E(unittest.TestCase):
     """Test end-to-end del flujo completo."""

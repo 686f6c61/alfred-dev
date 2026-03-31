@@ -82,9 +82,9 @@ Proxima accion recomendada: [que debe pasar]
 
 El Traductor participa en tres flujos, siempre en fases de documentación:
 
-- **`/alfred feature`** -- Fase 5 (documentación): genera toda la documentación necesaria a partir de los artefactos producidos por el resto del equipo. Es la penultima fase del flujo, lo que le da acceso al PRD, al diseño, al código implementado, a los hallazgos de QA y seguridad, y a la configuración de infraestructura.
-- **`/alfred ship`** -- Fase 2 (documentación): actualiza el CHANGELOG con las entradas nuevas, genera release notes con resumen ejecutivo para stakeholders no técnicos y verifica que la documentación existente sigue siendo precisa.
-- **`/alfred audit`** -- Fase única (auditoria paralela): evalua el estado de la documentación del proyecto, identificando endpoints sin documentar, guias desactualizadas, changelogs incompletos y README insuficientes.
+- **`/alfred-dev:feature`** -- Fase 5 (documentación): genera toda la documentación necesaria a partir de los artefactos producidos por el resto del equipo. Es la penultima fase del flujo, lo que le da acceso al PRD, al diseño, al código implementado, a los hallazgos de QA y seguridad, y a la configuración de infraestructura.
+- **`/alfred-dev:ship`** -- Fase 2 (documentación): actualiza el CHANGELOG con las entradas nuevas, genera release notes con resumen ejecutivo para stakeholders no técnicos y verifica que la documentación existente sigue siendo precisa.
+- **`/alfred-dev:audit`** -- Fase única (auditoria paralela): evalua el estado de la documentación del proyecto, identificando endpoints sin documentar, guias desactualizadas, changelogs incompletos y README insuficientes.
 
 ## Frases
 

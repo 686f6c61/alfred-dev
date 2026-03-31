@@ -26,8 +26,11 @@ class TestFlows(unittest.TestCase):
     def test_fix_flow_has_3_phases(self):
         self.assertEqual(len(FLOWS["fix"]["fases"]), 3)
 
+    def test_quick_flow_has_2_phases(self):
+        self.assertEqual(len(FLOWS["quick"]["fases"]), 2)
+
     def test_all_flows_defined(self):
-        expected = {"feature", "fix", "spike", "ship", "audit"}
+        expected = {"feature", "fix", "quick", "spike", "ship", "audit"}
         self.assertEqual(set(FLOWS.keys()), expected)
 
     def test_architecture_gate_is_usuario_seguridad(self):
@@ -56,6 +59,12 @@ class TestSession(unittest.TestCase):
             self.assertEqual(loaded["descripcion"], "Bug en login")
         finally:
             os.unlink(state_path)
+
+    def test_create_quick_session(self):
+        session = create_session("quick", "Ajuste pequeño en login")
+        self.assertEqual(session["comando"], "quick")
+        self.assertEqual(session["fase_actual"], "ejecucion_acotada")
+        self.assertEqual(session["fase_numero"], 0)
 
 
 class TestGates(unittest.TestCase):
@@ -239,6 +248,21 @@ class TestRunFlow(unittest.TestCase):
         """TC-24: get_effective_agents(fase, None) sigue funcionando."""
         result = get_effective_agents("calidad", None)
         self.assertEqual(result, {"paralelo": [], "secuencial": []})
+
+    def test_quick_flow_uses_optional_agents_on_light_phases(self):
+        """quick integra opcionales relevantes en sus dos fases ligeras."""
+        opcionales = {
+            **VALID_EQUIPO_SESION["opcionales_activos"],
+            "ux-reviewer": True,
+            "copywriter": True,
+            "i18n-specialist": True,
+        }
+        ejecucion = get_effective_agents("ejecucion_acotada", opcionales)
+        validacion = get_effective_agents("validacion_rapida", opcionales)
+        self.assertIn("data-engineer", ejecucion["paralelo"])
+        self.assertIn("copywriter", ejecucion["paralelo"])
+        self.assertIn("ux-reviewer", validacion["paralelo"])
+        self.assertIn("i18n-specialist", validacion["paralelo"])
 
 
 class TestLoopIterativo(unittest.TestCase):

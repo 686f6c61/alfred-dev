@@ -122,7 +122,7 @@ El esquema incluye cinco índices para acelerar las consultas mas frecuentes:
 
 ## FTS5 (busqueda de texto completo)
 
-FTS5 es una extensión de SQLite que proporciona busqueda de texto completo de alto rendimiento. En el contexto de la memoria de Alfred Dev, permite buscar por terminos en el contenido de decisiones y commits sin necesidad de operadores `LIKE %termino%`, que son lentos porque requieren un recorrido completo de la tabla.
+FTS5 es una extensión de SQLite que proporciona busqueda de texto completo de alto rendimiento. En el contexto de la memoria de Alfred Dev, permite buscar por terminos en el contenido de decisiones, commits y eventos con contenido sin necesidad de operadores `LIKE %termino%`, que son lentos porque requieren un recorrido completo de la tabla.
 
 La razon de usar FTS5 en lugar de depender exclusivamente de `LIKE` es el rendimiento a escala. Un proyecto con cientos de decisiones y miles de commits necesita busquedas rapidas para que el agente Bibliotecario pueda responder consultas historicas sin latencia perceptible. FTS5 crea un índice invertido que permite busquedas en tiempo constante independientemente del tamaño de la tabla.
 
@@ -217,7 +217,7 @@ El servidor expone quince herramientas. Las diez originales cubren busqueda, reg
 
 #### `memory_search(query, limit?, iteration_id?)`
 
-Busca en la memoria del proyecto (decisiones y commits) por texto. Usa FTS5 si esta disponible, o `LIKE` como fallback. Devuelve una lista de resultados con el tipo de fuente (`decisión` o `commit`), los datos completos del registro y metadatos de la busqueda (total de resultados, modo FTS activo o no).
+Busca en la memoria del proyecto (decisiones, commits y eventos con contenido indexable) por texto. Usa FTS5 si esta disponible, o `LIKE` como fallback. Devuelve una lista de resultados con el tipo de fuente (`decision`, `commit` o `event`), los datos completos del registro y metadatos de la busqueda (total de resultados, modo FTS activo o no).
 
 | Parámetro | Tipo | Obligatorio | Descripción |
 |-----------|------|-------------|-------------|
@@ -274,7 +274,7 @@ Obtiene la cronología completa de eventos de una iteracion, ordenados del mas a
 
 #### `memory_stats()`
 
-Devuelve estadisticas generales de la memoria: contadores de iteraciones, decisiones, commits y eventos; estado de FTS5; versión del esquema; fecha de creación; ruta de la DB.
+Devuelve estadisticas generales de la memoria: contadores de iteraciones, decisiones, commits y eventos; estado de FTS5; versión del esquema y fecha de creación.
 
 No requiere parámetros.
 
@@ -371,7 +371,7 @@ Desde v0.3.6 la captura automática esta centralizada en un único hook: `activi
 
 ### activity-capture.py (captura centralizada)
 
-Este script se ejecuta como hook `PostToolUse` para practicamente todas las herramientas de Claude Code (Write, Edit, Bash, Read, Glob, Grep, Agent, WebFetch, WebSearch, NotebookEdit), además de `UserPromptSubmit`, `PreCompact` y `Stop`. Actua como un observador pasivo: nunca bloquea la operación ni interfiere con el flujo de trabajo. Si algo falla --DB inexistente, JSON corrupto, configuración ausente--, imprime un aviso en stderr y sale con `exit 0`.
+Este script se ejecuta como hook `PostToolUse` para practicamente todas las herramientas de Claude Code (Write, Edit, Bash, Read, Glob, Grep, Agent, WebFetch, WebSearch, NotebookEdit), además de `UserPromptSubmit`, `PreCompact` y `Stop`. Actua como un hook fail-open: no bloquea la operación ni interfiere con el flujo de trabajo, pero en `UserPromptSubmit` puede preparar por adelantado artefactos helper-first de continuidad (`map-codebase`, `discuss`, `quick` y el caso brownfield de `/alfred-dev:alfred`) antes del razonamiento principal. Si algo falla --DB inexistente, JSON corrupto, configuración ausente--, imprime un aviso en stderr y sale con `exit 0`.
 
 La razon de automatizar la captura en lugar de depender de que los agentes registren eventos manualmente es la fiabilidad: un agente puede olvidarse de llamar a `memory_log_event()`, pero el hook siempre se ejecuta porque esta conectado al ciclo de vida de las herramientas.
 
@@ -412,7 +412,7 @@ sequenceDiagram
 
     Note over U,B: --- Sesión actual: registro ---
 
-    U->>A: /alfred feature "Sistema de cache"
+    U->>A: /alfred-dev:feature "Sistema de cache"
     A->>S: Escribe estado inicial (comando, descripción)
     S-->>H: PostToolUse dispara el hook
     H->>H: Lee state.json, verifica memoria activa
@@ -477,26 +477,28 @@ La politica de retención diferencia entre tipos de datos segun su valor a largo
 | Commits | No se purgan nunca | Son el vinculo con el código real |
 | Eventos | Se purgan tras `retention_days` | Son datos mecanicos cuyo valor decrece con el tiempo |
 
-La purga de eventos se ejecuta automáticamente al arrancar el servidor MCP. El método `purge_old_events()` elimina los eventos cuyo `created_at` sea anterior a la fecha actual menos `retention_days`. El valor por defecto es 365 dias, configurable via la variable de entorno `ALFRED_MEMORY_RETENTION_DAYS` o la clave `memoria.retention_days` en la configuración del proyecto.
+La purga de eventos se ejecuta automáticamente al arrancar el servidor MCP. El método `purge_old_events()` elimina los eventos cuyo `created_at` sea anterior a la fecha actual menos `retention_days` y limpia también sus filas en `memory_fts`. El valor por defecto es 365 dias, configurable via la variable de entorno `ALFRED_MEMORY_RETENTION_DAYS` o la clave `memoria.retention_days` en la configuración del proyecto.
 
 ### Versionado del esquema
 
-La tabla `meta` almacena la versión del esquema con la clave `schema_version`. La versión actual es `2`.
+La tabla `meta` almacena la versión del esquema con la clave `schema_version`. La versión actual es `4`.
 
 Desde la v0.2.3, el sistema incluye un mecanismo de migración automática. Al abrir una base de datos, `MemoryDB` compara la versión almacenada con `_SCHEMA_VERSION`. Si es inferior, ejecuta las migraciones pendientes dentro de una transaccion y crea una copia de seguridad (`.bak`) antes de modificar el esquema. El diccionario `_MIGRATIONS` asocia cada versión con la lista de sentencias SQL necesarias para migrar desde la versión anterior.
 
-La migración de v1 a v2 añade tres columnas (`decisions.tags`, `decisions.status`, `commits.files`) y crea la tabla `decision_links` con su índice. Al tratarse de operaciones `ALTER TABLE` y `CREATE TABLE`, son seguras y no requieren reescritura de datos existentes.
+La migración de v1 a v2 añade tres columnas (`decisions.tags`, `decisions.status`, `commits.files`) y crea la tabla `decision_links` con su índice. La v2 a v3 añade tablas auxiliares históricas y la v3 a v4 incorpora `summary` y `content` en `events` para la captura total y la indexación de eventos. Al tratarse de operaciones `ALTER TABLE` y `CREATE TABLE`, son seguras y no requieren reescritura de datos existentes.
 
 
 ## Configuración
 
-La memoria persistente se configura en la sección `memoria` del fichero `.claude/alfred-dev.local.md` del proyecto. También se puede gestionar de forma interactiva con `/alfred config`.
+La memoria persistente se configura en la sección `memoria` del fichero `.claude/alfred-dev.local.md` del proyecto. También se puede gestionar de forma interactiva con `/alfred-dev:config`.
 
 ### Claves de configuración
 
 | Clave | Tipo | Defecto | Descripción |
 |-------|------|---------|-------------|
 | `enabled` | boolean | `false` | Activa o desactiva la memoria persistente |
+| `sync_to_native` | boolean | `true` | Proyectar SQLite a memoria `.md` nativa de Claude Code |
+| `sync_commits_limit` | integer | `10` | Numero de commits recientes a proyectar en la memoria nativa |
 | `capture_decisions` | boolean | `true` | Registrar decisiones de diseño automáticamente |
 | `capture_commits` | boolean | `true` | Registrar commits automáticamente |
 | `retention_days` | integer | `365` | Dias de retención de eventos (decisiones e iteraciones no se purgan) |
@@ -518,6 +520,8 @@ memoria:
 ---
 memoria:
   enabled: true
+  sync_to_native: true
+  sync_commits_limit: 10
   capture_decisions: true
   capture_commits: true
   retention_days: 365
