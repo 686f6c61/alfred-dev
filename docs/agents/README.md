@@ -51,7 +51,7 @@ El diagrama muestra algo importante: la seguridad no se comprueba al final, sino
 
 ## Tabla resumen de agentes
 
-Los 17 agentes se dividen en dos categorías: nucleo y opcionales. La tabla siguiente ofrece una vision rápida de cada uno con sus caracteristicas principales.
+Los 18 agentes se dividen en dos categorías: nucleo y opcionales. La tabla siguiente ofrece una vision rápida de cada uno con sus caracteristicas principales.
 
 ### Agentes de nucleo
 
@@ -122,7 +122,7 @@ El flujo, simplificado, funciona así:
 
 ## Distribución de modelos
 
-De los 17 agentes, **5 usan opus** y **12 usan sonnet**. Esta distribución no es aleatoria: refleja la naturaleza de las tareas que realiza cada agente.
+De los 18 agentes, **5 usan opus** y **12 usan sonnet**. Esta distribución no es aleatoria: refleja la naturaleza de las tareas que realiza cada agente.
 
 Los cinco agentes que usan **opus** son los que toman decisiones críticas:
 
