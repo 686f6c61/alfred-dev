@@ -1505,6 +1505,17 @@ personalidad:
 
   changelog: [
     {
+      version: '0.4.7',
+      date: '2026-03-31',
+      fixed: [
+        'Hook SessionStart corregido: la emisión JSON del contexto de sesión ya no se trunca cuando el contenido supera ARG_MAX del kernel o contiene caracteres especiales.',
+      ],
+      changed: [
+        'La generación JSON del hook pasa de interpolación en heredoc bash a emisión directa por stdin con json.dumps, eliminando la clase de error por completo.',
+        'Versionado coherente a 0.4.7: plugin, marketplace, instaladores, paquetes, metadata estructurada, README, changelog, docs y landing quedan alineados.',
+      ],
+    },
+    {
       version: '0.4.6',
       date: '2026-03-23',
       added: [
@@ -1849,7 +1860,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.6',
+    version: 'v0.4.7',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

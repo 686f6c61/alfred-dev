@@ -7,6 +7,17 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.7] - 2026-03-31
+
+### Fixed
+
+- **Hook SessionStart robusto**: la emisión JSON del contexto de sesión ya no se trunca cuando el contenido supera `ARG_MAX` del kernel o contiene caracteres especiales (tildes, backticks, comillas, barras invertidas). La causa raíz era que `escape_for_json()` pasaba el contexto como `sys.argv[1]`, sujeto al límite de tamaño de argumentos del sistema operativo.
+
+### Changed
+
+- **Emisión JSON por stdin**: la generación del JSON del hook pasa de interpolación en heredoc bash con `escape_for_json()` a emisión directa por stdin con `json.dumps()` en una nueva función `emit_hook_json()`, eliminando la clase de error por completo.
+- **Versionado coherente a 0.4.7**: plugin, marketplace, instaladores, paquetes, metadata estructurada, README, changelog, docs y landing quedan alineados.
+
 ## [0.4.6] - 2026-03-23
 
 ### Added
@@ -467,6 +478,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+[0.4.7]: https://github.com/686f6c61/alfred-dev/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/686f6c61/alfred-dev/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/686f6c61/alfred-dev/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/686f6c61/alfred-dev/compare/v0.4.3...v0.4.4

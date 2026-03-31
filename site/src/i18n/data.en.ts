@@ -1502,6 +1502,17 @@ personalidad:
 
   changelog: [
     {
+      version: '0.4.7',
+      date: '2026-03-31',
+      fixed: [
+        'SessionStart hook fixed: the session context JSON output no longer truncates when content exceeds kernel ARG_MAX or contains special characters.',
+      ],
+      changed: [
+        'Hook JSON generation moves from bash heredoc interpolation to direct stdin emission via json.dumps, eliminating the entire error class.',
+        'Version aligned to 0.4.7 across plugin, marketplace, installers, packages, structured metadata, README, changelog, docs and landing.',
+      ],
+    },
+    {
       version: '0.4.6',
       date: '2026-03-23',
       added: [
@@ -1846,7 +1857,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.6',
+    version: 'v0.4.7',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',

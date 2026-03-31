@@ -68,7 +68,16 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.6
+## Novedades en v0.4.7
+
+La v0.4.7 corrige un error intermitente en el hook `SessionStart` que provocaba el mensaje `SessionStart:startup hook error` al arrancar sesiones. La causa raíz era que el contexto se pasaba como argumento de línea de comandos a Python (`sys.argv[1]`), sujeto al límite `ARG_MAX` del kernel. Ahora la emisión JSON se hace por stdin con `json.dumps`, eliminando la clase de error por completo.
+
+| Cambio | Descripcion |
+|--------|-------------|
+| **Hook SessionStart robusto** | La emisión JSON ya no se trunca con contenidos largos o caracteres especiales (tildes, backticks, comillas, barras invertidas). |
+| **Emisión por stdin** | Nueva función `emit_hook_json()` que recibe el contexto por stdin y genera JSON válido directamente con `json.dumps`. |
+
+### Novedades de v0.4.6
 
 La v0.4.6 introduce una **Memory UI** local pensada para uso real: abre la SQLite del proyecto en el navegador, mezcla memoria persistente con señales operativas de SonIA y evita que la vista nazca vacía gracias a siembra helper-first e import de commits Git cuando hace falta.
 

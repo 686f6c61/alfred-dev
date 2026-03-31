@@ -14,16 +14,22 @@ set -euo pipefail
 
 # --- Utilidades ---
 
-# Escapa una cadena para que sea segura dentro de un valor JSON.
-# Gestiona: barra invertida, comillas dobles, saltos de línea, tabuladores
-# y retornos de carro.
-escape_for_json() {
-  local text="$1"
+# Genera el JSON final del hook a partir del contexto recibido por stdin.
+# Usar stdin en vez de sys.argv evita el limite de ARG_MAX del kernel y
+# problemas de truncado con caracteres especiales en cadenas largas.
+emit_hook_json() {
   python3 -c "
 import json, sys
-# Se lee el texto tal cual y se emite escapado para JSON
-print(json.dumps(sys.argv[1])[1:-1])
-" "$text"
+context = sys.stdin.read()
+output = {
+    'hookSpecificOutput': {
+        'hookEventName': 'SessionStart',
+        'additionalContext': context,
+    }
+}
+# json.dumps garantiza un JSON valido independientemente del contenido
+print(json.dumps(output, ensure_ascii=False))
+"
 }
 
 # --- Rutas de referencia ---
@@ -616,14 +622,8 @@ Hay una nueva versión de Alfred Dev: v${LATEST_RELEASE} (actual: v${CURRENT_VER
 fi
 
 # --- Emisión del JSON de salida ---
+#
+# Se pasa el contexto por stdin a Python para evitar limites de ARG_MAX
+# y garantizar un JSON valido independientemente del contenido.
 
-ESCAPED_CONTEXT=$(escape_for_json "$CONTEXT")
-
-cat <<HOOK_JSON
-{
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": "${ESCAPED_CONTEXT}"
-  }
-}
-HOOK_JSON
+printf '%s' "$CONTEXT" | emit_hook_json
