@@ -146,8 +146,8 @@ C4Context
     System(claude, "Claude Code", "CLI de Anthropic que ejecuta el modelo Claude con herramientas, hooks y plugins")
 
     Container_Boundary(plugin, "Plugin Alfred Dev") {
-        Container(commands, "Commands", "Markdown + YAML", "24 comandos: flujos, continuidad, PM operativo y sync GitHub")
-        Container(agents, "Agents", "Markdown", "9 nucleo + 8 opcionales, invocados como subagentes Task")
+        Container(commands, "Commands", "Markdown + YAML", "26 comandos: flujos, continuidad, PM operativo y sync GitHub")
+        Container(agents, "Agents", "Markdown", "10 nucleo + 9 opcionales, invocados como subagentes Task")
         Container(core, "Core", "Python", "Orquestador, continuidad, config, memoria y personalidad")
         Container(hooks, "Hooks", "Shell + Python", "13 hooks en 6 eventos del ciclo de vida")
         Container(mcp, "MCP Server", "Python stdio", "Servidor JSON-RPC que expone memoria persistente")

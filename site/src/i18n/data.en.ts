@@ -18,13 +18,13 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - Claude Code plugin for development teams',
-    description: 'Claude Code plugin: 18 specialised agents, 60 skills, persistent memory and quality gates. From idea to production with TDD, security and compliance.',
+    description: 'Claude Code plugin with 19 specialised agents, 60 skills and per-project persistent memory. Strict TDD, transversal security and automatic quality gates at every phase.',
     canonical: 'https://alfred-dev.com/en/',
     locale: 'en_US',
     og: {
       type: 'website',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '18 specialised agents, 60 skills, persistent memory and quality gates. Automated software engineering for Claude Code.',
+      description: 'A team of 19 specialised agents for Claude Code. Each role has restricted tools, its own personality and quality gates the workflow cannot skip.',
       url: 'https://alfred-dev.com/en/',
       siteName: 'Alfred Dev',
       locale: 'en_US',
@@ -36,7 +36,7 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '18 specialised agents, 60 skills, persistent memory and quality gates. From idea to production.',
+      description: 'Claude Code plugin: 10 core agents + 9 optional, per-project SQLite memory, 26 commands and automatic quality gates at every stage of development.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
@@ -100,7 +100,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Your development<br>teammates in one <em>plugin</em>',
     platformHtml: 'for <span style="color: var(--blue);">Claude Code</span> and <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(in development)</span>',
-    subtitle: '18 specialised agents with their own personality. 10 core, 8 optional. Up to 7 phases, 25 commands, persistent memory, local Memory UI, operational continuity, operational PM and quality gates, from idea to production.',
+    subtitle: '19 specialised agents with their own personality. 10 core, 9 optional. Up to 7 phases, 26 commands, persistent memory and automatic quality gates at every transition.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -116,6 +116,12 @@ const data: PageData = {
     features: {
       label: 'Now on main',
       items: [
+        {
+          title: 'Lucius — external technical second opinion',
+          description: 'When Alfred is done, Lucius calls Codex CLI for an outside perspective. Diagnosis and prescription per item: security, architecture, tests or performance. Touches nothing. You decide what to implement and with whom.',
+          svgContent: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+          tag: { text: 'New', href: '#uso' },
+        },
         {
           title: 'Selina — visual style direction',
           description: 'Before a single line of CSS is written, Selina presents three style proposals in the browser. The user chooses; the team executes with coherence from the first component.',
@@ -166,10 +172,10 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   stats: [
-    { number: 18, label: 'Agents' },
+    { number: 19, label: 'Agents' },
     { number: 60, label: 'Skills' },
     { number: 6, label: 'Workflows' },
-    { number: 25, label: 'Commands' },
+    { number: 26, label: 'Commands' },
     { number: 7, label: 'Templates' },
     { number: 13, label: 'Hooks' },
     { number: 23, label: 'Gates' },
@@ -262,7 +268,7 @@ const data: PageData = {
         name: 'Selina',
         model: 'opus',
         alias: 'The Stylist',
-        role: 'Visual style director. Before the architect designs a single component, presents three style directions in the browser. The user chooses; the team executes coherently. Only active in projects with a user interface.',
+        role: 'Visual style director. Ensures typography, palette and visual density are decided before the architect designs the first component. Only active in projects with a user interface.',
         phrase: '"Style is not decoration: it\'s communication."',
         color: 'var(--purple)',
       },
@@ -277,7 +283,7 @@ const data: PageData = {
     header: {
       label: 'Extensible',
       labelColor: 'var(--gold)',
-      title: '8 optional agents',
+      title: '9 optional agents',
       description: 'Specialised roles you activate according to your project\'s needs. Alfred analyses your stack and suggests which to enable. Managed with <strong style="color: var(--blue);">/alfred-dev:config</strong>.',
     },
     agents: [
@@ -345,6 +351,14 @@ const data: PageData = {
         phrase: '"The base language has 847 keys. French has 831. 16 missing."',
         color: 'var(--cyan)',
       },
+      {
+        name: 'Lucius',
+        model: 'opus',
+        alias: 'External technical director',
+        role: 'External technical second opinion via Codex CLI with GPT-5.4. Audits the full project and returns diagnosis and prescription per item. Requires an active OpenAI subscription. No modifications: analysis only.',
+        phrase: '"From the outside, this has a weak point you probably can\'t see because you\'re too close to it."',
+        color: '#d97706',
+      },
     ],
   },
 
@@ -395,7 +409,7 @@ const data: PageData = {
     header: {
       label: 'Workflows',
       title: '6 execution workflows, 18 phases',
-      description: 'Each workflow has sequential phases with quality gates between them. If a gate fails, the workflow doesn\'t advance. On top of these workflows, Alfred adds an operational continuity layer with commands such as next, pause, resume, verify and progress.',
+      description: 'Each workflow runs phase by phase. Between phases there is a quality gate (the section below lists all of them). Outside the workflows, commands like <code>next</code>, <code>pause</code>, <code>resume</code> and <code>progress</code> let you pause, pick up or check status without losing the thread.',
     },
     flows: [
       {
@@ -681,112 +695,68 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interface',
-      title: '25 commands',
-      description: 'Everything is controlled from the Claude Code command line. Alfred combines contextual routing, multi-agent workflows, operational continuity, operational PM, local Memory UI, optional GitHub synchronization and plugin administration.',
+      title: '26 commands',
+      description: 'Everything is controlled from the Claude Code command line.',
     },
-    list: [
+    groups: [
       {
-        command: '/alfred-dev:alfred',
-        description: 'Contextual assistant: detects stack, active session and project state, then decides whether to map, resume, refine, make a small change or open a full workflow.',
+        label: 'Workflows',
+        color: 'var(--blue)',
+        commands: [
+          { command: '/alfred-dev:feature', description: 'Full cycle: up to 7 phases or from any phase you name. Selina activates automatically in UI projects.' },
+          { command: '/alfred-dev:quick',   description: 'Small bounded change with two lightweight phases: scoped execution and fast QA + security validation.' },
+          { command: '/alfred-dev:fix',     description: 'Bug fix in 3 phases: diagnosis, TDD correction, validation.' },
+          { command: '/alfred-dev:spike',   description: 'Exploratory investigation with no commitment: prototypes, benchmarks, conclusions.' },
+          { command: '/alfred-dev:ship',    description: 'Prepare release: final audit, documentation, packaging, deployment.' },
+          { command: '/alfred-dev:audit',   description: 'Full audit with 4 agents in parallel: quality, security, architecture, documentation.' },
+        ],
       },
       {
-        command: '/alfred-dev:map-codebase',
-        description: 'Analyzes an existing repository and creates <code>docs/project/codebase-map.md</code> and <code>docs/project/current.md</code> before touching product code.',
+        label: 'Context',
+        color: 'var(--green)',
+        commands: [
+          { command: '/alfred-dev:alfred',       description: 'Contextual assistant: reads project state and decides whether to map, resume, refine or open a workflow.' },
+          { command: '/alfred-dev:map-codebase', description: 'Analyzes an existing repo and creates <code>codebase-map.md</code> and <code>current.md</code> before touching code.' },
+          { command: '/alfred-dev:discuss',      description: 'Refines an idea before implementation. Leaves <code>discovery.md</code> and a recommended next command.' },
+          { command: '/alfred-dev:lucius',       description: 'External second opinion via Codex CLI (GPT-5.4). Diagnosis and prescription per item. Requires OpenAI subscription.' },
+        ],
       },
       {
-        command: '/alfred-dev:discuss',
-        description: 'Refines an idea or feature before implementation. Leaves <code>discovery.md</code>, <code>current.md</code> and a recommended next command.',
+        label: 'Continuity',
+        color: 'var(--cyan)',
+        commands: [
+          { command: '/alfred-dev:next',   description: 'Answers “what now” and acts if the route is unambiguous: resume, verify, map or suggest the next workflow.' },
+          { command: '/alfred-dev:pause',  description: 'Pauses work and leaves an explicit handoff in <code>.claude/alfred-handoff.json</code>.' },
+          { command: '/alfred-dev:resume', description: 'Resumes an active session or pending handoff without blindly opening a new iteration.' },
+          { command: '/alfred-dev:verify', description: 'Records manual UAT for the current deliverable, separating human acceptance from automated tests.' },
+        ],
       },
       {
-        command: '/alfred-dev:feature',
-        description: 'Up to 7-phase cycle or from any phase you specify. Alfred asks and adapts: "from development", "documentation only", "full cycle". The visual phase (Selina) activates automatically in projects with a UI.',
+        label: 'Operational PM',
+        color: 'var(--magenta)',
+        commands: [
+          { command: '/alfred-dev:progress',    description: 'Progress, kanban, blockers, traceability and UAT state in one compact view.' },
+          { command: '/alfred-dev:standup',     description: 'Actionable daily standup: current focus, in-flight work, blockers and recommended next step.' },
+          { command: '/alfred-dev:blocked',     description: 'Blocked tasks with dependency, operational note and owner.' },
+          { command: '/alfred-dev:in-progress', description: 'In-flight work without rereading the whole board.' },
+          { command: '/alfred-dev:validate',    description: 'Board health: duplicate IDs, incomplete traceability, pending UAT, sync drift.' },
+          { command: '/alfred-dev:search',      description: 'Searches artifacts and SQLite memory together to answer historical or operational questions.' },
+          { command: '/alfred-dev:sync-github', description: 'SonIA Sync: mirrors the local board into GitHub Issues via <code>gh</code>.' },
+        ],
       },
       {
-        command: '/alfred-dev:quick',
-        description: 'Small, bounded change with two lightweight phases: execution on the touched surface and quick QA + security validation.',
-      },
-      {
-        command: '/alfred-dev:fix',
-        description: 'Fix a bug with a 3-phase flow: diagnosis, TDD fix, validation.',
-      },
-      {
-        command: '/alfred-dev:spike',
-        description: 'Exploratory investigation with no commitment: prototypes, benchmarks, conclusions.',
-      },
-      {
-        command: '/alfred-dev:next',
-        description: 'Answers “what should happen now” and executes the right route if it is unambiguous: resume, verify, map or suggest the next workflow.',
-      },
-      {
-        command: '/alfred-dev:pause',
-        description: 'Pauses the current work and leaves an explicit handoff in <code>.claude/alfred-handoff.json</code> and <code>docs/project/handoff.md</code>.',
-      },
-      {
-        command: '/alfred-dev:resume',
-        description: 'Resumes an active session or pending handoff without blindly opening a brand-new iteration.',
-      },
-      {
-        command: '/alfred-dev:verify',
-        description: 'Prepares or records manual validation/UAT for the current deliverable, separating human acceptance from automatic tests.',
-      },
-      {
-        command: '/alfred-dev:progress',
-        description: 'Summarises project progress, kanban, blockers, traceability and UAT state in one operational view.',
-      },
-      {
-        command: '/alfred-dev:memory-ui',
-        description: 'Opens a local browser UI to explore the project SQLite memory with overview, timeline, decisions, commits, search, health and operational signals.',
-      },
-      {
-        command: '/alfred-dev:standup',
-        description: 'Actionable daily standup from SonIA: current focus, in-flight work, blockers, recent evidence and recommended next step.',
-      },
-      {
-        command: '/alfred-dev:blocked',
-        description: 'View only blocked tasks, including dependency, operational note and owner when available.',
-      },
-      {
-        command: '/alfred-dev:in-progress',
-        description: 'View only the work that is currently in flight without rereading the whole board.',
-      },
-      {
-        command: '/alfred-dev:validate',
-        description: 'Validates board health and daily operations: duplicate IDs, incomplete traceability, pending UAT, missing evidence or local sync drift.',
-      },
-      {
-        command: '/alfred-dev:search',
-        description: 'Searches project artifacts and SQLite memory together to answer historical or operational questions without manually exploring the repo.',
-      },
-      {
-        command: '/alfred-dev:sync-github',
-        description: 'Runs SonIA Sync: mirrors SonIA\'s local board into GitHub Issues via <code>gh</code>, while keeping the local repo as the source of truth.',
-      },
-      {
-        command: '/alfred-dev:ship',
-        description: 'Prepare release: final audit, documentation, packaging, deployment.',
-      },
-      {
-        command: '/alfred-dev:audit',
-        description: 'Full audit with 4 agents in parallel: quality, security, architecture, documentation.',
-      },
-      {
-        command: '/alfred-dev:config',
-        description: 'Configure autonomy, stack, compliance, personality, <strong style="color: var(--gold);">optional agents</strong> and <strong style="color: var(--gold);">persistent memory</strong>. The first session can bootstrap this config automatically.',
-      },
-      {
-        command: '/alfred-dev:status',
-        description: 'Active session state: current phase, completed phases, pending gate, prior refinement and immediate operational focus.',
-      },
-      {
-        command: '/alfred-dev:update',
-        description: 'Check for a new version, see the release notes and update with one click.',
-      },
-      {
-        command: '/alfred-dev:help',
-        description: 'Full help for all available commands.',
+        label: 'Tools',
+        color: 'var(--gold)',
+        commands: [
+          { command: '/alfred-dev:memory-ui', description: 'Local browser UI over the project SQLite: overview, timeline, decisions, commits, search.' },
+          { command: '/alfred-dev:config',    description: 'Autonomy, stack, compliance, personality, optional agents and memory. Bootstrappable on first session.' },
+          { command: '/alfred-dev:status',    description: 'Active session: current phase, completed phases, pending gate and immediate focus.' },
+          { command: '/alfred-dev:update',    description: 'Check for a new version, read release notes and update with one click.' },
+          { command: '/alfred-dev:help',      description: 'Full help for all available commands.' },
+        ],
       },
     ],
-    optionalNote: '<strong style="color: var(--gold);">Optional agents in workflows:</strong> the 8 optional agents don\'t have their own commands. They are activated with <strong style="color: var(--blue);">/alfred-dev:config</strong> and Alfred integrates them automatically when the command needs them, especially in <strong style="color: var(--blue);">/alfred-dev:feature</strong>, <strong style="color: var(--blue);">/alfred-dev:quick</strong>, <strong style="color: var(--blue);">/alfred-dev:fix</strong>, <strong style="color: var(--blue);">/alfred-dev:spike</strong>, <strong style="color: var(--blue);">/alfred-dev:audit</strong> and <strong style="color: var(--blue);">/alfred-dev:ship</strong>. Operational and PM commands (<em>map-codebase</em>, <em>next</em>, <em>pause</em>, <em>resume</em>, <em>verify</em>, <em>progress</em>, <em>memory-ui</em>, <em>standup</em>, <em>blocked</em>, <em>in-progress</em>, <em>validate</em>, <em>search</em>, <em>sync-github</em>) prioritise continuity, backlog and context before opening a full team.',
+    optionalNote: 'The 9 optional agents are activated with <strong style=”color: var(--blue);”>/alfred-dev:config</strong> and Alfred integrates them automatically in <em>feature</em>, <em>quick</em>, <em>fix</em>, <em>spike</em>, <em>audit</em> and <em>ship</em>.',
   },
 
   // ----------------------------------------------------------------
@@ -1060,11 +1030,6 @@ const data: PageData = {
         title: 'Open the project\'s live memory',
         command: '/alfred-dev:memory-ui',
         wide: true,
-        image: {
-          src: '/screenshots/memory-ui-dashboard.png',
-          alt: 'Alfred Dev Memory UI showing overview, timeline, project signals, decisions, commits and search',
-          caption: 'Memory UI running on top of a naturally populated Alfred memory, with overview, timeline, decisions, commits and operational signals.',
-        },
         steps: [
           'Launches a local browser UI on top of the project\'s real SQLite memory without duplicating the source of truth',
           'Shows overview, timeline, decisions, commits, search and storage health in one place',
@@ -1536,6 +1501,24 @@ personalidad:
 
   changelog: [
     {
+      version: '0.6.0',
+      date: '2026-03-31',
+      added: [
+        '<strong>Lucius — The Technical Director</strong> (9th optional agent): external technical audit by invoking the <code>codex</code> binary with GPT-5.4. Analyses the full project and delivers a structured report with diagnosis and prescription per item.',
+        '<strong><code>/alfred-dev:lucius</code> command</strong>: entry point with five scopes — <code>all</code>, <code>security</code>, <code>tests</code>, <code>architecture</code>, <code>performance</code>. Target directory is configurable.',
+        '<strong>Structured report in four sections</strong>: Critical (blocking), Relevant (recommended), Opportunities (non-urgent improvement) and What\'s working well (recognition of good practices).',
+        '<strong>Automatic preflight</strong>: Lucius verifies that <code>codex</code> is installed and authenticated before running the audit. If anything fails, it explains the fix.',
+        '<strong>HARD-GATE</strong>: Lucius never modifies files. It only reads, analyses and reports. The decision to implement always rests with the user.',
+      ],
+      changed: [
+        '19 agents total: 10 core + 9 optional.',
+        '26 commands available in the plugin.',
+        'Model distribution: 6 opus (Alfred, product-owner, architect, senior-dev, security-officer, Lucius) + 13 sonnet.',
+        'Landing updated: agent counter, Lucius card before Selina, optional agents section.',
+        '<code>core/personality.py</code> updated with Selina and Lucius (17 → 19 agents).',
+      ],
+    },
+    {
       version: '0.5.0',
       date: '2026-03-31',
       added: [
@@ -1911,7 +1894,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.5.0',
+    version: 'v0.6.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
