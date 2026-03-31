@@ -49,28 +49,6 @@ const { memory } = Astro.props;
       description={memory.descriptionHtml}
     />
 
-    {/* ── Diagrama de trazabilidad ──────────────────── */}
-    <div class="trace-container fade-in">
-      <h3 class="trace-title">{memory.traceability.title}</h3>
-      <p class="trace-desc" set:html={memory.traceability.descriptionHtml} />
-      <div class="trace-nodes">
-        {memory.traceability.nodes.map((node, i) => (
-          <Fragment>
-            <span
-              class="trace-node"
-              style={`color: ${node.color}; background: ${node.background}; border-color: ${node.borderColor};`}
-            >
-              {node.label}
-            </span>
-            {/* Flecha entre nodos (excepto despues del ultimo) */}
-            {i < memory.traceability.nodes.length - 1 && (
-              <span class="trace-arrow">&rarr;</span>
-            )}
-          </Fragment>
-        ))}
-      </div>
-    </div>
-
     {/* ── Tarjetas de componentes de memoria ────────── */}
     <div class="memory-grid agents-grid">
       {memory.cards.map((card) => (
@@ -176,54 +154,6 @@ const { memory } = Astro.props;
     border-bottom: 1px solid var(--border);
   }
 
-  /* ── Diagrama de trazabilidad ──────────────────────── */
-  .trace-container {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 32px;
-    margin-bottom: 32px;
-  }
-
-  .trace-title {
-    font-family: var(--font-display);
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-bright);
-    margin-bottom: 20px;
-  }
-
-  .trace-desc {
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.7;
-    margin-bottom: 20px;
-  }
-
-  /* Contenedor flex para los nodos y flechas */
-  .trace-nodes {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    padding: 16px 0;
-  }
-
-  /* Nodo individual del diagrama */
-  .trace-node {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid;
-  }
-
-  /* Flecha tipografica entre nodos */
-  .trace-arrow {
-    color: var(--text-dim);
-    font-size: 18px;
-  }
 
   /* ── Cuadricula de tarjetas de memoria ─────────────── */
   .memory-grid {

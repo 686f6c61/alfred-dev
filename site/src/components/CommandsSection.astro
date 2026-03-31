@@ -1,40 +1,31 @@
 ---
 /**
- * Seccion de comandos de la interfaz de Alfred Dev.
+ * Seccion de comandos de Alfred Dev.
  *
- * Renderiza la lista completa de comandos disponibles (/alfred-dev:alfred,
- * /alfred-dev:feature, /alfred-dev:fix...) en formato de tarjetas apiladas
- * verticalmente. Cada tarjeta muestra el comando en fuente mono
- * y su descripcion a la derecha, siguiendo el patron visual de
- * flow-card del HTML original pero con estructura simplificada
- * (sin fases ni dots).
- *
- * Al final de la lista se incluye una nota informativa sobre como
- * los agentes opcionales se integran automaticamente en los flujos
- * existentes, sin necesidad de comandos propios.
+ * Renderiza los 26 comandos agrupados en 5 categorías (Flujos, Contexto,
+ * Continuidad, PM operativo, Herramientas) usando un layout de tabla
+ * compacta. Cada categoría tiene una cabecera con etiqueta de color
+ * y las filas de comandos ocupan un mínimo vertical.
  *
  * @example
  * ```astro
  * <CommandsSection
  *   header={data.commands.header}
- *   commands={data.commands.list}
+ *   groups={data.commands.groups}
  *   optionalNote={data.commands.optionalNote}
  * />
  * ```
  */
 import SectionHeader from '@/components/ui/SectionHeader.astro';
-import type { SectionHeader as SectionHeaderType, Command } from '@/types';
+import type { SectionHeader as SectionHeaderType, CommandGroup } from '@/types';
 
 interface Props {
-  /** Datos del header de la seccion. */
   header: SectionHeaderType;
-  /** Lista de comandos con texto y descripcion. */
-  commands: Command[];
-  /** Nota HTML sobre la integracion de agentes opcionales en flujos. */
+  groups: CommandGroup[];
   optionalNote: string;
 }
 
-const { header, commands, optionalNote } = Astro.props;
+const { header, groups, optionalNote } = Astro.props;
 ---
 
 <section id="commands">
@@ -46,89 +37,147 @@ const { header, commands, optionalNote } = Astro.props;
       description={header.description}
     />
 
-    <div class="commands-list">
-      {commands.map((cmd) => (
-        <div class="command-card fade-in">
-          <div>
-            <div class="command-name">{cmd.command}</div>
+    <div class="commands-groups fade-in">
+      {groups.map((group) => (
+        <div class="command-group">
+          <div class="group-label" style={`color: ${group.color}; border-color: ${group.color}33;`}>
+            {group.label}
           </div>
-          <div class="command-desc" set:html={cmd.description} />
+          <div class="group-table">
+            {group.commands.map((cmd) => (
+              <div class="command-row">
+                <code class="command-name" style={`color: ${group.color};`}>{cmd.command}</code>
+                <span class="command-desc" set:html={cmd.description} />
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>
 
-    {/* Nota sobre agentes opcionales en los flujos */}
     <div class="optional-note fade-in" set:html={optionalNote} />
   </div>
 </section>
 
 <style>
-  /* ── Lista vertical de comandos ─────────────────────── */
-  .commands-list {
+  /* ── Contenedor de grupos ───────────────────────────── */
+  .commands-groups {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 4px;
   }
 
-  /*
-   * Tarjeta de comando: grid de dos columnas con el nombre
-   * a la izquierda (ancho fijo) y la descripcion a la derecha.
-   * Sigue el patron visual de flow-card pero simplificado
-   * (sin tercera columna de fases).
-   */
-  .command-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 28px 32px;
+  /* ── Grupo de categoría ─────────────────────────────── */
+  .command-group {
     display: grid;
-    grid-template-columns: 200px 1fr;
-    align-items: center;
-    gap: 32px;
-    transition: all 0.25s;
+    grid-template-columns: 120px 1fr;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
   }
 
-  .command-card:hover {
-    border-color: var(--border-light);
+  /* Etiqueta lateral de categoría */
+  .group-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--bg-card);
+    border-right: 1px solid;
+    padding: 16px 0;
+  }
+
+  /* Tabla de comandos del grupo */
+  .group-table {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+  }
+
+  /* Fila individual de comando */
+  .command-row {
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    align-items: baseline;
+    gap: 20px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  .command-row:last-child {
+    border-bottom: none;
+  }
+
+  .command-row:hover {
     background: var(--bg-card-hover);
   }
 
-  /* ── Nombre del comando en fuente mono ──────────────── */
+  /* Nombre del comando */
   .command-name {
     font-family: var(--font-mono);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* Descripción */
+  .command-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .command-desc :global(code) {
+    font-family: var(--font-mono);
+    font-size: 11px;
     color: var(--blue);
   }
 
-  /* ── Descripcion del comando ────────────────────────── */
-  .command-desc {
-    font-size: 14px;
+  /* ── Nota de agentes opcionales ─────────────────────── */
+  .optional-note {
+    margin-top: 16px;
+    padding: 14px 20px;
+    background: var(--bg-card);
+    border: 1px solid rgba(201, 169, 110, 0.2);
+    border-radius: 8px;
+    font-size: 13px;
     color: var(--text-muted);
     line-height: 1.6;
   }
 
-  /*
-   * Nota informativa al pie de la seccion. Explica que los agentes
-   * opcionales no tienen comandos propios, sino que se integran
-   * automaticamente en los flujos existentes.
-   */
-  .optional-note {
-    margin-top: 32px;
-    background: var(--bg-card);
-    border: 1px solid rgba(201, 169, 110, 0.2);
-    border-radius: 10px;
-    padding: 24px 28px;
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.7;
+  .optional-note :global(strong) {
+    color: var(--text-bright);
   }
 
-  /* ── Responsive 768px ───────────────────────────────── */
-  @media (max-width: 768px) {
-    .command-card {
+  /* ── Responsive 900px ───────────────────────────────── */
+  @media (max-width: 900px) {
+    .command-group {
       grid-template-columns: 1fr;
-      gap: 12px;
+    }
+
+    .group-label {
+      writing-mode: horizontal-tb;
+      transform: none;
+      border-right: none;
+      border-bottom: 1px solid;
+      padding: 10px 16px;
+      justify-content: flex-start;
+    }
+  }
+
+  /* ── Responsive 600px ───────────────────────────────── */
+  @media (max-width: 600px) {
+    .command-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
     }
   }
 </style>

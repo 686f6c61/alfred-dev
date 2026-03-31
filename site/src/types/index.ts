@@ -236,6 +236,16 @@ export interface Command {
   description: string;
 }
 
+/** Grupo de comandos relacionados con etiqueta de categoría. */
+export interface CommandGroup {
+  /** Etiqueta visible de la categoría (p.e. "Flujos"). */
+  label: string;
+  /** Color de acento para la etiqueta. */
+  color: string;
+  /** Comandos que pertenecen a este grupo. */
+  commands: Command[];
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Stack detection
 // ──────────────────────────────────────────────────────────────────
@@ -642,7 +652,7 @@ export interface PageData {
   /** Seccion de comandos. */
   commands: {
     header: SectionHeader;
-    list: Command[];
+    groups: CommandGroup[];
     /** Nota HTML sobre agentes opcionales en flujos. */
     optionalNote: string;
   };
