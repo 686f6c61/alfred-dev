@@ -126,7 +126,7 @@ Función auxiliar que comprueba si el nombre del agente existe en `AGENTS` y dev
 
 ## Distribución de criticidad y autonomía de los agentes
 
-El siguiente diagrama posiciona a los 17 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
+El siguiente diagrama posiciona a los 18 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
 
 Los agentes con alta criticidad y baja autonomía (esquina inferior derecha) son los que trabajan con restricciones estrictas: El Paranoico (seguridad) no puede aprobar por su cuenta, necesita que el orquestador confirme. Los de alta criticidad y alta autonomía (esquina superior derecha) son los que toman decisiones de diseño y escriben código sin pedir permiso en cada línea. Los de baja criticidad y alta autonomía (esquina superior izquierda) son agentes de soporte que pueden operar de forma independiente sin riesgo para el sistema.
 
@@ -186,7 +186,7 @@ La razón de tener tres niveles en lugar de un simple binario (aprobado/rechazad
 
 ## Distribución de modelos
 
-De los 17 agentes, 5 usan el modelo `opus` y los 12 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
+De los 18 agentes, 6 usan el modelo `opus` y los 12 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
 
 ### Criterio de asignación
 

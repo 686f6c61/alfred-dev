@@ -37,6 +37,7 @@
     "./commands/update.md"
   ],
   "agents": [
+    "./agents/alfred.md",
     "./agents/product-owner.md",
     "./agents/architect.md",
     "./agents/senior-dev.md",
