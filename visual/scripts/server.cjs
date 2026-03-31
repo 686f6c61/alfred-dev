@@ -1,0 +1,630 @@
+/**
+ * server.cjs — Servidor HTTP + WebSocket para la visualizacion de Selina.
+ *
+ * Usa exclusivamente modulos nativos de Node.js (http, crypto, fs, path).
+ * Sirve contenido HTML desde un directorio de sesion, inyecta helper.js,
+ * envuelve fragmentos en frame-template.html y notifica al navegador
+ * via WebSocket cuando el contenido cambia.
+ *
+ * Configuracion mediante variables de entorno:
+ *   ALFRED_VISUAL_PORT     — Puerto (por defecto aleatorio 49152-65535)
+ *   ALFRED_VISUAL_HOST     — Direccion de escucha (por defecto 127.0.0.1)
+ *   ALFRED_VISUAL_URL_HOST — Host para URLs (por defecto localhost)
+ *   ALFRED_VISUAL_DIR      — Directorio de sesion (por defecto /tmp/alfred-visual)
+ *   ALFRED_VISUAL_OWNER_PID — PID del proceso padre (opcional)
+ */
+
+'use strict';
+
+const http = require('node:http');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+
+// ---------------------------------------------------------------------------
+// Constantes y configuracion
+// ---------------------------------------------------------------------------
+
+const HOST = process.env.ALFRED_VISUAL_HOST || '127.0.0.1';
+const URL_HOST = process.env.ALFRED_VISUAL_URL_HOST || (HOST === '127.0.0.1' ? 'localhost' : HOST);
+const SESSION_DIR = process.env.ALFRED_VISUAL_DIR || '/tmp/alfred-visual';
+const OWNER_PID = process.env.ALFRED_VISUAL_OWNER_PID
+  ? Number.parseInt(process.env.ALFRED_VISUAL_OWNER_PID, 10)
+  : null;
+
+/** Tiempo maximo de inactividad antes de apagar el servidor (30 min). */
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+/** Intervalo para comprobar si el proceso padre sigue vivo (60 s). */
+const OWNER_CHECK_INTERVAL_MS = 60 * 1000;
+
+/** Debounce para el vigilante de ficheros (100 ms). */
+const WATCH_DEBOUNCE_MS = 100;
+
+const CONTENT_DIR = path.join(SESSION_DIR, 'content');
+const STATE_DIR = path.join(SESSION_DIR, 'state');
+
+// ---------------------------------------------------------------------------
+// WebSocket RFC 6455 — implementacion minima
+// ---------------------------------------------------------------------------
+
+/** Codigos de operacion definidos en RFC 6455, seccion 5.2. */
+const OPCODES = {
+  TEXT: 0x01,
+  CLOSE: 0x08,
+  PING: 0x09,
+  PONG: 0x0a,
+};
+
+/**
+ * Calcula la clave de aceptacion del handshake WebSocket.
+ * @param {string} key — Valor de la cabecera Sec-WebSocket-Key.
+ * @returns {string} Hash SHA-1 en base64 segun RFC 6455, seccion 4.2.2.
+ */
+function computeAcceptKey(key) {
+  const MAGIC = '258EAFA5-E914-47DA-95CA-5AB5DC76B51E';
+  return crypto
+    .createHash('sha1')
+    .update(key + MAGIC)
+    .digest('base64');
+}
+
+/**
+ * Codifica un frame WebSocket para enviar al cliente.
+ * @param {number} opcode — Codigo de operacion (TEXT, CLOSE, PING, PONG).
+ * @param {Buffer|string} payload — Datos a enviar.
+ * @returns {Buffer} Frame WebSocket listo para escribir en el socket.
+ */
+function encodeFrame(opcode, payload) {
+  const data = Buffer.isBuffer(payload) ? payload : Buffer.from(payload, 'utf8');
+  const len = data.length;
+  let header;
+
+  if (len < 126) {
+    header = Buffer.alloc(2);
+    header[0] = 0x80 | opcode;
+    header[1] = len;
+  } else if (len < 65536) {
+    header = Buffer.alloc(4);
+    header[0] = 0x80 | opcode;
+    header[1] = 126;
+    header.writeUInt16BE(len, 2);
+  } else {
+    header = Buffer.alloc(10);
+    header[0] = 0x80 | opcode;
+    header[1] = 127;
+    // Usamos writeBigUInt64BE para longitudes grandes
+    header.writeBigUInt64BE(BigInt(len), 2);
+  }
+
+  return Buffer.concat([header, data]);
+}
+
+/**
+ * Decodifica un frame WebSocket recibido del cliente.
+ * Los clientes siempre envian datos enmascarados (seccion 5.3 del RFC).
+ * @param {Buffer} buf — Datos crudos del socket.
+ * @returns {{ opcode: number, payload: Buffer, totalLength: number } | null}
+ *   null si el buffer esta incompleto.
+ */
+function decodeFrame(buf) {
+  if (buf.length < 2) return null;
+
+  const opcode = buf[0] & 0x0f;
+  const masked = (buf[1] & 0x80) !== 0;
+  let payloadLen = buf[1] & 0x7f;
+  let offset = 2;
+
+  if (payloadLen === 126) {
+    if (buf.length < 4) return null;
+    payloadLen = buf.readUInt16BE(2);
+    offset = 4;
+  } else if (payloadLen === 127) {
+    if (buf.length < 10) return null;
+    payloadLen = Number(buf.readBigUInt64BE(2));
+    offset = 10;
+  }
+
+  const maskSize = masked ? 4 : 0;
+  const totalLength = offset + maskSize + payloadLen;
+  if (buf.length < totalLength) return null;
+
+  let payload;
+  if (masked) {
+    const mask = buf.slice(offset, offset + maskSize);
+    payload = Buffer.alloc(payloadLen);
+    for (let i = 0; i < payloadLen; i++) {
+      payload[i] = buf[offset + maskSize + i] ^ mask[i % 4];
+    }
+  } else {
+    payload = buf.slice(offset, offset + payloadLen);
+  }
+
+  return { opcode, payload, totalLength };
+}
+
+// ---------------------------------------------------------------------------
+// Utilidades de ficheros
+// ---------------------------------------------------------------------------
+
+/**
+ * Obtiene el fichero .html mas reciente del directorio de contenido.
+ * @returns {string|null} Ruta absoluta o null si no hay ficheros HTML.
+ */
+function getNewestHtml() {
+  let files;
+  try {
+    files = fs.readdirSync(CONTENT_DIR);
+  } catch {
+    return null;
+  }
+
+  const htmlFiles = files
+    .filter((f) => f.endsWith('.html'))
+    .map((f) => {
+      const full = path.join(CONTENT_DIR, f);
+      return { name: f, mtime: fs.statSync(full).mtimeMs, path: full };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+
+  return htmlFiles.length > 0 ? htmlFiles[0].path : null;
+}
+
+/**
+ * Determina si un contenido HTML es un documento completo o un fragmento.
+ * Un documento completo empieza con <!DOCTYPE (ignorando espacios).
+ * @param {string} html — Contenido HTML.
+ * @returns {boolean}
+ */
+function isFullDocument(html) {
+  return /^\s*<!DOCTYPE/i.test(html);
+}
+
+/** Carga helper.js desde el mismo directorio que este fichero. */
+function loadHelperJs() {
+  return fs.readFileSync(path.join(__dirname, 'helper.js'), 'utf8');
+}
+
+/** Carga frame-template.html desde el mismo directorio que este fichero. */
+function loadFrameTemplate() {
+  return fs.readFileSync(path.join(__dirname, 'frame-template.html'), 'utf8');
+}
+
+/**
+ * Inyecta helper.js como script inline justo antes de </body>.
+ * Si no hay </body>, lo anade al final.
+ * @param {string} html — Documento HTML completo.
+ * @returns {string}
+ */
+function injectHelper(html) {
+  const script = `<script>\n${loadHelperJs()}\n</script>`;
+  if (html.includes('</body>')) {
+    return html.replace('</body>', script + '\n</body>');
+  }
+  return html + '\n' + script;
+}
+
+/**
+ * Envuelve un fragmento HTML en el frame-template e inyecta helper.js.
+ * @param {string} fragment — Fragmento HTML sin DOCTYPE.
+ * @returns {string}
+ */
+function wrapInFrame(fragment) {
+  const template = loadFrameTemplate();
+  const wrapped = template.replace('<!-- CONTENT -->', fragment);
+  return injectHelper(wrapped);
+}
+
+/** Pagina de espera cuando aun no hay contenido HTML. */
+function waitingPage() {
+  const template = loadFrameTemplate();
+  const msg = '<p class="waiting-message">Esperando a que Selina prepare las opciones de estilo...</p>';
+  const wrapped = template.replace('<!-- CONTENT -->', msg);
+  return injectHelper(wrapped);
+}
+
+// ---------------------------------------------------------------------------
+// Tipos MIME basicos para servir ficheros estaticos
+// ---------------------------------------------------------------------------
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+};
+
+/** Cabeceras de seguridad aplicadas a todas las respuestas HTTP. */
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Cache-Control': 'no-store',
+};
+
+// ---------------------------------------------------------------------------
+// Estado global del servidor
+// ---------------------------------------------------------------------------
+
+/** Conexiones WebSocket activas. */
+const wsClients = new Set();
+
+/** Marca temporal de la ultima actividad (para idle timeout). */
+let lastActivity = Date.now();
+
+/** Ficheros conocidos en el directorio de contenido. */
+let knownFiles = new Set();
+
+/** Referencia global al servidor HTTP (necesaria para verificacion de origen WS). */
+let _httpServer = null;
+
+// ---------------------------------------------------------------------------
+// Emision de mensajes JSON por stdout
+// ---------------------------------------------------------------------------
+
+/**
+ * Emite un mensaje JSON por stdout.
+ * Cada mensaje ocupa exactamente una linea.
+ * @param {object} msg — Objeto a serializar.
+ */
+function emit(msg) {
+  process.stdout.write(JSON.stringify(msg) + '\n');
+}
+
+// ---------------------------------------------------------------------------
+// Manejador HTTP
+// ---------------------------------------------------------------------------
+
+/**
+ * Sirve un fichero estatico del directorio de contenido.
+ * Protege contra path traversal resolviendo la ruta real con realpathSync.
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
+ */
+function serveStaticFile(req, res) {
+  const relPath = decodeURIComponent(req.url.slice('/files/'.length));
+  const filePath = path.join(CONTENT_DIR, relPath);
+
+  // Proteccion contra path traversal: resolver ruta real para detectar symlinks
+  const resolvedBase = fs.realpathSync(CONTENT_DIR);
+  let resolvedPath;
+  try {
+    resolvedPath = fs.realpathSync(filePath);
+  } catch {
+    res.writeHead(404, SECURITY_HEADERS);
+    res.end('No encontrado');
+    return;
+  }
+
+  if (!resolvedPath.startsWith(resolvedBase + path.sep) && resolvedPath !== resolvedBase) {
+    res.writeHead(403, SECURITY_HEADERS);
+    res.end('Prohibido');
+    return;
+  }
+
+  try {
+    const data = fs.readFileSync(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    const mime = MIME_TYPES[ext] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': mime, ...SECURITY_HEADERS });
+    res.end(data);
+  } catch {
+    res.writeHead(404, SECURITY_HEADERS);
+    res.end('No encontrado');
+  }
+}
+
+/**
+ * Gestiona las peticiones HTTP entrantes.
+ * - GET / sirve el HTML mas reciente (o pagina de espera).
+ * - GET /files/* sirve ficheros estaticos del directorio de contenido.
+ */
+function handleRequest(req, res) {
+  lastActivity = Date.now();
+
+  if (req.url === '/' || req.url === '/index.html') {
+    const newest = getNewestHtml();
+    let body;
+
+    if (!newest) {
+      body = waitingPage();
+    } else {
+      const raw = fs.readFileSync(newest, 'utf8');
+      // textContent se usa en helper.js (no innerHTML) para evitar XSS
+      body = isFullDocument(raw) ? injectHelper(raw) : wrapInFrame(raw);
+    }
+
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...SECURITY_HEADERS });
+    res.end(body);
+    return;
+  }
+
+  if (req.url.startsWith('/files/')) {
+    serveStaticFile(req, res);
+    return;
+  }
+
+  res.writeHead(404, SECURITY_HEADERS);
+  res.end('No encontrado');
+}
+
+// ---------------------------------------------------------------------------
+// Gestion de WebSocket
+// ---------------------------------------------------------------------------
+
+/**
+ * Difunde un mensaje a todas las conexiones WebSocket activas.
+ * @param {string} message — Mensaje JSON serializado.
+ */
+function broadcast(message) {
+  const frame = encodeFrame(OPCODES.TEXT, message);
+  for (const socket of wsClients) {
+    try {
+      socket.write(frame);
+    } catch {
+      wsClients.delete(socket);
+    }
+  }
+}
+
+/**
+ * Gestiona el upgrade HTTP a WebSocket segun RFC 6455.
+ * @param {http.IncomingMessage} req
+ * @param {net.Socket} socket
+ */
+function handleUpgrade(req, socket) {
+  // Verificar origen del WebSocket para prevenir conexiones desde dominios ajenos
+  const origin = req.headers['origin'];
+  if (origin) {
+    const expectedOrigin = 'http://' + URL_HOST + ':' + (_httpServer ? _httpServer.address().port : '');
+    if (origin !== expectedOrigin) {
+      socket.destroy();
+      return;
+    }
+  }
+
+  const key = req.headers['sec-websocket-key'];
+  if (!key) {
+    socket.destroy();
+    return;
+  }
+
+  const accept = computeAcceptKey(key);
+  const headers = [
+    'HTTP/1.1 101 Switching Protocols',
+    'Upgrade: websocket',
+    'Connection: Upgrade',
+    `Sec-WebSocket-Accept: ${accept}`,
+    '',
+    '',
+  ].join('\r\n');
+
+  socket.write(headers);
+  wsClients.add(socket);
+  lastActivity = Date.now();
+
+  let buffer = Buffer.alloc(0);
+
+  socket.on('data', (chunk) => {
+    lastActivity = Date.now();
+    buffer = Buffer.concat([buffer, chunk]);
+
+    // Procesar todos los frames completos del buffer
+    let frame;
+    while ((frame = decodeFrame(buffer)) !== null) {
+      buffer = buffer.slice(frame.totalLength);
+
+      switch (frame.opcode) {
+        case OPCODES.TEXT: {
+          const text = frame.payload.toString('utf8');
+          try {
+            const event = JSON.parse(text);
+            // Si el evento contiene una eleccion, registrarla
+            if (event.choice !== undefined) {
+              const eventLine = JSON.stringify({
+                source: 'user-event',
+                ...event,
+                timestamp: new Date().toISOString(),
+              });
+              fs.appendFileSync(path.join(STATE_DIR, 'events'), eventLine + '\n');
+              emit({ source: 'user-event', ...event });
+            }
+          } catch {
+            // Mensaje no JSON, ignorar
+          }
+          break;
+        }
+        case OPCODES.PING:
+          socket.write(encodeFrame(OPCODES.PONG, frame.payload));
+          break;
+        case OPCODES.CLOSE:
+          socket.write(encodeFrame(OPCODES.CLOSE, Buffer.alloc(0)));
+          wsClients.delete(socket);
+          socket.end();
+          break;
+      }
+    }
+  });
+
+  socket.on('close', () => wsClients.delete(socket));
+  socket.on('error', () => wsClients.delete(socket));
+}
+
+// ---------------------------------------------------------------------------
+// Vigilancia de ficheros (fs.watch con debounce)
+// ---------------------------------------------------------------------------
+
+/**
+ * Inicia la vigilancia del directorio de contenido.
+ * Cuando se detecta un fichero nuevo, limpia los eventos y difunde recarga.
+ * Cuando se actualiza un fichero existente, solo difunde recarga.
+ */
+function startWatcher() {
+  // Cargar ficheros conocidos iniciales
+  try {
+    const files = fs.readdirSync(CONTENT_DIR);
+    knownFiles = new Set(files.filter((f) => f.endsWith('.html')));
+  } catch {
+    // El directorio puede no existir aun
+  }
+
+  let debounceTimer = null;
+
+  try {
+    fs.watch(CONTENT_DIR, (eventType, filename) => {
+      if (!filename || !filename.endsWith('.html')) return;
+
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const isNew = !knownFiles.has(filename);
+
+        if (isNew) {
+          // Fichero nuevo: limpiar eventos y notificar
+          knownFiles.add(filename);
+          try {
+            fs.writeFileSync(path.join(STATE_DIR, 'events'), '');
+          } catch {
+            // No pasa nada si falla
+          }
+          emit({ type: 'screen-added', file: filename });
+        } else {
+          emit({ type: 'screen-updated', file: filename });
+        }
+
+        broadcast(JSON.stringify({ type: 'reload' }));
+      }, WATCH_DEBOUNCE_MS);
+    });
+  } catch {
+    // Si el directorio no existe, el watcher no arranca — no es critico
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Gestion del ciclo de vida
+// ---------------------------------------------------------------------------
+
+/**
+ * Escribe la informacion del servidor en el directorio de estado.
+ * @param {object} info — Datos del servidor (puerto, host, URL, etc.).
+ */
+function writeServerInfo(info) {
+  try {
+    fs.writeFileSync(path.join(STATE_DIR, 'server-info'), JSON.stringify(info, null, 2));
+  } catch {
+    // No es critico si falla
+  }
+}
+
+/**
+ * Detiene el servidor de forma limpia, notifica por stdout y escribe
+ * el fichero server-stopped.
+ * @param {string} reason — Motivo del cierre.
+ */
+function shutdown(reason) {
+  emit({ type: 'server-stopped', reason });
+  try {
+    fs.writeFileSync(path.join(STATE_DIR, 'server-stopped'), JSON.stringify({ reason, timestamp: new Date().toISOString() }));
+  } catch {
+    // Ignorar errores en el cierre
+  }
+
+  // Cerrar todas las conexiones WebSocket
+  for (const socket of wsClients) {
+    try {
+      socket.write(encodeFrame(OPCODES.CLOSE, Buffer.alloc(0)));
+      socket.end();
+    } catch {
+      // Ignorar
+    }
+  }
+
+  process.exit(0);
+}
+
+/**
+ * Comprueba si el proceso padre sigue vivo.
+ * Si se definio OWNER_PID y el proceso ya no existe, apaga el servidor.
+ */
+function checkOwnerAlive() {
+  if (OWNER_PID === null) return;
+  try {
+    process.kill(OWNER_PID, 0);
+  } catch {
+    shutdown('owner-exited');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Arranque del servidor
+// ---------------------------------------------------------------------------
+
+/**
+ * Punto de entrada principal.
+ * Crea los directorios necesarios, arranca el servidor HTTP y configura
+ * los temporizadores de inactividad y vigilancia del proceso padre.
+ */
+function main() {
+  // Asegurar que los directorios de sesion existen
+  fs.mkdirSync(CONTENT_DIR, { recursive: true });
+  fs.mkdirSync(STATE_DIR, { recursive: true });
+
+  // Elegir puerto: variable de entorno o aleatorio en rango efimero
+  const port = process.env.ALFRED_VISUAL_PORT
+    ? Number.parseInt(process.env.ALFRED_VISUAL_PORT, 10)
+    : 49152 + Math.floor(Math.random() * (65535 - 49152));
+
+  const server = http.createServer(handleRequest);
+  _httpServer = server;
+  server.on('upgrade', handleUpgrade);
+
+  server.listen(port, HOST, () => {
+    const url = `http://${URL_HOST}:${port}`;
+    const info = {
+      type: 'server-started',
+      port,
+      host: HOST,
+      url_host: URL_HOST,
+      url,
+      screen_dir: CONTENT_DIR,
+      state_dir: STATE_DIR,
+    };
+
+    writeServerInfo(info);
+    emit(info);
+
+    // Iniciar vigilancia de ficheros
+    startWatcher();
+
+    // Temporizador de inactividad (30 min)
+    setInterval(() => {
+      if (Date.now() - lastActivity > IDLE_TIMEOUT_MS) {
+        shutdown('idle-timeout');
+      }
+    }, 60 * 1000);
+
+    // Comprobacion periodica del proceso padre
+    if (OWNER_PID !== null) {
+      setInterval(checkOwnerAlive, OWNER_CHECK_INTERVAL_MS);
+    }
+  });
+
+  // Cierre limpio ante senales del sistema
+  process.on('SIGTERM', () => shutdown('sigterm'));
+  process.on('SIGINT', () => shutdown('sigint'));
+}
+
+// Solo ejecutar si es el modulo principal (no cuando se importa para tests)
+if (require.main === module) {
+  main();
+}
+
+// ---------------------------------------------------------------------------
+// Exportaciones para tests
+// ---------------------------------------------------------------------------
+
+module.exports = { computeAcceptKey, encodeFrame, decodeFrame, OPCODES };

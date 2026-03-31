@@ -21,13 +21,13 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-    description: 'Plugin de Claude Code: 17 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
+    description: 'Plugin de Claude Code: 18 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
     canonical: 'https://alfred-dev.com/',
     locale: 'es_ES',
     og: {
       type: 'website',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '17 agentes especializados, 60 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
+      description: '18 agentes especializados, 60 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
       url: 'https://alfred-dev.com/',
       siteName: 'Alfred Dev',
       locale: 'es_ES',
@@ -39,7 +39,7 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '17 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción.',
+      description: '18 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
@@ -103,7 +103,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '17 agentes especializados con personalidad propia. 9 de núcleo, 8 opcionales. 6 flujos de ejecución, 25 comandos, memoria persistente, Memory UI local, continuidad operativa, PM operacional y quality gates, de la idea a producción.',
+    subtitle: '18 agentes especializados con personalidad propia. 10 de núcleo, 8 opcionales. Hasta 7 fases, 25 comandos, memoria persistente, Memory UI local, continuidad operativa, PM operacional y quality gates, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -119,6 +119,12 @@ const data: PageData = {
     features: {
       label: 'Ahora en main',
       items: [
+        {
+          title: 'Selina — dirección de estilo visual',
+          description: 'Antes de escribir una línea de CSS, Selina presenta tres propuestas de estilo en el navegador. El usuario elige; el equipo ejecuta con coherencia desde el primer componente.',
+          svgContent: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>',
+          tag: { text: 'Nuevo', href: '#uso' },
+        },
         {
           title: 'Continuidad operativa real',
           description: 'Alfred ya sabe decir qué toca ahora, pausar una sesión, retomarla y mostrar el estado del proyecto sin reabrir medio repo.',
@@ -163,7 +169,7 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   stats: [
-    { number: 17, label: 'Agentes' },
+    { number: 18, label: 'Agentes' },
     { number: 60, label: 'Skills' },
     { number: 6, label: 'Flujos' },
     { number: 25, label: 'Comandos' },
@@ -179,7 +185,7 @@ const data: PageData = {
   coreAgents: {
     header: {
       label: 'El equipo',
-      title: '9 agentes de núcleo',
+      title: '10 agentes de núcleo',
       description: 'Cada agente tiene un rol definido, una personalidad propia y frases características. Trabajan coordinados por Alfred, el mayordomo jefe. Siempre activos en cada flujo.',
     },
     agents: [
@@ -254,6 +260,14 @@ const data: PageData = {
         role: 'Document first. Comenta el código inline (cabeceras, docstrings) y genera la documentación de proyecto: API docs, arquitectura con diagramas Mermaid, guías y changelogs.',
         phrase: '"Ese fichero no tiene cabecera. Nadie sabe para qué sirve."',
         color: 'var(--white)',
+      },
+      {
+        name: 'Selina',
+        model: 'opus',
+        alias: 'La Estilista',
+        role: 'Directora de estilo visual. Antes de que el architect diseñe un solo componente, presenta tres direcciones de estilo en el navegador. El usuario elige; el equipo ejecuta con coherencia. Solo activa en proyectos con interfaz de usuario.',
+        phrase: '"El estilo no es decoración: es comunicación."',
+        color: 'var(--purple)',
       },
     ],
   },
@@ -351,7 +365,7 @@ const data: PageData = {
     introHtml: 'Cuando <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:alfred</code> o un comando explicito deciden que la ruta correcta es un flujo multiagente, Alfred razona sobre que especialistas encajan con el trabajo, te presenta la seleccion de agentes y arranca la fase adecuada. Asi se ve cuando la ruta elegida es <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>:',
     terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'Migrar la base de datos de SQLite a PostgreSQL y rediseñar la interfaz del checkout con tests de accesibilidad',
-    coreTeamText: 'Equipo de nucleo (siempre activos): Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA.',
+    coreTeamText: 'Equipo de nucleo (siempre activos): Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA, Selina.',
     techQuestion: 'Que agentes tecnicos quieres activar?',
     techOptions: [
       { label: 'Data Engineer', desc: 'Migracion de BD detectada (Recomendado)', selected: true },
@@ -366,7 +380,7 @@ const data: PageData = {
       { label: 'Copywriter', desc: 'Textos publicos', selected: false },
       { label: 'i18n Specialist', desc: 'Internacionalizacion', selected: false },
     ],
-    confirmText: 'Equipo confirmado: 9 de nucleo + 3 opcionales',
+    confirmText: 'Equipo confirmado: 10 de nucleo + 3 opcionales',
     productQuestion: 'Quien es el usuario principal de esta funcionalidad?',
     productOptions: [
       { label: 'Administrador de tienda', desc: '', selected: true },
@@ -390,8 +404,8 @@ const data: PageData = {
       {
         command: '/alfred-dev:feature',
         subtitle: 'Ciclo completo o parcial',
-        description: '6 fases: producto, arquitectura, desarrollo TDD, calidad + seguridad, documentación, entrega. Puedes arrancar desde cualquier fase.',
-        stages: ['Producto', 'Arquitectura', 'Desarrollo', 'Calidad + Seguridad', 'Documentación', 'Entrega'],
+        description: 'Hasta 7 fases: producto, estilo visual (Selina, condicional), arquitectura, desarrollo TDD, calidad + seguridad, documentación, entrega. Puedes arrancar desde cualquier fase.',
+        stages: ['Producto', 'Estilo visual', 'Arquitectura', 'Desarrollo', 'Calidad + Seguridad', 'Documentación', 'Entrega'],
       },
       {
         command: '/alfred-dev:quick',
@@ -434,7 +448,7 @@ const data: PageData = {
     header: {
       label: 'Quality gates',
       title: 'Cobertura de calidad en todo el ciclo',
-      description: 'Cada fase del desarrollo tiene sus propias quality gates. Los 9 agentes de núcleo cubren desde la validación del producto hasta la entrega, y los opcionales amplían el control a dominios especializados. Si una gate no se supera, el flujo se detiene.',
+      description: 'Cada fase del desarrollo tiene sus propias quality gates. Los 10 agentes de núcleo cubren desde la validación del producto hasta la entrega, y los opcionales amplían el control a dominios especializados. Si una gate no se supera, el flujo se detiene.',
     },
     coreLabel: 'Núcleo -- de la idea a producción',
     core: [
@@ -688,7 +702,7 @@ const data: PageData = {
       },
       {
         command: '/alfred-dev:feature',
-        description: 'Ciclo completo de 6 fases o desde la que indiques. Alfred pregunta y se adapta: "desde desarrollo", "solo documentación", "ciclo completo".',
+        description: 'Ciclo completo de hasta 7 fases o desde la que indiques. Alfred pregunta y se adapta: "desde desarrollo", "solo documentación", "ciclo completo". La fase visual (Selina) se activa automáticamente en proyectos con UI.',
       },
       {
         command: '/alfred-dev:quick',
@@ -1062,6 +1076,26 @@ const data: PageData = {
         ],
       },
       {
+        category: 'Estilo visual',
+        color: 'var(--purple)',
+        background: 'rgba(160,126,232,0.08)',
+        title: 'Decidir la dirección de estilo antes de construir',
+        command: '/alfred-dev:feature nueva app de finanzas personales',
+        wide: true,
+        image: {
+          src: '/screenshots/selina-style-direction.svg',
+          alt: 'Selina presentando tres propuestas de estilo visual en el navegador: minimalista, data-driven y dashboard moderno',
+          caption: 'Selina abre el navegador con tres direcciones de estilo. El usuario elige; el artefacto docs/style-direction.md cierra la gate antes de que el architect diseñe un solo componente.',
+        },
+        steps: [
+          'Selina lee el PRD aprobado, detecta el stack (framework, componentes, contexto del producto) y confirma el público objetivo',
+          'Levanta el servidor visual local y genera tres propuestas HTML en pantalla completa: cada una con tipografía, paleta, densidad y personalidad diferente',
+          'El usuario elige en el navegador; Selina registra la elección y genera docs/style-direction.md con la dirección completa',
+          'Architect, senior-dev, ux-reviewer, copywriter y seo-specialist leen ese artefacto como referencia de estilo para el resto del flujo',
+          'La fase se salta automáticamente en proyectos sin interfaz de usuario',
+        ],
+      },
+      {
         category: 'Calidad',
         color: 'var(--red)',
         background: 'rgba(229,86,79,0.08)',
@@ -1179,7 +1213,7 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   memory: {
-    sectionLabel: 'Desde v0.2.0 · Mejorada en v0.2.3 y v0.4.4',
+    sectionLabel: 'Memoria persistente por proyecto',
     title: 'Memoria persistente',
     descriptionHtml: 'Alfred Dev recuerda decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local dentro de cada proyecto, sin dependencias externas ni servicios remotos. Desde v0.2.3: etiquetas, estado y relaciones entre decisiones, auto-captura de commits, filtros avanzados y export/import.',
     traceability: {
@@ -1479,7 +1513,7 @@ personalidad:
       {
         svgContent: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
         question: 'Los agentes consumen tokens adicionales?',
-        answerHtml: 'Sí, como cualquier interacción con Claude. Los agentes son instrucciones de sistema que guían las respuestas, así que consumen contexto proporcional a su complejidad. En la práctica, el coste adicional es moderado: los system prompts de los agentes están optimizados para ocupar el mínimo posible sin perder precisión. Los agentes opcionales solo se cargan si los activas, así que el contexto base es el de los 9 de núcleo.',
+        answerHtml: 'Sí, como cualquier interacción con Claude. Los agentes son instrucciones de sistema que guían las respuestas, así que consumen contexto proporcional a su complejidad. En la práctica, el coste adicional es moderado: los system prompts de los agentes están optimizados para ocupar el mínimo posible sin perder precisión. Los agentes opcionales solo se cargan si los activas, así que el contexto base es el de los 10 de núcleo.',
       },
       {
         svgContent: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
@@ -1504,6 +1538,26 @@ personalidad:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.5.0',
+      date: '2026-03-31',
+      added: [
+        '<strong>Selina — La Estilista</strong> (10.º agente de núcleo): fase 1b del flujo <code>feature</code>. Presenta tres direcciones de estilo visual en el navegador antes de que el architect diseñe componentes. Solo activa en proyectos con interfaz de usuario.',
+        '<strong>Servidor visual local</strong>: servidor HTTP + WebSocket de dependencias cero (<code>visual/scripts/server.cjs</code>) para renderizar opciones de estilo en tres columnas con hot-reload y cierre limpio.',
+        '<strong>Skill de estilo visual</strong> (<code>skills/estilo/style-direction/SKILL.md</code>): guía para arrancar el servidor, escribir propuestas HTML, leer la elección y generar <code>docs/style-direction.md</code>.',
+        '<strong>Fase condicional</strong>: nueva condición <code>tiene_frontend</code> en el orquestador. La fase se salta automáticamente en proyectos sin UI.',
+      ],
+      changed: [
+        '5 agentes actualizados para leer <code>docs/style-direction.md</code> como referencia de estilo: architect, senior-dev, ux-reviewer, copywriter, seo-specialist.',
+        'README actualizado: 10 agentes de núcleo, hasta 7 fases, tabla de agentes con Selina y ejemplo de flujo con fase 1b.',
+      ],
+      fixed: [
+        'Imports de módulos nativos en <code>server.cjs</code>: prefijo <code>node:</code> obligatorio (<code>node:http</code>, <code>node:crypto</code>, <code>node:fs</code>, <code>node:path</code>).',
+        '<code>Number.parseInt</code> en lugar de <code>parseInt</code> en <code>server.cjs</code> (regla de linting SonarQube).',
+        'Complejidad cognitiva en <code>config_loader.py</code>: <code>_count_source_files</code> (38 → ~6) y <code>suggest_optional_agents</code> (18 → ~3) resueltas por extracción de funciones auxiliares.',
+        'Skill de SonarQube registrado en <code>plugin.json</code>: el fichero existía pero no estaba en el manifiesto del plugin.',
+      ],
+    },
     {
       version: '0.4.7',
       date: '2026-03-31',
@@ -1860,11 +1914,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.7',
+    version: 'v0.5.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 17 agentes. 60 skills. 13 hooks. 25 comandos. Memory UI local. Memoria persistente. Continuidad operativa. PM operacional. De la idea a producción.',
+    tagline: 'Plugin de Claude Code. 18 agentes. 60 skills. 13 hooks. 25 comandos. Estilo visual con Selina. Memory UI local. Memoria persistente. Continuidad operativa. PM operacional. De la idea a producción.',
     slogan: 'Ingeniería de software automatizada para Claude Code.',
     disclaimer: {
       linkText: 'Descargo de responsabilidad',

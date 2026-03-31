@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Selina — La Estilista</title>
+  <style>
+    /* =====================================================================
+       Variables de tema — claro y oscuro via prefers-color-scheme
+       ===================================================================== */
+    :root {
+      --accent: #9B59B6;
+      --accent-soft: rgba(155, 89, 182, 0.12);
+      --accent-hover: rgba(155, 89, 182, 0.18);
+      --bg: #fafafa;
+      --bg-card: #ffffff;
+      --bg-header: #ffffff;
+      --text: #1a1a1a;
+      --text-secondary: #555;
+      --text-muted: #888;
+      --border: #e0e0e0;
+      --border-selected: var(--accent);
+      --shadow: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,0.10);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --accent: #BB86FC;
+        --accent-soft: rgba(187, 134, 252, 0.12);
+        --accent-hover: rgba(187, 134, 252, 0.18);
+        --bg: #121212;
+        --bg-card: #1e1e1e;
+        --bg-header: #1a1a1a;
+        --text: #e0e0e0;
+        --text-secondary: #aaa;
+        --text-muted: #777;
+        --border: #333;
+        --border-selected: var(--accent);
+        --shadow: 0 2px 8px rgba(0,0,0,0.3);
+        --shadow-hover: 0 4px 16px rgba(0,0,0,0.4);
+      }
+    }
+
+    /* =====================================================================
+       Reset y base
+       ===================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* =====================================================================
+       Cabecera
+       ===================================================================== */
+    .alfred-header {
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .alfred-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .alfred-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .alfred-phase {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 0.15rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+
+    .alfred-connection {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .alfred-connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #27ae60;
+      transition: background 0.3s;
+    }
+
+    /* =====================================================================
+       Contenido principal
+       ===================================================================== */
+    .alfred-body {
+      flex: 1;
+      padding: 2rem 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* =====================================================================
+       Barra indicadora inferior
+       ===================================================================== */
+    .alfred-indicator {
+      background: var(--bg-header);
+      border-top: 1px solid var(--border);
+      padding: 0.6rem 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      position: sticky;
+      bottom: 0;
+    }
+
+    /* =====================================================================
+       Mensaje de espera
+       ===================================================================== */
+    .waiting-message {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      padding: 4rem 1rem;
+    }
+
+    /* =====================================================================
+       Rejilla de opciones — layout de tres columnas
+       ===================================================================== */
+    .style-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .style-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* =====================================================================
+       Opcion de estilo — columna seleccionable
+       ===================================================================== */
+    .style-option {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      position: relative;
+      box-shadow: var(--shadow);
+    }
+
+    .style-option:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .style-option.selected {
+      border-color: var(--border-selected);
+      box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-hover);
+    }
+
+    /* =====================================================================
+       Insignia de letra (A, B, C)
+       ===================================================================== */
+    .style-letter {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      z-index: 2;
+    }
+
+    /* =====================================================================
+       Zona de previsualizacion
+       ===================================================================== */
+    .style-preview {
+      min-height: 280px;
+      padding: 1.25rem;
+      background: var(--accent-soft);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* =====================================================================
+       Zona de metadatos (debajo de la previsualizacion)
+       ===================================================================== */
+    .style-meta {
+      padding: 1rem 1.25rem;
+    }
+
+    .style-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: var(--text);
+    }
+
+    .style-description {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 0.75rem;
+    }
+
+    /* =====================================================================
+       Paleta de colores
+       ===================================================================== */
+    .palette {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.6rem;
+    }
+
+    .palette-dot {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .hex {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    /* =====================================================================
+       Etiquetas de tipografia y tono
+       ===================================================================== */
+    .style-typo,
+    .style-tone {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .style-typo strong,
+    .style-tone strong {
+      color: var(--text-secondary);
+    }
+
+    /* =====================================================================
+       Elementos mock para previsualizacion
+       ===================================================================== */
+    .mock-nav {
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: rgba(128, 128, 128, 0.15);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      padding: 0 0.75rem;
+      gap: 0.5rem;
+    }
+
+    .mock-nav span {
+      display: block;
+      width: 32px;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(128, 128, 128, 0.25);
+    }
+
+    .mock-hero {
+      border-radius: var(--radius-sm);
+      background: rgba(128, 128, 128, 0.10);
+      padding: 1.5rem 1rem;
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+
+    .mock-hero h4 {
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+
+    .mock-hero p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .mock-button {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 0.5rem;
+    }
+
+    .mock-card {
+      border-radius: var(--radius-sm);
+      background: rgba(128, 128, 128, 0.08);
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .mock-card h5 {
+      font-size: 0.8rem;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+
+    .mock-card p {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* =====================================================================
+       Clases de compatibilidad con el patron de Superpowers
+       ===================================================================== */
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .options {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .option {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow);
+    }
+
+    .option:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .option.selected {
+      border-color: var(--border-selected);
+      box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-hover);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow);
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-hover);
+    }
+  </style>
+</head>
+<body>
+  <!-- Cabecera -->
+  <header class="alfred-header">
+    <div class="alfred-header-left">
+      <span class="alfred-title">Selina — La Estilista</span>
+      <span class="alfred-phase">Propuesta de estilo</span>
+    </div>
+    <div class="alfred-connection">
+      <span id="alfred-connection-dot" class="alfred-connection-dot"></span>
+      <span>Conectado</span>
+    </div>
+  </header>
+
+  <!-- Contenido principal -->
+  <main class="alfred-body">
+    <div id="alfred-content"><!-- CONTENT --></div>
+  </main>
+
+  <!-- Barra indicadora -->
+  <footer class="alfred-indicator" id="alfred-indicator">
+    Haz clic en la opcion que prefieras — vuelve al terminal para continuar
+  </footer>
+</body>
+</html>

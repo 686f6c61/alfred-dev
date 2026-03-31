@@ -80,6 +80,13 @@ export interface HeroFeature {
   description: string;
   /** Contenido SVG del icono (paths internos, sin el tag <svg> envolvente). */
   svgContent: string;
+  /** Etiqueta opcional con enlace (ej. badge "Nuevo" que apunta a una seccion). */
+  tag?: {
+    /** Texto del badge (ej. "Nuevo"). */
+    text: string;
+    /** Destino del enlace (ej. "#uso"). */
+    href: string;
+  };
 }
 
 /** Seccion hero de la landing. */

@@ -72,7 +72,18 @@ const { hero, copyHint, copiedHint } = Astro.props;
               >
                 <Fragment set:html={feature.svgContent} />
               </svg>
-              <span class="hero-feature-title">{feature.title}</span>
+              <span class="hero-feature-title">
+                {feature.title}
+                {feature.tag && (
+                  <a
+                    class="hero-feature-tag"
+                    href={feature.tag.href}
+                    aria-label={`${feature.tag.text}: ver ${feature.title}`}
+                  >
+                    {feature.tag.text}
+                  </a>
+                )}
+              </span>
               <span class="hero-feature-desc">{feature.description}</span>
             </div>
           ))}
@@ -283,11 +294,34 @@ const { hero, copyHint, copiedHint } = Astro.props;
   }
 
   .hero-feature-title {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 13px;
     font-weight: 600;
     color: var(--text-bright);
     margin-bottom: 6px;
+  }
+
+  .hero-feature-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--purple);
+    border: 1px solid var(--purple);
+    border-radius: 3px;
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .hero-feature-tag:hover {
+    opacity: 1;
+    background: rgba(160, 126, 232, 0.1);
   }
 
   .hero-feature-desc {

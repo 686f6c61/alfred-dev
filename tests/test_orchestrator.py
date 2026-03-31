@@ -20,8 +20,8 @@ from core.orchestrator import (
 
 
 class TestFlows(unittest.TestCase):
-    def test_feature_flow_has_6_phases(self):
-        self.assertEqual(len(FLOWS["feature"]["fases"]), 6)
+    def test_feature_flow_has_7_phases(self):
+        self.assertEqual(len(FLOWS["feature"]["fases"]), 7)
 
     def test_fix_flow_has_3_phases(self):
         self.assertEqual(len(FLOWS["fix"]["fases"]), 3)
@@ -35,7 +35,7 @@ class TestFlows(unittest.TestCase):
 
     def test_architecture_gate_is_usuario_seguridad(self):
         """La fase de arquitectura debe tener gate usuario+seguridad."""
-        fase_arq = FLOWS["feature"]["fases"][1]
+        fase_arq = FLOWS["feature"]["fases"][2]
         self.assertEqual(fase_arq["nombre"], "arquitectura")
         self.assertEqual(fase_arq["gate_tipo"], "usuario+seguridad")
 
@@ -82,7 +82,8 @@ class TestGates(unittest.TestCase):
         """Las gates automáticas bloquean si los tests no pasan."""
         session = create_session("feature", "Test")
         # Avanzar a fase de desarrollo (gate automática)
-        session = advance_phase(session)  # producto -> arquitectura
+        session = advance_phase(session)  # producto -> estilo_visual
+        session = advance_phase(session)  # estilo_visual -> arquitectura
         session = advance_phase(session)  # arquitectura -> desarrollo
         result = check_gate(session, resultado="aprobado", tests_ok=False)
         self.assertFalse(result["passed"])
@@ -91,17 +92,19 @@ class TestGates(unittest.TestCase):
     def test_automatic_gate_passes_when_tests_ok(self):
         """Las gates automáticas dejan pasar si tests y resultado OK."""
         session = create_session("feature", "Test")
-        session = advance_phase(session)  # producto
-        session = advance_phase(session)  # arquitectura
+        session = advance_phase(session)  # producto -> estilo_visual
+        session = advance_phase(session)  # estilo_visual -> arquitectura
+        session = advance_phase(session)  # arquitectura -> desarrollo
         result = check_gate(session, resultado="aprobado", tests_ok=True)
         self.assertTrue(result["passed"])
 
     def test_security_gate_fails_when_security_fails(self):
         """Las gates con seguridad bloquean si security_ok es False."""
         session = create_session("feature", "Test")
-        session = advance_phase(session)  # producto
-        session = advance_phase(session)  # arquitectura
-        session = advance_phase(session)  # desarrollo
+        session = advance_phase(session)  # producto -> estilo_visual
+        session = advance_phase(session)  # estilo_visual -> arquitectura
+        session = advance_phase(session)  # arquitectura -> desarrollo
+        session = advance_phase(session)  # desarrollo -> calidad
         # Fase de calidad: gate automático+seguridad
         result = check_gate(session, resultado="aprobado", security_ok=False)
         self.assertFalse(result["passed"])
@@ -110,8 +113,9 @@ class TestGates(unittest.TestCase):
     def test_advance_phase_propagates_tests_ok(self):
         """advance_phase propaga tests_ok a check_gate."""
         session = create_session("feature", "Test")
-        session = advance_phase(session)  # producto
-        session = advance_phase(session)  # arquitectura
+        session = advance_phase(session)  # producto -> estilo_visual
+        session = advance_phase(session)  # estilo_visual -> arquitectura
+        session = advance_phase(session)  # arquitectura -> desarrollo
         # Intentar avanzar desarrollo con tests rojos
         with self.assertRaises(RuntimeError):
             advance_phase(session, resultado="aprobado", tests_ok=False)
@@ -121,7 +125,7 @@ class TestAdvancePhase(unittest.TestCase):
     def test_advance_moves_to_next_phase(self):
         session = create_session("feature", "Test")
         session = advance_phase(session, resultado="aprobado", artefactos=[])
-        self.assertEqual(session["fase_actual"], "arquitectura")
+        self.assertEqual(session["fase_actual"], "estilo_visual")
         self.assertEqual(session["fase_numero"], 1)
         self.assertEqual(len(session["fases_completadas"]), 1)
 
@@ -342,8 +346,9 @@ class TestAutopilot(unittest.TestCase):
     def test_autopilot_evaluates_automatic_gates(self):
         """En autopilot, las gates automaticas se evaluan normalmente."""
         session = create_session("feature", "Test autopilot")
-        # Avanzar a fase 2 = desarrollo, gate_tipo = automatico
-        session = advance_phase(session, resultado="aprobado")  # producto -> arquitectura
+        # Avanzar a fase 3 = desarrollo, gate_tipo = automatico
+        session = advance_phase(session, resultado="aprobado")  # producto -> estilo_visual
+        session = advance_phase(session, resultado="aprobado")  # estilo_visual -> arquitectura
         session = advance_phase(session, resultado="aprobado")  # arquitectura -> desarrollo
         result = is_autopilot_gate_passable(session, tests_ok=False)
         self.assertFalse(result["passed"])
@@ -351,10 +356,11 @@ class TestAutopilot(unittest.TestCase):
     def test_autopilot_evaluates_security_gates(self):
         """En autopilot, las gates de seguridad se evaluan normalmente."""
         session = create_session("feature", "Test autopilot")
-        session = advance_phase(session, resultado="aprobado")  # producto -> arquitectura
+        session = advance_phase(session, resultado="aprobado")  # producto -> estilo_visual
+        session = advance_phase(session, resultado="aprobado")  # estilo_visual -> arquitectura
         session = advance_phase(session, resultado="aprobado")  # arquitectura -> desarrollo
         session = advance_phase(session, resultado="aprobado", tests_ok=True)  # desarrollo -> calidad
-        # Fase 3 = calidad, gate_tipo = automatico+seguridad
+        # Fase 4 = calidad, gate_tipo = automatico+seguridad
         result = is_autopilot_gate_passable(session, security_ok=False)
         self.assertFalse(result["passed"])
 
@@ -376,7 +382,8 @@ class TestAutopilot(unittest.TestCase):
         """En autopilot, GATE_USUARIO_SEGURIDAD aprueba la parte de usuario
         pero evalua la de seguridad. Test de documentacion del comportamiento."""
         session = create_session("feature", "Test autopilot")
-        session = advance_phase(session, resultado="aprobado")  # producto -> arquitectura
+        session = advance_phase(session, resultado="aprobado")  # producto -> estilo_visual
+        session = advance_phase(session, resultado="aprobado")  # estilo_visual -> arquitectura
         # Ahora en fase arquitectura con gate GATE_USUARIO_SEGURIDAD
         # Con seguridad OK: debe pasar
         result = is_autopilot_gate_passable(session, security_ok=True)

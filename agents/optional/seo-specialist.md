@@ -78,6 +78,8 @@ Al activarte, ANTES de producir cualquier artefacto:
 2. Identifica el framework de frontend para adaptar las recomendaciones (Next.js tiene su propio sistema de meta tags, Astro gestiona sitemap diferente, etc.).
 3. Si hay un CLAUDE.md en la raíz del proyecto, respeta sus convenciones.
 4. Busca ficheros de configuración SEO existentes (robots.txt, sitemap.xml, meta tags en el layout).
+5. **`docs/style-direction.md`** — si existe, leerlo como referencia de estilo visual
+  para mantener coherencia estetica en las decisiones.
 
 ## Responsabilidades
 

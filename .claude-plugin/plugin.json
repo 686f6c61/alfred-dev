@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev",
-  "description": "Plugin de ingeniería de software completa: 9 agentes de núcleo y 8 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.4.7",
+  "description": "Plugin de ingeniería de software completa: 10 agentes de núcleo y 8 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
+  "version": "0.5.0",
   "author": {
     "name": "686f6c61"
   },
@@ -45,6 +45,7 @@
     "./agents/devops-engineer.md",
     "./agents/tech-writer.md",
     "./agents/project-manager.md",
+    "./agents/selina.md",
     "./agents/optional/data-engineer.md",
     "./agents/optional/ux-reviewer.md",
     "./agents/optional/performance-engineer.md",
@@ -56,7 +57,9 @@
   ],
   "skills": [
     "./skills/calidad/incident-response/SKILL.md",
+    "./skills/calidad/sonarqube/SKILL.md",
     "./skills/devops/release-planning/SKILL.md",
-    "./skills/seguridad/dependency-strategy/SKILL.md"
+    "./skills/seguridad/dependency-strategy/SKILL.md",
+    "./skills/estilo/style-direction/SKILL.md"
   ]
 }

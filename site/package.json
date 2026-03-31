@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev-site",
   "type": "module",
-  "version": "0.4.7",
+  "version": "0.5.0",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
