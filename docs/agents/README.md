@@ -1,6 +1,6 @@
 # El equipo
 
-Alfred Dev no es un agente monolítico que intenta saberlo todo y hacerlo todo. Es un equipo de **17 especialistas**, cada uno con un rol delimitado, herramientas restringidas, personalidad propia y quality gates infranqueables. Esta decisión de diseño responde a un principio fundamental: un modelo de IA generalista rinde mejor cuando se le asigna un rol concreto con instrucciones focalizadas que cuando se le pide que sea todo a la vez.
+Alfred Dev no es un agente monolítico que intenta saberlo todo y hacerlo todo. Es un equipo de **19 especialistas**, cada uno con un rol delimitado, herramientas restringidas, personalidad propia y quality gates infranqueables. Esta decisión de diseño responde a un principio fundamental: un modelo de IA generalista rinde mejor cuando se le asigna un rol concreto con instrucciones focalizadas que cuando se le pide que sea todo a la vez.
 
 Cada agente se invoca como un subproceso de Claude Code mediante la herramienta **Task**. Esto garantiza aislamiento de contexto: el agente arranca con su propio system prompt, sin heredar sesgos ni ruido de conversaciones anteriores. El resultado es previsible y reproducible: el mismo agente, ante la misma entrada, produce resultados consistentes porque no arrastra el contexto acumulado de la sesión.
 
@@ -51,11 +51,11 @@ El diagrama muestra algo importante: la seguridad no se comprueba al final, sino
 
 ## Tabla resumen de agentes
 
-Los 18 agentes se dividen en dos categorías: nucleo y opcionales. La tabla siguiente ofrece una vision rápida de cada uno con sus caracteristicas principales.
+Los 19 agentes se dividen en dos categorías: nucleo y opcionales. La tabla siguiente ofrece una vision rápida de cada uno con sus caracteristicas principales.
 
 ### Agentes de nucleo
 
-Estos nueve agentes estan siempre activos y forman la espina dorsal del sistema. No se pueden desactivar.
+Estos diez agentes estan siempre activos y forman la espina dorsal del sistema. No se pueden desactivar.
 
 | Agente | Alias | Modelo | Tipo | Color | Fase principal |
 |--------|-------|--------|------|-------|----------------|
@@ -68,10 +68,11 @@ Estos nueve agentes estan siempre activos y forman la espina dorsal del sistema.
 | `devops-engineer` | El Fontanero | sonnet | nucleo | naranja | entrega |
 | `tech-writer` | El Traductor | sonnet | nucleo | blanco | documentación |
 | `project-manager` | SonIA | sonnet | nucleo | magenta | gestion de proyecto |
+| `selina` | Selina — La Estilista | opus | nucleo | morado | estilo visual (fase 1b) |
 
 ### Agentes opcionales
 
-Estos ocho agentes cubren necesidades específicas que no todos los proyectos tienen. Se activan por configuración.
+Estos nueve agentes cubren necesidades específicas que no todos los proyectos tienen. Se activan por configuración.
 
 | Agente | Alias | Modelo | Tipo | Color | Fase principal |
 |--------|-------|--------|------|-------|----------------|
@@ -83,6 +84,7 @@ Estos ocho agentes cubren necesidades específicas que no todos los proyectos ti
 | `copywriter` | El Pluma | sonnet | opcional | magenta | contenido |
 | `librarian` | El Bibliotecario | sonnet | opcional | ambar | memoria |
 | `i18n-specialist` | La Interprete | sonnet | opcional | cyan | internacionalizacion |
+| `lucius` | Lucius — El Director Técnico | opus | opcional | ambar | auditoría técnica externa |
 
 ---
 
@@ -92,7 +94,7 @@ La distinción entre agentes de nucleo y opcionales no es arbitraria. Responde a
 
 Los **nueve agentes de nucleo** estan siempre activos porque cubren las fases universales del desarrollo: definir que se construye (product-owner), decidir como se construye (architect), construirlo (senior-dev), verificar que funciona (qa-engineer), documentarlo (tech-writer), desplegarlo (devops-engineer), protegerlo (security-officer), gestionar el proyecto y la trazabilidad (project-manager) y orquestarlo todo (alfred). Estos agentes se invocan desde los commands del plugin (`feature.md`, `fix.md`, `spike.md`, etc.) y **no aparecen en la sección `agents` del fichero `plugin.json`**. Son invisibles para Claude Code como entidades registradas: solo existen como ficheros `.md` que los commands referencian internamente cuando llaman a la herramienta Task. Esta invisibilidad es intencionada, porque el usuario no necesita invocarlos directamente; los flujos ya saben cuando y como utilizarlos.
 
-Los **ocho agentes opcionales** cubren necesidades que dependen del tipo de proyecto. No todos los repositorios tienen base de datos (data-engineer), interfaz de usuario (ux-reviewer), landing publica que posicionar (seo-specialist), textos comerciales que redactar (copywriter) o multiples idiomas que gestionar (i18n-specialist). Forzar a todos los proyectos a cargar estos agentes seria innecesario y añadirá ruido. Por eso, los opcionales **si se registran en `plugin.json`** (en la sección `agents`, con su modelo, descripción y color) y se activan o desactivan mediante la configuración local del proyecto (`.local.md`). El usuario puede invocarlos directamente o Alfred los integra en los flujos cuando estan habilitados.
+Los **nueve agentes opcionales** cubren necesidades que dependen del tipo de proyecto. No todos los repositorios tienen base de datos (data-engineer), interfaz de usuario (ux-reviewer), landing publica que posicionar (seo-specialist), textos comerciales que redactar (copywriter), multiples idiomas que gestionar (i18n-specialist) o necesitan una auditoría técnica externa con una perspectiva independiente (lucius). Forzar a todos los proyectos a cargar estos agentes seria innecesario y añadirá ruido. Por eso, los opcionales **si se registran en `plugin.json`** (en la sección `agents`, con su modelo, descripción y color) y se activan o desactivan mediante la configuración local del proyecto (`.local.md`). El usuario puede invocarlos directamente o Alfred los integra en los flujos cuando estan habilitados.
 
 En resumen: los de nucleo siempre estan porque son imprescindibles; los opcionales se activan bajo demanda porque atienden necesidades específicas.
 
@@ -122,9 +124,9 @@ El flujo, simplificado, funciona así:
 
 ## Distribución de modelos
 
-De los 18 agentes, **5 usan opus** y **12 usan sonnet**. Esta distribución no es aleatoria: refleja la naturaleza de las tareas que realiza cada agente.
+De los 19 agentes, **6 usan opus** y **13 usan sonnet**. Esta distribución no es aleatoria: refleja la naturaleza de las tareas que realiza cada agente.
 
-Los cinco agentes que usan **opus** son los que toman decisiones críticas:
+Los seis agentes que usan **opus** son los que toman decisiones críticas:
 
 | Agente | Razon para opus |
 |--------|-----------------|
@@ -133,8 +135,9 @@ Los cinco agentes que usan **opus** son los que toman decisiones críticas:
 | `architect` | Disena la arquitectura; las decisiones de diseño son dificiles de revertir. |
 | `senior-dev` | Escribe código de produccion; la calidad del código es directamente proporcional a la capacidad del modelo. |
 | `security-officer` | Evalua amenazas y vulnerabilidades; un falso negativo aquí tiene consecuencias graves. |
+| `lucius` | Coordina la auditoría técnica externa invocando Codex CLI; necesita razonamiento profundo para sintetizar el informe y decidir qué prescripciones son accionables. |
 
-Los diez agentes restantes usan **sonnet**, que es mas rápido y eficiente en coste. Sus tareas, aunque importantes, son de naturaleza mas estructurada: ejecutar tests y reportar resultados (qa-engineer), generar documentación a partir de artefactos existentes (tech-writer), gestionar pipelines (devops-engineer) o realizar revisiones acotadas a un ámbito concreto (ux-reviewer, seo-specialist, etc.). Sonnet resuelve estas tareas con solvencia y permite que los flujos avancen mas rápido sin sacrificar calidad donde no es critica.
+Los trece agentes restantes usan **sonnet**, que es mas rápido y eficiente en coste. Sus tareas, aunque importantes, son de naturaleza mas estructurada: ejecutar tests y reportar resultados (qa-engineer), generar documentación a partir de artefactos existentes (tech-writer), gestionar pipelines (devops-engineer) o realizar revisiones acotadas a un ámbito concreto (ux-reviewer, seo-specialist, etc.). Sonnet resuelve estas tareas con solvencia y permite que los flujos avancen mas rápido sin sacrificar calidad donde no es critica.
 
 ---
 
@@ -173,3 +176,4 @@ Cada agente tiene una ficha individual con su system prompt completo, herramient
 | `copywriter` | [copywriter.md](copywriter.md) | Redacta textos comerciales, CTAs y contenido con tono coherente y ortografia impecable. |
 | `librarian` | [librarian.md](librarian.md) | Gestiona la memoria persistente del proyecto: decisiones, historial y consultas. |
 | `i18n-specialist` | [i18n-specialist.md](../agents/optional/i18n-specialist.md) | Audita claves i18n, detecta cadenas hardcodeadas y valida formatos por locale. |
+| `lucius` | [lucius.md](lucius.md) | Auditoría técnica externa vía Codex CLI; diagnóstico y prescripción por ítem. |

@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-18 agentes especializados con personalidad propia (10 de nucleo + 8 opcionales), 61 skills en 13 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+19 agentes especializados con personalidad propia (10 de nucleo + 9 opcionales), 61 skills en 13 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -68,7 +68,19 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de hasta 7 fases (producto, estilo visual*, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. La fase de estilo visual se activa solo en proyectos con interfaz de usuario. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.5.0
+## Novedades en v0.6.0
+
+La v0.6.0 incorpora **Lucius — El Director Técnico**, nuevo agente opcional que actúa como segunda opinión técnica externa. Lucius invoca el Codex CLI de OpenAI con GPT-5.4 para auditar el código del proyecto desde fuera, sin tocar nada, y devuelve un informe estructurado con diagnóstico y prescripción por ítem. El usuario decide qué implementar y con quién.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Lucius (9.º agente opcional)** | Director técnico externo. Invoca `codex review` con GPT-5.4. Diagnóstico + prescripción por ítem en cuatro secciones: Crítico, Relevante, Oportunidades y Lo que está bien. |
+| **Comando `/alfred-dev:lucius`** | Punto de entrada con scope opcional: `all`, `security`, `tests`, `architecture` o `performance`. Sin scope, audita todo. |
+| **`sandbox: read-only` nativo** | `codex review` activa lectura estricta sin posibilidad de modificar ficheros. Sin necesidad de configuración adicional. |
+| **Preflight de prerequisitos** | Lucius verifica que Codex CLI está instalado y autenticado antes de ejecutar. Instrucciones claras si falta algo. |
+| **19 agentes, 26 comandos** | Plugin, marketplace, instaladores, paquetes, README, changelog, docs y landing alineados a v0.6.0. |
+
+### Novedades de v0.5.0
 
 La v0.5.0 añade **Selina — La Estilista**, décimo agente de núcleo. Selina ocupa una nueva fase 1b (condicional) en el flujo `feature`: antes de que el architect diseñe componentes, presenta tres direcciones de estilo visual en el navegador para que el usuario elija. La elección queda en `docs/style-direction.md` y cinco agentes (architect, senior-dev, ux-reviewer, copywriter, seo-specialist) la leen como referencia. La fase se salta automáticamente en proyectos sin interfaz de usuario.
 
@@ -191,6 +203,7 @@ Toda la interfaz se controla desde la línea de comandos de Claude Code con el p
 | `/alfred-dev:audit` | Auditoria completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentacion. |
 | `/alfred-dev:config` | Configurar autonomia, stack, compliance, personalidad, agentes opcionales y memoria persistente. |
 | `/alfred-dev:status` | Fase actual, fases completadas con duracion, gate pendiente y agente activo. |
+| `/alfred-dev:lucius [dir] [--scope X]` | Segunda opinión técnica vía Codex CLI. Audita el proyecto con GPT-5.4 y devuelve diagnóstico + prescripción. Requiere suscripción OpenAI. |
 | `/alfred-dev:update` | Comprobar si hay version nueva y actualizar el plugin. |
 | `/alfred-dev:help` | Referencia completa de comandos, agentes y flujos. |
 
@@ -234,7 +247,7 @@ Los agentes con modelo `opus` realizan tareas que requieren razonamiento complej
 
 Los agentes con modelo `sonnet` cubren tareas estructuradas con patrones mas predecibles (QA, infra, documentacion).
 
-### Agentes opcionales (8)
+### Agentes opcionales (9)
 
 Agentes predefinidos que el usuario activa segun las necesidades de su proyecto con `/alfred-dev:config`. Se sugieren automaticamente en funcion del stack detectado. Desde v0.3.6, Alfred tambien propone agentes opcionales de forma dinamica al arrancar cada flujo, analizando la descripcion de la tarea con keywords contextuales y combinandolas con las senales del proyecto. La seleccion dinamica es efimera (solo para esa sesion) y no modifica la configuracion persistente. Mas detalles en la [documentacion de configuracion](docs/configuration.md#composicion-dinamica-de-equipo).
 
@@ -248,6 +261,7 @@ Agentes predefinidos que el usuario activa segun las necesidades de su proyecto 
 | **Copywriter** | Copywriter | Proyectos con textos publicos: landing, emails, onboarding |
 | **El Bibliotecario** | Consultas historicas | Proyectos con memoria persistente activa |
 | **La Interprete** | Especialista i18n | Proyectos multilingues: claves, formatos, cadenas hardcodeadas |
+| **Lucius** | Director técnico externo | Segunda opinión vía Codex CLI. Requiere suscripción OpenAI activa |
 
 ### Skills (60)
 
@@ -383,9 +397,9 @@ alfred-dev/
     plugin.json           # Manifiesto del plugin
     marketplace.json      # Metadatos para el marketplace
     mcp.json              # Servidor MCP de memoria persistente
-  agents/                 # 9 agentes de nucleo
-  agents/optional/        # 8 agentes opcionales
-  commands/               # 25 comandos /alfred-dev
+  agents/                 # 10 agentes de nucleo
+  agents/optional/        # 9 agentes opcionales
+  commands/               # 26 comandos /alfred-dev
   skills/                 # 60 skills en 13 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos

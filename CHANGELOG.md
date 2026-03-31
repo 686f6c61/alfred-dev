@@ -7,6 +7,25 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.0] - 2026-03-31
+
+### Added
+
+- **Lucius — El Director Técnico**: nuevo agente opcional que actúa como segunda opinión técnica externa. Invoca el Codex CLI de OpenAI (`codex review`) con GPT-5.4 para auditar el código del proyecto desde una perspectiva externa, sin modificar ningún fichero. Requiere Codex CLI instalado y suscripción activa de OpenAI (Plus o Pro).
+- **Comando `/alfred-dev:lucius`**: punto de entrada para invocar la auditoría. Acepta directorio objetivo y scope opcionales (`all`, `security`, `tests`, `architecture`, `performance`).
+- **Informe estructurado por ítem**: Lucius devuelve diagnóstico + prescripción + esfuerzo (S/M/L) + sugerencia de con quién implementar (Alfred o Codex) en cuatro secciones: Crítico, Relevante, Oportunidades y Lo que está bien.
+- **Preflight de prerequisitos**: verifica que `codex` está en el PATH y autenticado. Si falta algún requisito, para con instrucciones claras de instalación.
+- **HARD-GATE sin modificaciones**: el subcomando `codex review` activa `sandbox: read-only` y `approval: never` de forma nativa, garantizando que ningún fichero se toca.
+
+### Changed
+
+- **19 agentes totales**: el plugin pasa de 18 a 19 agentes (10 de núcleo + 9 opcionales) con la incorporación de Lucius.
+- **26 comandos**: se añade `/alfred-dev:lucius` al manifiesto del plugin.
+- **Versionado coherente a 0.6.0**: plugin, marketplace, instaladores, paquetes, README, changelog, docs y landing quedan alineados.
+- **Landing actualizada**: tarjeta de Lucius antes de Selina con badge «Nuevo», agente opcional con use cases, counts actualizados a 19 agentes y 26 comandos.
+
+---
+
 ## [0.5.0] - 2026-03-31
 
 ### Added

@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev",
   "description": "Plugin de ingeniería de software completa: 10 agentes de núcleo y 8 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "author": {
     "name": "686f6c61"
   },
@@ -34,7 +34,8 @@
     "./commands/sync-github.md",
     "./commands/verify.md",
     "./commands/validate.md",
-    "./commands/update.md"
+    "./commands/update.md",
+    "./commands/lucius.md"
   ],
   "agents": [
     "./agents/alfred.md",
@@ -54,7 +55,8 @@
     "./agents/optional/seo-specialist.md",
     "./agents/optional/copywriter.md",
     "./agents/optional/librarian.md",
-    "./agents/optional/i18n-specialist.md"
+    "./agents/optional/i18n-specialist.md",
+    "./agents/optional/lucius.md"
   ],
   "skills": [
     "./skills/calidad/incident-response/SKILL.md",

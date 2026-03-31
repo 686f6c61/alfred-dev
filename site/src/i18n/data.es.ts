@@ -21,13 +21,13 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-    description: 'Plugin de Claude Code: 18 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
+    description: 'Plugin de Claude Code: 19 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción con TDD, seguridad y compliance.',
     canonical: 'https://alfred-dev.com/',
     locale: 'es_ES',
     og: {
       type: 'website',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '18 agentes especializados, 60 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
+      description: '19 agentes especializados, 60 skills, memoria persistente y quality gates. Ingeniería de software automatizada para Claude Code.',
       url: 'https://alfred-dev.com/',
       siteName: 'Alfred Dev',
       locale: 'es_ES',
@@ -39,7 +39,7 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: '18 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción.',
+      description: '19 agentes especializados, 60 skills, memoria persistente y quality gates. De la idea a producción.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
@@ -103,7 +103,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
     platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> y <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(en desarrollo)</span>',
-    subtitle: '18 agentes especializados con personalidad propia. 10 de núcleo, 8 opcionales. Hasta 7 fases, 25 comandos, memoria persistente, Memory UI local, continuidad operativa, PM operacional y quality gates, de la idea a producción.',
+    subtitle: '19 agentes especializados con personalidad propia. 10 de núcleo, 9 opcionales. Hasta 7 fases, 26 comandos, memoria persistente, Memory UI local, continuidad operativa, PM operacional y quality gates, de la idea a producción.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -119,6 +119,12 @@ const data: PageData = {
     features: {
       label: 'Ahora en main',
       items: [
+        {
+          title: 'Lucius — segunda opinión técnica',
+          description: 'Cuando Alfred termina, invoca a Codex CLI para una perspectiva externa. Diagnóstico y prescripción por ítem: seguridad, arquitectura, tests o rendimiento. Sin tocar nada. Tú decides qué implementar y con quién.',
+          svgContent: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+          tag: { text: 'Nuevo', href: '#uso' },
+        },
         {
           title: 'Selina — dirección de estilo visual',
           description: 'Antes de escribir una línea de CSS, Selina presenta tres propuestas de estilo en el navegador. El usuario elige; el equipo ejecuta con coherencia desde el primer componente.',
@@ -169,10 +175,10 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   stats: [
-    { number: 18, label: 'Agentes' },
+    { number: 19, label: 'Agentes' },
     { number: 60, label: 'Skills' },
     { number: 6, label: 'Flujos' },
-    { number: 25, label: 'Comandos' },
+    { number: 26, label: 'Comandos' },
     { number: 7, label: 'Templates' },
     { number: 13, label: 'Hooks' },
     { number: 23, label: 'Gates' },
@@ -280,7 +286,7 @@ const data: PageData = {
     header: {
       label: 'Ampliables',
       labelColor: 'var(--gold)',
-      title: '8 agentes opcionales',
+      title: '9 agentes opcionales',
       description: 'Roles especializados que activas según lo que necesite tu proyecto. Alfred analiza tu stack y te sugiere cuáles activar. Se gestionan con <strong style="color: var(--blue);">/alfred-dev:config</strong>.',
     },
     agents: [
@@ -347,6 +353,14 @@ const data: PageData = {
         role: 'Auditoría de claves i18n, detección de cadenas hardcodeadas, validación de formatos por locale. Si el idioma base tiene N claves, todos los demás deben tener N.',
         phrase: '"El idioma base tiene 847 claves. El francés tiene 831. Faltan 16."',
         color: 'var(--cyan)',
+      },
+      {
+        name: 'Lucius',
+        model: 'opus',
+        alias: 'Director técnico externo',
+        role: 'Segunda opinión técnica vía Codex CLI con GPT-5.4. Audita el proyecto completo y devuelve diagnóstico y prescripción por ítem. Requiere suscripción activa de OpenAI. Sin modificaciones: solo analiza.',
+        phrase: '"Desde fuera, esto tiene un punto débil que probablemente no veis porque estáis dentro."',
+        color: '#d97706',
       },
     ],
   },

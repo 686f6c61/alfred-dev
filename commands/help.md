@@ -38,12 +38,13 @@ python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-d
 | `/alfred-dev:sync-github` | [owner/repo opcional] | Ejecuta SonIA Sync sobre GitHub Issues |
 | `/alfred-dev:config` | -- | Configurar autonomía, stack, agentes opcionales y personalidad |
 | `/alfred-dev:status` | -- | Estado de la sesión activa |
+| `/alfred-dev:lucius` | [dir] [--scope X] | Segunda opinión técnica externa vía Codex CLI (GPT-5.4). Requiere suscripción OpenAI |
 | `/alfred-dev:update` | -- | Comprobar y aplicar actualizaciones del plugin |
 | `/alfred-dev:help` | -- | Esta ayuda |
 
 Además, al escribir `/alfred-dev:alfred` sin subcomando, Alfred actúa como asistente contextual: evalúa el estado del proyecto y la sesión, y dirige al usuario al flujo más adecuado.
 
-Explica brevemente que Alfred Dev es un equipo de **10 agentes de núcleo** (siempre activos) más **8 agentes opcionales** (activables según el proyecto) que cubren el ciclo completo de ingeniería de software, con quality gates y flujos automatizados.
+Explica brevemente que Alfred Dev es un equipo de **10 agentes de núcleo** (siempre activos) más **9 agentes opcionales** (activables según el proyecto) que cubren el ciclo completo de ingeniería de software, con quality gates y flujos automatizados.
 
 ### Agentes de núcleo
 
@@ -63,3 +64,4 @@ Se activan con `/alfred-dev:config`. Alfred los sugiere automáticamente al anal
 | **copywriter** | Proyectos con textos públicos |
 | **librarian** | Proyectos con memoria persistente activa |
 | **i18n-specialist** | Proyectos multiidioma o que necesitan traducción |
+| **lucius** | Segunda opinión técnica vía Codex CLI. Requiere suscripción OpenAI (Plus o Pro) |

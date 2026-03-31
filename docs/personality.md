@@ -27,9 +27,9 @@ La razón de usar un diccionario plano en lugar de clases u objetos más elabora
 | `personalidad` | `str` | Párrafo que define el tono, la actitud y los rasgos de carácter del agente. Se inyecta en el system prompt para que el modelo de lenguaje mantenga la voz a lo largo de la sesión. | *(ver fichero fuente)* |
 | `frases` | `List[str]` | Lista de frases base que representan la voz del agente en niveles de sarcasmo normales (<= 3). Son frases con personalidad pero dentro de un registro profesional. | `["Venga, vamos a ello. Ya tengo un plan."]` |
 | `frases_sarcasmo_alto` | `List[str]` | Frases adicionales que se incorporan al pool cuando el nivel de sarcasmo es >= 4. El tono sube, pero sin cruzar la línea del insulto. | `["A ver, esa idea... cómo te lo digo suave... es terrible."]` |
-| `opcional` | `bool` | Solo presente (y con valor `True`) en los 8 agentes opcionales. Los agentes opcionales están predefinidos en el diccionario pero no participan en los flujos a menos que el usuario los active explícitamente en su configuración local (`alfred-dev.local.md`). Si el campo no existe, el agente es obligatorio. | `True` |
+| `opcional` | `bool` | Solo presente (y con valor `True`) en los 9 agentes opcionales. Los agentes opcionales están predefinidos en el diccionario pero no participan en los flujos a menos que el usuario los active explícitamente en su configuración local (`alfred-dev.local.md`). Si el campo no existe, el agente es obligatorio. | `True` |
 
-Los 9 agentes obligatorios (los que no llevan `opcional: True`) participan siempre en los flujos del plugin. Los 8 opcionales son especialistas de dominio que el usuario activa según las necesidades de su proyecto: un proyecto sin base de datos no necesita a `data-engineer`, una CLI sin interfaz web no necesita a `seo-specialist`.
+Los 10 agentes obligatorios (los que no llevan `opcional: True`) participan siempre en los flujos del plugin. Los 9 opcionales son especialistas de dominio que el usuario activa según las necesidades de su proyecto: un proyecto sin base de datos no necesita a `data-engineer`, una CLI sin interfaz web no necesita a `seo-specialist`, y no todos los equipos necesitan la perspectiva externa de `lucius`.
 
 ---
 
@@ -126,7 +126,7 @@ Función auxiliar que comprueba si el nombre del agente existe en `AGENTS` y dev
 
 ## Distribución de criticidad y autonomía de los agentes
 
-El siguiente diagrama posiciona a los 18 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
+El siguiente diagrama posiciona a los 19 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
 
 Los agentes con alta criticidad y baja autonomía (esquina inferior derecha) son los que trabajan con restricciones estrictas: El Paranoico (seguridad) no puede aprobar por su cuenta, necesita que el orquestador confirme. Los de alta criticidad y alta autonomía (esquina superior derecha) son los que toman decisiones de diseño y escriben código sin pedir permiso en cada línea. Los de baja criticidad y alta autonomía (esquina superior izquierda) son agentes de soporte que pueden operar de forma independiente sin riesgo para el sistema.
 
@@ -151,6 +151,10 @@ quadrantChart
     "El Paranoico (security)": [0.80, 0.25]
     "El Artesano (senior-dev)": [0.85, 0.80]
     "El Dibujante de Cajas (architect)": [0.80, 0.75]
+    "El Director Técnico (lucius)": [0.70, 0.50]
+    "La Interprete (i18n)": [0.30, 0.55]
+    "SonIA (project-manager)": [0.45, 0.65]
+    "Selina (estilista)": [0.25, 0.60]
 ```
 
 Algunas observaciones sobre la distribución:
@@ -186,7 +190,7 @@ La razón de tener tres niveles en lugar de un simple binario (aprobado/rechazad
 
 ## Distribución de modelos
 
-De los 18 agentes, 6 usan el modelo `opus` y los 12 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
+De los 19 agentes, 6 usan el modelo `opus` y los 13 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
 
 ### Criterio de asignación
 
@@ -194,7 +198,7 @@ La regla es sencilla: **opus para agentes que toman decisiones de diseño irreve
 
 Una decisión de arquitectura mal tomada puede costar días de refactorización; un error en la documentación se corrige en minutos. El coste de usar opus donde sonnet basta es real (mayor latencia, mayor consumo de tokens), y el beneficio marginal es despreciable en tareas de formato, revisión estilística o etiquetado de issues.
 
-### Agentes con opus (5)
+### Agentes con opus (6)
 
 | Agente | Identificador | Justificación |
 |---|---|---|
@@ -203,8 +207,9 @@ Una decisión de arquitectura mal tomada puede costar días de refactorización;
 | El Dibujante de Cajas | `architect` | Diseña la estructura del sistema. Las decisiones de arquitectura son las más difíciles de revertir una vez implementadas. |
 | El Artesano | `senior-dev` | Escribe código de producción. La calidad del código que genera determina directamente la calidad del entregable. |
 | El Paranoico | `security-officer` | Evalúa la seguridad. Un falso negativo en seguridad (no detectar una vulnerabilidad) puede tener consecuencias graves. Opus ofrece mayor capacidad de razonamiento para detectar patrones sutiles. |
+| El Director Técnico | `lucius` | Coordina la auditoría externa vía Codex CLI y sintetiza el informe final. Necesita razonamiento profundo para interpretar el output de GPT-5.4 y convertirlo en prescripciones accionables. |
 
-### Agentes con sonnet (10)
+### Agentes con sonnet (13)
 
 | Agente | Identificador | Justificación |
 |---|---|---|
@@ -218,6 +223,9 @@ Una decisión de arquitectura mal tomada puede costar días de refactorización;
 | El Rastreador | `seo-specialist` | Verifica meta tags y datos estructurados contra especificaciones conocidas. |
 | El Pluma | `copywriter` | Genera y revisa textos. Sonnet es suficiente para mantener coherencia de tono. |
 | El Bibliotecario | `librarian` | Consulta y mantiene la memoria del proyecto. Opera sobre datos existentes sin generar decisiones de diseño. |
+| SonIA | `project-manager` | Gestiona kanban, trazabilidad y seguimiento entre fases. Opera sobre artefactos y estados definidos. |
+| Selina | `selina` | Presenta opciones visuales y persiste la dirección de estilo elegida. Tarea creativa pero acotada. |
+| La Interprete | `i18n-specialist` | Audita claves i18n y detecta cadenas hardcodeadas siguiendo patrones bien definidos. |
 
 ---
 

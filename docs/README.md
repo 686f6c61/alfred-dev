@@ -2,9 +2,9 @@
 
 Esta documentación esta pensada para desarrolladores que necesitan entender como funciona el plugin Alfred Dev por dentro: su arquitectura, sus decisiones de diseño, como se integra en Claude Code y como contribuir. No es documentación de usuario (eso esta en el [README del proyecto](../README.md) y en la [landing page](https://686f6c61.github.io/alfred-dev/)); es documentación de ingenieria interna.
 
-Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 18 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
+Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 19 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
 
-El código fuente es la referencia definitiva, pero esta documentación explica el **por que** detrás de cada decisión: por que Python y no JavaScript, por que SQLite y no JSON, por que 18 agentes y no uno solo, por que quality gates en cada transición. Un junior debe poder leer esta documentación de principio a fin y entender el proyecto sin ayuda externa.
+El código fuente es la referencia definitiva, pero esta documentación explica el **por que** detrás de cada decisión: por que Python y no JavaScript, por que SQLite y no JSON, por que 19 agentes y no uno solo, por que quality gates en cada transición. Un junior debe poder leer esta documentación de principio a fin y entender el proyecto sin ayuda externa.
 
 ---
 
@@ -25,8 +25,8 @@ mindmap
       audit -- 1 fase
       quick -- 2 fases
     El equipo
-      9 agentes de nucleo
-      8 agentes opcionales
+      10 agentes de nucleo
+      9 agentes opcionales
       Motor de personalidad
     Capacidades
       60 skills en 13 dominios
@@ -48,7 +48,7 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 |---------|-------------|
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseño fundamentales |
 | [flows.md](flows.md) | Los 6 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
-| [agents/README.md](agents/README.md) | Vision general del equipo de 18 agentes, modelo de colaboración, distribución de modelos |
+| [agents/README.md](agents/README.md) | Vision general del equipo de 19 agentes, modelo de colaboración, distribución de modelos |
 | [skills.md](skills.md) | Catalogo de 60 skills organizados en 13 dominios con diagrama mindmap |
 | [hooks.md](hooks.md) | Los 13 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
@@ -78,8 +78,10 @@ Cada agente tiene su propia ficha con personalidad, responsabilidades, quality g
 | [github-manager.md](agents/github-manager.md) | El Conserje del Repo | Opcional |
 | [seo-specialist.md](agents/seo-specialist.md) | El Rastreador | Opcional |
 | [copywriter.md](agents/copywriter.md) | El Pluma | Opcional |
+| [selina.md](agents/selina.md) | Selina — La Estilista | Nucleo |
 | [librarian.md](agents/librarian.md) | El Bibliotecario | Opcional |
 | [i18n-specialist.md](agents/i18n-specialist.md) | La Interprete | Opcional |
+| [lucius.md](agents/lucius.md) | Lucius — El Director Técnico | Opcional |
 
 ---
 

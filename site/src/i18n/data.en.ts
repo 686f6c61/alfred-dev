@@ -18,13 +18,13 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - Claude Code plugin for development teams',
-    description: 'Claude Code plugin: 18 specialised agents, 60 skills, persistent memory and quality gates. From idea to production with TDD, security and compliance.',
+    description: 'Claude Code plugin: 19 specialised agents, 60 skills, persistent memory and quality gates. From idea to production with TDD, security and compliance.',
     canonical: 'https://alfred-dev.com/en/',
     locale: 'en_US',
     og: {
       type: 'website',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '18 specialised agents, 60 skills, persistent memory and quality gates. Automated software engineering for Claude Code.',
+      description: '19 specialised agents, 60 skills, persistent memory and quality gates. Automated software engineering for Claude Code.',
       url: 'https://alfred-dev.com/en/',
       siteName: 'Alfred Dev',
       locale: 'en_US',
@@ -36,7 +36,7 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '18 specialised agents, 60 skills, persistent memory and quality gates. From idea to production.',
+      description: '19 specialised agents, 60 skills, persistent memory and quality gates. From idea to production.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
@@ -100,7 +100,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Your development<br>teammates in one <em>plugin</em>',
     platformHtml: 'for <span style="color: var(--blue);">Claude Code</span> and <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(in development)</span>',
-    subtitle: '18 specialised agents with their own personality. 10 core, 8 optional. Up to 7 phases, 25 commands, persistent memory, local Memory UI, operational continuity, operational PM and quality gates, from idea to production.',
+    subtitle: '19 specialised agents with their own personality. 10 core, 9 optional. Up to 7 phases, 26 commands, persistent memory, local Memory UI, operational continuity, operational PM and quality gates, from idea to production.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -116,6 +116,12 @@ const data: PageData = {
     features: {
       label: 'Now on main',
       items: [
+        {
+          title: 'Lucius — external technical second opinion',
+          description: 'When Alfred is done, Lucius calls Codex CLI for an outside perspective. Diagnosis and prescription per item: security, architecture, tests or performance. Touches nothing. You decide what to implement and with whom.',
+          svgContent: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+          tag: { text: 'New', href: '#uso' },
+        },
         {
           title: 'Selina — visual style direction',
           description: 'Before a single line of CSS is written, Selina presents three style proposals in the browser. The user chooses; the team executes with coherence from the first component.',
@@ -166,10 +172,10 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   stats: [
-    { number: 18, label: 'Agents' },
+    { number: 19, label: 'Agents' },
     { number: 60, label: 'Skills' },
     { number: 6, label: 'Workflows' },
-    { number: 25, label: 'Commands' },
+    { number: 26, label: 'Commands' },
     { number: 7, label: 'Templates' },
     { number: 13, label: 'Hooks' },
     { number: 23, label: 'Gates' },
@@ -277,7 +283,7 @@ const data: PageData = {
     header: {
       label: 'Extensible',
       labelColor: 'var(--gold)',
-      title: '8 optional agents',
+      title: '9 optional agents',
       description: 'Specialised roles you activate according to your project\'s needs. Alfred analyses your stack and suggests which to enable. Managed with <strong style="color: var(--blue);">/alfred-dev:config</strong>.',
     },
     agents: [
@@ -344,6 +350,14 @@ const data: PageData = {
         role: 'i18n key audit, hardcoded string detection, per-locale format validation. If the base language has N keys, all others must have N.',
         phrase: '"The base language has 847 keys. French has 831. 16 missing."',
         color: 'var(--cyan)',
+      },
+      {
+        name: 'Lucius',
+        model: 'opus',
+        alias: 'External technical director',
+        role: 'External technical second opinion via Codex CLI with GPT-5.4. Audits the full project and returns diagnosis and prescription per item. Requires an active OpenAI subscription. No modifications: analysis only.',
+        phrase: '"From the outside, this has a weak point you probably can\'t see because you\'re too close to it."',
+        color: '#d97706',
       },
     ],
   },
