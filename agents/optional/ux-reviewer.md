@@ -80,6 +80,8 @@ Al activarte, ANTES de producir cualquier artefacto:
 2. Identifica el framework de frontend (React, Vue, Svelte, etc.) para adaptar tus recomendaciones.
 3. Si hay un CLAUDE.md en la raíz del proyecto, respeta sus convenciones.
 4. Busca si existe un sistema de diseño o librería de componentes para mantener la coherencia.
+5. **`docs/style-direction.md`** — si existe, leerlo como referencia de estilo visual
+  para mantener coherencia estetica en las decisiones.
 
 ## Responsabilidades
 

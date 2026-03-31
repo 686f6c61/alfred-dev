@@ -7,6 +7,35 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.5.0] - 2026-03-31
+
+### Added
+
+- **Selina — La Estilista**: nuevo agente de núcleo (10.º) que ocupa la fase 1b del flujo `feature`. Presenta tres direcciones de estilo visual en el navegador antes de que el architect diseñe componentes. Solo se activa si el proyecto tiene interfaz de usuario.
+- **Servidor visual local**: servidor HTTP + WebSocket de dependencias cero (`visual/scripts/server.cjs`) para renderizar opciones de estilo en tres columnas. Gestiona sesiones por proyecto, hot-reload vía `fs.watch`, registro de clics en `state/events` y cierre limpio ante `SIGTERM`.
+- **Skill de estilo visual** (`skills/estilo/style-direction/SKILL.md`): guía completa para que Selina arranque el servidor, escriba el HTML de opciones con `.style-grid`, lea la elección del usuario y genere `docs/style-direction.md`.
+- **Fase condicional `estilo_visual`**: nueva condición `"tiene_frontend"` en el orquestador. La función `config_loader.has_frontend(stack)` evalúa el stack del proyecto y permite que `advance_phase()` salte la fase automáticamente en proyectos sin UI.
+- **Helper `_advance_skipping_phases`**: función extraída del orquestador para gestionar el salto de fases con condición no cumplida, reduciendo la complejidad cognitiva de `advance_phase`.
+
+### Changed
+
+- **5 agentes actualizados** para leer `docs/style-direction.md` como referencia de estilo: `architect`, `senior-dev`, `ux-reviewer`, `copywriter`, `seo-specialist`.
+- **`feature.md` actualizado**: documenta la fase 1b con instrucción explícita de activar Selina con la herramienta Task.
+- **`plugin.json` actualizado**: incluye el agente Selina y el skill de estilo visual en el manifiesto. Descripción actualizada a 10 agentes de núcleo.
+- **README actualizado**: recuento de agentes (9 → 10), fases (6 → 7), tabla de agentes con Selina, ejemplo de flujo con fase 1b.
+
+### Fixed
+
+- **Imports de módulos nativos**: `server.cjs` usa ahora el prefijo `node:` (`node:http`, `node:crypto`, `node:fs`, `node:path`) según la convención canónica de Node.js ≥18.
+- **`Number.parseInt` en lugar de `parseInt`** en `server.cjs` para cumplir con las reglas de linting de SonarQube.
+- **Complejidad cognitiva de `handleRequest` reducida**: el bloque `/files/*` se extrae a `serveStaticFile()`.
+- **`catch` sin variable no usada**: el bloque `catch (e)` en `serveStaticFile` pasa a `catch {}` eliminando la variable no referenciada.
+- **Complejidad cognitiva en `config_loader.py`**: `_count_source_files` (38 → ~6) y `suggest_optional_agents` (18 → ~3) resueltas extrayendo `_scan_dir_for_sources` (recursivo, reemplaza el triple bucle manual) y `_build_suggestion_checks` (lista de checks, elimina las 8 ramas if/elif).
+- **Skill de SonarQube registrado en `plugin.json`**: el fichero `skills/calidad/sonarqube/SKILL.md` existía en disco pero no estaba en el array `skills` del manifiesto del plugin, por lo que Claude Code no lo cargaba.
+- **Permisos de Docker en subagentes**: los comandos Docker añadidos a `~/.claude/settings.json` como entradas `Bash(docker ...)` permiten que el `security-officer` arranque SonarQube sin prompt de confirmación al usuario.
+
+---
+
 ## [0.4.7] - 2026-03-31
 
 ### Fixed

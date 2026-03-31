@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" width="1200" height="680">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { rx: 8; ry: 8; }
+      .panel-1 { fill: #161b22; stroke: #2a3441; stroke-width: 1; }
+      .panel-2 { fill: #161b22; stroke: #a07be8; stroke-width: 1.5; }
+      .panel-3 { fill: #161b22; stroke: #2a3441; stroke-width: 1; }
+      .header-bar { fill: #0d1117; }
+      .label { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; fill: #6e7681; letter-spacing: 0.05em; text-transform: uppercase; }
+      .selected-badge { fill: #a07be8; rx: 4; ry: 4; }
+      .selected-text { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 10px; fill: #0d1117; font-weight: 700; letter-spacing: 0.08em; }
+      .title-lg { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 17px; fill: #e6edf3; font-weight: 600; }
+      .title-sm { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px; fill: #e6edf3; font-weight: 600; }
+      .body { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 12px; fill: #8b949e; line-height: 1.5; }
+      .swatch { rx: 3; ry: 3; }
+      .divider { stroke: #21262d; stroke-width: 1; }
+      .prompt-bg { fill: #161b22; stroke: #30363d; stroke-width: 1; }
+      .prompt-text { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; fill: #58a6ff; }
+      .topbar-text { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px; fill: #8b949e; }
+      .topbar-name { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px; fill: #a07be8; font-weight: 600; }
+      .tag-bg { fill: #1f2937; rx: 12; ry: 12; }
+      .tag-text { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 10px; fill: #8b949e; }
+      .color-block { rx: 4; ry: 4; }
+      .font-demo { font-family: 'Georgia', serif; font-size: 16px; fill: #e6edf3; }
+      .font-demo-sans { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 14px; fill: #e6edf3; }
+      .font-demo-mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; fill: #e6edf3; }
+    </style>
+  </defs>
+
+  <!-- Fondo principal -->
+  <rect width="1200" height="680" class="bg"/>
+
+  <!-- Barra superior de Selina -->
+  <rect x="0" y="0" width="1200" height="48" fill="#161b22" rx="0"/>
+  <line x1="0" y1="48" x2="1200" y2="48" stroke="#21262d" stroke-width="1"/>
+  <text x="24" y="30" class="topbar-name">Selina</text>
+  <text x="78" y="30" class="topbar-text">— La Estilista · </text>
+  <text x="200" y="30" class="topbar-text">App de finanzas personales · elige la dirección de estilo</text>
+  <text x="1100" y="30" class="topbar-text">3 propuestas</text>
+
+  <!-- Prompt de Selina -->
+  <rect x="24" y="60" width="1152" height="36" class="prompt-bg" rx="6"/>
+  <text x="40" y="83" class="prompt-text">$ "Tres caminos. Elige el que te haga sentir que es tu producto."</text>
+
+  <!-- ============================================================ -->
+  <!-- COLUMNA 1: Minimalista -->
+  <!-- ============================================================ -->
+  <rect x="24" y="112" width="364" height="536" class="panel panel-1" rx="8"/>
+
+  <!-- Número de opción -->
+  <text x="44" y="142" class="label">opcion 01</text>
+
+  <!-- Título propuesta -->
+  <text x="44" y="166" class="title-lg">Minimalista serif</text>
+
+  <!-- Descripción -->
+  <text x="44" y="190" class="body">Calma, confianza, control. Para</text>
+  <text x="44" y="206" class="body">quienes ven el dinero como una</text>
+  <text x="44" y="222" class="body">disciplina, no un destino.</text>
+
+  <line x1="44" y1="240" x2="368" y2="240" class="divider"/>
+
+  <!-- Paleta de color -->
+  <text x="44" y="264" class="label">paleta</text>
+  <rect x="44" y="272" width="48" height="28" class="color-block" fill="#f9f6f0"/>
+  <rect x="100" y="272" width="48" height="28" class="color-block" fill="#1a1a2e"/>
+  <rect x="156" y="272" width="48" height="28" class="color-block" fill="#2d6a4f"/>
+  <rect x="212" y="272" width="48" height="28" class="color-block" fill="#e8e0d0"/>
+  <rect x="268" y="272" width="48" height="28" class="color-block" fill="#6b7280"/>
+
+  <line x1="44" y1="316" x2="368" y2="316" class="divider"/>
+
+  <!-- Tipografía -->
+  <text x="44" y="338" class="label">tipografia</text>
+  <text x="44" y="362" class="font-demo" fill="#1a1a2e" font-family="Georgia,serif">Playfair Display</text>
+  <text x="44" y="382" class="body" font-family="Georgia,serif">para titulares y cifras clave</text>
+  <text x="44" y="404" class="font-demo-sans" fill="#6b7280">Inter · cuerpo de texto</text>
+
+  <line x1="44" y1="422" x2="368" y2="422" class="divider"/>
+
+  <!-- Preview mini -->
+  <text x="44" y="444" class="label">preview</text>
+  <rect x="44" y="452" width="316" height="64" fill="#f9f6f0" rx="4"/>
+  <text x="60" y="474" font-family="Georgia,serif" font-size="14" fill="#1a1a2e" font-weight="600">Patrimonio neto</text>
+  <text x="60" y="494" font-family="Georgia,serif" font-size="20" fill="#2d6a4f" font-weight="700">€ 48.320</text>
+  <text x="60" y="510" font-family="-apple-system,sans-serif" font-size="10" fill="#6b7280">+2,4 % este mes</text>
+
+  <!-- Densidad -->
+  <text x="44" y="540" class="label">densidad</text>
+  <text x="44" y="558" class="body">Baja · espacio generoso · un dato por pantalla</text>
+
+  <!-- Nota de Selina -->
+  <text x="44" y="584" class="label" fill="#8b949e">nota de selina</text>
+  <text x="44" y="600" class="body" font-style="italic">"La opción conservadora.</text>
+  <text x="44" y="616" class="body" font-style="italic">Funciona. No sorprende."</text>
+
+  <!-- ============================================================ -->
+  <!-- COLUMNA 2: Data-driven (RECOMENDADA - borde púrpura) -->
+  <!-- ============================================================ -->
+  <rect x="416" y="112" width="364" height="536" class="panel panel-2" rx="8"/>
+
+  <!-- Badge recomendada -->
+  <rect x="700" y="120" width="68" height="20" class="selected-badge" rx="4"/>
+  <text x="707" y="134" class="selected-text">ELEGIDA</text>
+
+  <!-- Número de opción -->
+  <text x="436" y="142" class="label" fill="#a07be8">opcion 02</text>
+
+  <!-- Título propuesta -->
+  <text x="436" y="166" class="title-lg" fill="#e6edf3">Data-driven dashboard</text>
+
+  <!-- Descripción -->
+  <text x="436" y="190" class="body">Información densa, control total.</text>
+  <text x="436" y="206" class="body">Para el usuario que quiere ver</text>
+  <text x="436" y="222" class="body">todo de un vistazo.</text>
+
+  <line x1="436" y1="240" x2="760" y2="240" stroke="#a07be8" stroke-width="0.5" stroke-opacity="0.4"/>
+
+  <!-- Paleta de color -->
+  <text x="436" y="264" class="label">paleta</text>
+  <rect x="436" y="272" width="48" height="28" class="color-block" fill="#0f1923"/>
+  <rect x="492" y="272" width="48" height="28" class="color-block" fill="#1e3a5f"/>
+  <rect x="548" y="272" width="48" height="28" class="color-block" fill="#2563eb"/>
+  <rect x="604" y="272" width="48" height="28" class="color-block" fill="#10b981"/>
+  <rect x="660" y="272" width="48" height="28" class="color-block" fill="#ef4444"/>
+
+  <line x1="436" y1="316" x2="760" y2="316" stroke="#a07be8" stroke-width="0.5" stroke-opacity="0.4"/>
+
+  <!-- Tipografía -->
+  <text x="436" y="338" class="label">tipografia</text>
+  <text x="436" y="362" class="font-demo-mono" fill="#2563eb" font-family="'SF Mono',monospace">JetBrains Mono</text>
+  <text x="436" y="382" class="body" font-family="monospace">para cifras y datos</text>
+  <text x="436" y="404" class="font-demo-sans" fill="#8b949e">Inter · labels y navegación</text>
+
+  <line x1="436" y1="422" x2="760" y2="422" stroke="#a07be8" stroke-width="0.5" stroke-opacity="0.4"/>
+
+  <!-- Preview mini -->
+  <text x="436" y="444" class="label">preview</text>
+  <rect x="436" y="452" width="316" height="64" fill="#0f1923" rx="4" stroke="#1e3a5f" stroke-width="1"/>
+  <!-- Mini tabla -->
+  <text x="448" y="470" font-family="'SF Mono',monospace" font-size="9" fill="#6b7280">ACTIVO</text>
+  <text x="560" y="470" font-family="'SF Mono',monospace" font-size="9" fill="#6b7280">VALOR</text>
+  <text x="660" y="470" font-family="'SF Mono',monospace" font-size="9" fill="#6b7280">ΔMES</text>
+  <line x1="444" y1="475" x2="740" y2="475" stroke="#1e3a5f" stroke-width="0.5"/>
+  <text x="448" y="490" font-family="'SF Mono',monospace" font-size="10" fill="#e6edf3">Renta fija</text>
+  <text x="553" y="490" font-family="'SF Mono',monospace" font-size="10" fill="#2563eb">24.100</text>
+  <text x="655" y="490" font-family="'SF Mono',monospace" font-size="10" fill="#10b981">+1,2%</text>
+  <text x="448" y="506" font-family="'SF Mono',monospace" font-size="10" fill="#e6edf3">Acciones</text>
+  <text x="553" y="506" font-family="'SF Mono',monospace" font-size="10" fill="#2563eb">18.640</text>
+  <text x="655" y="506" font-family="'SF Mono',monospace" font-size="10" fill="#ef4444">-0,8%</text>
+
+  <!-- Densidad -->
+  <text x="436" y="540" class="label">densidad</text>
+  <text x="436" y="558" class="body">Alta · tablas, sparklines, comparativas</text>
+
+  <!-- Nota de Selina -->
+  <text x="436" y="584" class="label" fill="#a07be8">nota de selina</text>
+  <text x="436" y="600" class="body" font-style="italic">"Esta opción es más arriesgada.</text>
+  <text x="436" y="616" class="body" font-style="italic">Y por eso me gusta."</text>
+
+  <!-- ============================================================ -->
+  <!-- COLUMNA 3: Tarjetas modernas -->
+  <!-- ============================================================ -->
+  <rect x="808" y="112" width="364" height="536" class="panel panel-3" rx="8"/>
+
+  <!-- Número de opción -->
+  <text x="828" y="142" class="label">opcion 03</text>
+
+  <!-- Título propuesta -->
+  <text x="828" y="166" class="title-lg">Dashboard de tarjetas</text>
+
+  <!-- Descripción -->
+  <text x="828" y="190" class="body">Moderno, visual, orientado a</text>
+  <text x="828" y="206" class="body">objetivos. Para quienes piensan</text>
+  <text x="828" y="222" class="body">en metas, no en cifras.</text>
+
+  <line x1="828" y1="240" x2="1152" y2="240" class="divider"/>
+
+  <!-- Paleta de color -->
+  <text x="828" y="264" class="label">paleta</text>
+  <rect x="828" y="272" width="48" height="28" class="color-block" fill="#f8fafc"/>
+  <rect x="884" y="272" width="48" height="28" class="color-block" fill="#6366f1"/>
+  <rect x="940" y="272" width="48" height="28" class="color-block" fill="#f59e0b"/>
+  <rect x="996" y="272" width="48" height="28" class="color-block" fill="#06b6d4"/>
+  <rect x="1052" y="272" width="48" height="28" class="color-block" fill="#1e293b"/>
+
+  <line x1="828" y1="316" x2="1152" y2="316" class="divider"/>
+
+  <!-- Tipografía -->
+  <text x="828" y="338" class="label">tipografia</text>
+  <text x="828" y="362" class="font-demo-sans" fill="#6366f1" font-weight="700" font-size="17">Plus Jakarta Sans</text>
+  <text x="828" y="382" class="body">headers con peso</text>
+  <text x="828" y="404" class="font-demo-sans" fill="#8b949e">DM Sans · cuerpo y labels</text>
+
+  <line x1="828" y1="422" x2="1152" y2="422" class="divider"/>
+
+  <!-- Preview mini -->
+  <text x="828" y="444" class="label">preview</text>
+  <!-- Tarjeta 1 -->
+  <rect x="828" y="452" width="148" height="64" fill="#f8fafc" rx="8"/>
+  <text x="844" y="472" font-family="-apple-system,sans-serif" font-size="9" fill="#6b7280">AHORRO MENSUAL</text>
+  <text x="844" y="492" font-family="-apple-system,sans-serif" font-size="18" fill="#6366f1" font-weight="700">€ 840</text>
+  <text x="844" y="508" font-family="-apple-system,sans-serif" font-size="9" fill="#06b6d4">objetivo: € 1.000</text>
+  <!-- Tarjeta 2 -->
+  <rect x="984" y="452" width="148" height="64" fill="#f8fafc" rx="8"/>
+  <text x="1000" y="472" font-family="-apple-system,sans-serif" font-size="9" fill="#6b7280">FONDO EMERGENCIA</text>
+  <text x="1000" y="492" font-family="-apple-system,sans-serif" font-size="18" fill="#f59e0b" font-weight="700">78%</text>
+  <text x="1000" y="508" font-family="-apple-system,sans-serif" font-size="9" fill="#06b6d4">6 de 8 meses</text>
+
+  <!-- Densidad -->
+  <text x="828" y="540" class="label">densidad</text>
+  <text x="828" y="558" class="body">Media · tarjetas, progreso, metas visuales</text>
+
+  <!-- Nota de Selina -->
+  <text x="828" y="584" class="label" fill="#8b949e">nota de selina</text>
+  <text x="828" y="600" class="body" font-style="italic">"La más moderna. Funciona</text>
+  <text x="828" y="616" class="body" font-style="italic">si el producto es aspiracional."</text>
+
+  <!-- Instrucción de selección -->
+  <rect x="0" y="648" width="1200" height="32" fill="#161b22"/>
+  <line x1="0" y1="648" x2="1200" y2="648" stroke="#21262d" stroke-width="1"/>
+  <text x="400" y="668" font-family="-apple-system,sans-serif" font-size="12" fill="#6e7681" text-anchor="middle">haz clic en una columna para elegir</text>
+  <text x="600" y="668" font-family="-apple-system,sans-serif" font-size="12" fill="#8b949e" text-anchor="middle">·</text>
+  <text x="800" y="668" font-family="'SF Mono','Fira Code',monospace" font-size="11" fill="#a07be8" text-anchor="middle">docs/style-direction.md  →  architect, senior-dev, ux-reviewer</text>
+</svg>

@@ -89,6 +89,8 @@ Al activarte, ANTES de producir cualquier artefacto:
 2. Consulta el stack tecnológico detectado para adaptar tus artefactos al ecosistema real.
 3. Si hay un CLAUDE.md en la raíz del proyecto, respeta sus convenciones.
 4. Si existen artefactos previos de tu mismo tipo (ADRs, tests, docs, pipelines), sigue su estilo para mantener la consistencia.
+5. **`docs/style-direction.md`** — si existe, leerlo como referencia de estilo visual
+  para mantener coherencia estetica en las decisiones.
 
 ## Responsabilidades
 

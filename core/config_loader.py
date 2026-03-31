@@ -227,6 +227,39 @@ def detect_stack(project_dir):
     return stack
 
 
+# --- Frameworks con interfaz de usuario ---
+
+_FRONTEND_FRAMEWORKS = frozenset({
+    "next", "nuxt", "astro", "remix", "gatsby",
+    "svelte", "solid-js", "qwik",
+    "react", "vue", "angular",
+})
+
+
+def has_frontend(stack: dict) -> bool:
+    """
+    Determina si el stack del proyecto incluye un framework con interfaz de usuario.
+
+    Se usa como condicion de activacion para el agente Selina (la estilista),
+    que solo interviene en proyectos que tienen una capa visual.
+
+    Args:
+        stack: Diccionario de stack devuelto por ``detect_stack``.
+               Se espera que contenga la clave ``"framework"``.
+
+    Returns:
+        ``True`` si el framework pertenece al conjunto de frameworks frontend
+        conocidos; ``False`` en caso contrario o si la clave no existe.
+
+    Example:
+        >>> stack = detect_stack("/ruta/al/proyecto")
+        >>> if has_frontend(stack):
+        ...     # Activar fase de estilo visual
+        ...     pass
+    """
+    return stack.get("framework", "desconocido") in _FRONTEND_FRAMEWORKS
+
+
 # --- Funciones internas ---
 
 
@@ -661,13 +694,6 @@ def _detect_python_details(project_dir, stack):
 
 # --- Descubrimiento contextual de agentes opcionales ----------------------
 
-# Frameworks que implican una interfaz de usuario visible para el visitante.
-# Se usa para sugerir ux-reviewer y seo-specialist.
-_FRONTEND_FRAMEWORKS = {
-    "next", "nuxt", "astro", "remix", "gatsby", "svelte",
-    "solid-js", "qwik", "vue", "react", "angular",
-}
-
 
 def _has_git_remote(project_dir):
     """Comprueba si el proyecto tiene un remote Git configurado.
@@ -723,8 +749,39 @@ def _has_public_html(project_dir):
     return False
 
 
+def _scan_dir_for_sources(dirpath, source_extensions, skip_dirs, errors, max_depth, depth=0):
+    """Cuenta ficheros de código fuente en un directorio de forma recursiva.
+
+    Recursion controlada por profundidad para evitar latencia excesiva en
+    proyectos con node_modules u otros directorios de dependencias grandes.
+
+    Args:
+        dirpath: directorio a escanear.
+        source_extensions: conjunto de extensiones de código fuente.
+        skip_dirs: conjunto de nombres de directorio a ignorar.
+        errors: lista mutable donde se acumulan errores de acceso.
+        max_depth: profundidad máxima de recursión desde el directorio raíz.
+        depth: profundidad actual (0 = directorio raíz).
+
+    Returns:
+        int con el número de ficheros de código fuente encontrados.
+    """
+    count = 0
+    try:
+        for entry in os.scandir(dirpath):
+            if entry.is_file() and os.path.splitext(entry.name)[1] in source_extensions:
+                count += 1
+            elif entry.is_dir() and entry.name not in skip_dirs and depth < max_depth:
+                count += _scan_dir_for_sources(
+                    entry.path, source_extensions, skip_dirs, errors, max_depth, depth + 1
+                )
+    except (OSError, PermissionError) as e:
+        errors.append(str(e))
+    return count
+
+
 def _count_source_files(project_dir):
-    """Cuenta ficheros de código fuente en el proyecto (no recursivo profundo).
+    """Cuenta ficheros de código fuente en el proyecto (hasta 2 niveles de profundidad).
 
     Recorre hasta 2 niveles de profundidad para evitar latencia excesiva
     en proyectos con node_modules o directorios de dependencias grandes.
@@ -745,28 +802,8 @@ def _count_source_files(project_dir):
         "node_modules", ".git", "dist", "build", ".next", "__pycache__",
         ".venv", "venv", "vendor", "target", ".cargo",
     }
-    count = 0
     scan_errors = []
-    try:
-        for entry in os.scandir(project_dir):
-            if entry.is_file() and os.path.splitext(entry.name)[1] in source_extensions:
-                count += 1
-            elif entry.is_dir() and entry.name not in skip_dirs:
-                try:
-                    for sub in os.scandir(entry.path):
-                        if sub.is_file() and os.path.splitext(sub.name)[1] in source_extensions:
-                            count += 1
-                        elif sub.is_dir() and sub.name not in skip_dirs:
-                            try:
-                                for deep in os.scandir(sub.path):
-                                    if deep.is_file() and os.path.splitext(deep.name)[1] in source_extensions:
-                                        count += 1
-                            except (OSError, PermissionError) as e:
-                                scan_errors.append(str(e))
-                except (OSError, PermissionError) as e:
-                    scan_errors.append(str(e))
-    except (OSError, PermissionError) as e:
-        scan_errors.append(str(e))
+    count = _scan_dir_for_sources(project_dir, source_extensions, skip_dirs, scan_errors, max_depth=2)
     if scan_errors:
         print(
             f"[Alfred Dev] Aviso: no se pudieron escanear {len(scan_errors)} "
@@ -838,6 +875,51 @@ def _has_i18n_signals(project_dir):
     return False
 
 
+def _build_suggestion_checks(stack, project_dir):
+    """Evalúa las señales del proyecto y devuelve los checks de sugerencia.
+
+    Cada elemento describe un agente opcional candidato con su condición
+    de activación y la razón legible para el usuario. El orden determina
+    la prioridad de presentación en la UI de configuración.
+
+    Args:
+        stack: diccionario de stack detectado por ``detect_stack``.
+        project_dir: ruta al directorio raíz del proyecto.
+
+    Returns:
+        Lista de tuplas ``(nombre_agente, condicion_bool, razon)``
+        listas para filtrar contra la configuración activa.
+    """
+    framework = stack.get("framework", "desconocido")
+    has_public = _has_public_html(project_dir)
+    return [
+        ("data-engineer",
+         stack.get("orm", "ninguno") != "ninguno",
+         f"Usas {stack.get('orm')} como ORM: te ayuda con esquemas, migraciones y queries"),
+        ("ux-reviewer",
+         framework in _FRONTEND_FRAMEWORKS,
+         f"Proyecto con {framework}: revisa accesibilidad, usabilidad y flujos de usuario"),
+        ("seo-specialist",
+         has_public,
+         "Contenido web público detectado: optimiza SEO, meta tags y datos estructurados"),
+        ("copywriter",
+         has_public,
+         "Textos públicos detectados: mejora copys, CTAs y tono de comunicación"),
+        ("github-manager",
+         _has_git_remote(project_dir),
+         "Repositorio con remote: gestiona PRs, releases, issues y configuración de repo"),
+        ("performance-engineer",
+         _count_source_files(project_dir) > 50,
+         "Proyecto con más de 50 ficheros fuente: ayuda con profiling, benchmarks y optimización"),
+        ("librarian",
+         _is_memory_enabled(project_dir),
+         "Memoria persistente activa: consulta decisiones, historial y cronología del proyecto"),
+        ("i18n-specialist",
+         _has_i18n_signals(project_dir),
+         "Ficheros de internacionalización detectados: revisa claves, formatos y cadenas hardcodeadas"),
+    ]
+
+
 def suggest_optional_agents(project_dir, current_config=None):
     """Analiza el proyecto y sugiere agentes opcionales relevantes.
 
@@ -868,64 +950,12 @@ def suggest_optional_agents(project_dir, current_config=None):
 
     active = current_config.get("agentes_opcionales", {})
     stack = detect_stack(project_dir)
-    suggestions = []
+    checks = _build_suggestion_checks(stack, project_dir)
 
-    # Base de datos / ORM → data-engineer
-    if not active.get("data-engineer") and stack.get("orm", "ninguno") != "ninguno":
-        suggestions.append((
-            "data-engineer",
-            f"Usas {stack['orm']} como ORM: te ayuda con esquemas, migraciones y queries"
-        ))
-
-    # Frontend → ux-reviewer
-    framework = stack.get("framework", "desconocido")
-    if not active.get("ux-reviewer") and framework in _FRONTEND_FRAMEWORKS:
-        suggestions.append((
-            "ux-reviewer",
-            f"Proyecto con {framework}: revisa accesibilidad, usabilidad y flujos de usuario"
-        ))
-
-    # Contenido web público → seo-specialist, copywriter
-    if _has_public_html(project_dir):
-        if not active.get("seo-specialist"):
-            suggestions.append((
-                "seo-specialist",
-                "Contenido web público detectado: optimiza SEO, meta tags y datos estructurados"
-            ))
-        if not active.get("copywriter"):
-            suggestions.append((
-                "copywriter",
-                "Textos públicos detectados: mejora copys, CTAs y tono de comunicación"
-            ))
-
-    # Remote Git → github-manager
-    if not active.get("github-manager") and _has_git_remote(project_dir):
-        suggestions.append((
-            "github-manager",
-            "Repositorio con remote: gestiona PRs, releases, issues y configuración de repo"
-        ))
-
-    # Proyecto grande → performance-engineer
-    if not active.get("performance-engineer") and _count_source_files(project_dir) > 50:
-        suggestions.append((
-            "performance-engineer",
-            "Proyecto con más de 50 ficheros fuente: ayuda con profiling, benchmarks y optimización"
-        ))
-
-    # Memoria activa → librarian
-    if not active.get("librarian") and _is_memory_enabled(project_dir):
-        suggestions.append((
-            "librarian",
-            "Memoria persistente activa: consulta decisiones, historial y cronología del proyecto"
-        ))
-
-    # Señales de i18n → i18n-specialist
-    if not active.get("i18n-specialist") and _has_i18n_signals(project_dir):
-        suggestions.append((
-            "i18n-specialist",
-            "Ficheros de internacionalización detectados: revisa claves, formatos y cadenas hardcodeadas"
-        ))
-
-    return suggestions
+    return [
+        (agent, reason)
+        for agent, condition, reason in checks
+        if condition and not active.get(agent)
+    ]
 
 

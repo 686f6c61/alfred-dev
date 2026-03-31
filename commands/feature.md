@@ -56,6 +56,19 @@ Ejecuta las siguientes fases en orden, respetando las quality gates:
 Activa el agente `product-owner` usando la herramienta Task con subagent_type apropiado. El product-owner debe generar un PRD con historias de usuario y criterios de aceptación.
 **GATE (usuario):** El usuario debe aprobar el PRD antes de avanzar. En autopilot, se aprueba automáticamente.
 
+### Fase 1b — Estilo visual (condicional: solo si hay frontend)
+
+**Agente:** Selina (La Estilista) — activar con la herramienta Task usando `subagent_type: "alfred-dev:selina"`
+**Gate:** usuario (el usuario elige una de las tres opciones)
+
+Selina lee el PRD aprobado, infiere el contexto visual del producto y presenta tres
+direcciones de estilo en el navegador. El usuario abre la URL local, ve las tres
+opciones lado a lado y hace clic en la que prefiere. La eleccion se persiste en
+`docs/style-direction.md` y alimenta a todos los agentes posteriores.
+
+Si el proyecto no tiene frontend (detectado por `config_loader`), esta fase se salta
+automaticamente.
+
 ### Fase 2: Arquitectura
 Activa los agentes `architect` y `security-officer` en paralelo. El architect diseña la arquitectura y el security-officer realiza el threat model y audita dependencias propuestas.
 **GATE (usuario+seguridad):** El usuario aprueba el diseño Y el security-officer valida. En autopilot, la parte de usuario se aprueba automáticamente; la de seguridad se evalúa.

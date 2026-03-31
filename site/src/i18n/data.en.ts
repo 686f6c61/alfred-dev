@@ -18,13 +18,13 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - Claude Code plugin for development teams',
-    description: 'Claude Code plugin: 17 specialised agents, 60 skills, persistent memory and quality gates. From idea to production with TDD, security and compliance.',
+    description: 'Claude Code plugin: 18 specialised agents, 60 skills, persistent memory and quality gates. From idea to production with TDD, security and compliance.',
     canonical: 'https://alfred-dev.com/en/',
     locale: 'en_US',
     og: {
       type: 'website',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '17 specialised agents, 60 skills, persistent memory and quality gates. Automated software engineering for Claude Code.',
+      description: '18 specialised agents, 60 skills, persistent memory and quality gates. Automated software engineering for Claude Code.',
       url: 'https://alfred-dev.com/en/',
       siteName: 'Alfred Dev',
       locale: 'en_US',
@@ -36,7 +36,7 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: '17 specialised agents, 60 skills, persistent memory and quality gates. From idea to production.',
+      description: '18 specialised agents, 60 skills, persistent memory and quality gates. From idea to production.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
     },
   },
@@ -100,7 +100,7 @@ const data: PageData = {
   hero: {
     titleHtml: 'Your development<br>teammates in one <em>plugin</em>',
     platformHtml: 'for <span style="color: var(--blue);">Claude Code</span> and <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(in development)</span>',
-    subtitle: '17 specialised agents with their own personality. 9 core, 8 optional. 6 execution workflows, 25 commands, persistent memory, local Memory UI, operational continuity, operational PM and quality gates, from idea to production.',
+    subtitle: '18 specialised agents with their own personality. 10 core, 8 optional. Up to 7 phases, 25 commands, persistent memory, local Memory UI, operational continuity, operational PM and quality gates, from idea to production.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -116,6 +116,12 @@ const data: PageData = {
     features: {
       label: 'Now on main',
       items: [
+        {
+          title: 'Selina — visual style direction',
+          description: 'Before a single line of CSS is written, Selina presents three style proposals in the browser. The user chooses; the team executes with coherence from the first component.',
+          svgContent: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>',
+          tag: { text: 'New', href: '#uso' },
+        },
         {
           title: 'Real operational continuity',
           description: 'Alfred can now tell you what to do next, pause a session, resume it, and show project state without forcing you to reread half the repo.',
@@ -160,7 +166,7 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   stats: [
-    { number: 17, label: 'Agents' },
+    { number: 18, label: 'Agents' },
     { number: 60, label: 'Skills' },
     { number: 6, label: 'Workflows' },
     { number: 25, label: 'Commands' },
@@ -176,7 +182,7 @@ const data: PageData = {
   coreAgents: {
     header: {
       label: 'The team',
-      title: '9 core agents',
+      title: '10 core agents',
       description: 'Each agent has a defined role, its own personality and signature phrases. They work coordinated by Alfred, the head butler. Always active in every workflow.',
     },
     agents: [
@@ -251,6 +257,14 @@ const data: PageData = {
         role: 'Document first. Writes inline code docs (headers, docstrings) and generates project documentation: API docs, architecture with Mermaid diagrams, guides and changelogs.',
         phrase: '"That file has no header. Nobody knows what it\'s for."',
         color: 'var(--white)',
+      },
+      {
+        name: 'Selina',
+        model: 'opus',
+        alias: 'The Stylist',
+        role: 'Visual style director. Before the architect designs a single component, presents three style directions in the browser. The user chooses; the team executes coherently. Only active in projects with a user interface.',
+        phrase: '"Style is not decoration: it\'s communication."',
+        color: 'var(--purple)',
       },
     ],
   },
@@ -348,7 +362,7 @@ const data: PageData = {
     introHtml: 'When <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:alfred</code> or an explicit command decides that the correct route is a multi-agent workflow, Alfred reasons about which specialists fit the work, presents the selection and starts the right phase. This is what it looks like when the chosen route is <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>:',
     terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'Migrate the database from SQLite to PostgreSQL and redesign the checkout interface with accessibility testing',
-    coreTeamText: 'Core team (always active): Alfred, Product Owner, Architect, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA.',
+    coreTeamText: 'Core team (always active): Alfred, Product Owner, Architect, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA, Selina.',
     techQuestion: 'Which technical agents do you want to activate?',
     techOptions: [
       { label: 'Data Engineer', desc: 'DB migration detected (Recommended)', selected: true },
@@ -363,7 +377,7 @@ const data: PageData = {
       { label: 'Copywriter', desc: 'Public-facing copy', selected: false },
       { label: 'i18n Specialist', desc: 'Internationalization', selected: false },
     ],
-    confirmText: 'Team confirmed: 9 core + 3 optional',
+    confirmText: 'Team confirmed: 10 core + 3 optional',
     productQuestion: 'Who is the primary user of this feature?',
     productOptions: [
       { label: 'Store administrator', desc: '', selected: true },
@@ -387,8 +401,8 @@ const data: PageData = {
       {
         command: '/alfred-dev:feature',
         subtitle: 'Full or partial cycle',
-        description: '6 phases: product, architecture, TDD development, quality + security, documentation, delivery. You can start from any phase.',
-        stages: ['Product', 'Architecture', 'Development', 'Quality + Security', 'Documentation', 'Delivery'],
+        description: 'Up to 7 phases: product, visual style (Selina, conditional), architecture, TDD development, quality + security, documentation, delivery. You can start from any phase.',
+        stages: ['Product', 'Visual style', 'Architecture', 'Development', 'Quality + Security', 'Documentation', 'Delivery'],
       },
       {
         command: '/alfred-dev:quick',
@@ -431,7 +445,7 @@ const data: PageData = {
     header: {
       label: 'Quality gates',
       title: 'Quality coverage across the entire cycle',
-      description: 'Each development phase has its own quality gates. The 9 core agents cover from product validation to delivery, and the optional agents extend control to specialised domains. If a gate fails, the workflow stops.',
+      description: 'Each development phase has its own quality gates. The 10 core agents cover from product validation to delivery, and the optional agents extend control to specialised domains. If a gate fails, the workflow stops.',
     },
     coreLabel: 'Core -- from idea to production',
     core: [
@@ -685,7 +699,7 @@ const data: PageData = {
       },
       {
         command: '/alfred-dev:feature',
-        description: 'Full 6-phase cycle or from any phase you specify. Alfred asks and adapts: "from development", "documentation only", "full cycle".',
+        description: 'Up to 7-phase cycle or from any phase you specify. Alfred asks and adapts: "from development", "documentation only", "full cycle". The visual phase (Selina) activates automatically in projects with a UI.',
       },
       {
         command: '/alfred-dev:quick',
@@ -1059,6 +1073,26 @@ const data: PageData = {
         ],
       },
       {
+        category: 'Visual style',
+        color: 'var(--purple)',
+        background: 'rgba(160,126,232,0.08)',
+        title: 'Decide the visual style before building',
+        command: '/alfred-dev:feature new personal finance app',
+        wide: true,
+        image: {
+          src: '/screenshots/selina-style-direction.svg',
+          alt: 'Selina presenting three visual style proposals in the browser: minimalist, data-driven, and modern card dashboard',
+          caption: 'Selina opens the browser with three style directions. The user chooses; the docs/style-direction.md artefact closes the gate before the architect designs a single component.',
+        },
+        steps: [
+          'Selina reads the approved PRD, detects the stack (framework, components, product context) and confirms the target audience',
+          'Launches the local visual server and generates three full-screen HTML proposals: each with a different typeface, palette, density and personality',
+          'The user chooses in the browser; Selina records the choice and generates docs/style-direction.md with the full direction',
+          'Architect, senior-dev, ux-reviewer, copywriter and seo-specialist read that artefact as the style reference for the rest of the workflow',
+          'The phase is skipped automatically in projects without a user interface',
+        ],
+      },
+      {
         category: 'Quality',
         color: 'var(--red)',
         background: 'rgba(229,86,79,0.08)',
@@ -1176,7 +1210,7 @@ const data: PageData = {
   // ----------------------------------------------------------------
 
   memory: {
-    sectionLabel: 'Since v0.2.0 -- Improved in v0.2.3 and v0.4.4',
+    sectionLabel: 'Persistent memory per project',
     title: 'Persistent memory',
     descriptionHtml: 'Alfred Dev remembers decisions, commits and iterations between sessions. Memory is stored in a local SQLite database inside each project, with no external dependencies or remote services. Since v0.2.3: tags, status and relationships between decisions, auto-capture of commits, advanced filters and export/import.',
     traceability: {
@@ -1476,7 +1510,7 @@ personalidad:
       {
         svgContent: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
         question: 'Do the agents consume additional tokens?',
-        answerHtml: 'Yes, like any interaction with Claude. Agents are system instructions that guide responses, so they consume context proportional to their complexity. In practice, the additional cost is moderate: agent system prompts are optimised to take up as little space as possible without losing precision. Optional agents are only loaded if you activate them, so the base context is that of the 9 core agents.',
+        answerHtml: 'Yes, like any interaction with Claude. Agents are system instructions that guide responses, so they consume context proportional to their complexity. In practice, the additional cost is moderate: agent system prompts are optimised to take up as little space as possible without losing precision. Optional agents are only loaded if you activate them, so the base context is that of the 10 core agents.',
       },
       {
         svgContent: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
@@ -1501,6 +1535,26 @@ personalidad:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.5.0',
+      date: '2026-03-31',
+      added: [
+        '<strong>Selina — The Stylist</strong> (10th core agent): phase 1b of the <code>feature</code> workflow. Presents three visual style directions in the browser before the architect designs any components. Only active in projects with a user interface.',
+        '<strong>Local visual server</strong>: zero-dependency HTTP + WebSocket server (<code>visual/scripts/server.cjs</code>) to render style options in three columns with hot-reload and graceful shutdown.',
+        '<strong>Visual style skill</strong> (<code>skills/estilo/style-direction/SKILL.md</code>): guide for starting the server, writing HTML proposals, reading the user\'s choice and generating <code>docs/style-direction.md</code>.',
+        '<strong>Conditional phase</strong>: new <code>has_frontend</code> condition in the orchestrator. The phase is skipped automatically in projects without a UI.',
+      ],
+      changed: [
+        '5 agents updated to read <code>docs/style-direction.md</code> as a style reference: architect, senior-dev, ux-reviewer, copywriter, seo-specialist.',
+        'README updated: 10 core agents, up to 7 phases, agent table with Selina and workflow example with phase 1b.',
+      ],
+      fixed: [
+        'Native module imports in <code>server.cjs</code>: mandatory <code>node:</code> prefix (<code>node:http</code>, <code>node:crypto</code>, <code>node:fs</code>, <code>node:path</code>).',
+        '<code>Number.parseInt</code> instead of <code>parseInt</code> in <code>server.cjs</code> (SonarQube linting rule).',
+        'Cognitive complexity in <code>config_loader.py</code>: <code>_count_source_files</code> (38 → ~6) and <code>suggest_optional_agents</code> (18 → ~3) resolved by extracting helper functions.',
+        'SonarQube skill registered in <code>plugin.json</code>: the file existed but was missing from the plugin manifest.',
+      ],
+    },
     {
       version: '0.4.7',
       date: '2026-03-31',
@@ -1857,11 +1911,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.4.7',
+    version: 'v0.5.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Claude Code plugin. 17 agents. 60 skills. 13 hooks. 25 commands. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
+    tagline: 'Claude Code plugin. 18 agents. 60 skills. 13 hooks. 25 commands. Visual style with Selina. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
     slogan: 'Automated software engineering for Claude Code.',
     disclaimer: {
       linkText: 'Disclaimer',

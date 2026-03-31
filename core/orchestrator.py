@@ -92,6 +92,18 @@ FLOWS: Dict[str, Dict[str, Any]] = {
                 ),
             },
             {
+                "nombre": "estilo_visual",
+                "agentes": ["selina"],
+                "paralelo": False,
+                "gate": "gate_estilo",
+                "gate_tipo": GATE_USUARIO,
+                "condicion": "tiene_frontend",
+                "descripcion": (
+                    "Definicion de la direccion de estilo visual "
+                    "del producto con tres propuestas comparativas."
+                ),
+            },
+            {
                 "nombre": "arquitectura",
                 "agentes": ["architect", "security-officer"],
                 "paralelo": True,
@@ -357,6 +369,73 @@ OPTIONAL_INTEGRATIONS: Dict[str, Dict[str, Any]] = {
     },
 }
 
+# --- Evaluadores de condiciones de fase ---------------------------------------
+# Mapa de condiciones declarativas a funciones evaluadoras.
+# Cada condicion recibe el stack del proyecto y devuelve True si la fase debe
+# ejecutarse. Se importa de forma perezosa (lazy) dentro de la funcion para
+# evitar importaciones circulares con config_loader.
+
+_PHASE_CONDITIONS: Optional[Dict[str, Any]] = None
+
+
+def _get_phase_conditions() -> Dict[str, Any]:
+    """Devuelve el mapa de condiciones, inicializandolo de forma perezosa."""
+    global _PHASE_CONDITIONS
+    if _PHASE_CONDITIONS is None:
+        from core.config_loader import has_frontend  # noqa: PLC0415
+        # "tiene_frontend" evalua config_loader.has_frontend(stack) para decidir
+        # si la fase estilo_visual debe ejecutarse. La importacion es perezosa para
+        # evitar importaciones circulares entre orchestrator y config_loader.
+        _PHASE_CONDITIONS = {
+            "tiene_frontend": has_frontend,
+        }
+    return _PHASE_CONDITIONS
+
+
+def _advance_skipping_phases(
+    session: Dict[str, Any],
+    fases: List[Dict[str, Any]],
+    siguiente: int,
+    conditions: Dict[str, Any],
+) -> int:
+    """Avanza el índice saltando fases con condición no cumplida.
+
+    Registra cada fase saltada en ``session["fases_completadas"]`` con
+    resultado ``"saltada"``. Se detiene en la primera fase ejecutable
+    (sin condición o condición cumplida) o cuando el stack no está
+    disponible para evaluar la condición.
+
+    Args:
+        session: estado de la sesión (se muta para registrar fases saltadas).
+        fases: lista de fases del flujo.
+        siguiente: índice de partida para la búsqueda.
+        conditions: mapa de nombre de condición a función evaluadora.
+
+    Returns:
+        Índice de la siguiente fase ejecutable.
+    """
+    stack = session.get("stack")
+    while siguiente < len(fases):
+        fase_siguiente = fases[siguiente]
+        condicion = fase_siguiente.get("condicion")
+        if not condicion or condicion not in conditions:
+            break
+        if stack is None:
+            # Sin stack, no se puede evaluar la condición: ejecutar la fase
+            break
+        if conditions[condicion](stack):
+            break
+        # Condición no cumplida: registrar fase saltada y continuar
+        session["fases_completadas"].append({
+            "nombre": fase_siguiente["nombre"],
+            "resultado": "saltada",
+            "artefactos": [],
+            "completada_en": datetime.now(timezone.utc).isoformat(),
+            "iteraciones": 0,
+        })
+        siguiente += 1
+    return siguiente
+
 
 def get_effective_agents(
     phase_name: str,
@@ -583,19 +662,18 @@ def run_flow(
 
     # --- 2. Validar equipo_sesion si se proporcionó ---
     equipo_error = None
-    if equipo_sesion is not None:
-        if not _validate_equipo_sesion(equipo_sesion):
-            print(
-                "[Alfred Dev] Error: el equipo de sesión no pasó la validación. "
-                "La sesión se creará sin agentes opcionales. Revisa la estructura "
-                "del diccionario equipo_sesion.",
-                file=sys.stderr,
-            )
-            equipo_error = (
-                "El equipo de sesión proporcionado no pasó la validación "
-                "y fue descartado. La sesión se ejecutará sin agentes opcionales."
-            )
-            equipo_sesion = None
+    if equipo_sesion is not None and not _validate_equipo_sesion(equipo_sesion):
+        print(
+            "[Alfred Dev] Error: el equipo de sesión no pasó la validación. "
+            "La sesión se creará sin agentes opcionales. Revisa la estructura "
+            "del diccionario equipo_sesion.",
+            file=sys.stderr,
+        )
+        equipo_error = (
+            "El equipo de sesión proporcionado no pasó la validación "
+            "y fue descartado. La sesión se ejecutará sin agentes opcionales."
+        )
+        equipo_sesion = None
 
     # --- 3. Crear sesión base ---
     session = create_session(command, description)
@@ -781,8 +859,10 @@ def advance_phase(
     # Incorporar artefactos al registro global de la sesión
     session["artefactos"].extend(artefactos)
 
-    # Avanzar al siguiente índice
-    siguiente = session["fase_numero"] + 1
+    # Avanzar al siguiente índice, saltando fases con condicion no cumplida
+    siguiente = _advance_skipping_phases(
+        session, fases, session["fase_numero"] + 1, _get_phase_conditions()
+    )
 
     if siguiente < len(fases):
         session["fase_numero"] = siguiente

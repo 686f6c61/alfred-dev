@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-17 agentes especializados con personalidad propia (9 de nucleo + 8 opcionales), 60 skills en 13 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+18 agentes especializados con personalidad propia (10 de nucleo + 8 opcionales), 61 skills en 13 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -66,16 +66,28 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 /alfred-dev:feature sistema de login con email y password
 ```
 
-Alfred activara el flujo de 6 fases (producto, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
+Alfred activara el flujo de hasta 7 fases (producto, estilo visual*, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. La fase de estilo visual se activa solo en proyectos con interfaz de usuario. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.4.7
+## Novedades en v0.5.0
 
-La v0.4.7 corrige un error intermitente en el hook `SessionStart` que provocaba el mensaje `SessionStart:startup hook error` al arrancar sesiones. La causa raíz era que el contexto se pasaba como argumento de línea de comandos a Python (`sys.argv[1]`), sujeto al límite `ARG_MAX` del kernel. Ahora la emisión JSON se hace por stdin con `json.dumps`, eliminando la clase de error por completo.
+La v0.5.0 añade **Selina — La Estilista**, décimo agente de núcleo. Selina ocupa una nueva fase 1b (condicional) en el flujo `feature`: antes de que el architect diseñe componentes, presenta tres direcciones de estilo visual en el navegador para que el usuario elija. La elección queda en `docs/style-direction.md` y cinco agentes (architect, senior-dev, ux-reviewer, copywriter, seo-specialist) la leen como referencia. La fase se salta automáticamente en proyectos sin interfaz de usuario.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Selina (10.º agente de núcleo)** | Directora de estilo visual. Fase 1b condicional del flujo feature. Tres propuestas en el navegador, un artefacto de decisión. |
+| **Servidor visual local** | HTTP + WebSocket de dependencias cero (`visual/scripts/server.cjs`) con hot-reload, gestión de sesiones y cierre limpio. |
+| **Skill de estilo visual** | `skills/estilo/style-direction/SKILL.md` documenta el protocolo completo de Selina. Registrado en `plugin.json`. |
+| **Complejidad cognitiva reducida** | `config_loader.py`: `_count_source_files` (38 → ~6) y `suggest_optional_agents` (18 → ~3) por extracción de funciones auxiliares. |
+| **SonarQube sin prompts** | Comandos Docker añadidos a `~/.claude/settings.json`; el security-officer puede arrancar SonarQube sin interrumpir al usuario. |
+
+### Novedades de v0.4.7
+
+La v0.4.7 corrige un error intermitente en el hook `SessionStart` que provocaba el mensaje `SessionStart:startup hook error` al arrancar sesiones.
 
 | Cambio | Descripcion |
 |--------|-------------|
-| **Hook SessionStart robusto** | La emisión JSON ya no se trunca con contenidos largos o caracteres especiales (tildes, backticks, comillas, barras invertidas). |
-| **Emisión por stdin** | Nueva función `emit_hook_json()` que recibe el contexto por stdin y genera JSON válido directamente con `json.dumps`. |
+| **Hook SessionStart robusto** | La emisión JSON ya no se trunca con contenidos largos o caracteres especiales. |
+| **Emisión por stdin** | Nueva función `emit_hook_json()` que recibe el contexto por stdin y genera JSON válido con `json.dumps`. |
 
 ### Novedades de v0.4.6
 
@@ -187,28 +199,30 @@ Toda la interfaz se controla desde la línea de comandos de Claude Code con el p
 ```
 > /alfred-dev:feature sistema de autenticación con OAuth2
 
-Alfred activa el flujo de 6 fases:
-  1. Producto    -- PRD con historias de usuario y criterios de aceptación
-  2. Arquitectura -- Diseño de componentes, ADRs, threat model en paralelo
-  3. Desarrollo  -- Implementación TDD (rojo-verde-refactor)
-  4. Calidad     -- Code review + OWASP scan + compliance check + SBOM
-  5. Documentación -- API docs, guía de usuario, changelog
-  6. Entrega     -- Pipeline CI/CD, Docker, deploy
+Alfred activa el flujo de hasta 7 fases:
+  1. Producto       -- PRD con historias de usuario y criterios de aceptación
+  1b. Estilo visual -- Tres propuestas en navegador, elección del usuario (solo si hay UI)
+  2. Arquitectura   -- Diseño de componentes, ADRs, threat model en paralelo
+  3. Desarrollo     -- Implementación TDD (rojo-verde-refactor)
+  4. Calidad        -- Code review + OWASP scan + compliance check + SBOM
+  5. Documentación  -- API docs, guía de usuario, changelog
+  6. Entrega        -- Pipeline CI/CD, Docker, deploy
 
 Cada transición entre fases requiere superar la quality gate correspondiente.
 ```
 
 ## Arquitectura
 
-### Agentes de nucleo (9)
+### Agentes de nucleo (10)
 
-El plugin implementa 9 agentes de nucleo, siempre activos, cada uno con un system prompt especializado, un conjunto de herramientas definido y un modelo asignado segun la complejidad de su tarea:
+El plugin implementa 10 agentes de nucleo, siempre activos, cada uno con un system prompt especializado, un conjunto de herramientas definido y un modelo asignado segun la complejidad de su tarea:
 
 | Agente | Rol | Modelo | Responsabilidad |
 |--------|-----|--------|-----------------|
 | **Alfred** | Orquestador | opus | Coordina flujos, activa agentes, evalua gates entre fases |
 | **SonIA** | Project Manager | sonnet | Descompone PRD en tareas, kanban con MD, trazabilidad criterio-tarea-test-doc, informes de progreso |
 | **El buscador de problemas** | Product Owner | opus | PRDs, historias de usuario, criterios de aceptacion, analisis competitivo |
+| **Selina** | Directora de estilo | opus | Tres propuestas visuales en navegador, artefacto `docs/style-direction.md`, gate de estilo |
 | **El dibujante de cajas** | Arquitecto | opus | Diseno de sistemas, ADRs, diagramas Mermaid, matrices de decision |
 | **El artesano** | Senior Dev | opus | Implementacion TDD estricto, refactoring, commits atomicos |
 | **El paranoico** | Security Officer | opus | OWASP Top 10, threat modeling STRIDE, SBOM, compliance RGPD/NIS2/CRA |
@@ -216,7 +230,9 @@ El plugin implementa 9 agentes de nucleo, siempre activos, cada uno con un syste
 | **El fontanero** | DevOps Engineer | sonnet | Docker multi-stage, CI/CD, deploy, monitoring, observabilidad |
 | **El escriba** | Tech Writer | sonnet | Fase 3b: cabeceras, docstrings, comentarios inline. Fase 5: API docs, arquitectura, guias, changelogs |
 
-Los agentes con modelo `opus` realizan tareas que requieren razonamiento complejo (diseno, seguridad, implementacion). Los agentes con modelo `sonnet` cubren tareas estructuradas con patrones mas predecibles (QA, infra, documentacion).
+Los agentes con modelo `opus` realizan tareas que requieren razonamiento complejo. Selina ocupa la fase 1b entre producto y arquitectura: define la dirección visual antes de que el architect diseñe componentes. Solo se activa si el proyecto tiene interfaz de usuario.
+
+Los agentes con modelo `sonnet` cubren tareas estructuradas con patrones mas predecibles (QA, infra, documentacion).
 
 ### Agentes opcionales (8)
 

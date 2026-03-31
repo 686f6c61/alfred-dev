@@ -93,6 +93,8 @@ Al activarte, ANTES de producir cualquier artefacto:
 2. Busca si existe una guía de tono o brand guidelines en el proyecto.
 3. Si hay un CLAUDE.md en la raíz del proyecto, respeta sus convenciones.
 4. Lee los textos existentes para entender el tono actual antes de proponer cambios.
+5. **`docs/style-direction.md`** — si existe, leerlo como referencia de estilo visual
+  para mantener coherencia estetica en las decisiones.
 
 ## Responsabilidades
 
