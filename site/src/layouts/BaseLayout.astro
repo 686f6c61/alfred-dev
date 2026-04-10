@@ -1,4 +1,6 @@
 ---
+import sitePackage from '../../package.json';
+
 /**
  * Layout base de la landing de Alfred Dev.
  *
@@ -78,6 +80,13 @@ const {
   twitterSite,
   twitterCreator,
 } = Astro.props;
+
+const assetVersion = sitePackage.version;
+const iconHref = `/favicon.ico?v=${assetVersion}`;
+const iconPngHref = `/favicon.png?v=${assetVersion}`;
+const icon32Href = `/favicon-32.png?v=${assetVersion}`;
+const icon16Href = `/favicon-16.png?v=${assetVersion}`;
+const appleTouchIconHref = `/apple-touch-icon.png?v=${assetVersion}`;
 ---
 
 <!doctype html>
@@ -120,11 +129,12 @@ const {
   {twitterCreator && <meta name="twitter:creator" content={twitterCreator}>}
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="/favicon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-  <link rel="shortcut icon" href="/favicon.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/x-icon" href={iconHref}>
+  <link rel="icon" type="image/png" href={iconPngHref}>
+  <link rel="icon" type="image/png" sizes="32x32" href={icon32Href}>
+  <link rel="icon" type="image/png" sizes="16x16" href={icon16Href}>
+  <link rel="shortcut icon" href={iconHref}>
+  <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIconHref}>
 
   <!-- Google Fonts (carga no bloqueante con preload + swap) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
