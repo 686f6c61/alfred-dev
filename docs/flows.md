@@ -6,7 +6,7 @@ Cada flujo responde a un escenario real del ciclo de vida del software:
 
 | Flujo | Escenario | Fases |
 |-------|-----------|-------|
-| `feature` | Nueva funcionalidad, desde la idea hasta la entrega | 6 |
+| `feature` | Nueva funcionalidad, desde la idea hasta la entrega | 7 (6 base + estilo visual condicional) |
 | `fix` | Correccion de un bug, desde el diagnóstico hasta la validación | 3 |
 | `spike` | Investigación exploratoria con conclusiones formales | 2 |
 | `ship` | Release completa: auditoria, empaquetado y despliegue | 4 |
@@ -85,7 +85,7 @@ La distinción entre APROBADO y APROBADO CON CONDICIONES es deliberada: permite 
 
 ## Flujo feature
 
-El flujo feature es el mas completo del sistema: 6 fases con 7 agentes involucrados y 5 tipos de gate distintos. Existe para cubrir el ciclo de vida completo de una funcionalidad nueva, desde la definición de requisitos hasta la entrega final. Cada fase aporta un tipo de validación diferente y los agentes se eligen por su especialización, no por rotación.
+El flujo feature es el mas completo del sistema: 6 fases base mas una fase 1b condicional de estilo visual, con hasta 8 agentes involucrados y 5 tipos de gate distintos. Existe para cubrir el ciclo de vida completo de una funcionalidad nueva, desde la definición de requisitos hasta la entrega final. Cada fase aporta un tipo de validación diferente y los agentes se eligen por su especialización, no por rotación.
 
 ### Fase 1: producto
 
@@ -101,18 +101,32 @@ La gate es de tipo `usuario` porque solo el usuario puede decidir si el PRD refl
 | Tipo de gate | `usuario` |
 | Artefacto | PRD con historias de usuario |
 
+### Fase 1b: estilo visual (condicional)
+
+Si el proyecto tiene interfaz de usuario, Alfred activa a `selina` entre producto y arquitectura. Su trabajo no es decorar al final, sino fijar una dirección visual antes de que nadie diseñe componentes o escriba CSS. Selina presenta tres propuestas, el usuario elige una y la decisión queda persistida en `docs/style-direction.md` para que architect, senior-dev y los agentes opcionales de frontend trabajen sobre una misma referencia.
+
+La gate sigue siendo de tipo `usuario`: no hay criterio automático válido para decidir qué dirección visual representa mejor al producto. Si el proyecto no tiene frontend, esta fase se omite sin bloquear el flujo.
+
+| Propiedad | Valor |
+|-----------|-------|
+| Agentes | `selina` |
+| Ejecución | Secuencial |
+| Gate | `gate_estilo_visual` |
+| Tipo de gate | `usuario` |
+| Artefacto | Dirección de estilo visual |
+
 ### Fase 2: arquitectura
 
 Una vez aprobados los requisitos, hay que decidir como implementarlos. Esta fase involucra dos agentes en paralelo: `architect` disena la arquitectura técnica (patrones, componentes, interfaces) mientras `security-officer` elabora el threat model (superficie de ataque, vectores, mitigaciones). Trabajan en paralelo porque sus tareas son independientes: el architect no necesita el threat model para disenar la arquitectura, y el security-officer no necesita la propuesta arquitectonica para identificar amenazas. Al terminar, ambos artefactos se presentan juntos al usuario.
 
-La gate es de tipo `usuario` porque la arquitectura es una decisión estrategica que afecta a todo el proyecto. El usuario debe entender y aceptar tanto el diseño como los riesgos identificados antes de que se escriba una sola linea de código.
+La gate es de tipo `usuario+seguridad` porque la arquitectura es una decisión estrategica que afecta a todo el proyecto y, además, no se puede avanzar si el threat model o la revisión del `security-officer` detectan riesgos sin resolver. El usuario debe entender y aceptar el diseño, y seguridad debe validarlo antes de que se escriba una sola linea de código.
 
 | Propiedad | Valor |
 |-----------|-------|
 | Agentes | `architect`, `security-officer` |
 | Ejecución | Paralelo |
 | Gate | `gate_arquitectura` |
-| Tipo de gate | `usuario` |
+| Tipo de gate | `usuario+seguridad` |
 | Artefactos | Propuesta arquitectonica, threat model |
 
 ### Fase 3: desarrollo
@@ -173,7 +187,7 @@ La gate es de tipo `usuario+seguridad` porque un merge o deploy incorrecto puede
 
 ### Diagrama de estados del flujo feature
 
-El siguiente diagrama muestra las 6 fases como estados y las gates como transiciones entre ellos. Las notas indican que agentes participan en cada fase y como se ejecutan.
+El siguiente diagrama muestra las 6 fases base y la fase 1b condicional como estados y las gates como transiciones entre ellos. Las notas indican que agentes participan en cada fase y como se ejecutan.
 
 ```mermaid
 stateDiagram-v2
@@ -182,14 +196,17 @@ stateDiagram-v2
     [*] --> producto: create_session("feature")
 
     state "Fase 1 -- Producto" as producto
+    state "Fase 1b -- Estilo visual" as estilo_visual
     state "Fase 2 -- Arquitectura" as arquitectura
     state "Fase 3 -- Desarrollo" as desarrollo
     state "Fase 4 -- Calidad" as calidad
     state "Fase 5 -- Documentación" as documentación
     state "Fase 6 -- Entrega" as entrega
 
-    producto --> arquitectura: gate_producto [usuario]
-    arquitectura --> desarrollo: gate_arquitectura [usuario]
+    producto --> estilo_visual: gate_producto [usuario + frontend]
+    producto --> arquitectura: gate_producto [sin frontend]
+    estilo_visual --> arquitectura: gate_estilo_visual [usuario]
+    arquitectura --> desarrollo: gate_arquitectura [usuario+seguridad]
     desarrollo --> calidad: gate_desarrollo [automático]
     calidad --> documentación: gate_calidad [automático+seguridad]
     documentación --> entrega: gate_documentacion [libre]
@@ -343,9 +360,74 @@ stateDiagram-v2
 
 ---
 
+## Flujo quick
+
+El flujo quick existe para cambios pequeños, locales y de riesgo acotado donde abrir un `feature` completo sería desproporcionado. Su objetivo es mantener la disciplina técnica --estado persistente, tests, seguridad y verify posterior-- sin introducir la ceremonia de discovery, arquitectura formal o documentación amplia cuando no aportan valor.
+
+Antes de la primera fase, Alfred prepara la sesión con el helper de continuidad y resuelve el `equipo_sesion` real. Ese equipo puede venir de composición dinámica efímera o, si no existe, del fallback persistido en `.claude/alfred-dev.local.md`. En ambos casos, `equipo_sesion` es la fuente runtime canónica. Los opcionales que no participan en ninguna de las dos fases (`github-manager`, `librarian` y cualquier otro sin integración directa) no desaparecen: se consideran explícitamente **bajo demanda** y se reflejan así en `current.md`, `progress.md` y `traceability.md`.
+
+### Fase 1: ejecución acotada
+
+`senior-dev` lidera la implementación del cambio. La fase acepta opcionales pegados a la superficie real del ajuste: `data-engineer` si toca persistencia, `ux-reviewer` si toca UI, `copywriter` si cambia copy visible e `i18n-specialist` si afecta a textos multiidioma. La gate es de tipo `automático` porque el criterio sigue siendo objetivo: cambio local, checks verdes y sin bloquear continuidad.
+
+| Propiedad | Valor |
+|-----------|-------|
+| Agentes | `senior-dev` |
+| Ejecución | Secuencial |
+| Gate | `gate_ejecucion_acotada` |
+| Tipo de gate | `automático` |
+| Artefacto | Cambio acotado con checks locales |
+
+### Fase 2: validación rápida
+
+La segunda fase comprueba que el cambio pequeño sigue siendo seguro y no regresa en la zona tocada. `qa-engineer` y `security-officer` trabajan en paralelo, y pueden sumarse `ux-reviewer`, `performance-engineer`, `seo-specialist` o `i18n-specialist` si aportan señal real. Si `lucius` está activo en `equipo_sesion`, entra después como revisión secuencial externa de cierre.
+
+| Propiedad | Valor |
+|-----------|-------|
+| Agentes | `qa-engineer`, `security-officer` |
+| Ejecución | Paralelo |
+| Gate | `gate_validacion_rapida` |
+| Tipo de gate | `automático+seguridad` |
+| Artefacto | Validación rápida de regresión y seguridad |
+
+### Diagrama de estados del flujo quick
+
+```mermaid
+stateDiagram-v2
+    direction TB
+
+    [*] --> ejecucion_acotada: create_session("quick")
+
+    state "Fase 1 -- Ejecución acotada" as ejecucion_acotada
+    state "Fase 2 -- Validación rápida" as validacion_rapida
+
+    ejecucion_acotada --> validacion_rapida: gate_ejecucion_acotada [automático]
+    validacion_rapida --> [*]: gate_validacion_rapida [automático+seguridad]
+
+    note right of ejecucion_acotada
+        Agente: senior-dev
+        Secuencial
+        Cambio pequeño, local y acotado
+    end note
+
+    note right of validacion_rapida
+        Agentes: qa-engineer + security-officer
+        Paralelo
+        Regresión local + seguridad
+    end note
+```
+
+---
+
 ## Flujo spike
 
 El flujo spike existe para investigaciones exploratorias donde el objetivo no es producir código de produccion, sino responder una pregunta técnica: es viable esta tecnología para nuestro caso de uso? Que alternativas hay? Cual es el rendimiento esperado? La estructura es intencionadamente ligera (2 fases) porque una investigación con demasiada burocracia deja de ser exploratoria.
+
+Si `equipo_sesion` llega con opcionales activos por composición dinámica o por
+fallback a `.claude/alfred-dev.local.md`, esa sigue siendo la fuente runtime
+canónica. En `spike`, por defecto los opcionales quedan fuera del loop estándar
+y se consideran especialistas **bajo demanda**: solo se incorporan si el tema
+investigado lo justifica de forma explícita.
 
 ### Fase 1: exploracion
 
@@ -410,6 +492,9 @@ El flujo ship cubre el proceso completo de release: desde la auditoria previa ha
 
 Antes de empaquetar nada, `qa-engineer` y `security-officer` auditan el estado actual del proyecto en paralelo. Esta fase existe porque el código puede haber pasado las gates del flujo feature individualmente, pero el conjunto (multiples features, fixes y refactors acumulados) necesita una validación integral. La gate es de tipo `automático+seguridad` porque los criterios son objetivos y no admiten excepciones antes de una release.
 
+Si `lucius` está activo en `equipo_sesion`, entra después como auditor externo
+secuencial para contrastar este cierre antes de pasar al empaquetado.
+
 | Propiedad | Valor |
 |-----------|-------|
 | Agentes | `qa-engineer`, `security-officer` |
@@ -420,7 +505,10 @@ Antes de empaquetar nada, `qa-engineer` y `security-officer` auditan el estado a
 
 ### Fase 2: documentación
 
-El agente `tech-writer` actualiza la documentación de release: changelog, guias de migración, notas de versión y cualquier otro documento que los usuarios necesiten para adoptar la nueva versión. La gate es de tipo `libre` porque no hay código que validar, solo prosa.
+El agente `tech-writer` redacta la documentación de release: changelog, guias de migración, notas de versión y cualquier otro documento que los usuarios necesiten para adoptar la nueva versión. La gate es de tipo `libre` porque no hay código que validar, solo prosa.
+
+Si `copywriter` está activo, colabora en esta fase para pulir release notes,
+mensajes orientados a usuario y copy visible asociado a la publicación.
 
 | Propiedad | Valor |
 |-----------|-------|
@@ -432,19 +520,25 @@ El agente `tech-writer` actualiza la documentación de release: changelog, guias
 
 ### Fase 3: empaquetado
 
-`devops-engineer` y `security-officer` generan el artefacto de release con versionado semántico, etiquetado y firma. La participacion del security-officer en esta fase asegura que el artefacto empaquetado no incluye dependencias vulnerables ni secretos filtrados. La gate es de tipo `automático` porque la validación del empaquetado es mecánica: el artefacto se genera, los checksums coinciden, la firma es valida.
+`devops-engineer` y `security-officer` generan el artefacto de release versionado y firmado. La participacion del security-officer en esta fase asegura que el artefacto empaquetado no incluye dependencias vulnerables ni secretos filtrados. La gate es de tipo `automático+seguridad`: el empaquetado debe generar artefacto verificable y, además, la validación de seguridad y firma tiene que ser favorable.
+
+Si `github-manager` está activo, entra después del núcleo para publicar tag,
+release y artefactos públicos del repositorio.
 
 | Propiedad | Valor |
 |-----------|-------|
 | Agentes | `devops-engineer`, `security-officer` |
 | Ejecución | Secuencial |
 | Gate | `gate_empaquetado` |
-| Tipo de gate | `automático` |
+| Tipo de gate | `automático+seguridad` |
 | Artefacto | Release con versionado semántico |
 
 ### Fase 4: despliegue
 
-El agente `devops-engineer` ejecuta el despliegue a produccion con validación post-deploy y rollback preparado. La gate es de tipo `usuario+seguridad` porque el despliegue es el punto de no retorno: una vez publicado, los usuarios pueden descargarlo. Se exige aprobacion explícita del usuario (que confirme que quiere desplegar) y seguridad OK (que confirme que todo esta limpio).
+El agente `devops-engineer` ejecuta el despliegue a produccion con validación post-deploy y rollback preparado. La gate es de tipo `usuario+seguridad` porque el despliegue es el punto de no retorno: una vez publicado, los usuarios pueden descargarlo. Se exige aprobacion explícita del usuario (que confirme que quiere desplegar) y seguridad OK (que confirme que todo esta limpio). Incluso en modo autopilot, esta confirmación humana se mantiene: el flujo puede automatizar toda la preparación, pero no el acto final de publicar.
+
+Si `github-manager` está activo, puede cerrar la release o dejar el repositorio
+sincronizado después del despliegue, pero nunca sustituye la confirmación humana.
 
 | Propiedad | Valor |
 |-----------|-------|
@@ -469,7 +563,7 @@ stateDiagram-v2
 
     auditoria_final --> documentación: gate_auditoria_final [automático+seguridad]
     documentación --> empaquetado: gate_documentacion_ship [libre]
-    empaquetado --> despliegue: gate_empaquetado [automático]
+    empaquetado --> despliegue: gate_empaquetado [automático+seguridad]
     despliegue --> [*]: gate_despliegue [usuario+seguridad]
 
     note right of auditoria_final
@@ -513,6 +607,15 @@ Cuatro agentes trabajan simultaneamente, cada uno en su ámbito de especializaci
 - `tech-writer` verifica la completitud y coherencia de la documentación existente.
 
 El paralelismo total se justifica porque los cuatro agentes trabajan sobre aspectos completamente independientes del proyecto. No hay dependencia entre la revision de cobertura de tests y la auditoria de dependencias, ni entre la coherencia arquitectonica y la documentación. Ejecutarlos en serie cuadruplicaria el tiempo sin ningun beneficio.
+
+Si `lucius` está activo, se ejecuta después como cierre secuencial externo: no
+sustituye ninguna de las cuatro auditorías, sino que contrasta sus resultados
+antes del resumen final.
+
+Si `equipo_sesion` llega con opcionales activos por composición dinámica o por
+fallback a `.claude/alfred-dev.local.md`, esa sigue siendo la fuente runtime
+canónica. En `audit`, salvo `lucius`, el resto de opcionales quedan fuera del
+loop estándar y se tratan como especialistas **bajo demanda**.
 
 La gate es de tipo `automático+seguridad` porque una auditoria que se pueda superar con resultados mediocres no tiene sentido. Si alguno de los cuatro agentes detecta un problema crítico, la gate bloquea y hay que resolverlo.
 
@@ -626,3 +729,8 @@ La decisión de usar un fichero JSON plano en lugar de la base de datos SQLite e
 Los hooks acceden al fichero de estado para tomar decisiones contextuales. Por ejemplo, el hook `quality-gate.py` necesita saber si estamos en una fase de desarrollo (donde los tests rojos son informativos) o en una fase de calidad (donde los tests rojos bloquean el avance). El hook `activity-capture.py` necesita saber en que fase y flujo estamos para asociar los eventos capturados a la iteracion correcta en la memoria persistente.
 
 El patron de lectura es siempre el mismo: el hook lee el fichero JSON, extrae los campos que necesita (`comando`, `fase_actual`, `fase_numero`) y adapta su comportamiento en función del contexto. Si el fichero no existe (porque no hay ningun flujo activo), el hook funciona en modo por defecto sin bloquear nada.
+    note right of estilo_visual
+        Agente: selina
+        Secuencial
+        Tres propuestas + elección visual
+    end note

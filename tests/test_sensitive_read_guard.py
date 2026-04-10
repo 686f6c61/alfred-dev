@@ -105,11 +105,20 @@ class TestSensitivePatterns(unittest.TestCase):
     def test_service_account_json(self):
         self._check("service-account.json", True)
 
+    def test_service_account_variant_json(self):
+        self._check("service-account.prod.json", True)
+
+    def test_firebase_adminsdk_json(self):
+        self._check("firebase-adminsdk-prod.json", True)
+
     def test_npmrc(self):
         self._check(".npmrc", True)
 
     def test_pypirc(self):
         self._check(".pypirc", True)
+
+    def test_terraform_state(self):
+        self._check("terraform.tfstate", True)
 
     def test_htpasswd(self):
         self._check(".htpasswd", True)
@@ -165,6 +174,18 @@ class TestPathPatterns(unittest.TestCase):
 
     def test_gnupg_dir(self):
         self._check_path("/home/user/.gnupg/private-keys-v1.d/key.key", True)
+
+    def test_docker_config_path(self):
+        self._check_path("/home/user/.docker/config.json", True)
+
+    def test_kube_config_path(self):
+        self._check_path("/home/user/.kube/config", True)
+
+    def test_terraform_state_path(self):
+        self._check_path("/home/user/.terraform/terraform.tfstate", True)
+
+    def test_windows_docker_config_path(self):
+        self._check_path("C:/Users/test/.docker/config.json", True)
 
     def test_normal_path(self):
         self._check_path("/home/user/projects/app/main.py", False)
@@ -248,6 +269,30 @@ class TestMainFunction(unittest.TestCase):
         })
         self.assertIn("AVISO", output)
         self.assertIn("Clave privada", output)
+
+    def test_docker_config_warning(self):
+        """La configuracion Docker debe avisar como credencial sensible."""
+        output = self._run_hook({
+            "tool_input": {"file_path": "/home/user/.docker/config.json"}
+        })
+        self.assertIn("AVISO", output)
+        self.assertIn("Docker", output)
+
+    def test_service_account_variant_warning(self):
+        """Variantes de service-account.json tambien deben avisar."""
+        output = self._run_hook({
+            "tool_input": {"file_path": "/secrets/service-account.prod.json"}
+        })
+        self.assertIn("AVISO", output)
+        self.assertIn("Credenciales de servicio", output)
+
+    def test_kube_config_warning(self):
+        """La configuracion de kubeconfig debe avisar."""
+        output = self._run_hook({
+            "tool_input": {"file_path": "/home/user/.kube/config"}
+        })
+        self.assertIn("AVISO", output)
+        self.assertIn("Kubernetes", output)
 
 
 if __name__ == "__main__":

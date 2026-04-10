@@ -151,7 +151,7 @@ quadrantChart
     "El Paranoico (security)": [0.80, 0.25]
     "El Artesano (senior-dev)": [0.85, 0.80]
     "El Dibujante de Cajas (architect)": [0.80, 0.75]
-    "El Director Técnico (lucius)": [0.70, 0.50]
+    "El Director Técnico Externo (lucius)": [0.70, 0.50]
     "La Interprete (i18n)": [0.30, 0.55]
     "SonIA (project-manager)": [0.45, 0.65]
     "Selina (estilista)": [0.25, 0.60]
@@ -207,7 +207,7 @@ Una decisión de arquitectura mal tomada puede costar días de refactorización;
 | El Dibujante de Cajas | `architect` | Diseña la estructura del sistema. Las decisiones de arquitectura son las más difíciles de revertir una vez implementadas. |
 | El Artesano | `senior-dev` | Escribe código de producción. La calidad del código que genera determina directamente la calidad del entregable. |
 | El Paranoico | `security-officer` | Evalúa la seguridad. Un falso negativo en seguridad (no detectar una vulnerabilidad) puede tener consecuencias graves. Opus ofrece mayor capacidad de razonamiento para detectar patrones sutiles. |
-| El Director Técnico | `lucius` | Coordina la auditoría externa vía Codex CLI y sintetiza el informe final. Necesita razonamiento profundo para interpretar el output de GPT-5.4 y convertirlo en prescripciones accionables. |
+| El Director Técnico Externo | `lucius` | Coordina la auditoría externa vía Codex CLI y sintetiza el informe final. Necesita razonamiento profundo para interpretar el output de GPT-5.4 y convertirlo en prescripciones accionables sin sustituir el sign-off canónico del flujo. |
 
 ### Agentes con sonnet (13)
 

@@ -32,11 +32,9 @@ Después ejecuta inmediatamente el helper determinista:
 python3 .claude/alfred-continuity.py memory-ui "$PWD"
 ```
 
-Si el helper devuelve una URL válida:
-
-- úsala como respuesta final;
-- explica en una frase que la UI se abre en navegador y se refresca sola;
-- no sigas explorando el repositorio.
+Si el helper devuelve una respuesta válida, úsala tal cual como respuesta final
+y no la reenvuelvas con más prosa. El helper ya deja visible la URL, el estado
+de la UI y qué vistas ofrece.
 
 Solo si el helper falla, cae al modo manual.
 
@@ -51,4 +49,5 @@ Solo si el helper falla, cae al modo manual.
 - NO conviertas este comando en un informe textual largo.
 - NO leas el SQLite “a mano” si el helper ha funcionado.
 - NO abras un flujo multiagente.
+- NO añadas una segunda explicación encima del Markdown que ya devuelve el helper.
 - Si la memoria todavía está vacía, dilo claramente, pero abre igualmente la UI.

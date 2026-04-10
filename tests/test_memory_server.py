@@ -126,6 +126,76 @@ class TestMCPTools(unittest.TestCase):
             if os.path.exists(export_path):
                 os.unlink(export_path)
 
+    def test_memory_log_event_indexes_payload_when_content_missing(self):
+        """memory_log_event deja el evento buscable aunque solo llegue payload."""
+        self.db.start_iteration("feature", "Demo")
+
+        result = self.server._call_memory_log_event(
+            self.db,
+            {
+                "event_type": "custom",
+                "phase": "calidad",
+                "payload": {"note": "token refresh roto"},
+            },
+        )
+
+        self.assertNotIn("error", result)
+        found = self.db.search("token")
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["source_type"], "event")
+
+    def test_memory_get_iteration_returns_all_decisions_for_iteration(self):
+        """memory_get_iteration no debe truncar decisiones a 50."""
+        iteration_id = self.db.start_iteration("feature", "Demo extensa")
+        for index in range(55):
+            self.db.log_decision(
+                title=f"Decision {index}",
+                chosen="Opcion",
+                iteration_id=iteration_id,
+            )
+
+        result = self.server._call_memory_get_iteration(self.db, {"id": iteration_id})
+
+        self.assertNotIn("error", result)
+        self.assertEqual(result["iteration"]["id"], iteration_id)
+        self.assertEqual(result["total_decisions"], 55)
+        self.assertEqual(len(result["decisions"]), 55)
+
+    def test_memory_get_timeline_returns_full_iteration_history(self):
+        """memory_get_timeline no debe truncar cronologias largas a 100."""
+        iteration_id = self.db.start_iteration("feature", "Timeline extensa")
+        for index in range(105):
+            self.db.log_event(
+                event_type="custom",
+                summary=f"evento {index}",
+                iteration_id=iteration_id,
+            )
+
+        result = self.server._call_memory_get_timeline(
+            self.db,
+            {"iteration_id": iteration_id},
+        )
+
+        self.assertNotIn("error", result)
+        self.assertEqual(result["iteration_id"], iteration_id)
+        self.assertEqual(result["total"], 105)
+        self.assertEqual(len(result["events"]), 105)
+
+    def test_initialize_uses_plugin_version(self):
+        """initialize expone la misma version que plugin.json."""
+        response = self.server._handle_initialize(1, {})
+        with open(
+            os.path.join(os.path.dirname(__file__), "..", ".claude-plugin", "plugin.json"),
+            "r",
+            encoding="utf-8",
+        ) as fh:
+            plugin = json.load(fh)
+
+        self.assertEqual(
+            response["result"]["serverInfo"]["version"],
+            plugin["version"],
+        )
+
     # --- Tests de herramientas modificadas ---------------------------------
 
     def test_memory_search_with_filters(self):
@@ -196,6 +266,32 @@ class TestMCPTools(unittest.TestCase):
 
         files = json.loads(row[0])
         self.assertEqual(files, ["src/app.py", "tests/test_app.py"])
+
+    def test_memory_log_commit_accepts_author_and_committed_at(self):
+        """memory_log_commit debe poder persistir autor y fecha real."""
+        result = self.server._call_memory_log_commit(
+            self.db,
+            {
+                "sha": "test_meta_sha_002",
+                "message": "feat: importar metadata completa",
+                "author": "Jane Developer",
+                "committed_at": "2024-06-01T12:00:00+00:00",
+            },
+        )
+
+        self.assertNotIn("error", result)
+        commit_id = result["commit_id"]
+
+        import sqlite3
+        conn = sqlite3.connect(self._db_path)
+        row = conn.execute(
+            "SELECT author, committed_at FROM commits WHERE id = ?",
+            (commit_id,),
+        ).fetchone()
+        conn.close()
+
+        self.assertEqual(row[0], "Jane Developer")
+        self.assertEqual(row[1], "2024-06-01T12:00:00+00:00")
 
     # --- Test de conteo total de herramientas ------------------------------
 

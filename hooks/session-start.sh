@@ -113,6 +113,96 @@ MEMORY_DB="${PROJECT_DIR}/.claude/alfred-memory.db"
 CLAUDE_PROJECT_SETTINGS_LOCAL="${PROJECT_DIR}/.claude/settings.local.json"
 CLAUDE_PROJECT_SETTINGS_SHARED="${PROJECT_DIR}/.claude/settings.json"
 
+CONFIG_SUMMARY=$(PYTHONPATH="${PLUGIN_ROOT}" python3 - "$PROJECT_DIR" "$STATE_FILE" <<'PY' 2>/dev/null || true
+import sys
+
+sys.path.insert(0, sys.path[0] or "")
+
+from core.config_loader import (
+    get_active_optional_agents,
+    is_autopilot_configured,
+    is_autopilot_enabled_for_project,
+    load_project_config,
+)
+from core.personality import AGENTS, get_agent_voice
+
+project_dir = sys.argv[1]
+state_path = sys.argv[2]
+config = load_project_config(project_dir)
+
+autonomia = config.get("autonomia", {})
+stack = config.get("proyecto", {})
+memory = config.get("memoria", {})
+personality = config.get("personalidad", {})
+
+sarcasmo = personality.get("nivel_sarcasmo", 3)
+allow_mocking = personality.get("insultar_malas_practicas", True)
+effective_sarcasm = sarcasmo if allow_mocking else min(sarcasmo, 3)
+voice = get_agent_voice("alfred", nivel_sarcasmo=effective_sarcasm)
+base_voice_count = len(AGENTS["alfred"]["frases"])
+if effective_sarcasm >= 4 and len(voice) > base_voice_count:
+    sample_phrase = voice[-1]
+else:
+    sample_phrase = voice[(max(effective_sarcasm, 1) - 1) % base_voice_count]
+
+phase_order = (
+    "producto",
+    "arquitectura",
+    "desarrollo",
+    "calidad",
+    "documentacion",
+    "entrega",
+)
+autonomia_summary = ", ".join(
+    f"{phase}={autonomia.get(phase, 'desconocido')}"
+    for phase in phase_order
+)
+
+stack_keys = ("runtime", "lenguaje", "framework", "orm", "test_runner", "bundler")
+stack_summary = ", ".join(
+    f"{key}={stack.get(key, 'desconocido')}"
+    for key in stack_keys
+)
+
+active_optional_agents = get_active_optional_agents(config)
+memory_status = "activa" if memory.get("enabled", False) else "inactiva"
+
+lines = [
+    "### Configuración efectiva",
+    "",
+    f"- Autopilot por configuración: {'sí' if is_autopilot_configured(config) else 'no'}",
+    (
+        "- Autopilot efectivo (config/estado): "
+        f"{'sí' if is_autopilot_enabled_for_project(project_dir, state_path) else 'no'}"
+    ),
+    f"- Autonomía por fase: {autonomia_summary}",
+    f"- Stack efectivo: {stack_summary}",
+    f"- Memoria persistente: {memory_status}",
+    (
+        "- Personalidad: "
+        f"sarcasmo={sarcasmo}, idioma={personality.get('idioma', 'es')}, "
+        f"verbosidad={personality.get('verbosidad', 'normal')}, "
+        f"celebrar_victorias={'sí' if personality.get('celebrar_victorias', True) else 'no'}, "
+        "insultar_malas_practicas="
+        f"{'sí' if personality.get('insultar_malas_practicas', True) else 'no'}"
+    ),
+    f"- Muestra de tono de Alfred: {sample_phrase}",
+    (
+        "- Agentes opcionales activos: "
+        f"{', '.join(active_optional_agents) if active_optional_agents else 'ninguno'}"
+    ),
+]
+
+print("\n".join(lines))
+PY
+)
+
+if [[ -n "$CONFIG_SUMMARY" ]]; then
+  CONTEXT="${CONTEXT}
+
+${CONFIG_SUMMARY}"
+fi
+
 # --- Estado de sesión activa ---
 
 # Si existe un fichero de estado, se extrae información relevante
@@ -189,23 +279,6 @@ if [[ -n "$NEXT_INFO" ]]; then
   fi
 fi
 
-# --- Asegurar que la BD de memoria existe desde el primer arranque ---
-#
-# La BD se crea siempre (si no existe) para que el servidor GUI y el
-# WebSocket estén operativos desde el minuto 1. Sin BD, el servidor no
-# arranca y el dashboard muestra datos estáticos en vez de datos reales.
-# La creación es idempotente: MemoryDB usa CREATE TABLE IF NOT EXISTS.
-
-if [[ ! -f "$MEMORY_DB" ]]; then
-  PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
-import sys
-sys.path.insert(0, sys.argv[2])
-from core.memory import MemoryDB
-db = MemoryDB(sys.argv[1])
-db.close()
-" "$MEMORY_DB" "$PLUGIN_ROOT" 2>/dev/null || echo "[Alfred Dev] Aviso: no se pudo crear la BD de memoria" >&2
-fi
-
 # --- Asegurar que la memoria está habilitada por defecto ---
 #
 # Si el fichero de configuración local no existe, se crea con la memoria
@@ -214,75 +287,46 @@ fi
 
 LOCAL_CONFIG="${PROJECT_DIR}/.claude/alfred-dev.local.md"
 
-if [[ ! -f "$LOCAL_CONFIG" ]]; then
-  # Crear con memoria habilitada y autonomia CLI-first por defecto para que
-  # Alfred pueda actuar sin bloquearse en la primera sesion.
-  cat > "$LOCAL_CONFIG" <<'LOCALCFG'
----
-autonomia:
-  producto: autonomo
-  arquitectura: autonomo
-  desarrollo: autonomo
-  calidad: autonomo
-  documentacion: autonomo
-  entrega: autonomo
-memoria:
-  enabled: true
-  sync_to_native: true
-  sync_commits_limit: 10
-  capture_decisions: true
-  capture_commits: true
-  retention_days: 365
----
+PYTHONPATH="${PLUGIN_ROOT}" python3 - "$LOCAL_CONFIG" <<'PY' 2>/dev/null || true
+import sys
 
-# Configuración local de Alfred Dev
+from core.config_loader import ensure_bootstrap_local_config
 
-Este fichero se genera automáticamente en la primera sesión.
-Puedes personalizarlo con `/alfred-dev:config`.
-LOCALCFG
-else
-  # El fichero existe: verificar que memoria y autonomia minima para CLI
-  # esten presentes. Se usa Python para un parsing fiable del frontmatter
-  # YAML en vez de sed (cuya sintaxis varia entre BSD/macOS y GNU/Linux).
+ensure_bootstrap_local_config(sys.argv[1])
+PY
+
+MEMORY_RUNTIME_SETTINGS=$(PYTHONPATH="${PLUGIN_ROOT}" python3 - "$PROJECT_DIR" <<'PY' 2>/dev/null || true
+from core.memory_config import load_memory_config
+import sys
+
+config = load_memory_config(sys.argv[1])
+print("MEMORY_ENABLED=" + ("yes" if config.get("enabled", False) else "no"))
+print("SYNC_TO_NATIVE=" + ("yes" if config.get("sync_to_native", True) else "no"))
+PY
+)
+
+MEMORY_ENABLED="no"
+SYNC_TO_NATIVE="yes"
+while IFS='=' read -r key value; do
+  case "$key" in
+    MEMORY_ENABLED) MEMORY_ENABLED="$value" ;;
+    SYNC_TO_NATIVE) SYNC_TO_NATIVE="$value" ;;
+  esac
+done <<< "${MEMORY_RUNTIME_SETTINGS}"
+
+# --- Asegurar que la BD de memoria existe desde el primer arranque ---
+#
+# La BD solo se crea si la memoria persistente está activa. Si el usuario la
+# ha desactivado explícitamente, se respeta y no se siembran side effects.
+
+if [[ "$MEMORY_ENABLED" == "yes" && ! -f "$MEMORY_DB" ]]; then
   PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
-import re, sys
-
-config_path = sys.argv[1]
-with open(config_path, 'r', encoding='utf-8') as f:
-    content = f.read()
-
-# Inyectar la seccion de memoria en el frontmatter si falta.
-memoria_block = '''memoria:
-  enabled: true
-  capture_decisions: true
-  capture_commits: true
-  retention_days: 365'''
-
-autonomia_block = '''autonomia:
-  producto: autonomo
-  arquitectura: autonomo
-  desarrollo: autonomo
-  calidad: autonomo
-  documentacion: autonomo
-  entrega: autonomo'''
-
-if not re.search(r'memoria:\s*\n(?:\s*#[^\n]*\n|\s*\w+:[^\n]*\n)*?\s*enabled:\s*true', content):
-    if content.startswith('---'):
-        idx = content.index('---') + 3
-        content = content[:idx] + '\n' + memoria_block + content[idx:]
-    else:
-        content = '---\n' + memoria_block + '\n---\n\n' + content
-
-if not re.search(r'(^|\n)autonomia:\s*\n', content):
-    if content.startswith('---'):
-        idx = content.index('---') + 3
-        content = content[:idx] + '\n' + autonomia_block + content[idx:]
-    else:
-        content = '---\n' + autonomia_block + '\n---\n\n' + content
-
-with open(config_path, 'w', encoding='utf-8') as f:
-    f.write(content)
-" "$LOCAL_CONFIG" 2>/dev/null || true
+import sys
+sys.path.insert(0, sys.argv[2])
+from core.memory import MemoryDB
+db = MemoryDB(sys.argv[1])
+db.close()
+" "$MEMORY_DB" "$PLUGIN_ROOT" 2>/dev/null || echo "[Alfred Dev] Aviso: no se pudo crear la BD de memoria" >&2
 fi
 
 # --- Bootstrap de permisos locales para Claude Code CLI ---
@@ -405,7 +449,7 @@ PY
 # Si el usuario inicia un flujo (/alfred-dev:feature, etc.), la iteración
 # "session" se completará y se creará una nueva del flujo correspondiente.
 
-if [[ -f "$MEMORY_DB" ]]; then
+if [[ "$MEMORY_ENABLED" == "yes" && -f "$MEMORY_DB" ]]; then
   PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
 import sys
 sys.path.insert(0, sys.argv[2])
@@ -434,24 +478,10 @@ fi
 # Esto permite que Claude acceda a la memoria del proyecto sin necesidad
 # de invocar herramientas MCP ni al Bibliotecario.
 
-if [[ -f "$MEMORY_DB" ]]; then
-  # Comprobar si sync_to_native esta desactivado
-  SYNC_DISABLED=$(python3 -c "
-import re, sys
-try:
-    with open(sys.argv[1], 'r') as f:
-        content = f.read()
-    if re.search(r'sync_to_native:\s*false', content):
-        print('yes')
-except Exception:
-    pass
-" "$CONFIG_FILE" 2>/dev/null) || SYNC_DISABLED=""
-
-  if [[ "$SYNC_DISABLED" != "yes" ]]; then
-    PYTHONPATH="${PLUGIN_ROOT}" python3 "${PLUGIN_ROOT}/core/memory_sync.py" \
-      --action sync_all \
-      --project-dir "$PROJECT_DIR" 2>/dev/null || true
-  fi
+if [[ "$MEMORY_ENABLED" == "yes" && -f "$MEMORY_DB" && "$SYNC_TO_NATIVE" == "yes" ]]; then
+  PYTHONPATH="${PLUGIN_ROOT}" python3 "${PLUGIN_ROOT}/core/memory_sync.py" \
+    --action sync_all \
+    --project-dir "$PROJECT_DIR" 2>/dev/null || true
 fi
 
 # --- Memoria persistente del proyecto ---
@@ -461,7 +491,7 @@ fi
 # El bloque Python importa core.memory desde el directorio raíz del plugin
 # y consulta la base de datos. Si algo falla, se omite silenciosamente.
 
-if [[ -f "$MEMORY_DB" ]]; then
+if [[ "$MEMORY_ENABLED" == "yes" && -f "$MEMORY_DB" ]]; then
   MEMORY_INFO=$(PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
 import sqlite3
 import sys
@@ -485,8 +515,14 @@ try:
     lines = []
 
     if active:
-        # Inyectar decisiones de la iteracion activa
+        # Inyectar decisiones de la iteracion activa y, si aun no hay ninguna,
+        # degradar a las decisiones recientes del proyecto para no perder
+        # continuidad historica en sesiones nuevas.
         decisions = db.get_decisions(iteration_id=active['id'], limit=10)
+        using_project_fallback = False
+        if not decisions:
+            decisions = db.get_decisions(limit=5)
+            using_project_fallback = bool(decisions)
         lines.append('### Memoria del proyecto')
         lines.append('')
         cmd_activo = active.get('command', '?')
@@ -494,7 +530,10 @@ try:
         lines.append(f'Iteracion activa: {cmd_activo} #{active[\"id\"]}')
         if desc_activa:
             lines.append(f'Descripcion: {desc_activa}')
-        lines.append(f'Decisiones en esta iteracion: {len(decisions)}')
+        if using_project_fallback:
+            lines.append('La iteracion activa aun no tiene decisiones; se muestran las mas recientes del proyecto.')
+        else:
+            lines.append(f'Decisiones en esta iteracion: {len(decisions)}')
         lines.append(f'Total de decisiones del proyecto: {total}')
     else:
         # Sin iteracion activa: ultimas 5 globales

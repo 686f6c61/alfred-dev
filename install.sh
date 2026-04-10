@@ -4,23 +4,24 @@
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash
+#   bash ./install.sh
 #
 # Que hace:
 #   1. Verifica que Claude Code esta instalado
-#   2. Registra el marketplace del plugin con claude plugin marketplace add
+#   2. Registra globalmente en Claude Code la fuente GitHub del plugin
 #   3. Instala el plugin con claude plugin install
 #   4. Listo para usar: /alfred-dev:help
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
-# (claude plugin marketplace / claude plugin install) para garantizar
-# compatibilidad con cualquier version futura de la herramienta.
+# (claude plugin marketplace / claude plugin install) para registrar una
+# fuente GitHub personalizada, no oficial, y mantener compatibilidad futura.
 # ---------------------------------------------------------------------------
 
 set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.6.0"
+VERSION="0.5.1"
 
 # -- Colores ----------------------------------------------------------------
 
@@ -34,6 +35,82 @@ NC='\033[0m'
 info()  { printf "${BLUE}>${NC} %s\n" "$1"; }
 ok()    { printf "${GREEN}+${NC} %s\n" "$1"; }
 error() { printf "${RED}x${NC} %s\n" "$1" >&2; }
+
+resolve_installed_plugin_root() {
+    local cache_dir="${HOME}/.claude/plugins/cache/${PLUGIN_NAME}"
+    local exact="${cache_dir}/${PLUGIN_NAME}/${VERSION}"
+    local legacy="${cache_dir}/${VERSION}"
+
+    if [[ -d "${exact}" ]]; then
+        printf '%s\n' "${exact}"
+        return 0
+    fi
+
+    if [[ -d "${legacy}" ]]; then
+        printf '%s\n' "${legacy}"
+        return 0
+    fi
+
+    "${PYTHON_CMD}" - "${cache_dir}" "${VERSION}" <<'PYEOF'
+import json
+import os
+import sys
+
+cache_dir, target_version = sys.argv[1:3]
+candidates = []
+
+for root, _dirs, files in os.walk(cache_dir):
+    if "plugin.json" not in files or ".claude-plugin" not in root:
+        continue
+    plugin_json = os.path.join(root, "plugin.json")
+    try:
+        with open(plugin_json, "r", encoding="utf-8") as fh:
+            version = json.load(fh).get("version")
+    except (OSError, json.JSONDecodeError):
+        continue
+    if version != target_version:
+        continue
+    plugin_root = os.path.dirname(root)
+    try:
+        mtime = os.path.getmtime(plugin_json)
+    except OSError:
+        mtime = 0
+    candidates.append((mtime, plugin_root))
+
+if not candidates:
+    sys.exit(1)
+
+candidates.sort(key=lambda item: item[0], reverse=True)
+print(candidates[0][1])
+PYEOF
+}
+
+is_global_source_registered() {
+    local known_marketplaces_file="${HOME}/.claude/plugins/known_marketplaces.json"
+
+    [[ -f "${known_marketplaces_file}" ]] || return 1
+
+    "${PYTHON_CMD}" - "${known_marketplaces_file}" "${PLUGIN_NAME}" "${REPO}" <<'PYEOF'
+import json
+import sys
+
+path, plugin_name, repo = sys.argv[1:4]
+
+try:
+    with open(path, "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+except (OSError, json.JSONDecodeError):
+    sys.exit(1)
+
+entry = data.get(plugin_name)
+source = entry.get("source", {}) if isinstance(entry, dict) else {}
+
+if source.get("source") == "github" and source.get("repo") == repo:
+    sys.exit(0)
+
+sys.exit(1)
+PYEOF
+}
 
 # -- Verificaciones ---------------------------------------------------------
 
@@ -97,13 +174,6 @@ if [[ "$PYTHON_CMD" != "python3" ]] && [[ "$DEFAULT_PY_VER" != "$PYTHON_VERSION"
     info "Los hooks del plugin usaran '$PYTHON_CMD' en su lugar"
 fi
 
-# git es necesario para descargar el plugin
-if ! command -v git &>/dev/null; then
-    error "git no esta instalado o no esta en el PATH"
-    error "Instala git desde https://git-scm.com/"
-    exit 1
-fi
-
 if [[ -z "${HOME:-}" ]] || [[ ! -d "${HOME}" ]]; then
     error "La variable HOME no esta definida o no apunta a un directorio valido"
     exit 1
@@ -126,11 +196,11 @@ fi
 printf "\n${BOLD}Alfred Dev${NC} ${DIM}v${VERSION}${NC}\n"
 printf "${DIM}Plugin de ingenieria de software automatizada${NC}\n\n"
 
-# -- 1. Registrar marketplace -----------------------------------------------
-# Si ya existe, lo actualizamos eliminandolo primero para forzar un refresh
-# del cache con los ficheros mas recientes del repositorio.
+# -- 1. Registrar fuente global en Claude Code ------------------------------
+# Si ya existe, la actualizamos eliminandola primero para forzar un refresh
+# del registro global y del cache con los ficheros mas recientes del repo.
 
-info "Registrando marketplace..."
+info "Registrando fuente GitHub global en Claude Code..."
 
 # Si existe una instalacion previa, la quitamos antes de refrescar el
 # marketplace. Esto evita estados intermedios donde el plugin sigue apuntando
@@ -144,26 +214,26 @@ if claude plugin marketplace list 2>/dev/null | grep -q "${PLUGIN_NAME}"; then
 fi
 
 if claude plugin marketplace add "${REPO}" 2>&1; then
-    ok "Marketplace registrado"
+    ok "Fuente GitHub declarada"
 else
-    error "No se pudo registrar el marketplace"
+    error "No se pudo registrar la fuente GitHub"
     error "Verifica tu conexion a internet y que el repositorio sea accesible:"
     error "  https://github.com/${REPO}"
     exit 1
 fi
 
-MARKETPLACE_DIR="${HOME}/.claude/plugins/marketplaces/${PLUGIN_NAME}"
-
-# Claude puede dejar la entrada declarada en settings aunque el checkout local
-# no exista. Si ocurre, hacemos un segundo intento desde cero.
-if [[ ! -d "${MARKETPLACE_DIR}" ]]; then
-    info "El marketplace quedo registrado pero no aparecio en disco; reintentando..."
+# Lo que vuelve global la instalacion no es una carpeta concreta, sino que
+# Claude Code deje registrada la fuente en known_marketplaces.json.
+if is_global_source_registered; then
+    ok "Fuente GitHub registrada globalmente"
+else
+    info "La CLI respondio OK, pero la fuente no quedo registrada; reintentando..."
     claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
-    if claude plugin marketplace add "${REPO}" 2>&1 && [[ -d "${MARKETPLACE_DIR}" ]]; then
-        ok "Marketplace refrescado correctamente en disco"
+    if claude plugin marketplace add "${REPO}" 2>&1 && is_global_source_registered; then
+        ok "Fuente GitHub registrada globalmente tras reintento"
     else
-        error "El marketplace se registro, pero Claude Code no materializo el cache local"
-        error "El directorio esperado no existe: ${MARKETPLACE_DIR}"
+        error "Claude Code no dejo registrada la fuente global del plugin"
+        error "Fichero esperado: ${HOME}/.claude/plugins/known_marketplaces.json"
         error "Prueba a ejecutar manualmente:"
         error "  claude plugin marketplace remove ${PLUGIN_NAME}"
         error "  claude plugin marketplace add ${REPO}"
@@ -185,29 +255,58 @@ else
     exit 1
 fi
 
-# -- 3. Parchear hooks si python3 no es 3.10+ ------------------------------
+# -- 3. Parchear hooks y MCP si python3 no es 3.10+ ------------------------
 # Si el python3 por defecto del sistema es demasiado antiguo pero encontramos
-# una version compatible (python3.12, python3.11, etc.), actualizamos
-# hooks.json para que los hooks usen esa version concreta.
+# una version compatible (python3.12, python3.11, etc.), actualizamos la
+# configuracion instalada para que hooks y MCP usen esa version concreta.
 
 if [[ "$PYTHON_CMD" != "python3" ]]; then
-    # Buscar hooks.json en la cache del plugin recien instalado
-    HOOKS_JSON=$(find "${HOME}/.claude/plugins/cache/${PLUGIN_NAME}" -name "hooks.json" -path "*/hooks/*" 2>/dev/null | head -1)
+    _patch_in_place() {
+        local file="$1"
+        local expression="$2"
 
-    if [[ -n "$HOOKS_JSON" ]]; then
-        # Obtener la ruta absoluta del Python compatible
-        PYTHON_ABS=$(command -v "$PYTHON_CMD" 2>/dev/null || echo "$PYTHON_CMD")
+        if sed -i.bak "$expression" "$file" 2>/dev/null; then
+            rm -f "${file}.bak"
+            return 0
+        fi
 
-        # Reemplazar 'python3 ' por la ruta absoluta en los comandos de hooks
-        if sed -i.bak "s|python3 \${CLAUDE_PLUGIN_ROOT}|${PYTHON_ABS} \${CLAUDE_PLUGIN_ROOT}|g" "$HOOKS_JSON" 2>/dev/null; then
-            rm -f "${HOOKS_JSON}.bak"
+        # macOS sed tiene sintaxis diferente para -i
+        sed -i '' "$expression" "$file" 2>/dev/null
+    }
+
+    # Obtener la ruta absoluta del Python compatible
+    PYTHON_ABS=$(command -v "$PYTHON_CMD" 2>/dev/null || echo "$PYTHON_CMD")
+
+    # Resolver de forma determinista la raiz del plugin recien instalado.
+    # Si coexisten varias versiones en cache, preferimos la ruta exacta de
+    # la version que acaba de instalarse y, en ultimo termino, la mas reciente
+    # cuyo plugin.json declare esa version.
+    PLUGIN_ROOT=$(resolve_installed_plugin_root 2>/dev/null || true)
+    HOOKS_JSON=""
+    MCP_JSON=""
+    if [[ -n "${PLUGIN_ROOT}" ]]; then
+        HOOKS_JSON="${PLUGIN_ROOT}/hooks/hooks.json"
+        MCP_JSON="${PLUGIN_ROOT}/.claude-plugin/mcp.json"
+    fi
+
+    if [[ -f "$HOOKS_JSON" ]]; then
+        if _patch_in_place "$HOOKS_JSON" "s|python3 \${CLAUDE_PLUGIN_ROOT}|${PYTHON_ABS} \${CLAUDE_PLUGIN_ROOT}|g"; then
             ok "hooks.json parcheado para usar $PYTHON_ABS"
         else
-            # macOS sed tiene sintaxis diferente para -i
-            sed -i '' "s|python3 \${CLAUDE_PLUGIN_ROOT}|${PYTHON_ABS} \${CLAUDE_PLUGIN_ROOT}|g" "$HOOKS_JSON" 2>/dev/null && \
-                ok "hooks.json parcheado para usar $PYTHON_ABS" || \
-                info "Aviso: no se pudo parchear hooks.json, los hooks usaran 'python3'"
+            info "Aviso: no se pudo parchear hooks.json, los hooks usaran 'python3'"
         fi
+    else
+        info "Aviso: no se encontro hooks.json en la instalacion activa para parchear Python"
+    fi
+
+    if [[ -f "$MCP_JSON" ]]; then
+        if _patch_in_place "$MCP_JSON" "s|\"command\": \"python3\"|\"command\": \"${PYTHON_ABS}\"|g"; then
+            ok "mcp.json parcheado para usar $PYTHON_ABS"
+        else
+            info "Aviso: no se pudo parchear mcp.json, el MCP usara 'python3'"
+        fi
+    else
+        info "Aviso: no se encontro mcp.json en la instalacion activa para parchear Python"
     fi
 fi
 

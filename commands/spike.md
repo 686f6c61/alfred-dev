@@ -13,6 +13,12 @@ Tema: $ARGUMENTS
 
 Antes de lanzar la primera fase, lee el fichero `commands/_composicion.md` y sigue el protocolo de composición dinámica (pasos 1 a 4).
 
+Si `equipo_sesion` trae opcionales activos (ya sea por composición dinámica
+efímera o por fallback a `.claude/alfred-dev.local.md`), consúltalo siempre
+como fuente runtime canónica. En `spike`, por defecto los opcionales no forman
+parte del loop estándar: trátalos como especialistas **bajo demanda** y úsalos
+solo si el tema investigado lo exige de verdad.
+
 ## Flujo de 2 fases
 
 ### Fase 1: Exploración

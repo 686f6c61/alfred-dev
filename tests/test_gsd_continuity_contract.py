@@ -49,6 +49,8 @@ class TestNextContract(unittest.TestCase):
         self.assertIn("allow-stop-once", command)
         self.assertIn("actúa como `/alfred-dev:map-codebase`", command)
         self.assertIn("fuente es `discovery`", command)
+        self.assertIn("AskUserQuestion", command)
+        self.assertIn("menú seleccionable real", command)
 
 
 class TestPauseResumeContract(unittest.TestCase):
@@ -59,6 +61,7 @@ class TestPauseResumeContract(unittest.TestCase):
         self.assertIn("paused_at", command)
         self.assertIn('paused_via: "/alfred-dev:pause"', command)
         self.assertIn('python3 .claude/alfred-continuity.py pause "$PWD"', command)
+        self.assertIn("No la reenvuelvas con un segundo resumen", command)
         self.assertIn("NO marques la sesión como completada", command)
 
     def test_resume_uses_state_then_handoff(self):
@@ -68,6 +71,7 @@ class TestPauseResumeContract(unittest.TestCase):
         self.assertIn("Prioridad de reanudación", command)
         self.assertIn("resumed_at", command)
         self.assertIn('python3 .claude/alfred-continuity.py resume "$PWD"', command)
+        self.assertIn("No la reenvuelvas con un segundo resumen", command)
         self.assertIn("NO uses `AskUserQuestion` dentro de `/alfred-dev:resume`", command)
         self.assertIn("/alfred-dev:next", command)
 

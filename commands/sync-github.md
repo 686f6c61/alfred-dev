@@ -35,9 +35,12 @@ python3 .claude/alfred-continuity.py sync-github "$PWD" --raw "$ARGUMENTS"
 
 Si el helper devuelve salida válida:
 
-- úsala como base de la respuesta final;
+- úsala como respuesta final y termina;
 - entiende que ya ha escrito `.claude/alfred-github-sync.json` y `docs/project/github-sync.md`;
-- no sigas explorando ni rehagas el sync a mano.
+- asume que también puede haber retirado issues Alfred previamente sincronizados si ya no existen en SonIA local;
+- conserva visibles `focus`, `source`, `command`, `directive` y `reason` si el helper los expone;
+- no sigas explorando, no rehagas el sync a mano y no añadas una segunda narración
+  por encima del resumen del helper.
 
 Solo si el helper falla o `gh` no está listo, cae al modo manual. En manual:
 
@@ -51,4 +54,5 @@ Solo si el helper falla o `gh` no está listo, cae al modo manual. En manual:
 - NO uses `AskUserQuestion` por defecto.
 - Si falta `gh` o autenticación, informa claramente y sugiere usar el `github-manager`.
 - No borres issues ajenos a Alfred.
+- Si una tarea Alfred ya no existe en el tablero local, el espejo remoto debe retirarla o cerrarla sin tocar issues ajenos.
 - Mantén la verdad local en `docs/project/` y `.claude/`.

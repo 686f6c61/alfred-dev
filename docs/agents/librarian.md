@@ -47,7 +47,7 @@ La función `suggest_optional_agents` detecta al Bibliotecario cuando la memoria
 - Configuración de memoria habilitada (`memoria.enabled: true` en la configuración del proyecto).
 - Presencia de la base de datos de memoria del proyecto.
 - Preguntas del usuario sobre el histórico: "por que se decidio...", "cuando se implemento...", "que paso en la iteracion...".
-- Inicio de flujos feature/fix donde Alfred necesita contextualizar con decisiones previas relacionadas.
+- Consultas explícitas del usuario o de Alfred cuando el contexto histórico realmente importa.
 - Peticion directa del usuario de estadisticas o cronología del proyecto.
 
 La razon de requerir memoria persistente activa es que el Bibliotecario depende de las herramientas MCP `memory_*` para funcionar. Sin base de datos de memoria, no tiene fuente de datos que consultar, y no tiene sentido activar un archivista sin archivo.
@@ -56,7 +56,7 @@ La razon de requerir memoria persistente activa es que el Bibliotecario depende 
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | Alfred | Consultas historicas o contextualizacion al inicio de flujos feature/fix |
+| **Activado por** | Usuario o Alfred | Consultas historicas explícitas, siempre bajo demanda |
 | **Colabora con** | El Artesano (senior-dev) | Proporciona contexto de decisiones previas para fundamentar cambios |
 | **Colabora con** | El Dibujante de Cajas (architect) | Comparte historial de decisiones arquitectonicas para mantener coherencia |
 | **Colabora con** | El Paranoico (security-officer) | Recupera decisiones de seguridad para auditorias retrospectivas |
@@ -67,13 +67,15 @@ La razon de requerir memoria persistente activa es que el Bibliotecario depende 
 
 Cuando el Bibliotecario esta activo, se integra en los flujos del equipo de la siguiente manera:
 
-1. **Al activarse**, anuncia su identidad, que va a hacer y que herramientas de la memoria va a consultar. Ejemplo típico: "Soy El Bibliotecario. Voy a consultar la memoria del proyecto para responder a tu pregunta. Dame un momento para revisar los registros."
+1. **No entra automáticamente en ninguna fase del loop estándar.** Es un especialista de consulta: Alfred o el usuario lo invocan cuando hace falta contexto histórico verificable.
 
-2. **Antes de responder cualquier consulta**, verifica que la memoria persistente esta activa. Si no lo esta o no hay base de datos, informa al usuario y sugiere activarla con `/alfred-dev:config`. Si esta activa, usa las herramientas MCP `memory_*` para todas las consultas.
+2. **Al activarse**, anuncia su identidad, que va a hacer y que herramientas de la memoria va a consultar. Ejemplo típico: "Soy El Bibliotecario. Voy a consultar la memoria del proyecto para responder a tu pregunta. Dame un momento para revisar los registros."
 
-3. **Al recibir una consulta**, la clasifica en una de cuatro categorías (decisión, implementacion, cronología, estadistica) para elegir la herramienta MCP adecuada. Cada categoría tiene su formato de respuesta estandarizado y sus fuentes de citacion.
+3. **Antes de responder cualquier consulta**, verifica que la memoria persistente esta activa. Si no lo esta o no hay base de datos, informa al usuario y sugiere activarla con `/alfred-dev:config`. Si esta activa, usa las herramientas MCP `memory_*` para todas las consultas.
 
-4. **Al entregar**, proporciona la respuesta con la estructura de tres partes (resumen, evidencia, contexto) y cita siempre las fuentes. Si la consulta viene de otro agente (Alfred al inicio de un flujo, por ejemplo), entrega los resultados con evidencia verificable para que se integren en el flujo.
+4. **Al recibir una consulta**, la clasifica en una de cuatro categorías (decisión, implementacion, cronología, estadistica) para elegir la herramienta MCP adecuada. Cada categoría tiene su formato de respuesta estandarizado y sus fuentes de citacion.
+
+5. **Al entregar**, proporciona la respuesta con la estructura de tres partes (resumen, evidencia, contexto) y cita siempre las fuentes. Si la consulta viene de otro agente, entrega los resultados con evidencia verificable para que se integren en el flujo.
 
 ## Frases
 

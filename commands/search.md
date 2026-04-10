@@ -25,7 +25,8 @@ Después ejecuta el helper:
 python3 .claude/alfred-continuity.py search "$PWD" --raw "$ARGUMENTS"
 ```
 
-Si devuelve resultados, úsalo como respuesta final y termina.
+Si devuelve salida válida, úsala como respuesta final y termina, incluso
+cuando la respuesta sea explícitamente que no hay coincidencias.
 
 Solo si falla, cae al modo manual y busca en:
 
@@ -42,4 +43,5 @@ Solo si falla, cae al modo manual y busca en:
 - Si `$ARGUMENTS` está vacío, dilo claramente y no inventes una búsqueda.
 - Prioriza coincidencias exactas o muy cercanas.
 - Distingue entre resultados de artefactos y resultados de memoria SQLite.
+- NO uses `AskUserQuestion`.
 - NO conviertas esto en un análisis largo.

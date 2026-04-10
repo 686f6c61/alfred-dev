@@ -35,15 +35,14 @@ Cada query mal escrita le produce una ofensa personal, pero canaliza esa reaccio
 - No ejecuta migraciones destructivas sin confirmacion del usuario.
 - No ignora el rollback: cada migración forward tiene su reversa.
 - No optimiza prematuramente: primero funcional, despues rápido.
+- No actua como profiler general del sistema: si primero hay que medir o aislar un cuello de botella transversal, entra antes el performance-engineer.
 
 ## Cuando se activa
 
-La función `suggest_optional_agents` detecta al Fontanero de Datos cuando el proyecto trabaja con bases de datos, ORMs o pipelines de datos. Las señales contextuales que busca incluyen:
+La activación del Fontanero de Datos ocurre por dos caminos distintos:
 
-- Presencia de ficheros de esquema o migración (archivos de Prisma, Drizzle, Alembic, Django migrations, Knex, etc.).
-- Configuración de conexión a base de datos en el proyecto (cadenas de conexión, variables de entorno como DATABASE_URL).
-- Uso de ORMs detectado en las dependencias del proyecto.
-- Peticion directa del usuario sobre modelado relacional, índices o rendimiento de queries.
+- **Sugerencia estática (`suggest_optional_agents`)**: hoy es deliberadamente conservadora. La señal automática que usa Alfred es que el stack detectado tenga un ORM distinto de `ninguno`. Cuando aparece ese indicio, Alfred entiende que tiene sentido ofrecer ayuda con esquemas, migraciones, índices y queries.
+- **Composición dinámica de equipo**: si la tarea habla de modelado relacional, migraciones, persistencia, integridad de datos, SQL o un cuello de botella ya aislado en la capa de datos, Alfred puede activarlo aunque el proyecto no haya disparado la sugerencia estática.
 
 El agente también puede invocarse directamente sin detección automática cuando el usuario necesita consejo sobre modelado de datos aunque el proyecto no tenga un ORM configurado todavia.
 
@@ -51,7 +50,7 @@ El agente también puede invocarse directamente sin detección automática cuand
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | Alfred | Fase de arquitectura cuando el proyecto tiene BD |
+| **Activado por** | Alfred | `feature:arquitectura/desarrollo`, `quick:ejecucion_acotada` y `fix:diagnostico/correccion` cuando el cambio toca datos |
 | **Colabora con** | El Dibujante de Cajas (architect) | El architect define la estructura general; el Fontanero detalla el modelo de datos |
 | **Notifica a** | El Paranoico (security-officer) | Cambios en esquemas que afecten a datos sensibles (PII, tokens, etc.) |
 | **Entrega a** | El Artesano (senior-dev) | Esquemas y migraciones listas para implementar en código |
@@ -65,9 +64,11 @@ Cuando el Fontanero de Datos esta activo, se integra en los flujos del equipo de
 
 2. **Antes de producir cualquier artefacto**, lee el fichero `.claude/alfred-dev.local.md` para conocer las preferencias del proyecto, consulta el stack tecnologico detectado (ORM, motor de BD), respeta las convenciones del CLAUDE.md si existe, y sigue el estilo y convencion de nombres de las migraciones previas si las hay.
 
-3. **Durante la fase de arquitectura**, trabaja codo con codo con el architect: mientras el architect dibuja la estructura general, el Fontanero concreta el modelo de datos con tablas, relaciones e índices.
+3. **Durante `feature:arquitectura` y `feature:desarrollo`**, trabaja codo con codo con el architect y el senior-dev para aterrizar modelo de datos, índices y migraciones en algo implementable.
 
-4. **Al entregar**, pasa sus esquemas y migraciones al senior-dev para que los integre en el código, y notifica al security-officer si algun cambio afecta a datos sensibles.
+4. **En `quick:ejecucion_acotada` y `fix` (`diagnostico` / `correccion`)**, entra cuando el cuello de botella o el bug pasan por persistencia, queries, migraciones o integridad de datos. Si todavia no sabemos donde está el problema de rendimiento, primero mide el `performance-engineer`; si la causa cae en datos, el Fontanero corrige.
+
+5. **Al entregar**, pasa sus esquemas y migraciones al senior-dev para que los integre en el código, y notifica al security-officer si algun cambio afecta a datos sensibles.
 
 ## Frases
 

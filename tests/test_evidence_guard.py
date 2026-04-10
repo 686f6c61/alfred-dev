@@ -83,6 +83,14 @@ class TestDetectTestResult(unittest.TestCase):
     def test_empty_output(self):
         self.assertEqual(detect_test_result(""), "unknown")
 
+    def test_nonzero_exit_code_without_output_is_failure(self):
+        """Un runner de tests con exit code != 0 debe contar como fallo."""
+        self.assertEqual(detect_test_result("", exit_code=1), "fail")
+
+    def test_zero_exit_code_without_output_stays_unknown(self):
+        """Sin patrones y con exit 0 seguimos siendo conservadores."""
+        self.assertEqual(detect_test_result("", exit_code=0), "unknown")
+
     def test_fail_safe_not_detected_as_failure(self):
         """La palabra 'fail-safe' no debe detectarse como fallo."""
         output = "System entered fail-safe mode. All checks passed."

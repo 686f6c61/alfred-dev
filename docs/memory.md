@@ -375,7 +375,7 @@ Este script se ejecuta como hook `PostToolUse` para practicamente todas las herr
 
 La razon de automatizar la captura en lugar de depender de que los agentes registren eventos manualmente es la fiabilidad: un agente puede olvidarse de llamar a `memory_log_event()`, pero el hook siempre se ejecuta porque esta conectado al ciclo de vida de las herramientas.
 
-Cada evento se registra con tres niveles de detalle: un `summary` legible en castellano, un `payload` JSON estructurado para filtrado programático, y un `content` con el texto completo sin truncar.
+Cada evento se registra con tres niveles de detalle: un `summary` legible en castellano, un `payload` JSON estructurado para filtrado programático, y un `content` pensado para consulta bajo demanda. En eventos de alto volumen como `Glob`, `Grep`, `WebFetch` o `WebSearch`, ese `content` puede guardarse como preview recortado junto con metadatos (`content_truncated`, `content_lines`, `content_chars`) para evitar que la memoria se llene de listados o blobs HTML poco útiles.
 
 ### Lógica de captura de iteraciones y fases
 

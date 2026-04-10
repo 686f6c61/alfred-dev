@@ -23,6 +23,8 @@ python3 .claude/alfred-continuity.py validate "$PWD"
 ```
 
 Si devuelve salida válida, úsala como respuesta final y termina.
+No añadas una segunda capa de resumen encima del veredicto del helper: el helper
+ya deja `Resumen`, `Checks`, `Avisos`, `Errores` y siguiente paso.
 
 Solo si el helper falla, cae al modo manual y valida:
 

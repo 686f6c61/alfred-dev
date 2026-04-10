@@ -4,6 +4,21 @@ description: "Muestra el estado de la sesión activa de Alfred Dev"
 
 # Estado de la sesión
 
+## Protocolo
+
+Paso único por defecto: este comando es un wrapper del helper determinista.
+No empieces leyendo artefactos uno por uno. Ejecuta primero:
+
+```bash
+python3 .claude/alfred-continuity.py status "$PWD"
+```
+
+Después de ejecutar el Bash:
+
+- si devuelve un resumen válido, úsalo como respuesta final y no sigas
+  explorando ni lo reenvuelvas con otra capa de estado;
+- si falla, entonces sí puedes caer al modo manual descrito debajo.
+
 Lee estos artefactos en este orden:
 
 1. `.claude/alfred-dev-state.json`

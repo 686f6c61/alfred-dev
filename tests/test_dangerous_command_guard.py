@@ -18,14 +18,13 @@ _spec.loader.exec_module(_mod)
 
 _DANGEROUS_PATTERNS = _mod._DANGEROUS_PATTERNS
 _is_safe_alfred_helper_command = _mod._is_safe_alfred_helper_command
+_has_shell_controls_outside_quotes = _mod._has_shell_controls_outside_quotes
+_find_dangerous_reason = _mod._find_dangerous_reason
 
 
 def _is_dangerous(command: str) -> bool:
-    """Comprueba si un comando seria bloqueado por el hook."""
-    for pattern, _description in _DANGEROUS_PATTERNS:
-        if pattern.search(command):
-            return True
-    return False
+    """Comprueba si un comando seria bloqueado por el hook real."""
+    return _find_dangerous_reason(command) is not None
 
 
 class TestDangerousCommands(unittest.TestCase):
@@ -172,6 +171,28 @@ class TestDangerousCommands(unittest.TestCase):
     def test_cat_file(self):
         self.assertFalse(_is_dangerous("cat /etc/hosts"))
 
+    def test_detects_shell_wrapper_rm_rf(self):
+        self.assertTrue(_is_dangerous('sh -c "rm -rf /"'))
+
+    def test_detects_bash_lc_force_push(self):
+        self.assertTrue(_is_dangerous('bash -lc "git push --force origin main"'))
+
+    def test_allows_documented_dangerous_text_in_printf(self):
+        self.assertFalse(_is_dangerous("printf '%s\\n' 'git push --force origin main'"))
+
+    def test_allows_grep_for_docker_prune_literal(self):
+        self.assertFalse(_is_dangerous('grep -R "docker system prune -af" .'))
+
+    def test_allows_python_print_of_dangerous_text(self):
+        self.assertFalse(_is_dangerous('python3 -c "print(\\"chmod -R 777 /var\\")"'))
+
+    def test_allows_echo_of_fork_bomb_literal(self):
+        self.assertFalse(_is_dangerous('echo ":(){ :|:& };:"'))
+
+    def test_allows_cat_heredoc_with_literal_command(self):
+        command = "cat <<'EOF'\nrm -rf /\nEOF"
+        self.assertFalse(_is_dangerous(command))
+
 
 class TestSafeAlfredHelpers(unittest.TestCase):
     """Verifica la autoaprobacion de helpers deterministas de Alfred."""
@@ -184,12 +205,46 @@ class TestSafeAlfredHelpers(unittest.TestCase):
         command = 'python3 .claude/alfred-continuity.py map-codebase "$PWD" --raw "login y usuarios"'
         self.assertTrue(_is_safe_alfred_helper_command(command))
 
+    def test_safe_operational_helpers_added_later(self):
+        self.assertTrue(_is_safe_alfred_helper_command(
+            'python3 .claude/alfred-continuity.py blocked "$PWD"'
+        ))
+        self.assertTrue(_is_safe_alfred_helper_command(
+            'python3 .claude/alfred-continuity.py standup "$PWD"'
+        ))
+        self.assertTrue(_is_safe_alfred_helper_command(
+            'python3 .claude/alfred-continuity.py validate "$PWD"'
+        ))
+        self.assertTrue(_is_safe_alfred_helper_command(
+            'python3 .claude/alfred-continuity.py search "$PWD" --raw "login usuarios"'
+        ))
+
     def test_safe_helper_with_capture_suffix(self):
         command = 'python3 .claude/alfred-continuity.py consume-prefetch "$PWD" --expected map-codebase 2>&1'
         self.assertTrue(_is_safe_alfred_helper_command(command))
 
+    def test_allows_quoted_pipe_and_redirect_like_text(self):
+        self.assertTrue(_is_safe_alfred_helper_command(
+            'python3 .claude/alfred-continuity.py search "$PWD" --raw "login | signup"'
+        ))
+        self.assertTrue(_is_safe_alfred_helper_command(
+            'python3 .claude/alfred-continuity.py discuss "$PWD" --raw "funnel A > B"'
+        ))
+        self.assertTrue(_is_safe_alfred_helper_command(
+            'python3 .claude/alfred-continuity.py map-codebase "$PWD" --raw "auth; users"'
+        ))
+
     def test_rejects_shell_chaining(self):
         command = 'python3 .claude/alfred-continuity.py map-codebase "$PWD" --raw "login"; rm -rf /'
+        self.assertFalse(_is_safe_alfred_helper_command(command))
+
+    def test_rejects_real_shell_controls_outside_quotes(self):
+        self.assertTrue(_has_shell_controls_outside_quotes('echo hola && whoami'))
+        self.assertFalse(_has_shell_controls_outside_quotes('echo "hola && adios"'))
+        self.assertFalse(_has_shell_controls_outside_quotes("echo 'a | b ; c > d'"))
+
+    def test_rejects_command_substitution_even_if_quoted(self):
+        command = 'python3 .claude/alfred-continuity.py discuss "$PWD" --raw "$(whoami)"'
         self.assertFalse(_is_safe_alfred_helper_command(command))
 
     def test_hook_emits_permission_allow_for_safe_helper(self):

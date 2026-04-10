@@ -121,7 +121,7 @@ La primera vez que ejecutes un flujo en un proyecto (o si no hay agentes opciona
    - Tiene BD/ORM? Sugiere **data-engineer**.
    - Tiene frontend (React, Vue, Svelte, Next, Nuxt, etc.)? Sugiere **ux-reviewer**.
    - Tiene HTML público (landing, docs estáticos)? Sugiere **seo-specialist** y **copywriter**.
-   - Tiene remote Git? Sugiere **github-manager**.
+   - Tiene remote GitHub? Sugiere **github-manager**.
    - Tiene más de 50 ficheros fuente? Sugiere **performance-engineer**.
    - Tiene ficheros de traducción o directorios i18n/locales? Sugiere **i18n-specialist**.
 3. Presenta las sugerencias al usuario con AskUserQuestion (multiSelect) explicando brevemente por qué cada agente es relevante.

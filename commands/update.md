@@ -49,7 +49,25 @@ Si la peticion falla (sin red, rate limit, timeout), informa del error y sugiere
 
 Valida que `tag_name` tiene formato semver valido: debe coincidir con el patron `v?X.Y.Z` donde X, Y, Z son numeros (por ejemplo `v0.3.0` o `0.3.0`). Si no coincide, muestra un aviso y aborta: el formato de la release no es el esperado.
 
-Compara `tag_name` (sin la `v` inicial) con la version instalada del paso 1.
+Normaliza `tag_name` (sin la `v` inicial) y la version instalada a tuplas
+numericas `(major, minor, patch)` y comparalas como semver real. **Nunca**
+compares las versiones como texto plano (`0.10.0` es mayor que `0.9.0`).
+
+Si necesitas una comparacion determinista, ejecuta con Bash:
+
+```bash
+python3 - <<'PY'
+def parse(value):
+    return tuple(int(part) for part in value.strip().lstrip('v').split('.'))
+
+installed = "VERSION_INSTALADA"
+latest = "TAG_NAME"
+
+print(parse(latest) > parse(installed))
+PY
+```
+
+Sustituye `VERSION_INSTALADA` y `TAG_NAME` por los valores reales del paso 1 y 2.
 
 ### Si hay version nueva
 
@@ -58,7 +76,8 @@ Muestra al usuario:
 - La version nueva disponible
 - Las notas de la release formateadas en markdown
 
-Pregunta al usuario si quiere actualizar usando AskUserQuestion con las opciones:
+Despues usa **un único `AskUserQuestion`** con menú seleccionable real. No
+dejes la decisión en texto libre. Las dos opciones deben ser:
 - **"Actualizar ahora"** -- ejecuta el comando de instalacion (paso 4)
 - **"Ahora no"** -- cancela
 
@@ -101,3 +120,9 @@ Despues de que termine, informa al usuario de que **debe reiniciar Claude Code**
 - No hace falta desinstalar primero.
 - Si el script de instalacion falla, muestra el error completo al usuario.
 - En Windows tambien funciona con WSL o Git Bash usando el instalador bash.
+
+## Cierre canónico del comando
+
+- Si no hay versión nueva, cierra ahí: no propongas pasos extra ni una decisión ficticia.
+- Si sí hay versión nueva, usa un único menú seleccionable real con las dos opciones definidas arriba y no lo sustituyas por texto libre.
+- Si la actualización se ejecuta bien, el cierre debe ser corto y accionable: versión aplicada y recordatorio de reiniciar Claude Code.

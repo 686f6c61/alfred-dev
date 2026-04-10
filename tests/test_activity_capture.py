@@ -49,14 +49,23 @@ if _plugin_root not in sys.path:
 from core.memory import MemoryDB
 from core.continuity import (
     PREFETCH_CONSUMED_RELATIVE_PATH,
+    PREFETCH_RELATIVE_PATH,
+    STATE_RELATIVE_PATH,
     save_prefetch_result,
     consume_prefetch_result,
 )
+from core.orchestrator import advance_phase, create_session, save_state
 
 
 # ---------------------------------------------------------------------------
 # Helpers de test
 # ---------------------------------------------------------------------------
+
+def _complete_session(command: str, description: str):
+    session = create_session(command, description)
+    while session["fase_actual"] != "completado":
+        session = advance_phase(session, resultado="aprobado", artefactos=[])
+    return session
 
 class _DBTestCase(unittest.TestCase):
     """Clase base para tests que necesitan una DB temporal."""
@@ -199,6 +208,14 @@ class TestIsTrivialCommand(unittest.TestCase):
         """Rutas absolutas se reducen al nombre base."""
         self.assertTrue(_capture._is_trivial_command("/usr/bin/cat file.txt"))
 
+    def test_chained_command_is_not_trivial_if_any_segment_is_relevant(self):
+        """Un prefijo trivial no debe ocultar un comando relevante posterior."""
+        self.assertFalse(_capture._is_trivial_command("cd repo && pytest -q"))
+
+    def test_chained_trivial_segments_remain_trivial(self):
+        """Una cadena solo de navegacion/lectura sigue siendo trivial."""
+        self.assertTrue(_capture._is_trivial_command("cd repo && ls -la"))
+
 
 # ---------------------------------------------------------------------------
 # TestIsGitCommitCommand
@@ -333,6 +350,44 @@ class TestDispatchWrite(_DBTestCase):
         new_timeline = self._db.get_timeline(active["id"])
         started = [e for e in new_timeline if e.get("event_type") == "iteration_started"]
         self.assertGreaterEqual(len(started), 1)
+
+    def test_claude_state_json_triggers_process_state_even_if_path_is_excluded(self):
+        """El estado real vive en .claude/ y no debe quedar fuera por exclusión genérica."""
+        self._db.complete_iteration(self._it_id)
+
+        state_dir = os.path.join(self._tmpdir, ".claude")
+        os.makedirs(state_dir, exist_ok=True)
+        state_file = os.path.join(state_dir, "alfred-dev-state.json")
+        state = {
+            "comando": "feature",
+            "fase_actual": "producto",
+            "descripcion": "test feature",
+            "fases_completadas": [],
+        }
+        with open(state_file, "w", encoding="utf-8") as f:
+            json.dump(state, f)
+
+        data = {"tool_input": {"file_path": state_file}}
+        _capture._dispatch_write(self._db, data)
+
+        active = self._db.get_active_iteration()
+        self.assertIsNotNone(active)
+        self.assertEqual(active["command"], "feature")
+        self.assertEqual(len(self._get_events("file_written")), 0)
+
+    def test_summary_counts_single_line_without_trailing_newline(self):
+        """Una sola línea sin salto final sigue contando como 1."""
+        test_file = os.path.join(self._tmpdir, "README.md")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("solo una linea")
+
+        data = {"tool_input": {"file_path": test_file}}
+        _capture._dispatch_write(self._db, data)
+
+        events = self._get_events("file_written")
+        self.assertIn("1 lineas", events[0].get("summary", ""))
+        payload = self._parse_payload(events[0])
+        self.assertEqual(payload["lines"], 1)
 
     def test_payload_contains_extension(self):
         """El payload incluye la extension del fichero."""
@@ -488,6 +543,19 @@ class TestDispatchBash(_DBTestCase):
 
         events = self._get_events("command_executed")
         self.assertEqual(len(events), 0)
+
+    def test_chained_command_with_trivial_prefix_still_creates_event(self):
+        """`cd repo && pytest` no debe perderse por el prefijo cd."""
+        data = {
+            "tool_input": {"command": "cd repo && pytest -q"},
+            "tool_result": {"exit_code": 0, "stdout": "10 passed"},
+        }
+
+        _capture._dispatch_bash(self._db, data)
+
+        events = self._get_events("command_executed")
+        self.assertEqual(len(events), 1)
+        self.assertIn("pytest -q", events[0].get("summary", ""))
 
     def test_summary_contains_command_and_exit(self):
         """El summary incluye el comando (truncado) y el exit code."""
@@ -697,6 +765,25 @@ class TestDispatchPrompt(_DBTestCase):
         self.assertEqual(payload["source_command"], "alfred")
         self.assertEqual(payload["prefetched_command"], "map-codebase")
 
+    def test_contextual_alfred_prefetch_skips_map_when_verify_is_pending(self):
+        """`/alfred-dev:alfred` no debe adelantar map-codebase si toca verify."""
+        os.makedirs(os.path.join(self._tmpdir, ".claude"), exist_ok=True)
+        os.makedirs(os.path.join(self._tmpdir, "src"), exist_ok=True)
+        with open(os.path.join(self._tmpdir, "src", "index.js"), "w", encoding="utf-8") as fh:
+            fh.write("console.log('hola');\n")
+        session = _complete_session("feature", "Login y usuarios")
+        save_state(session, os.path.join(self._tmpdir, STATE_RELATIVE_PATH))
+
+        data = {"prompt": "/alfred-dev:alfred añade login y usuarios"}
+
+        _capture._dispatch_prompt(self._db, data)
+
+        self.assertFalse(
+            os.path.exists(os.path.join(self._tmpdir, "docs", "project", "codebase-map.md"))
+        )
+        prefetched = self._get_events("alfred_prefetched")
+        self.assertEqual(len(prefetched), 0)
+
     def test_prefetches_quick_session_from_prompt(self):
         """El primer `/alfred-dev:quick` debe dejar sesión y bypass preparados."""
         data = {
@@ -760,6 +847,26 @@ class TestDispatchPrompt(_DBTestCase):
 
         self.assertFalse(
             os.path.exists(os.path.join(self._tmpdir, PREFETCH_CONSUMED_RELATIVE_PATH))
+        )
+
+    def test_new_prompt_clears_pending_prefetch_from_previous_prompt(self):
+        """Un prompt nuevo debe limpiar prefetch pendiente viejo antes de recalcular."""
+        payload = {
+            "source_command": "map-codebase",
+            "prefetched_command": "map-codebase",
+            "recommended_command": "discuss",
+            "project_name": "demo",
+            "stack": {"runtime": "node", "framework": "desconocido"},
+        }
+        save_prefetch_result(self._tmpdir, payload)
+        self.assertTrue(
+            os.path.isfile(os.path.join(self._tmpdir, PREFETCH_RELATIVE_PATH))
+        )
+
+        _capture._dispatch_prompt(self._db, {"prompt": "/alfred-dev:help"})
+
+        self.assertFalse(
+            os.path.exists(os.path.join(self._tmpdir, PREFETCH_RELATIVE_PATH))
         )
 
 
@@ -1077,6 +1184,62 @@ class TestProcessState(_DBTestCase):
         # Debe haber exactamente 2, no 4
         self.assertEqual(len(events), 2)
 
+    def test_does_not_duplicate_old_phases_beyond_timeline_default_limit(self):
+        """La deduplicacion no debe depender del limite de 100 eventos generales."""
+        self._db.log_event(
+            event_type="phase_completed",
+            phase="producto",
+            payload={"fase": "producto", "resultado": "aprobado"},
+            iteration_id=self._it_id,
+        )
+        for index in range(120):
+            self._db.log_event(
+                event_type="command_executed",
+                summary=f"ruido {index}",
+                iteration_id=self._it_id,
+            )
+
+        state_file = self._write_state({
+            "comando": "feature",
+            "fase_actual": "arquitectura",
+            "descripcion": "test",
+            "fases_completadas": [{"nombre": "producto", "resultado": "aprobado"}],
+        })
+
+        _capture._process_state(self._db, state_file)
+
+        events = self._get_events("phase_completed")
+        self.assertEqual(len(events), 1)
+
+    def test_session_iteration_is_upgraded_to_real_flow_iteration(self):
+        """Una iteracion generica de sesion debe ceder el control al flujo real."""
+        self._db.complete_iteration(self._it_id)
+        session_id = self._db.start_iteration("session", "Sesion general")
+
+        state_file = self._write_state({
+            "comando": "feature",
+            "fase_actual": "producto",
+            "descripcion": "implementar login social",
+            "fases_completadas": [],
+        })
+
+        _capture._process_state(self._db, state_file)
+
+        active = self._db.get_active_iteration()
+        self.assertIsNotNone(active)
+        self.assertEqual(active["command"], "feature")
+        self.assertEqual(active["description"], "implementar login social")
+
+        session_iteration = self._db.get_iteration(session_id)
+        self.assertEqual(session_iteration["status"], "abandoned")
+
+        started_events = self._db.get_events(
+            iteration_id=int(active["id"]),
+            event_type="iteration_started",
+            limit=5,
+        )
+        self.assertEqual(len(started_events), 1)
+
     def test_completes_iteration(self):
         """Fase 'completado' cierra la iteracion."""
         state_file = self._write_state({
@@ -1201,6 +1364,24 @@ class TestDispatchRead(_DBTestCase):
         events = self._get_events("file_read")
         self.assertIn("primeras 20 lineas", events[0].get("summary", ""))
 
+    def test_offset_zero_is_preserved_in_summary_and_payload(self):
+        """offset=0 es valido y no debe perderse por una comprobacion truthy."""
+        data = {
+            "tool_input": {
+                "file_path": os.path.join(self._tmpdir, "f.py"),
+                "offset": 0,
+                "limit": 20,
+            }
+        }
+        _capture._dispatch_read(self._db, data)
+
+        events = self._get_events("file_read")
+        summary = events[0].get("summary", "")
+        payload = self._parse_payload(events[0])
+        self.assertIn("lineas 0-20", summary)
+        self.assertEqual(payload["offset"], 0)
+        self.assertEqual(payload["limit"], 20)
+
     def test_excluded_file_creates_no_event(self):
         """Un Read de fichero excluido no crea evento."""
         data = {"tool_input": {"file_path": os.path.join(self._tmpdir, ".git", "HEAD")}}
@@ -1268,6 +1449,24 @@ class TestDispatchGlob(_DBTestCase):
 
         events = self._get_events("glob_search")
         self.assertEqual(events[0].get("content"), file_list)
+
+    def test_large_content_is_truncated_with_metadata(self):
+        """Salidas enormes se recortan para no inflar memoria sin control."""
+        long_list = "".join(f"src/file_{i}.py\n" for i in range(200))
+        data = {
+            "tool_input": {"pattern": "*.py"},
+            "tool_result": {"output": long_list},
+        }
+
+        _capture._dispatch_glob(self._db, data)
+
+        events = self._get_events("glob_search")
+        payload = self._parse_payload(events[0])
+        content = events[0].get("content", "")
+        self.assertTrue(payload["content_truncated"])
+        self.assertGreater(payload["content_lines"], 80)
+        self.assertIn("contenido recortado", content)
+        self.assertNotEqual(content, long_list)
 
     def test_empty_pattern_creates_no_event(self):
         """Un patron vacio no crea evento."""
@@ -1353,6 +1552,23 @@ class TestDispatchGrep(_DBTestCase):
 
         events = self._get_events("grep_search")
         self.assertEqual(len(events), 0)
+
+    def test_large_grep_output_is_truncated_with_metadata(self):
+        """El grep masivo se guarda como preview con metadatos de recorte."""
+        output = "".join(f"file_{i}.py:{i}: match\n" for i in range(160))
+        data = {
+            "tool_input": {"pattern": "match"},
+            "tool_result": {"output": output},
+        }
+
+        _capture._dispatch_grep(self._db, data)
+
+        events = self._get_events("grep_search")
+        payload = self._parse_payload(events[0])
+        content = events[0].get("content", "")
+        self.assertTrue(payload["content_truncated"])
+        self.assertIn("contenido recortado", content)
+        self.assertNotEqual(content, output)
 
 
 # ---------------------------------------------------------------------------
@@ -1471,6 +1687,23 @@ class TestDispatchWebFetch(_DBTestCase):
         events = self._get_events("web_fetched")
         self.assertEqual(len(events), 0)
 
+    def test_large_response_is_truncated_with_metadata(self):
+        """Una respuesta HTTP enorme no debe llenar memoria por si sola."""
+        response = "<html>" + ("contenido " * 800) + "</html>"
+        data = {
+            "tool_input": {"url": "https://example.com"},
+            "tool_result": {"content": response},
+        }
+
+        _capture._dispatch_web_fetch(self._db, data)
+
+        events = self._get_events("web_fetched")
+        payload = self._parse_payload(events[0])
+        content = events[0].get("content", "")
+        self.assertTrue(payload["content_truncated"])
+        self.assertIn("contenido recortado", content)
+        self.assertNotEqual(content, response)
+
 
 # ---------------------------------------------------------------------------
 # TestDispatchWebSearch
@@ -1520,6 +1753,23 @@ class TestDispatchWebSearch(_DBTestCase):
 
         events = self._get_events("web_searched")
         self.assertEqual(len(events), 0)
+
+    def test_large_results_are_truncated_with_metadata(self):
+        """Resultados de busqueda enormes se guardan como preview."""
+        results = "".join(f"{i}. resultado largo\n" for i in range(180))
+        data = {
+            "tool_input": {"query": "test"},
+            "tool_result": {"content": results},
+        }
+
+        _capture._dispatch_web_search(self._db, data)
+
+        events = self._get_events("web_searched")
+        payload = self._parse_payload(events[0])
+        content = events[0].get("content", "")
+        self.assertTrue(payload["content_truncated"])
+        self.assertIn("contenido recortado", content)
+        self.assertNotEqual(content, results)
 
 
 # ---------------------------------------------------------------------------
@@ -1612,6 +1862,23 @@ class TestFirstMeaningfulLine(unittest.TestCase):
         self.assertEqual(len(result), 120)
 
 
+class TestPrepareHighVolumeContent(unittest.TestCase):
+    """Verifica el helper de recorte para eventos de alto volumen."""
+
+    def test_small_text_kept_intact(self):
+        text = "uno\ndos\n"
+        content, meta = _capture._prepare_high_volume_content(text)
+        self.assertEqual(content, text)
+        self.assertFalse(meta["content_truncated"])
+
+    def test_large_text_is_marked_and_trimmed(self):
+        text = "".join(f"linea {i}\n" for i in range(200))
+        content, meta = _capture._prepare_high_volume_content(text)
+        self.assertTrue(meta["content_truncated"])
+        self.assertIn("contenido recortado", content)
+        self.assertLess(len(content), len(text))
+
+
 class TestRelativePath(unittest.TestCase):
     """Verifica la conversion a ruta relativa."""
 
@@ -1622,6 +1889,34 @@ class TestRelativePath(unittest.TestCase):
     def test_same_directory(self):
         result = _capture._relative_path("/project/file.py", "/project")
         self.assertEqual(result, "file.py")
+
+    def test_returns_absolute_path_for_file_outside_project(self):
+        result = _capture._relative_path("/tmp/external.txt", "/project")
+        self.assertEqual(result, _capture._normalize_local_path("/tmp/external.txt"))
+
+    def test_normalizes_symlinked_paths_before_relativizing(self):
+        if not hasattr(os, "symlink"):
+            self.skipTest("El sistema no soporta symlinks.")
+
+        real_project = tempfile.mkdtemp()
+        alias_root = tempfile.mkdtemp()
+        try:
+            alias_project = os.path.join(alias_root, "alias-project")
+            try:
+                os.symlink(real_project, alias_project)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"No se pudo crear el symlink de prueba: {exc}")
+
+            target = os.path.join(alias_project, "src", "main.py")
+            os.makedirs(os.path.dirname(os.path.realpath(target)), exist_ok=True)
+            with open(os.path.realpath(target), "w", encoding="utf-8") as fh:
+                fh.write("print('ok')\n")
+
+            result = _capture._relative_path(target, real_project)
+            self.assertEqual(result, os.path.join("src", "main.py"))
+        finally:
+            shutil.rmtree(alias_root, ignore_errors=True)
+            shutil.rmtree(real_project, ignore_errors=True)
 
 
 class TestReadFileSafe(unittest.TestCase):

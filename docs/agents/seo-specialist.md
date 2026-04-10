@@ -35,13 +35,14 @@ No hace SEO black hat ni promete posiciones. Sabe que el SEO mejora la visibilid
 - No prometer posiciones en buscadores: el SEO mejora la visibilidad, no garantiza resultados.
 - No sacrificar la experiencia de usuario por SEO: si el usuario no lo entiende, Google tampoco.
 - No ignorar la accesibilidad: SEO y accesibilidad comparten muchos principios.
+- No decidir el tono del texto ni escribir CTAs finales: si el problema es copy visible, colabora con copywriter.
+- No validar cobertura de locales ni traducibilidad: si el problema es i18n, colabora con i18n-specialist.
+- No sustituir una revisión general de usabilidad: si el problema es el flujo o la interacción, colabora con ux-reviewer.
 
 ## Cuando se activa
 
-La función `suggest_optional_agents` detecta al Rastreador cuando el proyecto tiene contenido web público. Las señales contextuales que busca incluyen:
+La función `suggest_optional_agents` detecta al Rastreador cuando el proyecto tiene contenido web público. La señal estática principal hoy es la presencia de HTML público; peticiones más específicas de posicionamiento se resuelven por composición dinámica o petición directa del usuario.
 
-- Presencia de frameworks orientados a web publica (Next.js, Nuxt, Astro, Gatsby, SvelteKit con SSR/SSG).
-- Ficheros de configuración SEO existentes (robots.txt, sitemap.xml, meta tags en layouts).
 - Paginas con contenido dirigido a visitantes externos (landing pages, blogs, documentación publica).
 - Peticion directa del usuario sobre posicionamiento, indexacion o rendimiento web.
 
@@ -51,7 +52,7 @@ La razon de requerir contenido web público es que el SEO solo tiene sentido par
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | Alfred | Fase de calidad cuando el proyecto tiene contenido web público |
+| **Activado por** | Alfred | `feature:calidad`, `quick:validacion_rapida` y `fix:validacion` cuando el proyecto tiene contenido web público |
 | **Colabora con** | El Abogado del Usuario (ux-reviewer) | El Rastreador optimiza para buscadores; el Abogado optimiza para usuarios |
 | **Colabora con** | El Cronometro (performance-engineer) | Las Core Web Vitals son comunes a SEO y rendimiento |
 | **Colabora con** | El Pluma (copywriter) | El Rastreador define la estrategia de palabras clave; el Pluma escribe el contenido |
@@ -66,7 +67,7 @@ Cuando el Rastreador esta activo, se integra en los flujos del equipo de la sigu
 
 2. **Antes de producir cualquier artefacto**, identifica el framework de frontend para adaptar las recomendaciones (Next.js tiene su propio sistema de meta tags, Astro gestiona sitemap de forma distinta, etc.) y busca ficheros de configuración SEO existentes para no duplicar trabajo.
 
-3. **Durante la fase de calidad**, trabaja en paralelo con otros agentes: el Abogado del Usuario revisa la experiencia y el Cronometro mide el rendimiento, mientras el Rastreador se centra en la visibilidad para buscadores. Las Core Web Vitals son un punto de interseccion natural con el Cronometro.
+3. **Durante `feature:calidad`, `quick:validacion_rapida` y la validación de un `fix`**, trabaja en paralelo con otros agentes: el Abogado del Usuario revisa la experiencia y el Cronometro mide el rendimiento, mientras el Rastreador se centra en la visibilidad para buscadores. Las Core Web Vitals son un punto de interseccion natural con el Cronometro.
 
 4. **Al entregar**, pasa la lista de cambios técnicos al senior-dev para implementacion, y coordina con el copywriter la estrategia de contenido si hay palabras clave que integrar.
 

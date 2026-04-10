@@ -175,6 +175,25 @@ class TestSyncDecisions(SyncTestBase):
         self.sync.sync_decision(self.d1_id)
         self.assertFalse(os.path.isfile(path))
 
+    def test_frontmatter_collapse_multiline_fields(self):
+        """Los campos del frontmatter se normalizan a una sola linea."""
+        decision_id = self.db.log_decision(
+            title="Linea 1\nLinea 2",
+            chosen='Opcion\nmultilinea con "comillas"',
+            rationale="r",
+            iteration_id=self.iter_id,
+        )
+
+        self.sync.sync_decision(decision_id)
+
+        path = os.path.join(self._memory_dir, f"alfred-decision-{decision_id}.md")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn('name: "D#', content)
+        self.assertIn('Linea 1 Linea 2"', content)
+        self.assertIn('description: "Opcion multilinea con \\"comillas\\"', content)
+
 
 class TestSyncAll(SyncTestBase):
     """Verifica la sincronizacion completa."""
@@ -224,6 +243,69 @@ class TestSyncAll(SyncTestBase):
         self.assertIn("Sistema de cache", content)
         self.assertIn("source: alfred-memory", content)
 
+    def test_iteracion_activa_no_trunca_fases_tardias_por_limite_general(self):
+        """Las fases completadas deben salir aunque haya mucho ruido previo."""
+        for index in range(120):
+            self.db.log_event(
+                event_type="command_executed",
+                summary=f"cmd {index}",
+                iteration_id=self.iter_id,
+            )
+        self.db.log_event(
+            event_type="phase_completed",
+            phase="arquitectura",
+            payload={
+                "fase": "arquitectura",
+                "resultado": "aprobado",
+                "completada_en": "2026-01-10T10:00:00+00:00",
+            },
+            iteration_id=self.iter_id,
+        )
+        self.db.log_event(
+            event_type="phase_completed",
+            phase="desarrollo",
+            payload={
+                "fase": "desarrollo",
+                "resultado": "aprobado",
+                "completada_en": "2026-01-11T10:00:00+00:00",
+            },
+            iteration_id=self.iter_id,
+        )
+
+        self.sync.sync_iteration()
+
+        with open(
+            os.path.join(self._memory_dir, "alfred-iteration-active.md"), "r"
+        ) as f:
+            content = f.read()
+
+        self.assertIn("arquitectura", content)
+        self.assertIn("desarrollo", content)
+        self.assertIn("tras desarrollo", content)
+
+    def test_iteracion_escapa_fases_con_pipes_y_saltos(self):
+        """La tabla de fases no debe romperse por contenido libre."""
+        self.db.log_event(
+            event_type="phase_completed",
+            phase="arquitectura",
+            payload={
+                "fase": "arquitectura | backend\nprincipal",
+                "resultado": "ok | aprobado",
+                "completada_en": "2026-01-10T10:00:00+00:00",
+            },
+            iteration_id=self.iter_id,
+        )
+
+        self.sync.sync_iteration()
+
+        with open(
+            os.path.join(self._memory_dir, "alfred-iteration-active.md"), "r", encoding="utf-8"
+        ) as f:
+            content = f.read()
+
+        self.assertIn(r"arquitectura \| backend principal", content)
+        self.assertIn(r"ok \| aprobado", content)
+
 
 class TestUpdateIndex(SyncTestBase):
     """Verifica la gestion de MEMORY.md con marcadores."""
@@ -267,6 +349,29 @@ class TestUpdateIndex(SyncTestBase):
         with open(memory_md, "r") as f:
             content = f.read()
         self.assertIn("<!-- ALFRED-SYNC:START -->", content)
+
+    def test_decision_index_uses_numeric_order(self):
+        """Las decisiones en MEMORY.md deben ordenarse por ID real."""
+        extra_ids = []
+        for title in ("D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10"):
+            extra_ids.append(
+                self.db.log_decision(
+                    title=title,
+                    chosen="ok",
+                    iteration_id=self.iter_id,
+                )
+            )
+
+        self.sync.sync_all()
+
+        memory_md = os.path.join(self._memory_dir, "MEMORY.md")
+        with open(memory_md, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertLess(
+            content.index("alfred-decision-2.md"),
+            content.index("alfred-decision-10.md"),
+        )
 
 
 class TestCleanupStale(SyncTestBase):
@@ -328,6 +433,7 @@ class TestCommitsSync(SyncTestBase):
         self.assertIn("abc1234", content)
         self.assertIn("feat: setup inicial", content)
         self.assertIn("source: alfred-memory", content)
+        self.assertIn(f"I#{self.iter_id}", content)
 
     def test_sin_commits_no_genera_fichero(self):
         """Si no hay commits, no se genera fichero."""
@@ -335,6 +441,86 @@ class TestCommitsSync(SyncTestBase):
 
         path = os.path.join(self._memory_dir, "alfred-commits-recent.md")
         self.assertFalse(os.path.isfile(path))
+
+    def test_commits_sync_distingue_historial_importado(self):
+        """Los commits sin iteracion deben marcarse como histórico."""
+        self.db.log_commit(
+            sha="historical_sync_sha",
+            message="chore: imported history",
+            author="repo-bot",
+            files=["legacy.txt"],
+            files_changed=1,
+            auto_link_iteration=False,
+        )
+
+        self.sync.sync_commits()
+
+        path = os.path.join(self._memory_dir, "alfred-commits-recent.md")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("histórico", content)
+        self.assertIn("incluyendo flujo activo e historial importado", content)
+
+    def test_summary_separa_commits_de_iteracion_e_historial(self):
+        """El resumen no debe mezclar commits importados con commits del flujo."""
+        self.db.log_commit(
+            sha="linked_sync_sha",
+            message="feat: linked work",
+            author="dev",
+        )
+        self.db.log_commit(
+            sha="historical_summary_sha",
+            message="chore: imported history",
+            author="repo-bot",
+            auto_link_iteration=False,
+        )
+
+        self.sync.sync_summary()
+
+        path = os.path.join(self._memory_dir, "alfred-summary.md")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("Hay 1 commit con vínculo a 1 iteracion.", content)
+        self.assertIn("Ademas hay 1 commit importado como historial de referencia.", content)
+
+    def test_commits_table_escapes_pipes_and_newlines(self):
+        """La tabla Markdown debe seguir siendo valida con texto libre."""
+        self.db.log_commit(
+            sha="pipecommit123456",
+            message="feat: cache | auth\nlinea dos",
+            author="dev | ops\nteam",
+            files_changed=2,
+        )
+
+        self.sync.sync_commits()
+
+        path = os.path.join(self._memory_dir, "alfred-commits-recent.md")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn(r"feat: cache \| auth linea dos", content)
+        self.assertIn(r"dev \| ops team", content)
+
+    def test_summary_normalizes_multiline_decision_choice(self):
+        """El resumen narrativo no debe romper bullets por saltos internos."""
+        self.db.log_decision(
+            title="Decision multilinea",
+            chosen="Primera linea\nSegunda linea con detalle",
+            iteration_id=self.iter_id,
+        )
+
+        self.sync.sync_summary()
+
+        path = os.path.join(self._memory_dir, "alfred-summary.md")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn(
+            "- **D#3 -- Decision multilinea:** Primera linea Segunda linea con detalle",
+            content,
+        )
 
 
 class TestEdgeCases(unittest.TestCase):

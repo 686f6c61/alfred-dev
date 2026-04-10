@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 import unittest
 import urllib.parse
@@ -15,8 +16,15 @@ import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core.continuity import launch_memory_ui, stop_memory_ui
+from core.continuity import launch_memory_ui, stop_memory_ui, _save_memory_ui_state
 from core.memory import MemoryDB
+from core.memory_ui_server import (
+    build_activity_payload,
+    build_commits_payload,
+    build_iterations_payload,
+    build_overview_payload,
+    build_timeline_payload,
+)
 
 
 class TestMemoryUI(unittest.TestCase):
@@ -193,6 +201,155 @@ class TestMemoryUI(unittest.TestCase):
         self.assertIn("Login social", first["display_body"])
         self.assertTrue(any("Siguiente paso" in line for line in first["detail_lines"]))
 
+    def test_build_activity_payload_counts_recent_window_instead_of_full_history(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        iteration_id = int(db.get_active_iteration()["id"])
+        for index in range(6):
+            db.log_event(
+                event_type="helper_seeded",
+                summary=f"helper viejo {index}",
+                iteration_id=iteration_id,
+            )
+        for index in range(3):
+            db.log_event(
+                event_type="command_executed",
+                summary=f"comando reciente {index}",
+                iteration_id=iteration_id,
+            )
+        db.close()
+
+        payload = build_activity_payload(db_path, limit=3)
+        self.assertEqual(len(payload["recent_events"]), 3)
+        self.assertEqual(
+            payload["event_counts"],
+            [
+                {
+                    "event_type": "command_executed",
+                    "label": "Comando",
+                    "total": 3,
+                }
+            ],
+        )
+        self.assertEqual(payload["total_event_counts"][0]["event_type"], "helper_seeded")
+
+    def test_build_overview_payload_ignores_bootstrap_only_events_for_workspace_notice(self):
+        empty_repo = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(empty_repo, ignore_errors=True))
+        os.makedirs(os.path.join(empty_repo, ".claude"), exist_ok=True)
+        db_path = os.path.join(empty_repo, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        db.log_event(
+            event_type="session_started",
+            summary="Sesión abierta por bootstrap",
+            content="Memoria lista.",
+        )
+        db.close()
+
+        overview = build_overview_payload(
+            empty_repo,
+            db_path,
+            host="127.0.0.1",
+            port=4551,
+        )
+        self.assertEqual(overview["stats"]["total_events"], 1)
+        self.assertEqual(overview["workspace"]["bootstrap_event_count"], 1)
+        self.assertEqual(overview["workspace"]["meaningful_event_count"], 0)
+        self.assertFalse(overview["workspace"]["has_meaningful_memory"])
+
+    def test_build_overview_payload_exposes_canonical_project_signal_cards(self):
+        state_path = os.path.join(self.tmpdir, ".claude", "alfred-dev-state.json")
+        with open(
+            state_path,
+            "w",
+            encoding="utf-8",
+        ) as fh:
+            json.dump(
+                {
+                    "comando": "feature",
+                    "descripcion": "Checkout nuevo",
+                    "fase_actual": "completado",
+                    "objetivo": "Checkout nuevo",
+                    "fases_completadas": ["producto", "arquitectura", "desarrollo"],
+                },
+                fh,
+                ensure_ascii=False,
+            )
+
+        overview = build_overview_payload(
+            self.tmpdir,
+            os.path.join(self.tmpdir, ".claude", "alfred-memory.db"),
+            host="127.0.0.1",
+            port=4552,
+        )
+        cards = overview["progress"]["project_signal_cards"]
+        titles = [card["title"] for card in cards]
+        self.assertNotIn("Current", titles)
+        self.assertIn("Progreso", titles)
+
+    def test_build_overview_payload_exposes_structured_next_action_guidance(self):
+        overview = build_overview_payload(
+            self.tmpdir,
+            os.path.join(self.tmpdir, ".claude", "alfred-memory.db"),
+            host="127.0.0.1",
+            port=4554,
+        )
+
+        next_action = overview["progress"]["next_action"]
+        self.assertIn("focus", next_action)
+        self.assertIn("directive", next_action)
+        self.assertIn("source_label", next_action)
+        self.assertIn("urgency", next_action)
+
+    def test_build_overview_payload_exposes_runtime_team_card(self):
+        state_path = os.path.join(self.tmpdir, ".claude", "alfred-dev-state.json")
+        with open(
+            state_path,
+            "w",
+            encoding="utf-8",
+        ) as fh:
+            json.dump(
+                {
+                    "comando": "fix",
+                    "descripcion": "Checkout roto",
+                    "fase_actual": "diagnostico",
+                    "fase_numero": 0,
+                    "fases_completadas": [],
+                    "equipo_sesion": {
+                        "opcionales_activos": {
+                            "data-engineer": False,
+                            "performance-engineer": True,
+                            "github-manager": True,
+                            "librarian": True,
+                            "ux-reviewer": False,
+                            "seo-specialist": True,
+                            "copywriter": False,
+                            "i18n-specialist": False,
+                            "lucius": True,
+                        },
+                        "infra": {"memoria": False},
+                        "fuente": "config_persistida",
+                    },
+                },
+                fh,
+                ensure_ascii=False,
+            )
+
+        overview = build_overview_payload(
+            self.tmpdir,
+            os.path.join(self.tmpdir, ".claude", "alfred-memory.db"),
+            host="127.0.0.1",
+            port=4553,
+        )
+        team_card = next(
+            card for card in overview["progress"]["project_signal_cards"] if card["title"] == "Equipo runtime"
+        )
+        self.assertIn("Origen runtime: configuración persistida.", team_card["items"])
+        self.assertIn(
+            "Opcionales solo bajo demanda en este flujo: `github-manager`, `librarian`.",
+            team_card["items"],
+        )
+
     def test_launch_memory_ui_reuses_existing_process(self):
         first = launch_memory_ui(
             self.tmpdir,
@@ -209,6 +366,254 @@ class TestMemoryUI(unittest.TestCase):
         self.assertTrue(second["reused"])
         self.assertEqual(first["url"], second["url"])
         self.assertEqual(first["pid"], second["pid"])
+
+    def test_stop_memory_ui_terminates_matching_server(self):
+        result = launch_memory_ui(
+            self.tmpdir,
+            open_browser_window=False,
+            preferred_port=4532,
+        )
+
+        pid = int(result["pid"])
+        state_path = os.path.join(self.tmpdir, ".claude", "alfred-memory-ui.json")
+        self.assertTrue(os.path.exists(state_path))
+
+        stopped = stop_memory_ui(self.tmpdir)
+
+        self.assertTrue(stopped["stopped"])
+        self.assertEqual(stopped["pid"], pid)
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            try:
+                urllib.request.urlopen(f"{result['url']}/api/healthz", timeout=0.3)
+            except Exception:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail("La Memory UI siguió respondiendo tras enviar SIGTERM.")
+
+        self.assertFalse(os.path.exists(state_path))
+
+    def test_stop_memory_ui_does_not_kill_unrelated_process_from_stale_state(self):
+        dummy = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(30)"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        def _cleanup_dummy():
+            if dummy.poll() is None:
+                dummy.terminate()
+                try:
+                    dummy.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    dummy.kill()
+                    dummy.wait(timeout=5)
+
+        self.addCleanup(_cleanup_dummy)
+
+        _save_memory_ui_state(
+            self.tmpdir,
+            {
+                "pid": dummy.pid,
+                "url": "http://127.0.0.1:4599",
+                "host": "127.0.0.1",
+                "port": 4599,
+                "project_dir": self.tmpdir,
+                "db_path": os.path.join(self.tmpdir, ".claude", "alfred-memory.db"),
+            },
+        )
+
+        state_path = os.path.join(self.tmpdir, ".claude", "alfred-memory-ui.json")
+        stopped = stop_memory_ui(self.tmpdir)
+
+        self.assertFalse(stopped["stopped"])
+        self.assertEqual(stopped["reason"], "stale-state")
+        self.assertEqual(stopped["pid"], dummy.pid)
+        self.assertFalse(os.path.exists(state_path))
+        os.kill(dummy.pid, 0)
+
+    def test_launch_memory_ui_rejects_reachable_server_from_other_project(self):
+        fake_script = textwrap.dedent(
+            """
+            import json
+            from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+            class FakeHealthHandler(BaseHTTPRequestHandler):
+                def do_GET(self):
+                    if self.path == "/api/healthz":
+                        body = json.dumps(
+                            {
+                                "ok": True,
+                                "project_dir": "/tmp/otro-proyecto",
+                                "db_path": "/tmp/otra-memory.db",
+                            }
+                        ).encode("utf-8")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(body)))
+                        self.end_headers()
+                        self.wfile.write(body)
+                        return
+                    self.send_response(404)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+
+                def log_message(self, format, *args):
+                    return
+
+            ThreadingHTTPServer(("127.0.0.1", 4550), FakeHealthHandler).serve_forever()
+            """
+        )
+        fake_server = subprocess.Popen([sys.executable, "-c", fake_script])
+        def _cleanup_fake_server():
+            if fake_server.poll() is None:
+                fake_server.terminate()
+                fake_server.wait(timeout=5)
+
+        self.addCleanup(_cleanup_fake_server)
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            try:
+                self._get_json("http://127.0.0.1:4550/api/healthz")
+                break
+            except Exception:
+                time.sleep(0.05)
+        else:
+            self.fail("El servidor fake de healthz no arrancó a tiempo.")
+
+        _save_memory_ui_state(
+            self.tmpdir,
+            {
+                "pid": fake_server.pid,
+                "url": "http://127.0.0.1:4550",
+                "host": "127.0.0.1",
+                "port": 4550,
+                "project_dir": "/tmp/otro-proyecto",
+                "db_path": "/tmp/otra-memory.db",
+            },
+        )
+
+        result = launch_memory_ui(
+            self.tmpdir,
+            open_browser_window=False,
+            preferred_port=4550,
+        )
+
+        self.assertFalse(result["reused"])
+        self.assertNotEqual(result["url"], "http://127.0.0.1:4550")
+        overview = self._get_json(f"{result['url']}/api/overview")
+        self.assertEqual(overview["project_dir"], self.tmpdir)
+
+    def test_build_iterations_payload_reports_full_event_count(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        active = db.get_active_iteration()
+        iteration_id = int(active["id"])
+        for index in range(1004):
+            db.log_event(
+                event_type="command_executed",
+                summary=f"evento {index}",
+                iteration_id=iteration_id,
+            )
+        db.close()
+
+        payload = build_iterations_payload(db_path)
+        self.assertEqual(payload["items"][0]["event_count"], 1005)
+
+    def test_build_iterations_payload_uses_latest_recent_event_for_summary(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        active = db.get_active_iteration()
+        iteration_id = int(active["id"])
+        for index in range(4):
+            db.log_event(
+                event_type="command_executed",
+                summary=f"evento antiguo {index}",
+                content=f"detalle antiguo {index}",
+                iteration_id=iteration_id,
+            )
+        db.log_event(
+            event_type="command_executed",
+            summary="evento más reciente",
+            content="detalle final de la iteración",
+            iteration_id=iteration_id,
+        )
+        db.close()
+
+        payload = build_iterations_payload(db_path)
+        item = payload["items"][0]
+        self.assertEqual(item["last_summary"], "evento más reciente")
+        self.assertEqual(item["last_title"], "evento más reciente")
+        self.assertEqual(item["last_body"], "detalle final de la iteración")
+
+    def test_timeline_endpoint_returns_full_iteration_when_limit_is_omitted(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        active = db.get_active_iteration()
+        iteration_id = int(active["id"])
+        for index in range(140):
+            db.log_event(
+                event_type="command_executed",
+                summary=f"timeline {index}",
+                iteration_id=iteration_id,
+            )
+        db.close()
+
+        result = launch_memory_ui(
+            self.tmpdir,
+            open_browser_window=False,
+            preferred_port=4545,
+        )
+        timeline = self._get_json(f"{result['url']}/api/timeline?iteration_id={iteration_id}")
+
+        self.assertEqual(timeline["event_count"], 141)
+        self.assertEqual(timeline["returned_count"], 141)
+        self.assertFalse(timeline["truncated"])
+        self.assertEqual(len(timeline["events"]), 141)
+
+    def test_build_timeline_payload_marks_explicit_truncation(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        active = db.get_active_iteration()
+        iteration_id = int(active["id"])
+        for index in range(12):
+            db.log_event(
+                event_type="command_executed",
+                summary=f"evento {index}",
+                iteration_id=iteration_id,
+            )
+        db.close()
+
+        payload = build_timeline_payload(db_path, iteration_id, limit=5)
+        self.assertEqual(payload["event_count"], 13)
+        self.assertEqual(payload["returned_count"], 5)
+        self.assertTrue(payload["truncated"])
+        self.assertEqual(len(payload["events"]), 5)
+
+    def test_build_commits_payload_resolves_iteration_labels_beyond_recent_window(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        first_iteration_id = int(db.get_active_iteration()["id"])
+        for index in range(201):
+            iteration_id = db.start_iteration("feature", f"iteración {index}")
+            db.complete_iteration(iteration_id)
+        db.log_commit(
+            sha="def1234567890",
+            message="feat: mantener contexto de iteración antigua",
+            author="Alfred",
+            iteration_id=first_iteration_id,
+            committed_at="2099-01-01T00:00:00+00:00",
+            files=["src/legacy-context.ts"],
+        )
+        db.close()
+
+        payload = build_commits_payload(db_path, self.tmpdir, limit=5)
+        labels = {
+            item["sha_short"]: item["iteration_label"]
+            for item in payload["items"]
+        }
+        self.assertEqual(labels["def12345"], "#1 · feature")
 
     def test_cli_memory_ui_script_mode_supports_direct_execution(self):
         continuity_script = os.path.join(

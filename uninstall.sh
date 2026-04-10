@@ -4,11 +4,20 @@
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.sh | bash
+#   bash ./uninstall.sh
+#
+# Estrategia:
+#   1. Si Claude CLI está disponible, desinstalar el plugin y eliminar el
+#      marketplace usando la vía nativa.
+#   2. Limpiar cualquier resto físico en cache/ y marketplaces/.
+#   3. Como red de seguridad, limpiar known_marketplaces.json,
+#      installed_plugins.json y settings.json si todavía contienen rastros.
 # ---------------------------------------------------------------------------
 
 set -euo pipefail
 
 PLUGIN_NAME="alfred-dev"
+PLUGIN_KEY="${PLUGIN_NAME}@${PLUGIN_NAME}"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGINS_DIR="${CLAUDE_DIR}/plugins"
 MARKETPLACE_DIR="${PLUGINS_DIR}/marketplaces/${PLUGIN_NAME}"
@@ -27,18 +36,63 @@ info()  { printf "${BLUE}>${NC} %s\n" "$1"; }
 ok()    { printf "${GREEN}+${NC} %s\n" "$1"; }
 error() { printf "${RED}x${NC} %s\n" "$1" >&2; }
 
+find_compatible_python() {
+    local candidate ver major minor
+
+    for candidate in python3 python3.13 python3.12 python3.11 python3.10; do
+        if ! command -v "$candidate" &>/dev/null; then
+            continue
+        fi
+        ver=$("$candidate" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+        major=$(echo "$ver" | cut -d. -f1)
+        minor=$(echo "$ver" | cut -d. -f2)
+        if [[ "$major" -ge 3 ]] && [[ "$minor" -ge 10 ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    for brew_path in /opt/homebrew/bin /usr/local/bin; do
+        for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
+            local full="${brew_path}/${candidate}"
+            if [[ ! -x "$full" ]]; then
+                continue
+            fi
+            ver=$("$full" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+            major=$(echo "$ver" | cut -d. -f1)
+            minor=$(echo "$ver" | cut -d. -f2)
+            if [[ "$major" -ge 3 ]] && [[ "$minor" -ge 10 ]]; then
+                printf '%s\n' "$full"
+                return 0
+            fi
+        done
+    done
+
+    return 1
+}
+
 # Validar que HOME apunta a un directorio real
 if [[ -z "${HOME:-}" ]] || [[ ! -d "${HOME}" ]]; then
     error "La variable HOME no está definida o no apunta a un directorio válido"
     exit 1
 fi
 
-if ! command -v python3 &>/dev/null; then
-    error "python3 no está instalado (necesario para actualizar los ficheros JSON)"
-    exit 1
+if [[ ! -d "${CLAUDE_DIR}" ]]; then
+    info "No se encontró ${CLAUDE_DIR}; no hay instalación local que limpiar"
+    exit 0
 fi
 
 printf "\n${BOLD}Desinstalando Alfred Dev${NC}\n\n"
+
+# Intentar primero la vía canónica de Claude Code.
+if command -v claude &>/dev/null; then
+    info "Desinstalando plugin con Claude CLI..."
+    claude plugin uninstall "${PLUGIN_KEY}" >/dev/null 2>&1 || true
+    claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
+    ok "Claude CLI ha intentado desregistrar el plugin y el marketplace"
+else
+    info "El comando 'claude' no está disponible; se aplicará limpieza manual de seguridad"
+fi
 
 # Eliminar cache del plugin.
 # Se borra el directorio completo del marketplace en caché (cache/alfred-dev/)
@@ -60,9 +114,18 @@ else
     info "No se encontró directorio de marketplace"
 fi
 
-# Eliminar marketplace de known_marketplaces.json
+# Si no hay Python compatible, no podemos aplicar la limpieza residual de JSON.
+PYTHON_CMD="$(find_compatible_python || true)"
+if [[ -z "${PYTHON_CMD}" ]]; then
+    info "No se encontro Python 3.10+; se omite la limpieza residual de ficheros JSON"
+    printf "\n${GREEN}${BOLD}Alfred Dev desinstalado${NC}\n"
+    printf "  ${DIM}Reinicia Claude Code para aplicar los cambios.${NC}\n\n"
+    exit 0
+fi
+
+# Eliminar marketplace de known_marketplaces.json si aún quedara rastro.
 if [ -f "${KNOWN_MARKETPLACES}" ]; then
-    python3 - "${KNOWN_MARKETPLACES}" "${PLUGIN_NAME}" <<'PYEOF'
+    "${PYTHON_CMD}" - "${KNOWN_MARKETPLACES}" "${PLUGIN_NAME}" <<'PYEOF'
 import json, os, sys, tempfile
 
 known_file, marketplace_name = sys.argv[1:3]
@@ -94,12 +157,12 @@ except OSError as e:
         pass
     sys.exit(1)
 PYEOF
-    ok "Marketplace eliminado de known_marketplaces.json"
+    ok "Marketplace limpiado de known_marketplaces.json"
 fi
 
-# Eliminar registro de installed_plugins.json
+# Eliminar registro de installed_plugins.json si aún quedara rastro.
 if [ -f "${INSTALLED_FILE}" ]; then
-    python3 - "${INSTALLED_FILE}" "${PLUGIN_NAME}@${PLUGIN_NAME}" <<'PYEOF'
+    "${PYTHON_CMD}" - "${INSTALLED_FILE}" "${PLUGIN_KEY}" <<'PYEOF'
 import json, os, sys, tempfile
 
 installed_file, plugin_key = sys.argv[1:3]
@@ -131,12 +194,12 @@ except OSError as e:
         pass
     sys.exit(1)
 PYEOF
-    ok "Registro eliminado de installed_plugins.json"
+    ok "Registro limpiado de installed_plugins.json"
 fi
 
-# Deshabilitar en settings.json
+# Deshabilitar en settings.json si aún quedara rastro.
 if [ -f "${SETTINGS_FILE}" ]; then
-    python3 - "${SETTINGS_FILE}" "${PLUGIN_NAME}@${PLUGIN_NAME}" <<'PYEOF'
+    "${PYTHON_CMD}" - "${SETTINGS_FILE}" "${PLUGIN_KEY}" <<'PYEOF'
 import json, os, sys, tempfile
 
 settings_file, plugin_key = sys.argv[1:3]
@@ -168,7 +231,7 @@ except OSError as e:
         pass
     sys.exit(1)
 PYEOF
-    ok "Plugin deshabilitado en settings.json"
+    ok "Plugin limpiado de settings.json"
 else
     info "No se encontró settings.json (nada que deshabilitar)"
 fi

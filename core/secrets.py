@@ -18,8 +18,9 @@ Los patrones se ordenan de mas especifico a mas generico para evitar que
 un patron amplio consuma un match que deberia capturar uno mas preciso.
 """
 
+import os
 import re
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +66,7 @@ SECRET_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (
         re.compile(
             r"(?:mysql|postgresql|postgres|mongodb(?:\+srv)?|redis|amqp)"
-            r"://[^\s\"']{10,}@"
+            r"://(?:(?:[^/\s\"':@]+:[^/\s\"'@]+)|(?:[^/\s\"'@]{8,}))@"
         ),
         "CONNECTION_STRING",
     ),
@@ -91,6 +92,82 @@ SECRET_PATTERNS: List[Tuple[re.Pattern, str]] = [
         "HARDCODED_CREDENTIAL",
     ),
 ]
+
+SECRET_DESCRIPTIONS = {
+    "AWS_KEY": "AWS Access Key (patron AKIA...)",
+    "ANTHROPIC_KEY": "Anthropic API Key",
+    "SK_KEY": "Clave API con prefijo sk- (OpenAI, Stripe u otro)",
+    "GITHUB_TOKEN": "GitHub Personal Access Token",
+    "SLACK_TOKEN": "Slack Token",
+    "GOOGLE_KEY": "Google API Key (patron AIza...)",
+    "SENDGRID_KEY": "SendGrid API Key",
+    "PRIVATE_KEY": "Clave privada PEM/SSH",
+    "JWT": "JWT token hardcodeado",
+    "CONNECTION_STRING": "Connection string con credenciales",
+    "SLACK_WEBHOOK": "Slack Webhook URL",
+    "DISCORD_WEBHOOK": "Discord Webhook URL",
+    "HARDCODED_CREDENTIAL": "Credencial hardcodeada en asignacion",
+}
+
+_ALLOWED_ENV_SUFFIXES = {
+    "local",
+    "development",
+    "development.local",
+    "test",
+    "test.local",
+    "production",
+    "production.local",
+    "staging",
+    "staging.local",
+}
+
+_DISALLOWED_ENV_TOKENS = {
+    "example",
+    "sample",
+    "template",
+    "dist",
+}
+
+
+def describe_secret_label(label: str) -> str:
+    """Devuelve una descripcion legible para el tipo de secreto."""
+    return SECRET_DESCRIPTIONS.get(label, label)
+
+
+def find_secret_label(text: str) -> Optional[str]:
+    """Devuelve la primera etiqueta de secreto encontrada en ``text``."""
+    for pattern, label in SECRET_PATTERNS:
+        if pattern.search(text):
+            return label
+    return None
+
+
+def is_secret_storage_path(file_path: str) -> bool:
+    """Indica si la ruta es un contenedor legitimo de secretos locales.
+
+    Se permiten los ficheros de entorno reales del proyecto, pero no sus
+    variantes de ejemplo o plantilla, que suelen ser versionadas.
+    """
+    if not file_path:
+        return False
+
+    base_name = os.path.basename(file_path).lower()
+
+    if base_name in {".env", "local.env"}:
+        return True
+
+    if not base_name.startswith(".env."):
+        return False
+
+    suffix = base_name[len(".env."):]
+    if not suffix:
+        return False
+
+    if suffix in _ALLOWED_ENV_SUFFIXES:
+        return True
+
+    parts = [part for part in suffix.split(".") if part]
+    return not any(part in _DISALLOWED_ENV_TOKENS for part in parts)
 
 
 def sanitize_text(text: str) -> str:

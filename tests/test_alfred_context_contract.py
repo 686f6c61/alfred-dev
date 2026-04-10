@@ -36,6 +36,8 @@ class TestAlfredContextContract(unittest.TestCase):
         self.assertIn("actúa como `/alfred-dev:pause`", self.command)
         self.assertIn("actúa como `/alfred-dev:progress`", self.command)
         self.assertIn("actúa como `/alfred-dev:verify`", self.command)
+        self.assertIn("actúa como `/alfred-dev:update`", self.command)
+        self.assertIn("actúa como `/alfred-dev:lucius`", self.command)
         self.assertIn("actúa como `/alfred-dev:discuss`", self.command)
         self.assertIn("actúa como `/alfred-dev:quick`", self.command)
         self.assertIn("actúa como `/alfred-dev:map-codebase`", self.command)
@@ -51,12 +53,16 @@ class TestAlfredContextContract(unittest.TestCase):
         self.assertIn("/alfred-dev:audit", self.command)
         self.assertIn("/alfred-dev:verify", self.command)
         self.assertIn("/alfred-dev:ship", self.command)
+        self.assertIn("/alfred-dev:lucius", self.command)
+        self.assertIn("/alfred-dev:update", self.command)
         self.assertIn("NO lo dejes en una redirección muda", self.command)
         self.assertIn("NO reintentes `Bash`", self.command)
 
     def test_avoids_old_command_prefix_and_default_menu(self):
         self.assertIn("NO uses nombres viejos como `/alfred feature`", self.command)
         self.assertIn("NO ofrezcas un menú genérico si el siguiente paso es evidente", self.command)
+        self.assertIn("AskUserQuestion", self.command)
+        self.assertIn("menú seleccionable real", self.command)
 
 
 if __name__ == "__main__":

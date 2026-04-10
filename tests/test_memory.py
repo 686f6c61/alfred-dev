@@ -105,6 +105,20 @@ class TestMemoryDBCreation(unittest.TestCase):
         """La propiedad fts_enabled debe ser coherente con la deteccion."""
         self.assertIsInstance(self.db.fts_enabled, bool)
 
+    def test_fts_content_version_registered_when_enabled(self):
+        """Si FTS5 esta activo, debe registrarse la version del contenido indexado."""
+        if not self.db.fts_enabled:
+            self.skipTest("FTS5 no disponible en este entorno.")
+
+        conn = sqlite3.connect(self._db_path)
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key = 'fts_content_version'"
+        ).fetchone()
+        conn.close()
+
+        self.assertIsNotNone(row)
+        self.assertEqual(row[0], "2")
+
     def test_file_permissions_0600(self):
         """El fichero de la DB debe tener permisos 0600 (solo propietario)."""
         mode = os.stat(self._db_path).st_mode
@@ -408,6 +422,42 @@ class TestCommits(unittest.TestCase):
         )
         self.assertIsNotNone(commit_id)
 
+    def test_log_commit_preserves_explicit_committed_at(self):
+        """Si se pasa committed_at, debe persistirse esa fecha real."""
+        committed_at = "2024-01-02T03:04:05+00:00"
+        commit_id = self.db.log_commit(
+            sha="dated_meta_sha",
+            message="feat: historico",
+            committed_at=committed_at,
+        )
+
+        conn = sqlite3.connect(self._db_path)
+        row = conn.execute(
+            "SELECT committed_at FROM commits WHERE id = ?",
+            (commit_id,),
+        ).fetchone()
+        conn.close()
+
+        self.assertEqual(row[0], committed_at)
+
+    def test_log_commit_can_skip_auto_link_to_active_iteration(self):
+        """Los imports historicos no deben colgarse de la iteracion activa."""
+        self.db.start_iteration("feature", "Sesion activa")
+        commit_id = self.db.log_commit(
+            sha="historical_sha",
+            message="feat: commit historico",
+            auto_link_iteration=False,
+        )
+
+        conn = sqlite3.connect(self._db_path)
+        row = conn.execute(
+            "SELECT iteration_id FROM commits WHERE id = ?",
+            (commit_id,),
+        ).fetchone()
+        conn.close()
+
+        self.assertIsNone(row[0])
+
     def test_link_commit_decision(self):
         """link_commit_decision debe crear la vinculacion correctamente."""
         dec_id = self.db.log_decision(
@@ -512,6 +562,13 @@ class TestSanitization(unittest.TestCase):
 
         self.assertIn("[REDACTED:CONNECTION_STRING]", result)
 
+    def test_short_credential_connection_string_redacted(self):
+        """Las DSN con credenciales cortas tambien deben redactarse."""
+        conn_str = "postgres://user:pass@example.com/db"
+        result = sanitize_content(f"DB: {conn_str}")
+
+        self.assertIn("[REDACTED:CONNECTION_STRING]", result)
+
     def test_multiple_secrets_all_redacted(self):
         """Si hay varios secretos en el mismo texto, todos se redactan."""
         fake_aws = "AKIA" + "MULTITEST12345678"
@@ -606,6 +663,86 @@ class TestSearch(unittest.TestCase):
         source_types = [r["source_type"] for r in results]
         # Stripe aparece en la decision y en el commit
         self.assertTrue(len(source_types) > 0)
+
+    def test_search_finds_commit_by_changed_file(self):
+        """La busqueda debe encontrar commits por rutas dentro de files."""
+        self.db.log_commit(
+            sha="search_test_sha2",
+            message="feat: refactor auth callback",
+            files=["src/auth/callback.py", "tests/test_auth_callback.py"],
+        )
+
+        results = self.db.search("callback.py")
+
+        self.assertTrue(any(r["source_type"] == "commit" for r in results))
+        self.assertTrue(
+            any("callback.py" in r.get("files", "") for r in results if r["source_type"] == "commit")
+        )
+
+    def test_search_prioritizes_primary_match_over_secondary_mentions(self):
+        """Un match en titulo/mensaje debe ganar a una mención lateral."""
+        self.db.log_decision(
+            title="Infra compartida",
+            chosen="Redis",
+            rationale="Necesitamos una cache rollback ordenada para pruebas.",
+        )
+        self.db.log_commit(
+            sha="search_test_sha3",
+            message="feat: cache rollback",
+        )
+
+        results = self.db.search("cache rollback", limit=1)
+
+        self.assertEqual(results[0]["source_type"], "commit")
+        self.assertEqual(results[0]["message"], "feat: cache rollback")
+
+    def test_search_like_fallback_uses_same_relevance_rules(self):
+        """El fallback LIKE no debe sesgar decisiones por delante de commits."""
+        self.db._fts_enabled = False
+        self.db.log_decision(
+            title="Infra compartida",
+            chosen="Redis",
+            rationale="Necesitamos una cache rollback ordenada para pruebas.",
+        )
+        self.db.log_commit(
+            sha="search_test_sha4",
+            message="feat: cache rollback",
+            files=["src/cache/rollback.py"],
+        )
+
+        results = self.db.search("cache rollback", limit=1)
+        file_results = self.db.search("rollback.py", limit=3)
+
+        self.assertEqual(results[0]["source_type"], "commit")
+        self.assertTrue(any(r["source_type"] == "commit" for r in file_results))
+
+    def test_fts_index_includes_commit_files_and_event_summary(self):
+        """FTS debe indexar rutas de ficheros y summaries de eventos."""
+        if not self.db.fts_enabled:
+            self.skipTest("FTS5 no disponible en este entorno.")
+
+        self.db.log_commit(
+            sha="search_test_sha5",
+            message="feat: auth pipeline",
+            files=["src/auth/callback.py"],
+        )
+        self.db.log_event(
+            event_type="custom",
+            summary="rollout freeze approved",
+            iteration_id=self.iter_id,
+        )
+
+        commit_row = self.db._conn.execute(
+            "SELECT content FROM memory_fts WHERE source_type = 'commit' "
+            "ORDER BY rowid DESC LIMIT 1"
+        ).fetchone()
+        event_row = self.db._conn.execute(
+            "SELECT content FROM memory_fts WHERE source_type = 'event' "
+            "ORDER BY rowid DESC LIMIT 1"
+        ).fetchone()
+
+        self.assertIn("callback.py", commit_row[0])
+        self.assertIn("rollout freeze approved", event_row[0])
 
     def test_search_no_results(self):
         """Buscar un termino inexistente devuelve lista vacia."""
@@ -756,6 +893,23 @@ class TestEvents(unittest.TestCase):
 
         deleted = self.db.purge_old_events(retention_days=30)
         self.assertEqual(deleted, 0)
+
+    def test_count_events_supports_iteration_filters_without_truncation(self):
+        """count_events debe devolver el total real, no una ventana parcial."""
+        iter_a = self.db.start_iteration("feature", "A")
+        self.db.complete_iteration(iter_a)
+        iter_b = self.db.start_iteration("feature", "B")
+
+        for index in range(1005):
+            self.db.log_event(
+                event_type="command_executed" if index % 2 == 0 else "phase_completed",
+                iteration_id=iter_a if index < 1000 else iter_b,
+            )
+
+        self.assertEqual(self.db.count_events(), 1005)
+        self.assertEqual(self.db.count_events(iteration_id=iter_a), 1000)
+        self.assertEqual(self.db.count_events(iteration_id=iter_b), 5)
+        self.assertEqual(self.db.count_events(event_type="command_executed"), 503)
 
 
 class TestStats(unittest.TestCase):
@@ -1502,6 +1656,54 @@ class TestHealthCheck(unittest.TestCase):
 
         self.assertGreater(health["size_bytes"], main_size)
 
+    def test_reopen_repairs_legacy_fts_content(self):
+        """Al reabrir, una DB vieja debe reconstruir FTS con el formato nuevo."""
+        if not self.db.fts_enabled:
+            self.skipTest("FTS5 no disponible en este entorno.")
+
+        iteration_id = self.db.start_iteration("feature", "fts legacy")
+        commit_id = self.db.log_commit(
+            sha="legacy_fts_sha",
+            message="feat: auth pipeline",
+            files=["src/auth/callback.py"],
+            iteration_id=iteration_id,
+        )
+        event_id = self.db.log_event(
+            event_type="custom",
+            summary="rollout freeze approved",
+            iteration_id=iteration_id,
+        )
+
+        self.db._conn.execute(
+            "UPDATE meta SET value = '1' WHERE key = 'fts_content_version'"
+        )
+        self.db._conn.execute("DELETE FROM memory_fts")
+        self.db._conn.execute(
+            "INSERT INTO memory_fts (source_type, source_id, content) VALUES (?, ?, ?)",
+            ("commit", str(commit_id), "feat: auth pipeline"),
+        )
+        self.db._conn.commit()
+        self.db.close()
+
+        self.db = MemoryDB(self._db_path)
+
+        commit_row = self.db._conn.execute(
+            "SELECT content FROM memory_fts WHERE source_type = 'commit' AND source_id = ?",
+            (str(commit_id),),
+        ).fetchone()
+        event_row = self.db._conn.execute(
+            "SELECT content FROM memory_fts WHERE source_type = 'event' AND source_id = ?",
+            (str(event_id),),
+        ).fetchone()
+        meta_row = self.db._conn.execute(
+            "SELECT value FROM meta WHERE key = 'fts_content_version'"
+        ).fetchone()
+
+        self.assertIn("callback.py", commit_row[0])
+        self.assertIn("rollout freeze approved", event_row[0])
+        self.assertEqual(meta_row[0], "2")
+        self.assertEqual(self.db.check_health()["status"], "healthy")
+
 
 class TestExportImport(unittest.TestCase):
     """Tests de exportacion e importacion de datos.
@@ -1528,6 +1730,25 @@ class TestExportImport(unittest.TestCase):
                 os.unlink(path)
         import shutil
         shutil.rmtree(self._export_dir, ignore_errors=True)
+
+    def _init_repo(self, name: str) -> str:
+        import subprocess
+
+        repo_dir = os.path.join(self._export_dir, name)
+        os.makedirs(repo_dir)
+        subprocess.run(
+            ["git", "init"], cwd=repo_dir,
+            capture_output=True, check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=repo_dir, capture_output=True, check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=repo_dir, capture_output=True, check=True,
+        )
+        return repo_dir
 
     def test_export_markdown_creates_file(self):
         """export_decisions_markdown debe crear el fichero con el titulo."""
@@ -1566,20 +1787,7 @@ class TestExportImport(unittest.TestCase):
         """Importar el mismo historial dos veces no duplica commits."""
         import subprocess
 
-        repo_dir = os.path.join(self._export_dir, "test_repo")
-        os.makedirs(repo_dir)
-        subprocess.run(
-            ["git", "init"], cwd=repo_dir,
-            capture_output=True, check=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=repo_dir, capture_output=True, check=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=repo_dir, capture_output=True, check=True,
-        )
+        repo_dir = self._init_repo("test_repo")
         test_file = os.path.join(repo_dir, "test.txt")
         with open(test_file, "w") as f:
             f.write("test")
@@ -1602,20 +1810,7 @@ class TestExportImport(unittest.TestCase):
         """No debe romperse si el subject del commit contiene |."""
         import subprocess
 
-        repo_dir = os.path.join(self._export_dir, "pipe_repo")
-        os.makedirs(repo_dir)
-        subprocess.run(
-            ["git", "init"], cwd=repo_dir,
-            capture_output=True, check=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=repo_dir, capture_output=True, check=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=repo_dir, capture_output=True, check=True,
-        )
+        repo_dir = self._init_repo("pipe_repo")
         with open(os.path.join(repo_dir, "test.txt"), "w", encoding="utf-8") as handle:
             handle.write("test")
         subprocess.run(
@@ -1635,6 +1830,69 @@ class TestExportImport(unittest.TestCase):
         self.assertEqual(results[0]["source_type"], "commit")
         self.assertEqual(results[0]["message"], "feat | weird separator")
         self.assertEqual(results[0]["author"], "Test")
+
+    def test_import_git_history_preserves_commit_date(self):
+        """El historial importado debe conservar committed_at del repo."""
+        import subprocess
+
+        repo_dir = self._init_repo("dated_repo")
+        with open(os.path.join(repo_dir, "dated.txt"), "w", encoding="utf-8") as handle:
+            handle.write("dated")
+        subprocess.run(
+            ["git", "add", "."], cwd=repo_dir,
+            capture_output=True, check=True,
+        )
+        env = os.environ.copy()
+        env["GIT_AUTHOR_DATE"] = "2024-05-06T07:08:09+00:00"
+        env["GIT_COMMITTER_DATE"] = "2024-05-06T07:08:09+00:00"
+        subprocess.run(
+            ["git", "commit", "-m", "feat: dated import"],
+            cwd=repo_dir, env=env, capture_output=True, check=True,
+        )
+
+        imported = self.db.import_git_history(repo_dir)
+        self.assertEqual(imported, 1)
+
+        conn = sqlite3.connect(self._db_path)
+        row = conn.execute(
+            "SELECT committed_at FROM commits WHERE message = ?",
+            ("feat: dated import",),
+        ).fetchone()
+        conn.close()
+
+        expected = datetime.fromisoformat("2024-05-06T07:08:09+00:00")
+        actual = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+        self.assertEqual(actual, expected)
+
+    def test_import_git_history_does_not_link_history_to_active_iteration(self):
+        """Importar historial no debe contaminar la iteracion activa actual."""
+        import subprocess
+
+        repo_dir = self._init_repo("iteration_repo")
+        with open(os.path.join(repo_dir, "iter.txt"), "w", encoding="utf-8") as handle:
+            handle.write("iter")
+        subprocess.run(
+            ["git", "add", "."], cwd=repo_dir,
+            capture_output=True, check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "feat: imported history"],
+            cwd=repo_dir, capture_output=True, check=True,
+        )
+
+        active_iteration = self.db.start_iteration("feature", "Trabajo actual")
+        imported = self.db.import_git_history(repo_dir)
+
+        self.assertEqual(imported, 1)
+        conn = sqlite3.connect(self._db_path)
+        row = conn.execute(
+            "SELECT iteration_id FROM commits WHERE message = ?",
+            ("feat: imported history",),
+        ).fetchone()
+        conn.close()
+
+        self.assertNotEqual(row[0], active_iteration)
+        self.assertIsNone(row[0])
 
 
 class TestEventSearchAndPurge(unittest.TestCase):

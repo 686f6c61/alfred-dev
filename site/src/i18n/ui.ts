@@ -54,6 +54,10 @@ export const ui: Record<string, Record<Locale, string>> = {
     es: 'ver completo',
     en: 'view full',
   },
+  changelogHistoryNote: {
+    es: 'Cada bloque describe esa version historica; los contadores antiguos no representan la superficie actual del plugin.',
+    en: 'Each block describes that historical version; older counters do not represent the plugin current surface.',
+  },
 
   // ── Copiar al portapapeles ──────────────────────────────────
   copyHint: {

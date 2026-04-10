@@ -31,15 +31,6 @@ interface Props {
 
 const { composition } = Astro.props;
 
-/**
- * Serializa los datos de la demo como JSON para el script del cliente.
- * Incluye las opciones de los tres selectores para animar las selecciones.
- */
-const demoData = JSON.stringify({
-  techOptions: composition.techOptions,
-  contentOptions: composition.contentOptions,
-  productOptions: composition.productOptions,
-});
 ---
 
 <section id="composicion" class="composition-section">

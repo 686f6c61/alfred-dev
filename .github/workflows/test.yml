@@ -56,3 +56,29 @@ jobs:
           name: coverage-report
           path: coverage-html/
           retention-days: 14
+
+  site:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: site
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Instalar dependencias del sitio
+        run: npm ci
+
+      - name: Validar tipos y contenido del sitio
+        run: npm run check
+
+      - name: Compilar sitio estático
+        run: npm run build

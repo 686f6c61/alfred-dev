@@ -62,6 +62,13 @@ class TestPrefetchFinishGuard(unittest.TestCase):
     def test_active_marker_blocks_followup_tool(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+            os.makedirs(os.path.join(tmpdir, "docs", "project"), exist_ok=True)
+            with open(
+                os.path.join(tmpdir, "docs", "project", "codebase-map.md"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                fh.write("# mapa\n")
             marker_path = os.path.join(tmpdir, ".claude", "alfred-prefetch-consumed.json")
             with open(marker_path, "w", encoding="utf-8") as fh:
                 json.dump(
@@ -161,10 +168,17 @@ class TestPrefetchFinishGuard(unittest.TestCase):
     def test_resolves_project_dir_from_absolute_file_path(self):
         with tempfile.TemporaryDirectory() as tmpdir, tempfile.TemporaryDirectory() as other_cwd:
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+            os.makedirs(os.path.join(tmpdir, "docs", "project"), exist_ok=True)
             src_path = os.path.join(tmpdir, "src", "index.js")
             os.makedirs(os.path.dirname(src_path), exist_ok=True)
             with open(src_path, "w", encoding="utf-8") as fh:
                 fh.write("console.log('hola')\n")
+            with open(
+                os.path.join(tmpdir, "docs", "project", "codebase-map.md"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                fh.write("# mapa\n")
 
             marker_path = os.path.join(tmpdir, ".claude", "alfred-prefetch-consumed.json")
             with open(marker_path, "w", encoding="utf-8") as fh:
@@ -198,6 +212,56 @@ class TestPrefetchFinishGuard(unittest.TestCase):
                         "prefetched_command": "map-codebase",
                         "created_at": datetime.now(timezone.utc).isoformat(),
                         "expires_at": (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat(),
+                    },
+                    fh,
+                )
+
+            code, stdout, stderr = self._run_hook(
+                {"tool_name": "Read", "tool_input": {"file_path": "README.md"}},
+                tmpdir,
+            )
+
+            self.assertEqual(code, 0)
+            self.assertEqual(stdout, "")
+            self.assertEqual(stderr, "")
+            self.assertFalse(os.path.exists(marker_path))
+
+    def test_missing_map_artifact_clears_consumed_marker_and_allows_tool(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+            marker_path = os.path.join(tmpdir, ".claude", "alfred-prefetch-consumed.json")
+            with open(marker_path, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "source_command": "map-codebase",
+                        "prefetched_command": "map-codebase",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=30)).isoformat(),
+                    },
+                    fh,
+                )
+
+            code, stdout, stderr = self._run_hook(
+                {"tool_name": "Read", "tool_input": {"file_path": "README.md"}},
+                tmpdir,
+            )
+
+            self.assertEqual(code, 0)
+            self.assertEqual(stdout, "")
+            self.assertEqual(stderr, "")
+            self.assertFalse(os.path.exists(marker_path))
+
+    def test_missing_memory_ui_state_clears_consumed_marker_and_allows_tool(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
+            marker_path = os.path.join(tmpdir, ".claude", "alfred-prefetch-consumed.json")
+            with open(marker_path, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "source_command": "memory-ui",
+                        "prefetched_command": "memory-ui",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=30)).isoformat(),
                     },
                     fh,
                 )

@@ -27,72 +27,23 @@ CONTINUITY_WRAPPER="${PROJECT_DIR}/.claude/alfred-continuity.py"
 
 mkdir -p "${PROJECT_DIR}/.claude"
 
-if [[ ! -f "$LOCAL_CONFIG" ]]; then
-  cat > "$LOCAL_CONFIG" <<'LOCALCFG'
----
-autonomia:
-  producto: autonomo
-  arquitectura: autonomo
-  desarrollo: autonomo
-  calidad: autonomo
-  documentacion: autonomo
-  entrega: autonomo
-memoria:
-  enabled: true
-  sync_to_native: true
-  sync_commits_limit: 10
-  capture_decisions: true
-  capture_commits: true
-  retention_days: 365
----
+PYTHONPATH="${PLUGIN_ROOT}" python3 - "$LOCAL_CONFIG" <<'PY' 2>/dev/null || true
+import sys
 
-# Configuración local de Alfred Dev
+from core.config_loader import ensure_bootstrap_local_config
 
-Este fichero se genera automáticamente en la primera sesión.
-Puedes personalizarlo con `/alfred-dev:config`.
-LOCALCFG
-else
-  PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
-import re, sys
+ensure_bootstrap_local_config(sys.argv[1])
+PY
 
-config_path = sys.argv[1]
-with open(config_path, 'r', encoding='utf-8') as f:
-    content = f.read()
+MEMORY_ENABLED=$(PYTHONPATH="${PLUGIN_ROOT}" python3 - "$PROJECT_DIR" <<'PY' 2>/dev/null || true
+from core.memory_config import is_memory_enabled
+import sys
 
-memoria_block = '''memoria:
-  enabled: true
-  capture_decisions: true
-  capture_commits: true
-  retention_days: 365'''
+print("yes" if is_memory_enabled(sys.argv[1]) else "no")
+PY
+)
 
-autonomia_block = '''autonomia:
-  producto: autonomo
-  arquitectura: autonomo
-  desarrollo: autonomo
-  calidad: autonomo
-  documentacion: autonomo
-  entrega: autonomo'''
-
-if not re.search(r'memoria:\s*\n(?:\s*#[^\n]*\n|\s*\w+:[^\n]*\n)*?\s*enabled:\s*true', content):
-    if content.startswith('---'):
-        idx = content.index('---') + 3
-        content = content[:idx] + '\n' + memoria_block + content[idx:]
-    else:
-        content = '---\n' + memoria_block + '\n---\n\n' + content
-
-if not re.search(r'(^|\n)autonomia:\s*\n', content):
-    if content.startswith('---'):
-        idx = content.index('---') + 3
-        content = content[:idx] + '\n' + autonomia_block + content[idx:]
-    else:
-        content = '---\n' + autonomia_block + '\n---\n\n' + content
-
-with open(config_path, 'w', encoding='utf-8') as f:
-    f.write(content)
-" "$LOCAL_CONFIG" 2>/dev/null || true
-fi
-
-if [[ ! -f "$MEMORY_DB" ]]; then
+if [[ "${MEMORY_ENABLED:-no}" == "yes" && ! -f "$MEMORY_DB" ]]; then
   PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
 import sys
 sys.path.insert(0, sys.argv[2])
@@ -189,7 +140,7 @@ with open(wrapper_path, "w", encoding="utf-8") as fh:
 os.chmod(wrapper_path, 0o755)
 PY
 
-if [[ -f "$MEMORY_DB" ]]; then
+if [[ "${MEMORY_ENABLED:-no}" == "yes" && -f "$MEMORY_DB" ]]; then
   PYTHONPATH="${PLUGIN_ROOT}" python3 -c "
 import sys
 sys.path.insert(0, sys.argv[2])

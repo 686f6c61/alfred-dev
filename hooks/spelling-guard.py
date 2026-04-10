@@ -37,6 +37,11 @@ TEXT_EXTENSIONS = {
     ".toml",  # solo pyproject.toml con descripciones
 }
 
+MARKDOWN_EXTENSIONS = {".md", ".txt", ".rst", ".adoc"}
+MARKUP_EXTENSIONS = {".html", ".htm", ".xml", ".svg"}
+STYLE_EXTENSIONS = {".css", ".scss"}
+CONFIG_VALUE_EXTENSIONS = {".toml"}
+
 # --- Directorios y ficheros a ignorar ---
 
 IGNORE_PATHS = {
@@ -150,6 +155,21 @@ _WORDS_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_FENCED_CODE_PATTERN = re.compile(r"(?ms)(```.*?```|~~~.*?~~~)")
+_INLINE_CODE_PATTERN = re.compile(r"`[^`\n]+`")
+_URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
+_PATH_PATTERN = re.compile(
+    r"(?<![\w@])(?:[.~]?/)?(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+"
+)
+_LONG_OPTION_PATTERN = re.compile(r"(?<!\w)--[a-z0-9][a-z0-9-]*", re.IGNORECASE)
+_TAG_PATTERN = re.compile(r"<[^>]+>")
+_HTML_USER_ATTR_PATTERN = re.compile(
+    r"""(?:aria-label|aria-description|title|placeholder|alt|label)\s*=\s*["']([^"']+)["']""",
+    re.IGNORECASE,
+)
+_CSS_BLOCK_COMMENT_PATTERN = re.compile(r"/\*.*?\*/", re.DOTALL)
+_CSS_LINE_COMMENT_PATTERN = re.compile(r"(?m)^\s*//\s?(.*)$")
+
 # Umbral mínimo de faltas para emitir aviso (evita ruido por una sola errata)
 MIN_FINDINGS = 1
 
@@ -209,6 +229,60 @@ def find_accent_errors(text: str) -> list[tuple[str, str]]:
     return results
 
 
+def prepare_text_for_spellcheck(text: str, file_path: str) -> str:
+    """Reduce ruido tecnico y deja solo el texto mas probable de revisar.
+
+    El hook no intenta hacer analisis sintactico completo; aplica filtros
+    ligeros por tipo de fichero para evitar falsos positivos habituales en
+    rutas, bloques de codigo, selectores CSS, claves TOML o tags HTML.
+    """
+    if not text:
+        return ""
+
+    _, ext = os.path.splitext(file_path or "")
+    ext = ext.lower()
+    prepared = text
+
+    if ext in MARKDOWN_EXTENSIONS:
+        prepared = _FENCED_CODE_PATTERN.sub(" ", prepared)
+        prepared = _INLINE_CODE_PATTERN.sub(" ", prepared)
+
+    elif ext in MARKUP_EXTENSIONS:
+        attr_text = "\n".join(_HTML_USER_ATTR_PATTERN.findall(prepared))
+        visible_text = _TAG_PATTERN.sub(" ", prepared)
+        prepared = "\n".join(part for part in (visible_text, attr_text) if part)
+
+    elif ext in STYLE_EXTENSIONS:
+        block_comments = [
+            match.group(0)[2:-2] for match in _CSS_BLOCK_COMMENT_PATTERN.finditer(prepared)
+        ]
+        line_comments = _CSS_LINE_COMMENT_PATTERN.findall(prepared)
+        prepared = "\n".join(block_comments + line_comments)
+
+    elif ext in CONFIG_VALUE_EXTENSIONS:
+        lines = []
+        for line in prepared.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("["):
+                continue
+
+            code, has_comment, comment = line.partition("#")
+            if has_comment:
+                lines.append(comment)
+
+            if "=" in code:
+                lines.append(code.split("=", 1)[1])
+            else:
+                lines.append(code)
+
+        prepared = "\n".join(lines)
+
+    prepared = _URL_PATTERN.sub(" ", prepared)
+    prepared = _PATH_PATTERN.sub(" ", prepared)
+    prepared = _LONG_OPTION_PATTERN.sub(" ", prepared)
+    return prepared
+
+
 def main():
     """Punto de entrada del hook.
 
@@ -242,8 +316,8 @@ def main():
     if not content:
         sys.exit(0)
 
-    # Buscar errores de tildes
-    errors = find_accent_errors(content)
+    # Buscar errores de tildes sobre el texto realmente revisable.
+    errors = find_accent_errors(prepare_text_for_spellcheck(content, file_path))
 
     if len(errors) < MIN_FINDINGS:
         sys.exit(0)

@@ -236,29 +236,49 @@ class MemorySync:
             _safe_delete(path)
             return
 
-        # Obtener fases completadas desde los eventos de la iteracion
-        events = self._db.get_timeline(active["id"])
+        # Obtener todas las fases completadas sin depender del limite general
+        # de timeline ni arrastrar ruido de otros tipos de evento.
+        phase_total = self._db.count_events(
+            iteration_id=active["id"],
+            event_type="phase_completed",
+        )
+        events = self._db.get_events(
+            iteration_id=active["id"],
+            event_type="phase_completed",
+            ascending=True,
+            limit=max(phase_total, 1),
+        )
         phases: List[Dict[str, str]] = []
         for ev in events:
-            if ev.get("event_type") == "phase_completed":
-                payload_raw = ev.get("payload")
-                if payload_raw:
-                    try:
-                        payload = (
-                            json.loads(payload_raw)
-                            if isinstance(payload_raw, str)
-                            else payload_raw
-                        )
-                        phases.append({
-                            "nombre": payload.get("fase", ""),
-                            "resultado": payload.get("resultado", ""),
-                            "fecha": payload.get(
-                                "completada_en",
-                                ev.get("created_at", "")[:10],
-                            ),
-                        })
-                    except (json.JSONDecodeError, AttributeError):
-                        pass
+            payload: Dict[str, Any] = {}
+            payload_raw = ev.get("payload")
+            if payload_raw:
+                try:
+                    payload = (
+                        json.loads(payload_raw)
+                        if isinstance(payload_raw, str)
+                        else payload_raw
+                    )
+                except (json.JSONDecodeError, AttributeError):
+                    payload = {}
+
+            phase_name = (
+                str(payload.get("fase", "")).strip()
+                or str(ev.get("phase", "")).strip()
+            )
+            if not phase_name:
+                continue
+
+            result = str(payload.get("resultado", "")).strip() or "aprobado"
+            completed_at = (
+                str(payload.get("completada_en", "")).strip()
+                or str(ev.get("created_at", "")).strip()
+            )
+            phases.append({
+                "nombre": phase_name,
+                "resultado": result,
+                "fecha": completed_at[:10],
+            })
 
         # Determinar fase actual para la descripcion
         fase_actual = "en curso"
@@ -284,7 +304,9 @@ class MemorySync:
             content += "|------|-----------|-------|\n"
             for p in phases:
                 content += (
-                    f"| {p['nombre']} | {p['resultado']} | {p['fecha']} |\n"
+                    f"| {_markdown_table_cell(p['nombre'])} | "
+                    f"{_markdown_table_cell(p['resultado'])} | "
+                    f"{_markdown_table_cell(p['fecha'])} |\n"
                 )
 
         _safe_write(path, content)
@@ -319,19 +341,34 @@ class MemorySync:
         content = _frontmatter(
             name="Ultimos commits registrados",
             description=(
-                f"Los {limit} commits mas recientes vinculados "
-                f"a iteraciones de Alfred"
+                f"Los {limit} commits mas recientes registrados en memoria, "
+                f"incluyendo flujo activo e historial importado"
             ),
         )
-        content += "\n| SHA | Mensaje | Autor | Fecha | Ficheros |\n"
-        content += "|-----|---------|-------|-------|----------|\n"
+        content += "\n| SHA | Mensaje | Autor | Fecha | Contexto | Ficheros |\n"
+        content += "|-----|---------|-------|-------|----------|----------|\n"
         for row in rows:
             sha_short = row["sha"][:7] if row["sha"] else "?"
-            msg = row["message"] or ""
-            author = row["author"] or ""
+            msg = _markdown_table_cell(row["message"] or "")
+            author = _markdown_table_cell(row["author"] or "")
             date = (row["committed_at"] or "")[:10]
-            files = row["files_changed"] or 0
-            content += f"| {sha_short} | {msg} | {author} | {date} | {files} |\n"
+            files = row["files_changed"]
+            if not files:
+                try:
+                    file_list = json.loads(row.get("files") or "[]")
+                except (json.JSONDecodeError, TypeError, AttributeError):
+                    file_list = []
+                files = len(file_list)
+            context = (
+                f"I#{row['iteration_id']}"
+                if row.get("iteration_id") is not None
+                else "histórico"
+            )
+            content += (
+                f"| {sha_short} | {msg} | {author} | "
+                f"{_markdown_table_cell(date)} | {_markdown_table_cell(context)} | "
+                f"{_markdown_table_cell(files)} |\n"
+            )
 
         _safe_write(path, content)
 
@@ -349,6 +386,10 @@ class MemorySync:
         total_decisions = stats.get("total_decisions", 0)
         total_commits = stats.get("total_commits", 0)
         total_iterations = stats.get("total_iterations", 0)
+        linked_commits = self._db._conn.execute(
+            "SELECT COUNT(*) FROM commits WHERE iteration_id IS NOT NULL"
+        ).fetchone()[0]
+        historical_commits = max(0, total_commits - linked_commits)
 
         # Contar decisiones activas vs archivadas
         active_decisions = list(
@@ -378,16 +419,23 @@ class MemorySync:
             content += f'La iteracion actual es "{cmd}: {desc}".\n'
 
         content += (
-            f"Se han registrado {total_commits} commits "
-            f"en {total_iterations} iteraciones.\n"
+            "Hay "
+            f"{_count_label(linked_commits, 'commit')} "
+            f"con vínculo a {_count_label(total_iterations, 'iteracion', 'iteraciones')}.\n"
         )
+        if historical_commits:
+            content += (
+                "Ademas hay "
+                f"{_count_label(historical_commits, 'commit importado', 'commits importados')} "
+                "como historial de referencia.\n"
+            )
 
         # Decisiones clave (hasta 10)
         if active_decisions:
             content += "\n### Decisiones clave vigentes\n\n"
             for d in active_decisions[:10]:
                 title = d.get("title", "sin titulo")
-                chosen = d.get("chosen", "")
+                chosen = _single_line_text(d.get("chosen", ""))
                 if len(chosen) > 80:
                     chosen = chosen[:77] + "..."
                 content += f"- **D#{d['id']} -- {title}:** {chosen}\n"
@@ -673,7 +721,13 @@ class MemorySync:
 
         # Decisiones activas (ordenadas por nombre de fichero)
         try:
-            for entry in sorted(os.listdir(self._memory_dir)):
+            def _decision_sort_key(entry: str) -> tuple[int, str]:
+                match = re.match(r"alfred-decision-(\d+)\.md$", entry)
+                if match:
+                    return (int(match.group(1)), entry)
+                return (sys.maxsize, entry)
+
+            for entry in sorted(os.listdir(self._memory_dir), key=_decision_sort_key):
                 if (
                     entry.startswith("alfred-decision-")
                     and entry != "alfred-decisions-archived.md"
@@ -725,9 +779,10 @@ def _frontmatter(
     Returns:
         Bloque de frontmatter YAML completo con delimitadores ``---``.
     """
-    # Escapar comillas dobles en name y description para YAML valido
-    name = name.replace('"', '\\"')
-    description = description.replace('"', '\\"')
+    # Los escalares del frontmatter deben ir en una sola linea para no romper
+    # el YAML si el contenido original trae saltos o espacios repetidos.
+    name = re.sub(r"\s+", " ", name).strip().replace('"', '\\"')
+    description = re.sub(r"\s+", " ", description).strip().replace('"', '\\"')
 
     lines = [
         "---",
@@ -740,6 +795,24 @@ def _frontmatter(
         lines.append(f"source_id: {source_id}")
     lines.append("---\n")
     return "\n".join(lines)
+
+
+def _single_line_text(value: Any) -> str:
+    """Normaliza texto libre a una sola linea legible."""
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _markdown_table_cell(value: Any) -> str:
+    """Escapa celdas Markdown para evitar roturas por pipes o saltos."""
+    text = _single_line_text(value)
+    return text.replace("|", r"\|")
+
+
+def _count_label(count: int, singular: str, plural: Optional[str] = None) -> str:
+    """Devuelve una etiqueta con pluralizacion simple en castellano."""
+    if count == 1:
+        return f"{count} {singular}"
+    return f"{count} {plural or singular + 's'}"
 
 
 def _safe_write(path: str, content: str) -> bool:

@@ -12,12 +12,17 @@ trabajo manualmente.
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 _MARKER_RELATIVE_PATH = os.path.join(".claude", "alfred-prefetch-consumed.json")
 _PREFETCH_RELATIVE_PATH = os.path.join(".claude", "alfred-prefetch.json")
+_MEMORY_UI_STATE_RELATIVE_PATH = os.path.join(".claude", "alfred-memory-ui.json")
+_CODEBASE_MAP_RELATIVE_PATH = os.path.join("docs", "project", "codebase-map.md")
+_DISCOVERY_RELATIVE_PATH = os.path.join("docs", "project", "discovery.md")
 _PENDING_GUARD_COMMANDS = frozenset({"alfred", "map-codebase", "discuss", "memory-ui"})
 
 
@@ -91,6 +96,13 @@ def _load_active_marker(project_dir: str):
             pass
         return None
 
+    if not _consumed_prefetch_output_is_available(project_dir, payload):
+        try:
+            os.remove(marker_path)
+        except OSError:
+            pass
+        return None
+
     return payload
 
 
@@ -125,6 +137,56 @@ def _load_pending_prefetch(project_dir: str):
         return None
 
     return payload
+
+
+def _load_json(path: str):
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return None
+
+
+def _is_memory_ui_reachable(url: str) -> bool:
+    normalized = str(url or "").rstrip("/")
+    if not normalized:
+        return False
+
+    request = urllib.request.Request(
+        f"{normalized}/api/healthz",
+        headers={"Accept": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=0.3) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (
+        TimeoutError,
+        ValueError,
+        OSError,
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+    ):
+        return False
+
+    return bool(isinstance(payload, dict) and payload.get("ok"))
+
+
+def _consumed_prefetch_output_is_available(project_dir: str, payload: dict) -> bool:
+    prefetched_command = str(payload.get("prefetched_command", "")).strip().lower()
+
+    if prefetched_command == "map-codebase":
+        return os.path.isfile(os.path.join(project_dir, _CODEBASE_MAP_RELATIVE_PATH))
+
+    if prefetched_command == "discuss":
+        return os.path.isfile(os.path.join(project_dir, _DISCOVERY_RELATIVE_PATH))
+
+    if prefetched_command == "memory-ui":
+        state = _load_json(os.path.join(project_dir, _MEMORY_UI_STATE_RELATIVE_PATH))
+        if not isinstance(state, dict):
+            return False
+        return _is_memory_ui_reachable(state.get("url", ""))
+
+    return True
 
 
 def main():

@@ -4,7 +4,9 @@ Los skills son las capacidades concretas que los agentes de Alfred pueden ejecut
 
 La razon de separar los skills de los agentes es la misma por la que una empresa separa los procedimientos de los roles: un procedimiento (skill) puede ser ejecutado por diferentes personas (agentes) segun el contexto, y un mismo rol puede dominar multiples procedimientos. Esta separación permite que el sistema crezca sin acoplar capacidades a identidades.
 
-Los 60 skills se organizan en 13 dominios temáticos que cubren todo el ciclo de vida del software, desde la definición de producto hasta la optimizacion SEO. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegación y la asignación a agentes especializados.
+El repositorio mantiene un **catalogo interno de 61 skills** organizados en 14 dominios temáticos que cubren todo el ciclo de vida del software, desde la definición de producto hasta la optimizacion SEO y la dirección de estilo visual. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegación y la asignación a agentes especializados.
+
+Es importante distinguir este catalogo interno de la superficie publicada en Claude Code: hoy `plugin.json` registra 5 skills de primer nivel para integraciones concretas, mientras que el resto del catalogo funciona como playbooks internos reutilizados por agentes, documentación y flujos del plugin.
 
 ## Mapa de dominios y skills
 
@@ -172,7 +174,7 @@ El dominio de documentación cubre la generacion y mantenimiento de toda la docu
 
 ## GitHub
 
-El dominio de GitHub gestiona la configuración y los flujos de trabajo del repositorio: desde la creación del repo con protecciones de rama hasta la publicacion de releases con versionado semántico. Estos skills estandarizan las practicas del equipo y automatizan tareas repetitivas de gestion del repositorio. El agente responsable es el **github-manager**, un agente opcional que se activa cuando el proyecto tiene un remote Git y necesita gestion de repositorio.
+El dominio de GitHub gestiona la configuración y los flujos de trabajo del repositorio: desde la creación del repo con protecciones de rama hasta la publicacion de releases con versionado semántico. Estos skills estandarizan las practicas del equipo y automatizan tareas repetitivas de gestion del repositorio. El agente responsable es el **github-manager**, un agente opcional que se activa cuando el proyecto tiene un remote GitHub y necesita gestion de repositorio.
 
 | Skill | Descripción | Agente |
 |-------|-------------|--------|

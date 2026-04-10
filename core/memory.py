@@ -46,6 +46,11 @@ _SCHEMA_VERSION = 4
 # después del post-filtrado, y luego se truncan al límite original.
 _FETCH_MARGIN = 3
 
+# Version logica del contenido indexado en FTS. Sube cuando cambia el
+# conjunto de campos que deben quedar buscables y permite reconstruir
+# automaticamente indices heredados.
+_FTS_CONTENT_VERSION = 2
+
 # Permisos del fichero de base de datos: solo lectura y escritura para el
 # propietario (equivalente a chmod 600). Se aplica tanto al .db como a los
 # ficheros auxiliares WAL y SHM.
@@ -357,9 +362,12 @@ class MemoryDB:
                 "USING fts5(source_type, source_id, content)"
             )
 
-            # Triggers para mantener el indice actualizado.
-            # Se usa INSERT OR REPLACE porque FTS5 no soporta UPDATE directo.
+            # Reinstalar triggers para garantizar que siempre indexan el
+            # conjunto de campos vigente aunque la DB venga de versiones previas.
             self._conn.executescript("""
+                DROP TRIGGER IF EXISTS fts_insert_decision;
+                DROP TRIGGER IF EXISTS fts_insert_commit;
+
                 CREATE TRIGGER IF NOT EXISTS fts_insert_decision
                 AFTER INSERT ON decisions
                 BEGIN
@@ -382,7 +390,8 @@ class MemoryDB:
                     VALUES (
                         'commit',
                         CAST(NEW.id AS TEXT),
-                        COALESCE(NEW.message, '')
+                        COALESCE(NEW.message, '') || ' ' ||
+                        COALESCE(NEW.files, '')
                     );
                 END;
             """)
@@ -397,7 +406,157 @@ class MemoryDB:
             "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
             ("fts_enabled", "1" if self._fts_enabled else "0"),
         )
+
+        if self._fts_enabled and self._fts_rebuild_required():
+            self._rebuild_fts_index()
+
         self._conn.commit()
+
+    @staticmethod
+    def _compose_decision_search_content(row: Dict[str, Any]) -> str:
+        """Construye el texto indexable de una decision."""
+        return " ".join(
+            part
+            for part in (
+                row.get("title"),
+                row.get("context"),
+                row.get("chosen"),
+                row.get("alternatives"),
+                row.get("rationale"),
+            )
+            if part
+        ).strip()
+
+    @staticmethod
+    def _compose_commit_search_content(row: Dict[str, Any]) -> str:
+        """Construye el texto indexable de un commit."""
+        files_raw = row.get("files")
+        files_text = ""
+        if files_raw:
+            if isinstance(files_raw, str):
+                files_text = files_raw
+            else:
+                files_text = json.dumps(files_raw, ensure_ascii=False)
+
+        return " ".join(
+            part
+            for part in (
+                row.get("message"),
+                files_text,
+            )
+            if part
+        ).strip()
+
+    @staticmethod
+    def _compose_event_search_content(row: Dict[str, Any]) -> str:
+        """Construye el texto indexable de un evento."""
+        return " ".join(
+            part
+            for part in (
+                row.get("summary"),
+                row.get("content"),
+            )
+            if part
+        ).strip()
+
+    def _expected_fts_counts(self) -> Dict[str, int]:
+        """Devuelve el numero esperado de entradas FTS por tipo."""
+        decision_count = self._conn.execute(
+            "SELECT COUNT(*) FROM decisions"
+        ).fetchone()[0]
+        commit_count = self._conn.execute(
+            "SELECT COUNT(*) FROM commits"
+        ).fetchone()[0]
+        event_count = self._conn.execute(
+            "SELECT COUNT(*) FROM events "
+            "WHERE (summary IS NOT NULL AND TRIM(summary) != '') "
+            "   OR (content IS NOT NULL AND TRIM(content) != '')"
+        ).fetchone()[0]
+        return {
+            "decision": int(decision_count),
+            "commit": int(commit_count),
+            "event": int(event_count),
+        }
+
+    def _fts_rebuild_required(self) -> bool:
+        """Detecta si el indice FTS necesita regenerarse."""
+        row = self._conn.execute(
+            "SELECT value FROM meta WHERE key = 'fts_content_version'"
+        ).fetchone()
+        current_version = row[0] if row else None
+        if current_version != str(_FTS_CONTENT_VERSION):
+            return True
+
+        expected_counts = self._expected_fts_counts()
+        for source_type, expected in expected_counts.items():
+            actual = self._conn.execute(
+                "SELECT COUNT(*) FROM memory_fts WHERE source_type = ?",
+                (source_type,),
+            ).fetchone()[0]
+            if actual != expected:
+                return True
+
+        unknown_sources = self._conn.execute(
+            "SELECT COUNT(*) FROM memory_fts "
+            "WHERE source_type NOT IN ('decision', 'commit', 'event')"
+        ).fetchone()[0]
+        if unknown_sources:
+            return True
+
+        orphan_queries = (
+            "SELECT COUNT(*) FROM memory_fts f "
+            "LEFT JOIN decisions d ON CAST(f.source_id AS INTEGER) = d.id "
+            "WHERE f.source_type = 'decision' AND d.id IS NULL",
+            "SELECT COUNT(*) FROM memory_fts f "
+            "LEFT JOIN commits c ON CAST(f.source_id AS INTEGER) = c.id "
+            "WHERE f.source_type = 'commit' AND c.id IS NULL",
+            "SELECT COUNT(*) FROM memory_fts f "
+            "LEFT JOIN events e ON CAST(f.source_id AS INTEGER) = e.id "
+            "WHERE f.source_type = 'event' AND e.id IS NULL",
+        )
+        return any(self._conn.execute(sql).fetchone()[0] for sql in orphan_queries)
+
+    def _rebuild_fts_index(self) -> None:
+        """Reconstruye completamente el indice FTS desde las tablas fuente."""
+        self._conn.execute("DELETE FROM memory_fts")
+
+        decision_rows = self._conn.execute(
+            "SELECT id, title, context, chosen, alternatives, rationale FROM decisions"
+        ).fetchall()
+        commit_rows = self._conn.execute(
+            "SELECT id, message, files FROM commits"
+        ).fetchall()
+        event_rows = self._conn.execute(
+            "SELECT id, summary, content FROM events"
+        ).fetchall()
+
+        fts_rows: List[Tuple[str, str, str]] = []
+        for row in decision_rows:
+            content = self._compose_decision_search_content(dict(row))
+            if content:
+                fts_rows.append(("decision", str(row["id"]), content))
+
+        for row in commit_rows:
+            content = self._compose_commit_search_content(dict(row))
+            if content:
+                fts_rows.append(("commit", str(row["id"]), content))
+
+        for row in event_rows:
+            content = self._compose_event_search_content(dict(row))
+            if content:
+                fts_rows.append(("event", str(row["id"]), content))
+
+        if fts_rows:
+            self._conn.executemany(
+                "INSERT INTO memory_fts (source_type, source_id, content) "
+                "VALUES (?, ?, ?)",
+                fts_rows,
+            )
+
+        self._conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+            ("fts_content_version", str(_FTS_CONTENT_VERSION)),
+        )
 
     @property
     def fts_enabled(self) -> bool:
@@ -659,6 +818,8 @@ class MemoryDB:
         deletions: Optional[int] = None,
         iteration_id: Optional[int] = None,
         files: Optional[List[str]] = None,
+        committed_at: Optional[str] = None,
+        auto_link_iteration: bool = True,
     ) -> Optional[int]:
         """
         Registra un commit en la memoria.
@@ -677,18 +838,25 @@ class MemoryDB:
             deletions: lineas eliminadas.
             iteration_id: ID de la iteracion.
             files: lista de rutas de ficheros modificados en el commit.
+            committed_at: fecha ISO 8601 real del commit. Si se omite,
+                se usa el instante actual de captura.
+            auto_link_iteration: si es ``False``, evita colgar el commit
+                a la iteracion activa cuando se trata de historial importado.
 
         Returns:
             ID del commit creado, o None si ya existia.
         """
-        # Auto-vincular a la iteracion activa si no se especifica
-        if iteration_id is None:
+        # Auto-vincular a la iteracion activa si no se especifica y el caller
+        # está registrando trabajo del flujo actual, no historial importado.
+        if iteration_id is None and auto_link_iteration:
             active = self.get_active_iteration()
             if active is not None:
                 iteration_id = active["id"]
 
         now = datetime.now(timezone.utc).isoformat()
+        committed_at = str(committed_at).strip() if committed_at else now
         message = sanitize_content(message)
+        author = sanitize_content(author)
 
         # Serializar la lista de ficheros con sanitizacion preventiva.
         # Se usa el valor original como fallback si sanitize_content
@@ -706,7 +874,7 @@ class MemoryDB:
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     sha, message, author, files_changed,
-                    insertions, deletions, files_json, now, iteration_id,
+                    insertions, deletions, files_json, committed_at, iteration_id,
                 ),
             )
             self._conn.commit()
@@ -798,12 +966,19 @@ class MemoryDB:
              sanitized_summary, sanitized_content, now),
         )
 
-        # Indexar el contenido en FTS para permitir busqueda de texto completo
-        if self._fts_enabled and sanitized_content:
+        # Indexar resumen y contenido para que eventos cortos tambien sean
+        # buscables por FTS sin depender del fallback LIKE.
+        event_search_content = self._compose_event_search_content(
+            {
+                "summary": sanitized_summary,
+                "content": sanitized_content,
+            }
+        )
+        if self._fts_enabled and event_search_content:
             self._conn.execute(
                 "INSERT INTO memory_fts (source_type, source_id, content) "
                 "VALUES (?, ?, ?)",
-                ("event", cursor.lastrowid, sanitized_content),
+                ("event", cursor.lastrowid, event_search_content),
             )
 
         self._conn.commit()
@@ -1053,6 +1228,222 @@ class MemoryDB:
 
         return results
 
+    @staticmethod
+    def _search_date_value(result: Dict[str, Any]) -> str:
+        """Devuelve la fecha relevante del resultado para desempates."""
+        source_type = result.get("source_type", "")
+        if source_type == "decision":
+            return str(result.get("decided_at", ""))
+        if source_type == "event":
+            return str(result.get("created_at", ""))
+        return str(result.get("committed_at", ""))
+
+    @staticmethod
+    def _like_pattern(query: str) -> str:
+        """Escapa comodines de LIKE para tratar la consulta como texto literal."""
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return f"%{escaped}%"
+
+    def _iter_search_field_values(
+        self, result: Dict[str, Any]
+    ) -> Iterable[Tuple[int, str]]:
+        """Expone campos buscables con pesos para ordenar relevancia."""
+        source_type = result.get("source_type", "")
+        fields = {
+            "decision": [
+                ("title", 6, False),
+                ("chosen", 5, False),
+                ("context", 4, False),
+                ("alternatives", 3, True),
+                ("rationale", 2, False),
+            ],
+            "commit": [
+                ("message", 6, False),
+                ("files", 5, True),
+            ],
+            "event": [
+                ("summary", 5, False),
+                ("content", 4, False),
+            ],
+        }.get(source_type, [])
+
+        for field_name, weight, is_json_list in fields:
+            raw_value = result.get(field_name)
+            if not raw_value:
+                continue
+
+            values: List[Any]
+            if is_json_list:
+                try:
+                    parsed = json.loads(raw_value) if isinstance(raw_value, str) else raw_value
+                except (json.JSONDecodeError, TypeError):
+                    parsed = raw_value
+                values = parsed if isinstance(parsed, list) else [parsed]
+            else:
+                values = [raw_value]
+
+            for value in values:
+                if value is None:
+                    continue
+                text = str(value).strip()
+                if text:
+                    yield weight, text
+
+    @staticmethod
+    def _search_match_signature(text: str, normalized_query: str) -> Optional[Tuple[int, int, int, int, int]]:
+        """Calcula una firma de match donde valores mayores son mejores."""
+        normalized_text = text.casefold()
+        index = normalized_text.find(normalized_query)
+        if index < 0:
+            return None
+
+        exact = 1 if normalized_text == normalized_query else 0
+        starts = 1 if normalized_text.startswith(normalized_query) else 0
+        word_boundary = 1 if re.search(rf"(?<!\w){re.escape(normalized_query)}", normalized_text) else 0
+        occurrences = normalized_text.count(normalized_query)
+        # Indices mas cercanos al principio son mas relevantes.
+        position_score = max(0, 10_000 - index)
+        return (exact, starts, word_boundary, occurrences, position_score)
+
+    def _search_sort_key(self, result: Dict[str, Any], normalized_query: str) -> Tuple[Any, ...]:
+        """Construye una clave de ordenacion consistente entre FTS y LIKE."""
+        best_match = (0, 0, 0, 0, 0, 0)
+        for weight, text in self._iter_search_field_values(result):
+            signature = self._search_match_signature(text, normalized_query)
+            if signature is None:
+                continue
+            candidate = (weight, *signature)
+            if candidate > best_match:
+                best_match = candidate
+
+        raw_fts_rank = result.get("_fts_rank")
+        fts_rank_score = 0.0
+        if isinstance(raw_fts_rank, (int, float)):
+            # bm25() devuelve mejores resultados con valores menores.
+            fts_rank_score = -float(raw_fts_rank)
+
+        return (
+            *best_match,
+            fts_rank_score,
+            self._search_date_value(result),
+            int(result.get("id", 0) or 0),
+        )
+
+    def _dedupe_search_results(
+        self,
+        results: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Deduplica por tipo+id y conserva la mejor info auxiliar disponible."""
+        deduped: Dict[Tuple[str, int], Dict[str, Any]] = {}
+
+        for item in results:
+            source_type = str(item.get("source_type", ""))
+            item_id = int(item.get("id", 0) or 0)
+            key = (source_type, item_id)
+
+            existing = deduped.get(key)
+            if existing is None:
+                deduped[key] = dict(item)
+                continue
+
+            new_rank = item.get("_fts_rank")
+            current_rank = existing.get("_fts_rank")
+            if isinstance(new_rank, (int, float)) and (
+                not isinstance(current_rank, (int, float))
+                or float(new_rank) < float(current_rank)
+            ):
+                existing["_fts_rank"] = new_rank
+
+        return list(deduped.values())
+
+    def _search_like_candidates(
+        self,
+        query: str,
+        fetch_limit: int,
+        iteration_id: Optional[int],
+    ) -> List[Dict[str, Any]]:
+        """Recoge candidatos LIKE de todas las fuentes sin sesgo por tipo."""
+        like_pattern = self._like_pattern(query)
+        results: List[Dict[str, Any]] = []
+
+        if iteration_id is not None:
+            decision_rows = self._conn.execute(
+                "SELECT * FROM decisions "
+                "WHERE (title LIKE ? ESCAPE '\\' OR context LIKE ? ESCAPE '\\' "
+                "       OR chosen LIKE ? ESCAPE '\\' OR rationale LIKE ? ESCAPE '\\' "
+                "       OR alternatives LIKE ? ESCAPE '\\') "
+                "  AND iteration_id = ? "
+                "ORDER BY decided_at DESC LIMIT ?",
+                (
+                    like_pattern,
+                    like_pattern,
+                    like_pattern,
+                    like_pattern,
+                    like_pattern,
+                    iteration_id,
+                    fetch_limit,
+                ),
+            ).fetchall()
+        else:
+            decision_rows = self._conn.execute(
+                "SELECT * FROM decisions "
+                "WHERE title LIKE ? ESCAPE '\\' OR context LIKE ? ESCAPE '\\' "
+                "   OR chosen LIKE ? ESCAPE '\\' OR rationale LIKE ? ESCAPE '\\' "
+                "   OR alternatives LIKE ? ESCAPE '\\' "
+                "ORDER BY decided_at DESC LIMIT ?",
+                (
+                    like_pattern,
+                    like_pattern,
+                    like_pattern,
+                    like_pattern,
+                    like_pattern,
+                    fetch_limit,
+                ),
+            ).fetchall()
+
+        for row in decision_rows:
+            results.append({"source_type": "decision", **dict(row)})
+
+        if iteration_id is not None:
+            commit_rows = self._conn.execute(
+                "SELECT * FROM commits "
+                "WHERE (message LIKE ? ESCAPE '\\' OR files LIKE ? ESCAPE '\\') "
+                "  AND iteration_id = ? "
+                "ORDER BY committed_at DESC LIMIT ?",
+                (like_pattern, like_pattern, iteration_id, fetch_limit),
+            ).fetchall()
+        else:
+            commit_rows = self._conn.execute(
+                "SELECT * FROM commits "
+                "WHERE message LIKE ? ESCAPE '\\' OR files LIKE ? ESCAPE '\\' "
+                "ORDER BY committed_at DESC LIMIT ?",
+                (like_pattern, like_pattern, fetch_limit),
+            ).fetchall()
+
+        for row in commit_rows:
+            results.append({"source_type": "commit", **dict(row)})
+
+        if iteration_id is not None:
+            event_rows = self._conn.execute(
+                "SELECT * FROM events "
+                "WHERE (summary LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\') "
+                "  AND iteration_id = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (like_pattern, like_pattern, iteration_id, fetch_limit),
+            ).fetchall()
+        else:
+            event_rows = self._conn.execute(
+                "SELECT * FROM events "
+                "WHERE summary LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\' "
+                "ORDER BY created_at DESC LIMIT ?",
+                (like_pattern, like_pattern, fetch_limit),
+            ).fetchall()
+
+        for row in event_rows:
+            results.append({"source_type": "event", **dict(row)})
+
+        return results
+
     def _apply_post_filters(
         self,
         results: List[Dict[str, Any]],
@@ -1128,6 +1519,7 @@ class MemoryDB:
     def _execute_search(
         self,
         fetch_fn,
+        query: str,
         limit: int,
         since: Optional[str] = None,
         until: Optional[str] = None,
@@ -1151,15 +1543,22 @@ class MemoryDB:
             tags: etiquetas requeridas (post-filtro, solo decisiones).
             status: estado requerido (post-filtro, solo decisiones).
         """
-        has_post_filters = since or until or tags or status
-        fetch_limit = limit * _FETCH_MARGIN if has_post_filters else limit
+        fetch_limit = max(limit * _FETCH_MARGIN, limit)
 
         results = fetch_fn(fetch_limit)
+        results = self._dedupe_search_results(results)
 
-        if has_post_filters:
+        if since or until or tags or status:
             results = self._apply_post_filters(
                 results, since=since, until=until, tags=tags, status=status,
             )
+
+        normalized_query = query.casefold().strip()
+        results = sorted(
+            results,
+            key=lambda item: self._search_sort_key(item, normalized_query),
+            reverse=True,
+        )
 
         return results[:limit]
 
@@ -1180,8 +1579,10 @@ class MemoryDB:
 
         def fetch(fetch_limit: int) -> List[Dict[str, Any]]:
             rows = self._conn.execute(
-                "SELECT source_type, source_id FROM memory_fts "
-                "WHERE memory_fts MATCH ? LIMIT ?",
+                "SELECT source_type, source_id, bm25(memory_fts) AS fts_rank "
+                "FROM memory_fts "
+                "WHERE memory_fts MATCH ? "
+                "ORDER BY bm25(memory_fts), rowid DESC LIMIT ?",
                 (safe_query, fetch_limit),
             ).fetchall()
             results: List[Dict[str, Any]] = []
@@ -1194,11 +1595,21 @@ class MemoryDB:
                 if iteration_id is not None:
                     if record.get("iteration_id") != iteration_id:
                         continue
-                results.append({"source_type": source_type, **record})
+                results.append(
+                    {
+                        "source_type": source_type,
+                        "_fts_rank": float(row["fts_rank"]),
+                        **record,
+                    }
+                )
+
+            # FTS no cubre hoy algunos campos auxiliares como commit.files;
+            # complementamos con LIKE para que el contrato público sea estable.
+            results.extend(self._search_like_candidates(query, fetch_limit, iteration_id))
             return results
 
         return self._execute_search(
-            fetch, limit, since=since, until=until, tags=tags, status=status,
+            fetch, query, limit, since=since, until=until, tags=tags, status=status,
         )
 
     def _search_like(
@@ -1212,81 +1623,11 @@ class MemoryDB:
         status: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Busqueda con LIKE como fallback, delegando post-filtrado a _execute_search."""
-        like_pattern = f"%{query}%"
-
         def fetch(fetch_limit: int) -> List[Dict[str, Any]]:
-            results: List[Dict[str, Any]] = []
-
-            # Buscar en decisiones
-            if iteration_id is not None:
-                decision_rows = self._conn.execute(
-                    "SELECT * FROM decisions "
-                    "WHERE (title LIKE ? OR context LIKE ? OR chosen LIKE ? "
-                    "       OR rationale LIKE ?) "
-                    "  AND iteration_id = ? "
-                    "ORDER BY decided_at DESC LIMIT ?",
-                    (like_pattern, like_pattern, like_pattern, like_pattern,
-                     iteration_id, fetch_limit),
-                ).fetchall()
-            else:
-                decision_rows = self._conn.execute(
-                    "SELECT * FROM decisions "
-                    "WHERE title LIKE ? OR context LIKE ? OR chosen LIKE ? "
-                    "      OR rationale LIKE ? "
-                    "ORDER BY decided_at DESC LIMIT ?",
-                    (like_pattern, like_pattern, like_pattern, like_pattern,
-                     fetch_limit),
-                ).fetchall()
-
-            for row in decision_rows:
-                results.append({"source_type": "decision", **dict(row)})
-
-            # Buscar en commits
-            remaining = fetch_limit - len(results)
-            if remaining > 0:
-                if iteration_id is not None:
-                    commit_rows = self._conn.execute(
-                        "SELECT * FROM commits "
-                        "WHERE message LIKE ? AND iteration_id = ? "
-                        "ORDER BY committed_at DESC LIMIT ?",
-                        (like_pattern, iteration_id, remaining),
-                    ).fetchall()
-                else:
-                    commit_rows = self._conn.execute(
-                        "SELECT * FROM commits WHERE message LIKE ? "
-                        "ORDER BY committed_at DESC LIMIT ?",
-                        (like_pattern, remaining),
-                    ).fetchall()
-
-                for row in commit_rows:
-                    results.append({"source_type": "commit", **dict(row)})
-
-            # Buscar en eventos con contenido indexable
-            remaining = fetch_limit - len(results)
-            if remaining > 0:
-                if iteration_id is not None:
-                    event_rows = self._conn.execute(
-                        "SELECT * FROM events "
-                        "WHERE (summary LIKE ? OR content LIKE ?) "
-                        "  AND iteration_id = ? "
-                        "ORDER BY created_at DESC LIMIT ?",
-                        (like_pattern, like_pattern, iteration_id, remaining),
-                    ).fetchall()
-                else:
-                    event_rows = self._conn.execute(
-                        "SELECT * FROM events "
-                        "WHERE summary LIKE ? OR content LIKE ? "
-                        "ORDER BY created_at DESC LIMIT ?",
-                        (like_pattern, like_pattern, remaining),
-                    ).fetchall()
-
-                for row in event_rows:
-                    results.append({"source_type": "event", **dict(row)})
-
-            return results
+            return self._search_like_candidates(query, fetch_limit, iteration_id)
 
         return self._execute_search(
-            fetch, limit, since=since, until=until, tags=tags, status=status,
+            fetch, query, limit, since=since, until=until, tags=tags, status=status,
         )
 
     def _fetch_source_record(
@@ -1364,6 +1705,33 @@ class MemoryDB:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def count_events(
+        self,
+        iteration_id: Optional[int] = None,
+        event_type: Optional[str] = None,
+    ) -> int:
+        """Cuenta eventos con los mismos filtros que get_events."""
+        params: List[Any] = []
+        conditions: List[str] = []
+
+        if iteration_id is not None:
+            conditions.append("iteration_id = ?")
+            params.append(iteration_id)
+
+        if event_type is not None:
+            conditions.append("event_type = ?")
+            params.append(event_type)
+
+        where = ""
+        if conditions:
+            where = "WHERE " + " AND ".join(conditions)
+
+        row = self._conn.execute(
+            f"SELECT COUNT(*) AS cnt FROM events {where}",
+            params,
+        ).fetchone()
+        return int(row["cnt"]) if row else 0
+
     def get_event_counts_by_type(self, limit: int = 12) -> List[Dict[str, Any]]:
         """Resume eventos agrupados por tipo, ordenados por frecuencia."""
         rows = self._conn.execute(
@@ -1436,21 +1804,7 @@ class MemoryDB:
 
         # FTS5 sincronizado
         if self._fts_enabled:
-            dec_count = self._conn.execute(
-                "SELECT COUNT(*) FROM decisions"
-            ).fetchone()[0]
-            commit_count = self._conn.execute(
-                "SELECT COUNT(*) FROM commits"
-            ).fetchone()[0]
-            event_count = self._conn.execute(
-                "SELECT COUNT(*) FROM events "
-                "WHERE content IS NOT NULL AND TRIM(content) != ''"
-            ).fetchone()[0]
-            expected_counts = {
-                "decision": dec_count,
-                "commit": commit_count,
-                "event": event_count,
-            }
+            expected_counts = self._expected_fts_counts()
 
             for source_type, expected in expected_counts.items():
                 actual = self._conn.execute(
@@ -1685,8 +2039,9 @@ class MemoryDB:
         """Importa el historial de commits de un repositorio Git.
 
         Ejecuta ``git log`` sobre el repositorio indicado y registra cada
-        commit en la memoria. La operacion es idempotente: los commits
-        cuyo SHA ya exista en la base de datos se ignoran silenciosamente.
+        commit en la memoria preservando su autor, fecha real y lista
+        de ficheros. La operacion es idempotente: los commits cuyo SHA
+        ya exista en la base de datos se ignoran silenciosamente.
 
         Args:
             repo_path: ruta al directorio raiz del repositorio Git.
@@ -1725,6 +2080,9 @@ class MemoryDB:
                         message=current_commit["message"],
                         author=current_commit["author"],
                         files=current_files,
+                        files_changed=len(current_files),
+                        committed_at=current_commit.get("committed_at"),
+                        auto_link_iteration=False,
                     )
                     if commit_id is not None:
                         new_count += 1
@@ -1735,6 +2093,7 @@ class MemoryDB:
                     "sha": parts[0],
                     "message": parts[1] if len(parts) > 1 else "",
                     "author": parts[2] if len(parts) > 2 else "",
+                    "committed_at": parts[3] if len(parts) > 3 else "",
                 }
                 current_files = []
             elif line.strip():
@@ -1749,6 +2108,9 @@ class MemoryDB:
                 message=current_commit["message"],
                 author=current_commit["author"],
                 files=current_files,
+                files_changed=len(current_files),
+                committed_at=current_commit.get("committed_at"),
+                auto_link_iteration=False,
             )
             if commit_id is not None:
                 new_count += 1

@@ -29,6 +29,8 @@ class TestMemoryUIContract(unittest.TestCase):
         self.assertIn('consume-prefetch "$PWD" --expected memory-ui', command)
         self.assertIn('allow-stop-once "$PWD" --command "/alfred-dev:memory-ui"', command)
         self.assertIn('python3 .claude/alfred-continuity.py memory-ui "$PWD"', command)
+        self.assertIn("úsala tal cual como respuesta final", command)
+        self.assertIn("NO añadas una segunda explicación", command)
         self.assertIn(".claude/alfred-memory.db", command)
 
     def test_plugin_json_references_memory_ui_command(self):
@@ -46,3 +48,14 @@ class TestMemoryUIContract(unittest.TestCase):
         self.assertIn("Alfred Dev Memory UI", server)
         self.assertIn("helper_seeded", server)
         self.assertIn("togglePanel", server)
+
+    def test_memory_ui_server_localizes_dates_and_statuses(self):
+        server = _read("core/memory_ui_server.py")
+        self.assertIn('Intl.DateTimeFormat("es-ES"', server)
+        self.assertIn('healthy: "saludable"', server)
+        self.assertIn("function statusLabel(status", server)
+
+    def test_memory_ui_prioritizes_active_iteration_in_selector(self):
+        server = _read("core/memory_ui_server.py")
+        self.assertIn("const preferred = items.find((item) => item.is_active) || items[0];", server)
+        self.assertIn("selectedStillExists", server)

@@ -25,6 +25,19 @@ if _HOOKS_DIR not in sys.path:
 from evidence_guard_lib import is_test_command, detect_test_result
 
 
+def _get_tool_result(data: dict) -> dict:
+    """Normaliza payloads historicos y actuales del runtime de hooks."""
+    tool_result = data.get("tool_result")
+    if isinstance(tool_result, dict):
+        return tool_result
+
+    tool_output = data.get("tool_output")
+    if isinstance(tool_output, dict):
+        return tool_output
+
+    return {}
+
+
 def main():
     """Punto de entrada del hook.
 
@@ -43,18 +56,19 @@ def main():
         sys.exit(0)
 
     tool_input = data.get("tool_input", {})
-    tool_output = data.get("tool_output", {})
+    tool_result = _get_tool_result(data)
 
     command = tool_input.get("command", "")
 
     if not command or not is_test_command(command):
         sys.exit(0)
 
-    stdout = tool_output.get("stdout", "")
-    stderr_out = tool_output.get("stderr", "")
+    stdout = tool_result.get("stdout", "") or tool_result.get("output", "")
+    stderr_out = tool_result.get("stderr", "")
+    exit_code = tool_result.get("exit_code")
     output = f"{stdout}\n{stderr_out}"
 
-    if detect_test_result(output) == "fail":
+    if detect_test_result(output, exit_code=exit_code) == "fail":
         print(
             "\n"
             "[El Rompe-cosas] He pillado tests rotos\n"

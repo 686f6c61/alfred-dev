@@ -12,6 +12,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+PLUGIN_ROOT=$(CDPATH= cd -- "${SCRIPT_DIR}/.." && pwd)
+
 # --- Extraer la entrada del hook ---
 
 # Claude pasa el JSON de la herramienta por stdin.
@@ -72,52 +75,53 @@ if [[ -z "$FILE_PATH" ]]; then
   exit 0
 fi
 
-# --- Excluir ficheros .env ---
+# --- Detección canónica de secretos ---
 
-# Los ficheros .env son el lugar correcto para guardar secretos.
-# No tiene sentido bloquear escrituras ahí.
-if [[ "$FILE_PATH" == *.env ]] || [[ "$FILE_PATH" == *.env.* ]] || [[ "$(basename "$FILE_PATH")" == .env* ]]; then
+# El análisis delega en core/secrets.py para mantener exactamente la misma
+# fuente de verdad que usa la sanitización de memoria. Si el helper falla,
+# este hook bloquea (fail-closed) porque se trata de una guardia de escritura.
+FOUND_SECRET=""
+SCAN_FAILED=0
+SCAN_RESULT=$(
+  printf '%s' "$CONTENT" | \
+    ALFRED_DEV_ROOT="$PLUGIN_ROOT" TARGET_FILE_PATH="$FILE_PATH" python3 -c '
+import os
+import sys
+
+project_root = os.environ.get("ALFRED_DEV_ROOT", "")
+if project_root:
+    sys.path.insert(0, project_root)
+
+from core.secrets import (  # noqa: E402
+    describe_secret_label,
+    find_secret_label,
+    is_secret_storage_path,
+)
+
+file_path = os.environ.get("TARGET_FILE_PATH", "")
+content = sys.stdin.read()
+
+if is_secret_storage_path(file_path):
+    print("ALLOW")
+    raise SystemExit(0)
+
+label = find_secret_label(content)
+if label:
+    print(f"BLOCK:{describe_secret_label(label)}")
+' 2>/dev/null
+) || SCAN_FAILED=1
+
+if [[ $SCAN_FAILED -ne 0 ]]; then
+  echo "[El Paranoico] No he podido analizar secretos con la fuente canónica. Operación bloqueada por precaución." >&2
+  exit 2
+fi
+
+if [[ "$SCAN_RESULT" == "ALLOW" ]]; then
   exit 0
 fi
 
-# --- Detección de patrones de secretos ---
-
-# Se analizan los patrones más comunes de credenciales expuestas.
-# Cada entrada del array contiene: "regex|descripción" separados por pipe.
-# El bucle comprueba cada patrón y se detiene en la primera coincidencia.
-
-SECRET_PATTERNS=(
-  'AKIA[0-9A-Z]{16}|AWS Access Key (patrón AKIA...)'
-  'sk-[a-zA-Z0-9]{20,}|Clave API con prefijo sk- (OpenAI, Stripe u otro)'
-  'sk-ant-[a-zA-Z0-9\-]{20,}|Anthropic API Key'
-  '(ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{20,})|GitHub Personal Access Token'
-  'xox[bpsa]-[a-zA-Z0-9\-]{10,}|Slack Token'
-  'AIza[0-9A-Za-z\-_]{35}|Google API Key (patrón AIza...)'
-  'SG\.[a-zA-Z0-9\-_]{22,}\.[a-zA-Z0-9\-_]{22,}|SendGrid API Key'
-  '-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----|Clave privada PEM/SSH'
-  'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|JWT token hardcodeado'
-  '(mysql|postgresql|postgres|mongodb(\+srv)?|redis|amqp)://[^[:space:]"'"'"']{10,}@|Connection string con credenciales'
-  'https://hooks\.slack\.com/services/[A-Za-z0-9/]+|Slack Webhook URL'
-  'https://discord\.com/api/webhooks/[0-9]+/[A-Za-z0-9_-]+|Discord Webhook URL'
-)
-
-FOUND_SECRET=""
-
-for entry in "${SECRET_PATTERNS[@]}"; do
-  pattern="${entry%%|*}"
-  description="${entry#*|}"
-  if echo "$CONTENT" | grep -qE "$pattern"; then
-    FOUND_SECRET="$description"
-    break
-  fi
-done
-
-# Asignaciones directas de secretos en código:
-# password = "...", api_key = "...", secret = "...", token = "..."
-# Se busca tanto en sintaxis Python/Ruby (=) como JS/TS (= o :)
-# Este patrón se comprueba aparte porque usa grep -i (case insensitive)
-if [[ -z "$FOUND_SECRET" ]] && echo "$CONTENT" | grep -qiE '(password|passwd|api_key|apikey|api_secret|secret_key|auth_token|access_token|private_key)\s*[:=]\s*["\x27][^"\x27]{8,}["\x27]'; then
-  FOUND_SECRET="Credencial hardcodeada en asignación"
+if [[ "$SCAN_RESULT" == BLOCK:* ]]; then
+  FOUND_SECRET="${SCAN_RESULT#BLOCK:}"
 fi
 
 # --- Decisión: bloquear o permitir ---
@@ -134,12 +138,12 @@ Patrón encontrado: ${FOUND_SECRET}
 Los secretos no se hardcodean en el código. Nunca. Ni "solo para probar".
 
 Donde ponerlo:
-  - En un fichero .env o local.env (asegúrate de que está en .gitignore)
+  - En un fichero .env, .env.local o local.env (asegúrate de que está en .gitignore)
   - En variables de entorno del sistema o del CI/CD
   - En un gestor de secretos (Vault, AWS Secrets Manager, etc.)
 
 Pide al usuario que te pase el valor para que lo guardes en el sitio
-correcto (.env, local.env o el que use el proyecto). En el código fuente
+correcto (.env, .env.local, local.env o el que use el proyecto). En el código fuente
 solo debe aparecer la referencia: os.environ["MI_CLAVE"] o process.env.MI_CLAVE.
 
 Confianza cero. Ni en ti, ni en mi, ni en nadie.

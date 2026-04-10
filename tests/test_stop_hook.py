@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest import mock
 
 # Anadir la raiz del plugin al path para importar core
 _plugin_root = os.path.join(os.path.dirname(__file__), "..")
@@ -56,6 +57,7 @@ class TestStopHookLogic(unittest.TestCase):
         """Una sesion completada no bloquea la parada."""
         session = create_session("feature", "Test feature")
         session["fase_actual"] = "completado"
+        session["fase_numero"] = len(FLOWS["feature"]["fases"])
         save_state(session, self.state_path)
 
         loaded = load_state(self.state_path)
@@ -127,10 +129,7 @@ class TestStopHookLogic(unittest.TestCase):
         save_state(session, self.state_path)
 
         loaded = load_state(self.state_path)
-        self.assertIsNotNone(loaded)
-        # El hook verificaria que el flujo existe en FLOWS y, al no existir,
-        # permitiria la parada. Aqui verificamos que load_state no falla.
-        self.assertNotIn(loaded["comando"], FLOWS)
+        self.assertIsNone(loaded)
 
 
 class TestShouldBlock(unittest.TestCase):
@@ -294,6 +293,84 @@ class TestBuildBlockMessage(unittest.TestCase):
         fase = self._make_fase("automatico")
         msg = stop_hook.build_block_message(session, fase, "automatico")
         self.assertIn("tests", msg.lower())
+
+    def test_includes_effective_optional_agents_in_block_message(self):
+        """El bloqueo refleja los opcionales activos que realmente participan."""
+        session = create_session("feature", "Test")
+        session["equipo_sesion"] = {
+            "opcionales_activos": {
+                "data-engineer": False,
+                "performance-engineer": True,
+                "github-manager": False,
+                "librarian": False,
+                "ux-reviewer": True,
+                "seo-specialist": False,
+                "copywriter": False,
+                "i18n-specialist": False,
+                "lucius": True,
+            },
+            "infra": {"memoria": True},
+            "fuente": "composicion_dinamica",
+        }
+        fase = {
+            "nombre": "calidad",
+            "agentes": ["qa-engineer", "security-officer"],
+            "descripcion": "Fase de prueba",
+            "gate_tipo": "automatico+seguridad",
+        }
+
+        msg = stop_hook.build_block_message(session, fase, "automatico+seguridad")
+        self.assertIn("ux-reviewer", msg)
+        self.assertIn("performance-engineer", msg)
+        self.assertIn("lucius", msg)
+
+
+class TestStopHookMain(unittest.TestCase):
+    """Verifica el orden de decisiones del hook principal."""
+
+    def test_read_only_prompt_skips_partial_report_generation(self):
+        """Un /alfred-dev:status reciente no debe generar informe parcial."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                os.makedirs(".claude", exist_ok=True)
+                state_path = os.path.join(".claude", "alfred-dev-state.json")
+                session = create_session("feature", "Demo")
+                session["fase_actual"] = "desarrollo"
+                session["fase_numero"] = 3
+                save_state(session, state_path)
+
+                db_path = os.path.join(".claude", "alfred-memory.db")
+                conn = sqlite3.connect(db_path)
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS events ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "event_type TEXT NOT NULL, "
+                    "summary TEXT, "
+                    "content TEXT, "
+                    "created_at TEXT NOT NULL)"
+                )
+                conn.execute(
+                    "INSERT INTO events (event_type, summary, content, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (
+                        "user_prompt",
+                        "Prompt",
+                        "/alfred-dev:status",
+                        datetime.now(timezone.utc).isoformat(),
+                    ),
+                )
+                conn.commit()
+                conn.close()
+
+                with mock.patch.object(stop_hook, "handle_session_report") as report_mock:
+                    with self.assertRaises(SystemExit) as ctx:
+                        stop_hook.main()
+                self.assertEqual(ctx.exception.code, 0)
+                report_mock.assert_not_called()
+            finally:
+                os.chdir(old_cwd)
 
 
 class TestHandleSessionReport(unittest.TestCase):

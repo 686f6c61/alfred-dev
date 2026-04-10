@@ -64,6 +64,17 @@ logging.basicConfig(
 )
 _log = logging.getLogger("alfred-memory")
 
+
+def _load_plugin_version() -> str:
+    """Lee la version publicada del plugin para exponerla por MCP."""
+    plugin_path = os.path.join(_PLUGIN_ROOT, ".claude-plugin", "plugin.json")
+    try:
+        with open(plugin_path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return str(data.get("version", "0.5.1"))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return "0.5.1"
+
 # ---------------------------------------------------------------------------
 # Importacion de MemoryDB
 # ---------------------------------------------------------------------------
@@ -194,6 +205,14 @@ _TOOLS: List[Dict[str, Any]] = [
                 "message": {
                     "type": "string",
                     "description": "Mensaje del commit.",
+                },
+                "author": {
+                    "type": "string",
+                    "description": "Autor del commit.",
+                },
+                "committed_at": {
+                    "type": "string",
+                    "description": "Fecha ISO 8601 del commit.",
                 },
                 "decision_ids": {
                     "type": "array",
@@ -331,6 +350,17 @@ _TOOLS: List[Dict[str, Any]] = [
                 "payload": {
                     "type": "object",
                     "description": "Datos arbitrarios asociados al evento.",
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "Resumen breve del evento para consultas rápidas.",
+                },
+                "content": {
+                    "type": "string",
+                    "description": (
+                        "Contenido completo indexable. Si se omite, se usa el payload "
+                        "serializado como fallback."
+                    ),
                 },
                 "iteration_id": {
                     "type": "integer",
@@ -755,7 +785,7 @@ class MemoryMCPServer:
             "protocolVersion": "2024-11-05",
             "serverInfo": {
                 "name": "alfred-memory",
-                "version": "0.4.5",
+                "version": _load_plugin_version(),
             },
             "capabilities": {
                 "tools": {},
@@ -958,6 +988,7 @@ class MemoryMCPServer:
         Args:
             db: instancia de MemoryDB abierta.
             args: ``sha`` (str, obligatorio), ``message`` (str),
+                  ``author`` (str), ``committed_at`` (str ISO),
                   ``decision_ids`` (list[int]), ``iteration_id`` (int).
 
         Returns:
@@ -981,8 +1012,10 @@ class MemoryMCPServer:
         commit_id = db.log_commit(
             sha=sha,
             message=args.get("message"),
+            author=args.get("author"),
             iteration_id=args.get("iteration_id"),
             files=args.get("files"),
+            committed_at=args.get("committed_at"),
         )
 
         # Vincular con decisiones si se proporcionaron
@@ -1049,8 +1082,8 @@ class MemoryMCPServer:
         if iteration is None:
             return {"iteration": None, "message": "No hay iteraciones registradas."}
 
-        # Enriquecer con decisiones de esa iteracion
-        decisions = db.get_decisions(iteration_id=iteration["id"], limit=50)
+        # La tool promete la iteracion completa; evitar techos silenciosos.
+        decisions = list(db.iter_decisions(iteration_id=iteration["id"]))
 
         return {
             "iteration": iteration,
@@ -1097,7 +1130,11 @@ class MemoryMCPServer:
         if iteration_id is None:
             return {"error": "El campo 'iteration_id' es obligatorio."}
 
-        events = db.get_timeline(iteration_id)
+        # La tool publica anuncia la cronologia completa. get_timeline() en
+        # MemoryDB tiene un limite defensivo por defecto para usos generales,
+        # asi que aqui elevamos el tope al total real de eventos.
+        total_events = db.count_events(iteration_id=iteration_id)
+        events = db.get_timeline(iteration_id, limit=max(total_events, 1))
         return {
             "iteration_id": iteration_id,
             "events": events,
@@ -1202,7 +1239,8 @@ class MemoryMCPServer:
         Args:
             db: instancia de MemoryDB abierta.
             args: ``event_type`` (str, obligatorio), ``phase`` (str),
-                  ``payload`` (dict), ``iteration_id`` (int).
+                  ``payload`` (dict), ``summary`` (str), ``content`` (str),
+                  ``iteration_id`` (int).
 
         Returns:
             Diccionario con el ID del evento registrado.
@@ -1223,10 +1261,18 @@ class MemoryMCPServer:
                 }
             iteration_id = active["id"]
 
+        content = args.get("content")
+        if content is None and args.get("payload") is not None:
+            # La tool pública promete trazabilidad útil; si no se aporta
+            # contenido indexable, usamos el payload serializado como fallback.
+            content = json.dumps(args.get("payload"), ensure_ascii=False)
+
         event_id = db.log_event(
             event_type=event_type,
             phase=args.get("phase"),
             payload=args.get("payload"),
+            summary=args.get("summary"),
+            content=content,
             iteration_id=iteration_id,
         )
 

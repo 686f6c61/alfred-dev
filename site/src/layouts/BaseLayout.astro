@@ -30,6 +30,30 @@ interface Props {
   ogTitle: string;
   /** Descripcion para Open Graph. */
   ogDescription: string;
+  /** Imagen principal para Open Graph. */
+  ogImage: string;
+  /** Ancho de la imagen Open Graph. */
+  ogImageWidth: number;
+  /** Alto de la imagen Open Graph. */
+  ogImageHeight: number;
+  /** MIME type de la imagen Open Graph. */
+  ogImageType: string;
+  /** Texto alternativo de la imagen Open Graph. */
+  ogImageAlt?: string;
+  /** Tipo de tarjeta de Twitter. */
+  twitterCard: string;
+  /** Titulo de Twitter. */
+  twitterTitle: string;
+  /** Descripcion de Twitter. */
+  twitterDescription: string;
+  /** Imagen de Twitter. */
+  twitterImage: string;
+  /** Texto alternativo de la imagen de Twitter. */
+  twitterImageAlt?: string;
+  /** Cuenta de Twitter/X asociada al sitio. */
+  twitterSite?: string;
+  /** Cuenta creadora de Twitter/X. */
+  twitterCreator?: string;
 }
 
 const {
@@ -41,6 +65,18 @@ const {
   alternates,
   ogTitle,
   ogDescription,
+  ogImage,
+  ogImageWidth,
+  ogImageHeight,
+  ogImageType,
+  ogImageAlt,
+  twitterCard,
+  twitterTitle,
+  twitterDescription,
+  twitterImage,
+  twitterImageAlt,
+  twitterSite,
+  twitterCreator,
 } = Astro.props;
 ---
 
@@ -51,6 +87,10 @@ const {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
   <meta name="description" content={description}>
+  <meta name="author" content="686f6c61">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="googlebot" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="theme-color" content="#f7f0e8">
   <link rel="canonical" href={canonical}>
   {alternates.map((alt) => (
     <link rel="alternate" hreflang={alt.hreflang} href={alt.href}>
@@ -63,30 +103,35 @@ const {
   <meta property="og:url" content={canonical}>
   <meta property="og:site_name" content="Alfred Dev">
   <meta property="og:locale" content={ogLocale}>
-  <meta property="og:image" content="https://alfred-dev.com/screenshots/alfred-dev-hero.webp">
-  <meta property="og:image:width" content="1470">
-  <meta property="og:image:height" content="759">
-  <meta property="og:image:type" content="image/webp">
-  <meta property="og:image:alt" content="Alfred Dev - plugin de Claude Code para equipos de desarrollo">
+  <meta property="og:image" content={ogImage}>
+  <meta property="og:image:secure_url" content={ogImage}>
+  <meta property="og:image:width" content={String(ogImageWidth)}>
+  <meta property="og:image:height" content={String(ogImageHeight)}>
+  <meta property="og:image:type" content={ogImageType}>
+  {ogImageAlt && <meta property="og:image:alt" content={ogImageAlt}>}
 
   <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content={ogTitle}>
-  <meta name="twitter:description" content={ogDescription}>
-  <meta name="twitter:image" content="https://alfred-dev.com/screenshots/alfred-dev-hero.webp">
-  <meta name="twitter:image:alt" content="Alfred Dev - plugin de Claude Code para equipos de desarrollo">
+  <meta name="twitter:card" content={twitterCard}>
+  <meta name="twitter:title" content={twitterTitle}>
+  <meta name="twitter:description" content={twitterDescription}>
+  <meta name="twitter:image" content={twitterImage}>
+  {twitterImageAlt && <meta name="twitter:image:alt" content={twitterImageAlt}>}
+  {twitterSite && <meta name="twitter:site" content={twitterSite}>}
+  {twitterCreator && <meta name="twitter:creator" content={twitterCreator}>}
 
   <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="shortcut icon" href="/favicon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
   <!-- Google Fonts (carga no bloqueante con preload + swap) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 
   <!-- Google Analytics (gtag.js) -->
   <link rel="preconnect" href="https://www.googletagmanager.com">

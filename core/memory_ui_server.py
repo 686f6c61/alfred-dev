@@ -84,6 +84,10 @@ HTML_TEMPLATE = """<!doctype html>
       flex-wrap: wrap;
       margin-bottom: 26px;
     }
+    .hero-copy {
+      flex: 1 1 720px;
+      min-width: 0;
+    }
     .hero-copy h1 {
       margin: 0 0 10px;
       font-size: clamp(2rem, 4vw, 3.4rem);
@@ -97,14 +101,24 @@ HTML_TEMPLATE = """<!doctype html>
       line-height: 1.55;
     }
     .hero-meta {
+      flex: 0 1 560px;
       display: grid;
-      gap: 10px;
-      min-width: 280px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      min-width: min(100%, 420px);
+      width: min(100%, 520px);
       padding: 18px;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
+    }
+    .hero-meta > div {
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(7, 13, 22, 0.64);
+      border: 1px solid rgba(146, 176, 209, 0.12);
     }
     .hero-meta strong {
       display: block;
@@ -114,10 +128,22 @@ HTML_TEMPLATE = """<!doctype html>
       color: var(--muted);
       margin-bottom: 3px;
     }
-    .hero-meta span {
+    .hero-meta .hero-meta-value {
       display: block;
       font-size: 0.96rem;
-      word-break: break-word;
+      word-break: normal;
+      overflow-wrap: anywhere;
+    }
+    .hero-meta-inline {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.28rem;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+    .hero-meta-inline #refreshSeconds {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
     }
     .hero-version {
       display: inline-flex;
@@ -253,9 +279,17 @@ HTML_TEMPLATE = """<!doctype html>
       margin-bottom: 6px;
     }
     .stat-card span {
+      display: block;
       font-size: 1.7rem;
       font-weight: 700;
       letter-spacing: -0.04em;
+      overflow-wrap: anywhere;
+    }
+    .stat-card span.is-textual {
+      font-size: 1.02rem;
+      line-height: 1.3;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
     .meta-list,
     .stack-list,
@@ -434,6 +468,15 @@ HTML_TEMPLATE = """<!doctype html>
     @media (max-width: 1100px) {
       .panel[data-span] { grid-column: span 12; }
       #graph { height: 360px; }
+      .hero-meta {
+        width: 100%;
+      }
+    }
+    @media (max-width: 900px) {
+      .hero-meta {
+        grid-template-columns: 1fr;
+        min-width: 0;
+      }
     }
   </style>
 </head>
@@ -458,9 +501,9 @@ HTML_TEMPLATE = """<!doctype html>
         </div>
       </div>
       <div class="hero-meta">
-        <div><strong>Proyecto</strong><span id="projectName">Cargando…</span></div>
-        <div><strong>SQLite</strong><span id="dbPath">—</span></div>
-        <div><strong>Refresco</strong><span>Automático cada <span id="refreshSeconds">4</span>s</span></div>
+        <div><strong>Proyecto</strong><span class="hero-meta-value" id="projectName">Cargando…</span></div>
+        <div><strong>SQLite</strong><span class="hero-meta-value" id="dbPath">—</span></div>
+        <div><strong>Refresco</strong><span class="hero-meta-value hero-meta-inline">Automático cada <span id="refreshSeconds">4</span><span>s</span></span></div>
       </div>
     </section>
 
@@ -476,7 +519,7 @@ HTML_TEMPLATE = """<!doctype html>
 
     <section class="grid">
       <article class="panel" data-span="12">
-        <h2>Overview</h2>
+        <h2>Resumen</h2>
         <p class="subtle">Lo más importante del proyecto y del estado operativo en una sola vista.</p>
         <div class="stats" id="stats"></div>
       </article>
@@ -487,9 +530,15 @@ HTML_TEMPLATE = """<!doctype html>
       </article>
 
       <article class="panel" data-span="7">
-        <h2>Timeline</h2>
+        <h2>Cronología</h2>
         <p class="subtle" id="timelineMeta">Eventos de la iteración seleccionada.</p>
         <ul class="timeline" id="timeline"></ul>
+      </article>
+
+      <article class="panel" data-span="12" id="projectSignalsPanel">
+        <h2>Foco operativo</h2>
+        <p class="subtle">Bloqueos, trabajo en curso, trazabilidad y señales útiles de SonIA sin repetir la cabecera.</p>
+        <div class="lane-grid" id="projectSignals"></div>
       </article>
 
       <article class="panel" data-span="7">
@@ -501,13 +550,8 @@ HTML_TEMPLATE = """<!doctype html>
       <article class="panel" data-span="5">
         <h2>Actividad reciente</h2>
         <p class="subtle">Eventos y prompts recientes, útiles incluso si todavía no hay ADRs ni commits enlazados.</p>
+        <div class="chip-row" id="activityMix" style="margin-bottom:10px;"></div>
         <ul class="activity-list" id="activity"></ul>
-      </article>
-
-      <article class="panel" data-span="12" id="projectSignalsPanel">
-        <h2>Proyecto y Kanban</h2>
-        <p class="subtle">Señales humanas que Alfred ya entiende: progreso, current, trazabilidad y columnas de SonIA.</p>
-        <div class="lane-grid" id="projectSignals"></div>
       </article>
 
       <article class="panel" data-span="7" id="decisionsPanel">
@@ -567,19 +611,59 @@ HTML_TEMPLATE = """<!doctype html>
       if (!value) return "—";
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return value;
-      return date.toLocaleString();
+      return new Intl.DateTimeFormat("es-ES", {
+        dateStyle: "short",
+        timeStyle: "medium",
+        hour12: false,
+      }).format(date);
+    }
+
+    const STATUS_LABELS = Object.freeze({
+      accepted: "aceptada",
+      active: "activa",
+      approved: "aprobada",
+      blocked: "bloqueada",
+      danger: "crítica",
+      done: "completada",
+      healthy: "saludable",
+      inactive: "inactiva",
+      pending: "pendiente",
+      proposed: "propuesta",
+      rejected: "rechazada",
+      superseded: "reemplazada",
+      unknown: "sin estado",
+      warning: "aviso",
+    });
+
+    const URGENCY_META = Object.freeze({
+      alta: { label: "prioridad alta", className: "danger" },
+      media: { label: "prioridad media", className: "warn" },
+      baja: { label: "prioridad baja", className: "" },
+    });
+
+    function statusLabel(status, { uppercase = false } = {}) {
+      const raw = String(status || "unknown");
+      const translated = STATUS_LABELS[raw.toLowerCase()] || raw;
+      return esc(uppercase ? translated.toUpperCase() : translated);
     }
 
     function statusChip(status) {
-      const value = esc(status || "unknown");
-      const kind = /accepted|done|active|healthy|approved/.test(value)
+      const raw = String(status || "unknown");
+      const value = statusLabel(raw);
+      const kind = /accepted|done|active|healthy|approved/.test(raw)
         ? "ok"
-        : /warning|pending|proposed/.test(value)
+        : /warning|pending|proposed/.test(raw)
           ? "warn"
-          : /error|rejected|superseded|blocked/.test(value)
+          : /error|rejected|superseded|blocked/.test(raw)
             ? "danger"
             : "";
       return `<span class="chip ${kind}">${value}</span>`;
+    }
+
+    function urgencyChip(urgency) {
+      const meta = URGENCY_META[String(urgency || "").toLowerCase()] || null;
+      if (!meta) return "";
+      return `<span class="chip ${meta.className}">${esc(meta.label)}</span>`;
     }
 
     async function fetchJson(path) {
@@ -610,19 +694,23 @@ HTML_TEMPLATE = """<!doctype html>
       const progress = data.progress || {};
       const kanban = progress.kanban || {};
       const cards = [
-        ["Iteraciones", stats.total_iterations ?? 0],
-        ["Decisiones", stats.total_decisions ?? 0],
-        ["Commits", stats.total_commits ?? 0],
-        ["Eventos", stats.total_events ?? 0],
-        ["Backlog", (kanban.backlog || []).length],
-        ["In progress", (kanban.in_progress || []).length],
-        ["Blocked", (kanban.blocked || []).length],
-        ["Health", esc(health.status || "unknown").toUpperCase()],
+        { label: "Iteraciones", value: stats.total_iterations ?? 0 },
+        { label: "Decisiones", value: stats.total_decisions ?? 0 },
+        { label: "Commits", value: stats.total_commits ?? 0 },
+        { label: "Eventos", value: stats.total_events ?? 0 },
+        { label: "Pendientes", value: (kanban.backlog || []).length },
+        { label: "En curso", value: (kanban.in_progress || []).length },
+        { label: "Bloqueadas", value: (kanban.blocked || []).length },
+        {
+          label: "Salud",
+          value: statusLabel(health.status || "unknown", { uppercase: true }),
+          kind: "text",
+        },
       ];
-      document.getElementById("stats").innerHTML = cards.map(([label, value]) => `
-        <div class="stat-card">
+      document.getElementById("stats").innerHTML = cards.map(({ label, value, kind = "metric" }) => `
+        <div class="stat-card" data-kind="${kind}">
           <strong>${label}</strong>
-          <span>${value}</span>
+          <span class="${kind === "text" ? "is-textual" : ""}">${value}</span>
         </div>
       `).join("");
     }
@@ -634,8 +722,8 @@ HTML_TEMPLATE = """<!doctype html>
       const totalSignals = Number(stats.total_iterations || 0)
         + Number(stats.total_decisions || 0)
         + Number(stats.total_commits || 0)
-        + Number(stats.total_events || 0);
-      if (totalSignals > 0) {
+        + Number(workspace.meaningful_event_count || 0);
+      if (workspace.has_meaningful_memory || totalSignals > 0) {
         element.classList.add("is-hidden");
         element.innerHTML = "";
         return;
@@ -671,51 +759,42 @@ HTML_TEMPLATE = """<!doctype html>
       renderWorkspaceNotice(data);
 
       const progress = data.progress || {};
-      const stateData = progress.state || {};
-      const handoff = progress.handoff || {};
-      const uat = progress.uat || {};
       const nextAction = progress.next_action || {};
+      const overviewCards = (progress.overview_cards || []).filter(
+        (card) => card.label !== "Siguiente paso recomendado"
+      );
       const health = data.health || {};
       const issues = health.issues || [];
       const lines = [];
 
-      if (stateData && Object.keys(stateData).length) {
+      if (nextAction.command) {
         lines.push(`
           <li>
-            <small>Flujo activo</small>
-            <div class="decision-title">${esc(stateData.comando || "desconocido")} — ${esc(stateData.descripcion || "sin descripción")}</div>
-            <div class="chip-row">${statusChip(stateData.fase_actual || "desconocido")}</div>
+            <small>Acción inmediata</small>
+            <div class="decision-title">/alfred-dev:${esc(nextAction.command || "alfred")}</div>
+            <div class="chip-row">
+              ${urgencyChip(nextAction.urgency)}
+              ${nextAction.source_label ? `<span class="chip">${esc(nextAction.source_label)}</span>` : ""}
+            </div>
+            <div class="event-body">${esc(nextAction.focus || "Siguiente paso recomendado")}</div>
+            <div class="event-body" style="margin-top:8px;">${esc(nextAction.directive || nextAction.reason || "Sin detalle adicional.")}</div>
+            ${
+              nextAction.reason && nextAction.directive && nextAction.reason !== nextAction.directive
+                ? `<div class="subtle" style="margin-top:8px;">${esc(nextAction.reason)}</div>`
+                : ""
+            }
           </li>
         `);
       }
 
-      if (handoff && Object.keys(handoff).length && !handoff.resolved) {
-        lines.push(`
-          <li>
-            <small>Handoff pendiente</small>
-            <div class="decision-title">${esc(handoff.command || "desconocido")}</div>
-            <div class="event-body">Fase: ${esc(handoff.phase || "desconocida")} · Reanudar con ${esc(handoff.resume_command || "/alfred-dev:resume")}</div>
-          </li>
-        `);
-      }
-
-      if (uat && Object.keys(uat).length) {
-        lines.push(`
-          <li>
-            <small>UAT</small>
-            <div class="decision-title">${esc(uat.target_label || uat.target_id || "sin objetivo")}</div>
-            <div class="chip-row">${statusChip(uat.status || "pending")}</div>
-          </li>
-        `);
-      }
-
-      lines.push(`
+      lines.push(...overviewCards.map((card) => `
         <li>
-          <small>Siguiente paso recomendado</small>
-          <div class="decision-title">/alfred-dev:${esc(nextAction.command || "alfred")}</div>
-          <div class="event-body">${esc(nextAction.reason || "Sin razón disponible.")}</div>
+          <small>${esc(card.label || "Estado")}</small>
+          <div class="decision-title">${esc(card.title || "sin detalle")}</div>
+          ${card.chips && card.chips.length ? `<div class="chip-row">${card.chips.map((chip) => statusChip(chip)).join("")}</div>` : ""}
+          <div class="event-body">${esc(card.body || "")}</div>
         </li>
-      `);
+      `));
 
       lines.push(`
         <li>
@@ -751,6 +830,11 @@ HTML_TEMPLATE = """<!doctype html>
 
     function renderActivity(data) {
       const items = data.recent_events || [];
+      const counts = data.event_counts || [];
+      const mix = document.getElementById("activityMix");
+      mix.innerHTML = counts.length
+        ? counts.map((item) => `<span class="chip">${esc(item.label || item.event_type || "evento")} · ${esc(item.total || 0)}</span>`).join("")
+        : "";
       if (!items.length) {
         renderEmpty("activity", "Todavía no hay actividad reciente en la memoria.");
         return;
@@ -777,67 +861,54 @@ HTML_TEMPLATE = """<!doctype html>
     function renderProjectSignals(data) {
       const progress = data.progress || {};
       const kanban = progress.kanban || {};
-      const stateData = progress.state || {};
-      const handoff = progress.handoff || {};
-      const uat = progress.uat || {};
-      const nextAction = progress.next_action || {};
-      const latestIteration = data.latest_iteration || {};
-      const activeIteration = data.active_iteration || {};
-      const stats = data.stats || {};
-      const derivedCurrent = (progress.current_signals && progress.current_signals.length)
-        ? progress.current_signals
+      const cards = (progress.project_signal_cards && progress.project_signal_cards.length)
+        ? progress.project_signal_cards
         : [
-            stateData.descripcion ? `Flujo activo: ${stateData.comando || "alfred"} — ${stateData.descripcion}` : "",
-            stateData.fase_actual ? `Fase actual: ${stateData.fase_actual}` : "",
-            handoff.command ? `Handoff pendiente: ${handoff.command} en ${handoff.phase || "fase desconocida"}` : "",
-            activeIteration.description ? `Iteración activa: ${activeIteration.command || "sesión"} — ${activeIteration.description}` : "",
-            latestIteration.description ? `Última iteración vista: ${latestIteration.command || "sesión"} — ${latestIteration.description}` : "",
-            nextAction.command ? `Siguiente paso sugerido: /alfred-dev:${nextAction.command}` : "",
-          ].filter(Boolean);
-      const derivedProgress = (progress.progress_signals && progress.progress_signals.length)
-        ? progress.progress_signals
-        : [
-            stateData.comando ? `Trabajo en curso: ${stateData.comando}` : "",
-            stateData.next_after_completion ? `Cierre esperado: ${stateData.next_after_completion}` : "",
-            stats.total_iterations ? `Iteraciones registradas: ${stats.total_iterations}` : "",
-            stats.total_events ? `Eventos capturados: ${stats.total_events}` : "",
-            nextAction.reason || "",
-          ].filter(Boolean);
-      const derivedTraceability = (progress.traceability_signals && progress.traceability_signals.length)
-        ? progress.traceability_signals
-        : [
-            uat.status ? `UAT: ${uat.status}` : "",
-            handoff.pending_gate ? `Gate pendiente: ${handoff.pending_gate}` : "",
-            uat.target_command ? `Objetivo actual: ${uat.target_command}` : "",
-            (!stats.total_decisions && !stats.total_commits)
-              ? "Todavía no hay decisiones formales ni commits enlazados en memoria."
-              : "",
-            !progress.traceability_signals?.length
-              ? "La trazabilidad crecerá cuando Alfred deje artefactos como traceability.md o decisiones enlazadas."
-              : "",
-          ].filter(Boolean);
-      const cards = [
-        ["Current", derivedCurrent, "Lo último que Alfred ha dejado listo para seguir."],
-        ["Progreso", derivedProgress, "Señales humanas del avance del proyecto."],
-        ["Trazabilidad", derivedTraceability, "Huecos o señales de criterios y cobertura."],
-        ["Backlog", kanban.backlog || [], "Pendiente por atacar."],
-        ["In progress", kanban.in_progress || [], "Trabajo en marcha ahora mismo."],
-        ["Blocked", kanban.blocked || [], "Tareas frenadas o dependientes."],
-      ].filter(([, items]) => items && items.length);
-      const hasAnySignal = cards.some(([, items]) => items && items.length);
+            {
+              title: "Current",
+              subtitle: "Lo último que Alfred ha dejado listo para seguir.",
+              items: progress.current_signals || [],
+            },
+            {
+              title: "Bloqueos",
+              subtitle: "Lo que ahora mismo impide avanzar o cerrar trabajo.",
+              items: kanban.blocked || [],
+            },
+            {
+              title: "En curso",
+              subtitle: "Trabajo en marcha ahora mismo.",
+              items: kanban.in_progress || [],
+            },
+            {
+              title: "Progreso",
+              subtitle: "Señales humanas del avance del proyecto.",
+              items: progress.progress_signals || [],
+            },
+            {
+              title: "Trazabilidad",
+              subtitle: "Huecos o señales de criterios y cobertura.",
+              items: progress.traceability_signals || [],
+            },
+            {
+              title: "Backlog",
+              subtitle: "Pendiente por atacar.",
+              items: kanban.backlog || [],
+            },
+          ].filter((card) => card.items && card.items.length);
+      const hasAnySignal = cards.some((card) => card.items && card.items.length);
       if (!hasAnySignal) {
         togglePanel("projectSignalsPanel", false);
         return;
       }
       togglePanel("projectSignalsPanel", true);
-      document.getElementById("projectSignals").innerHTML = cards.map(([title, items, subtitle]) => `
+      document.getElementById("projectSignals").innerHTML = cards.map((card) => `
         <div class="lane-card">
-          <h3>${title}</h3>
-          <div class="subtle" style="margin-bottom:10px;">${subtitle}</div>
+          <h3>${esc(card.title || "Señales")}</h3>
+          <div class="subtle" style="margin-bottom:10px;">${esc(card.subtitle || "")}</div>
           <ul>
             ${
-              (items && items.length)
-                ? items.slice(0, 4).map((item) => `<li>${esc(item)}</li>`).join("")
+              (card.items && card.items.length)
+                ? card.items.slice(0, 4).map((item) => `<li>${esc(item)}</li>`).join("")
                 : '<li>Sin datos todavía en este proyecto.</li>'
             }
           </ul>
@@ -848,15 +919,20 @@ HTML_TEMPLATE = """<!doctype html>
     function renderIterations(items) {
       const select = document.getElementById("iterationSelect");
       if (!items.length) {
+        state.selectedIterationId = null;
         select.innerHTML = `<option value="">Sin iteraciones</option>`;
         return;
       }
-      if (!state.selectedIterationId) {
-        state.selectedIterationId = String(items[0].id);
+      const selectedStillExists = items.some(
+        (item) => String(item.id) === state.selectedIterationId
+      );
+      if (!state.selectedIterationId || !selectedStillExists) {
+        const preferred = items.find((item) => item.is_active) || items[0];
+        state.selectedIterationId = String(preferred.id);
       }
       select.innerHTML = items.map((item) => `
         <option value="${item.id}" ${String(item.id) === state.selectedIterationId ? "selected" : ""}>
-          #${item.id} · ${esc(item.command || "session")} · ${esc(item.status || "unknown")}
+          #${item.id} · ${esc(item.command || "session")} · ${statusLabel(item.status || "unknown")}
         </option>
       `).join("");
     }
@@ -864,8 +940,13 @@ HTML_TEMPLATE = """<!doctype html>
     function renderTimeline(data) {
       const items = data.events || [];
       const iteration = data.iteration || {};
+      const totalEvents = Number(data.event_count || items.length || 0);
+      const returnedCount = Number(data.returned_count || items.length || 0);
+      const timelineCountLabel = data.truncated
+        ? `${returnedCount} de ${totalEvents} eventos`
+        : `${totalEvents} eventos`;
       document.getElementById("timelineMeta").textContent = iteration.id
-        ? `Iteración #${iteration.id} · ${esc(iteration.command || "session")} · ${esc(iteration.status || "unknown")}`
+        ? `Iteración #${iteration.id} · ${iteration.command || "session"} · ${statusLabel(iteration.status || "unknown")} · ${timelineCountLabel}`
         : "No hay iteraciones con eventos todavía.";
       if (!items.length) {
         renderEmpty("timeline", "Todavía no hay eventos en esta iteración.");
@@ -1337,6 +1418,31 @@ def _serialize_commit(item: Dict[str, Any], iteration_lookup: Dict[int, Dict[str
     }
 
 
+def _recent_iteration_events(
+    db: MemoryDB,
+    iteration_id: int,
+    limit: int = 3,
+) -> List[Dict[str, Any]]:
+    """Devuelve los eventos más recientes ya humanizados."""
+    return [
+        _humanize_event(event)
+        for event in db.get_events(iteration_id=iteration_id, limit=limit)
+    ]
+
+
+def _pick_latest_event_value(
+    events: List[Dict[str, Any]],
+    *field_names: str,
+) -> str:
+    """Extrae el primer valor útil de una lista de eventos recientes."""
+    for event in events:
+        for field_name in field_names:
+            value = event.get(field_name)
+            if value:
+                return str(value)
+    return ""
+
+
 def _build_progress(project_dir: str) -> Dict[str, Any]:
     from core.continuity import build_progress_snapshot
 
@@ -1371,7 +1477,7 @@ def _has_codebase(project_dir: str) -> bool:
     return False
 
 
-def _workspace_summary(project_dir: str) -> Dict[str, Any]:
+def _workspace_summary(project_dir: str, db: Optional[MemoryDB] = None) -> Dict[str, Any]:
     sample_paths: List[str] = []
     try:
         for entry in sorted(os.listdir(project_dir)):
@@ -1382,12 +1488,35 @@ def _workspace_summary(project_dir: str) -> Dict[str, Any]:
                 break
     except OSError:
         pass
-    return {
+    summary = {
         "is_git_repo": _is_git_repo(project_dir),
         "has_codebase": _has_codebase(project_dir),
         "has_docs_project": os.path.isdir(os.path.join(project_dir, "docs", "project")),
         "sample_paths": sample_paths,
     }
+    if db is not None:
+        stats = db.get_stats()
+        bootstrap_event_count = int(
+            db.count_events(event_type="session_started")
+            + db.count_events(event_type="session_ended")
+        )
+        meaningful_event_count = max(
+            0,
+            int(stats.get("total_events", 0) or 0) - bootstrap_event_count,
+        )
+        summary.update(
+            {
+                "bootstrap_event_count": bootstrap_event_count,
+                "meaningful_event_count": meaningful_event_count,
+                "has_meaningful_memory": bool(
+                    int(stats.get("total_iterations", 0) or 0) > 0
+                    or int(stats.get("total_decisions", 0) or 0) > 0
+                    or int(stats.get("total_commits", 0) or 0) > 0
+                    or meaningful_event_count > 0
+                ),
+            }
+        )
+    return summary
 
 
 def _maybe_import_git_history(project_dir: str, db: MemoryDB, limit: int = 20) -> int:
@@ -1419,7 +1548,7 @@ def build_overview_payload(project_dir: str, db_path: str, host: str, port: int)
             "refreshed_at": _iso_now(),
             "stats": db.get_stats(),
             "health": db.check_health(),
-            "workspace": _workspace_summary(project_dir),
+            "workspace": _workspace_summary(project_dir, db=db),
             "active_iteration": db.get_active_iteration(),
             "latest_iteration": db.get_latest_iteration(),
             "progress": _build_progress(project_dir),
@@ -1438,35 +1567,16 @@ def build_iterations_payload(db_path: str, limit: int = 50) -> Dict[str, Any]:
     try:
         items: List[Dict[str, Any]] = []
         for item in _list_iterations(db, limit=limit):
-            timeline = [_humanize_event(event) for event in db.get_timeline(int(item["id"]), limit=3)]
+            recent_events = _recent_iteration_events(db, int(item["id"]), limit=3)
             items.append(
                 {
                     **item,
-                    "event_count": len(db.get_events(limit=1000, iteration_id=int(item["id"]))),
-                    "last_summary": next(
-                        (
-                            event.get("summary") or event.get("content") or event.get("event_type")
-                            for event in reversed(timeline)
-                            if event.get("summary") or event.get("content") or event.get("event_type")
-                        ),
-                        "",
+                    "event_count": db.count_events(iteration_id=int(item["id"])),
+                    "last_summary": _pick_latest_event_value(
+                        recent_events, "summary", "content", "event_type"
                     ),
-                    "last_title": next(
-                        (
-                            event.get("display_title")
-                            for event in reversed(timeline)
-                            if event.get("display_title")
-                        ),
-                        "",
-                    ),
-                    "last_body": next(
-                        (
-                            event.get("display_body")
-                            for event in reversed(timeline)
-                            if event.get("display_body")
-                        ),
-                        "",
-                    ),
+                    "last_title": _pick_latest_event_value(recent_events, "display_title"),
+                    "last_body": _pick_latest_event_value(recent_events, "display_body"),
                     "is_active": item.get("status") == "active",
                 }
             )
@@ -1475,7 +1585,11 @@ def build_iterations_payload(db_path: str, limit: int = 50) -> Dict[str, Any]:
         db.close()
 
 
-def build_timeline_payload(db_path: str, iteration_id: Optional[int], limit: int = 100) -> Dict[str, Any]:
+def build_timeline_payload(
+    db_path: str,
+    iteration_id: Optional[int],
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
     db = MemoryDB(db_path)
     try:
         if iteration_id is None:
@@ -1487,9 +1601,15 @@ def build_timeline_payload(db_path: str, iteration_id: Optional[int], limit: int
             iteration = db.get_iteration(iteration_id)
             if iteration is None:
                 return {"iteration": None, "events": []}
+        event_count = db.count_events(iteration_id=iteration_id)
+        effective_limit = event_count if limit is None else min(max(limit, 1), event_count or 1)
+        events = [_humanize_event(event) for event in db.get_timeline(iteration_id, limit=effective_limit)]
         return {
             "iteration": iteration,
-            "events": [_humanize_event(event) for event in db.get_timeline(iteration_id, limit=limit)],
+            "events": events,
+            "event_count": event_count,
+            "returned_count": len(events),
+            "truncated": event_count > len(events),
         }
     finally:
         db.close()
@@ -1558,10 +1678,21 @@ def build_commits_payload(
     db = MemoryDB(db_path)
     try:
         _maybe_import_git_history(project_dir, db)
-        iterations = {int(item["id"]): item for item in db.get_iterations(limit=200)}
+        raw_items = db.get_commits(limit=limit, iteration_id=iteration_id)
+        iteration_ids = {
+            int(item["iteration_id"])
+            for item in raw_items
+            if item.get("iteration_id")
+        }
+        iterations = {
+            iteration_id_value: iteration
+            for iteration_id_value in iteration_ids
+            for iteration in [db.get_iteration(iteration_id_value)]
+            if iteration is not None
+        }
         items = [
             _serialize_commit(item, iterations)
-            for item in db.get_commits(limit=limit, iteration_id=iteration_id)
+            for item in raw_items
         ]
         return {"items": items}
     finally:
@@ -1574,15 +1705,38 @@ def build_search_payload(project_dir: str, query: str, limit: int = 12) -> Dict[
     return search_project_context(project_dir, query, limit=limit)
 
 
+def _recent_event_counts(events: List[Dict[str, Any]], limit: int = 8) -> List[Dict[str, Any]]:
+    """Resume la mezcla de tipos dentro de la misma ventana reciente."""
+    counts: Dict[str, Dict[str, Any]] = {}
+    for event in events:
+        event_type = str(event.get("event_type") or "event")
+        bucket = counts.setdefault(
+            event_type,
+            {
+                "event_type": event_type,
+                "label": str(
+                    event.get("kind_label")
+                    or _EVENT_TYPE_LABELS.get(event_type, event_type.replace("_", " "))
+                ),
+                "total": 0,
+            },
+        )
+        bucket["total"] += 1
+
+    return sorted(
+        counts.values(),
+        key=lambda item: (-int(item.get("total", 0) or 0), str(item.get("label", ""))),
+    )[:limit]
+
+
 def build_activity_payload(db_path: str, limit: int = 18) -> Dict[str, Any]:
     db = MemoryDB(db_path)
     try:
-        recent_events = []
-        for event in db.get_events(limit=limit):
-            recent_events.append(_humanize_event(event))
+        recent_events = [_humanize_event(event) for event in db.get_events(limit=limit)]
         return {
             "recent_events": recent_events,
-            "event_counts": db.get_event_counts_by_type(limit=8),
+            "event_counts": _recent_event_counts(recent_events, limit=8),
+            "total_event_counts": db.get_event_counts_by_type(limit=8),
         }
     finally:
         db.close()
@@ -1660,7 +1814,8 @@ class AlfredMemoryUIHandler(BaseHTTPRequestHandler):
             if parsed.path == "/api/timeline":
                 raw_iteration = (params.get("iteration_id") or [None])[0]
                 iteration_id = int(raw_iteration) if raw_iteration and raw_iteration.isdigit() else None
-                limit = _safe_int((params.get("limit") or [None])[0], default=120)
+                raw_limit = (params.get("limit") or [None])[0]
+                limit = _safe_int(raw_limit, default=120) if raw_limit is not None else None
                 self._send_json(build_timeline_payload(server.db_path, iteration_id, limit=limit))
                 return
             if parsed.path == "/api/decisions":

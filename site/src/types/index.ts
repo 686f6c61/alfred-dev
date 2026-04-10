@@ -35,6 +35,7 @@ export interface PageMeta {
     imageWidth: number;
     imageHeight: number;
     imageType: string;
+    imageAlt?: string;
   };
   /** Propiedades Twitter Card. */
   twitter: {
@@ -42,6 +43,9 @@ export interface PageMeta {
     title: string;
     description: string;
     image: string;
+    imageAlt?: string;
+    site?: string;
+    creator?: string;
   };
 }
 

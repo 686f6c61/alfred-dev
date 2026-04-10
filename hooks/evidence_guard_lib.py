@@ -101,14 +101,17 @@ def is_test_command(command: str) -> bool:
     return any(re.search(pattern, command) for pattern in TEST_RUNNERS)
 
 
-def detect_test_result(output: str) -> str:
+def detect_test_result(output: str, exit_code: Optional[Any] = None) -> str:
     """Analiza la salida de un comando de tests para determinar el resultado.
 
     Los patrones de fallo tienen prioridad sobre los de exito para
-    cubrir el caso de tests parciales (3 passed, 1 failed).
+    cubrir el caso de tests parciales (3 passed, 1 failed). Si la salida
+    no permite decidir pero el runner devolvio un codigo de salida distinto
+    de cero, se considera fallo igualmente.
 
     Args:
         output: salida completa del comando (stdout + stderr).
+        exit_code: codigo de salida del proceso, si esta disponible.
 
     Returns:
         ``"pass"``, ``"fail"`` o ``"unknown"``.
@@ -124,6 +127,12 @@ def detect_test_result(output: str) -> str:
 
     if has_fail:
         return "fail"
+    if exit_code is not None:
+        try:
+            if int(exit_code) != 0:
+                return "fail"
+        except (TypeError, ValueError):
+            pass
     if has_pass:
         return "pass"
     return "unknown"

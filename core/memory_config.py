@@ -21,6 +21,17 @@ DEFAULT_MEMORY_CONFIG: Dict[str, Any] = {
     "retention_days": 365,
 }
 
+_BOOLEAN_KEYS = {
+    "enabled",
+    "sync_to_native",
+    "capture_decisions",
+    "capture_commits",
+}
+_POSITIVE_INT_KEYS = {
+    "sync_commits_limit",
+    "retention_days",
+}
+
 
 def _coerce_value(raw: str) -> Any:
     value = raw.strip()
@@ -45,16 +56,32 @@ def _coerce_value(raw: str) -> Any:
 def _extract_frontmatter(text: str) -> str:
     lines = text.splitlines()
     if not lines:
-        return text
+        return ""
     if lines[0].strip() != "---":
-        return text
+        return ""
 
     collected = []
     for line in lines[1:]:
         if line.strip() == "---":
-            break
+            return "\n".join(collected)
         collected.append(line)
-    return "\n".join(collected)
+    return ""
+
+
+def _normalize_memory_value(key: str, value: Any) -> Any:
+    default = DEFAULT_MEMORY_CONFIG[key]
+
+    if key in _BOOLEAN_KEYS:
+        if isinstance(value, bool):
+            return value
+        return default
+
+    if key in _POSITIVE_INT_KEYS:
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+        return default
+
+    return value
 
 
 def load_memory_config(project_dir: str) -> Dict[str, Any]:
@@ -96,7 +123,10 @@ def load_memory_config(project_dir: str) -> Dict[str, Any]:
             key, raw_value = child_stripped.split(":", 1)
             key = key.strip()
             if key in config:
-                config[key] = _coerce_value(raw_value)
+                config[key] = _normalize_memory_value(
+                    key,
+                    _coerce_value(raw_value),
+                )
         break
 
     return config

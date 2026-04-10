@@ -37,6 +37,7 @@ interface Props {
     title: string;
     close: string;
     fullLink: string;
+    historyNote: string;
   };
 }
 
@@ -65,6 +66,7 @@ const CHANGELOG_URL = 'https://github.com/686f6c61/alfred-dev/blob/main/CHANGELO
       aria-label={ui.close}
     >&times;</button>
   </div>
+  <p class="changelog-history-note">{ui.historyNote}</p>
   <div class="changelog-body">
     {versions.map((v) => (
       <div class="cl-version">
@@ -235,6 +237,14 @@ const CHANGELOG_URL = 'https://github.com/686f6c61/alfred-dev/blob/main/CHANGELO
 
   .changelog-header a:hover {
     color: var(--blue);
+  }
+
+  .changelog-history-note {
+    margin: 0;
+    padding: 12px 24px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-dim);
   }
 
   /* ── Boton cerrar ────────────────────────────────── */

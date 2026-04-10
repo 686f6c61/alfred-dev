@@ -46,6 +46,11 @@ Ese helper debe:
    protocolo de composición dinámica. Usa solo los agentes opcionales que de
    verdad aporten a este cambio pequeño.
 
+6. Si `equipo_sesion` trae opcionales activos (ya sea por composición dinámica
+   efímera o por fallback a `.claude/alfred-dev.local.md`), consúltalo siempre
+   como fuente runtime canónica antes de cada fase. Si un opcional no entra en
+   el loop estándar de `quick`, déjalo explícitamente como “bajo demanda”.
+
 ## Flujo ligero de 2 fases
 
 ### Fase 1: Ejecución acotada (`ejecucion_acotada`)
@@ -70,7 +75,9 @@ Reglas:
 
 Activa `qa-engineer` y `security-officer` en paralelo. Añade opcionales de
 calidad solo si aportan señal real (`ux-reviewer`, `performance-engineer`,
-`seo-specialist`, `i18n-specialist`).
+`seo-specialist`, `i18n-specialist`). Si `lucius` está activo, úsalo como
+revisión secuencial externa de cierre cuando una segunda opinión técnica aporte
+señal real al cambio.
 
 Reglas:
 - Revisa regresión local de la superficie tocada.
@@ -99,3 +106,17 @@ En ese caso:
 - NO conviertas quick en un `feature` abreviado “porque sí”.
 - NO cierres sin dejar `.claude/alfred-dev-state.json` coherente.
 - Al terminar, deja visible que el siguiente paso esperado es `/alfred-dev:verify`.
+
+## Cierre canónico del comando
+
+- Si el helper ya sembró estado y el flujo quedó activo, no cierres con una
+  segunda planificación libre.
+- Apóyate en `.claude/alfred-dev-state.json` y en
+  `docs/project/current.md` / `docs/project/progress.md` /
+  `docs/project/traceability.md` para dejar visible:
+  - cambio acotado en curso
+  - fase actual
+  - opcionales activos o bajo demanda
+  - siguiente paso esperado (`/alfred-dev:verify`)
+- Si detectas que quick ya no es quick, no cierres con varias rutas ambiguas:
+  deja una única redirección accionable a `feature`, `fix` o `spike`.

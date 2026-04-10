@@ -12,6 +12,12 @@ Antes de lanzar la auditoría, localiza el fichero compartido de composición de
 
 Después, sigue el protocolo de composición dinámica (pasos 1 a 4). Si por cualquier motivo no consigues localizar ese fichero, NO bloquees `/alfred-dev:audit` solo por esa búsqueda: continúa con el equipo de núcleo por defecto (qa-engineer, security-officer, architect, tech-writer) y deja constancia breve de la degradación.
 
+Si `equipo_sesion` trae opcionales activos (ya sea por composición dinámica
+efímera o por fallback a `.claude/alfred-dev.local.md`), consúltalo siempre
+como fuente runtime canónica antes de ejecutar la auditoría. En `audit`, salvo
+`lucius`, el resto de opcionales quedan fuera del loop estándar y deben
+tratarse explícitamente como “bajo demanda”.
+
 ## Preflight de SonarQube
 
 Antes de lanzar ningún agente, verifica si SonarQube puede ejecutarse de verdad en esta sesión:
@@ -48,6 +54,8 @@ Lanza 4 agentes EN PARALELO usando la herramienta Task:
 3. **architect**: deuda técnica arquitectónica, coherencia del diseño, acoplamiento excesivo
 4. **tech-writer**: documentación desactualizada, lagunas, inconsistencias
 
+Si `lucius` está activo en `equipo_sesion`, ejecútalo **después** de estas 4 auditorías como revisión secuencial externa de cierre. Su papel aquí no es sustituir ninguna de las cuatro dimensiones, sino contrastarlas desde fuera antes del resumen final.
+
 Después de que los 4 terminen, recopila sus informes y presenta un **resumen ejecutivo** con:
 - Hallazgos críticos (requieren acción inmediata)
 - Hallazgos importantes (planificar resolución)
@@ -55,3 +63,16 @@ Después de que los 4 terminen, recopila sus informes y presenta un **resumen ej
 - Plan de acción priorizado
 
 No toca código, solo genera informes.
+
+## Cierre canónico del comando
+
+- Si el preflight de SonarQube requiere decisión humana, usa un único
+  `AskUserQuestion` navegable con las dos rutas permitidas y no añadas opciones
+  laterales.
+- Cuando la auditoría termine, no cierres con texto genérico: deja un resumen ejecutivo accionable con:
+  - críticos
+  - importantes
+  - menores
+  - plan priorizado
+- Si `lucius` participa, deja claro que su lectura contrasta el resultado pero
+  no sustituye los hallazgos de QA, seguridad, arquitectura o documentación.

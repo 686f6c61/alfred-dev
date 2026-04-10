@@ -18,7 +18,7 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - Claude Code plugin for development teams',
-    description: 'Claude Code plugin with 19 specialised agents, 60 skills and per-project persistent memory. Strict TDD, transversal security and automatic quality gates at every phase.',
+    description: 'Claude Code plugin with 19 specialised agents, an internal catalog of 61 skills and per-project persistent memory. Strict TDD, transversal security and automatic quality gates at every phase.',
     canonical: 'https://alfred-dev.com/en/',
     locale: 'en_US',
     og: {
@@ -28,16 +28,20 @@ const data: PageData = {
       url: 'https://alfred-dev.com/en/',
       siteName: 'Alfred Dev',
       locale: 'en_US',
-      image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
-      imageWidth: 1470,
-      imageHeight: 759,
-      imageType: 'image/webp',
+      image: 'https://alfred-dev.com/screenshots/alfred-dev-share-en.png',
+      imageWidth: 2400,
+      imageHeight: 1260,
+      imageType: 'image/png',
+      imageAlt: 'Screenshot of the Alfred Dev landing page with the headline A work system for Claude Code',
     },
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - Claude Code plugin for development teams',
       description: 'Claude Code plugin: 10 core agents + 9 optional, per-project SQLite memory, 26 commands and automatic quality gates at every stage of development.',
-      image: 'https://alfred-dev.com/screenshots/alfred-dev-hero.webp',
+      image: 'https://alfred-dev.com/screenshots/alfred-dev-share-en.png',
+      imageAlt: 'Screenshot of the Alfred Dev landing page with the headline A work system for Claude Code',
+      site: '@686f6c61',
+      creator: '@686f6c61',
     },
   },
 
@@ -114,7 +118,7 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'Now on main',
+      label: 'New in v0.5.1',
       items: [
         {
           title: 'Lucius — external technical second opinion',
@@ -123,8 +127,8 @@ const data: PageData = {
           tag: { text: 'New', href: '#uso' },
         },
         {
-          title: 'Selina — visual style direction',
-          description: 'Before a single line of CSS is written, Selina presents three style proposals in the browser. The user chooses; the team executes with coherence from the first component.',
+          title: 'Selina — 10 base design systems',
+          description: 'Before a single line of CSS is written, Selina walks through 10 base design systems and narrows them down to three comparable browser proposals. The user chooses; the team implements with clear design intent from the first component.',
           svgContent: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>',
           tag: { text: 'New', href: '#uso' },
         },
@@ -173,7 +177,7 @@ const data: PageData = {
 
   stats: [
     { number: 19, label: 'Agents' },
-    { number: 60, label: 'Skills' },
+    { number: 61, label: 'Skills' },
     { number: 6, label: 'Workflows' },
     { number: 26, label: 'Commands' },
     { number: 7, label: 'Templates' },
@@ -267,8 +271,8 @@ const data: PageData = {
       {
         name: 'Selina',
         model: 'opus',
-        alias: 'The Stylist',
-        role: 'Visual style director. Ensures typography, palette and visual density are decided before the architect designs the first component. Only active in projects with a user interface.',
+        alias: 'Design system',
+        role: 'Design-system direction. Starts from 10 base families and locks typography, palette and density before the architect designs the first component. Only active in projects with a user interface.',
         phrase: '"Style is not decoration: it\'s communication."',
         color: 'var(--purple)',
       },
@@ -415,7 +419,7 @@ const data: PageData = {
       {
         command: '/alfred-dev:feature',
         subtitle: 'Full or partial cycle',
-        description: 'Up to 7 phases: product, visual style (Selina, conditional), architecture, TDD development, quality + security, documentation, delivery. You can start from any phase.',
+        description: 'Up to 7 phases: product, design system (Selina, conditional), architecture, TDD development, quality + security, documentation, delivery. You can start from any phase.',
         stages: ['Product', 'Visual style', 'Architecture', 'Development', 'Quality + Security', 'Documentation', 'Delivery'],
       },
       {
@@ -499,8 +503,8 @@ const data: PageData = {
   skills: {
     header: {
       label: 'Capabilities',
-      title: '60 skills across 13 domains',
-      description: 'Each skill is a specific ability that agents execute. The original 7 domains are expanded with 6 new ones for the optional agents.',
+      title: '61 skills across 14 domains',
+      description: 'Internal repository catalog: each skill is a specific ability that agents execute. The original 7 domains are expanded with 6 new ones for optional agents plus a dedicated design-system domain for Selina. The public Claude Code manifest currently registers 5 top-level skills; the rest are consumed as internal plugin playbooks.',
     },
     domains: [
       {
@@ -703,7 +707,7 @@ const data: PageData = {
         label: 'Workflows',
         color: 'var(--blue)',
         commands: [
-          { command: '/alfred-dev:feature', description: 'Full cycle: up to 7 phases or from any phase you name. Selina activates automatically in UI projects.' },
+          { command: '/alfred-dev:feature', description: 'Full cycle: up to 7 phases or from any phase you name. Selina activates automatically in UI projects to lock the design system.' },
           { command: '/alfred-dev:quick',   description: 'Small bounded change with two lightweight phases: scoped execution and fast QA + security validation.' },
           { command: '/alfred-dev:fix',     description: 'Bug fix in 3 phases: diagnosis, TDD correction, validation.' },
           { command: '/alfred-dev:spike',   description: 'Exploratory investigation with no commitment: prototypes, benchmarks, conclusions.' },
@@ -1038,22 +1042,22 @@ const data: PageData = {
         ],
       },
       {
-        category: 'Visual style',
+        category: 'Design system',
         color: 'var(--purple)',
         background: 'rgba(160,126,232,0.08)',
-        title: 'Decide the visual style before building',
+        title: 'Lock the design system before building',
         command: '/alfred-dev:feature new personal finance app',
         wide: true,
         image: {
           src: '/screenshots/selina-style-direction.svg',
-          alt: 'Selina presenting three visual style proposals in the browser: minimalist, data-driven, and modern card dashboard',
-          caption: 'Selina opens the browser with three style directions. The user chooses; the docs/style-direction.md artefact closes the gate before the architect designs a single component.',
+          alt: 'Selina showing a design-system gallery and three finalist proposals in the browser',
+          caption: 'Selina starts from 10 base design systems, narrows the decision to three comparable finalists, and closes the gate with docs/style-direction.md before the architect designs a single component.',
         },
         steps: [
-          'Selina reads the approved PRD, detects the stack (framework, components, product context) and confirms the target audience',
-          'Launches the local visual server and generates three full-screen HTML proposals: each with a different typeface, palette, density and personality',
-          'The user chooses in the browser; Selina records the choice and generates docs/style-direction.md with the full direction',
-          'Architect, senior-dev, ux-reviewer, copywriter and seo-specialist read that artefact as the style reference for the rest of the workflow',
+          'Selina reads the approved PRD, detects the stack (framework, components, product context) and decides which families from the 10-system catalog deserve a place in the final round',
+          'It can show the base gallery first and then generates three full-screen HTML finalists: each with a clearly different typeface, palette, density and personality',
+          'The user chooses in the browser; Selina records the choice and generates docs/style-direction.md with the grounded design system',
+          'Architect, senior-dev, ux-reviewer, copywriter and seo-specialist use that artefact as the design reference for the rest of the workflow',
           'The phase is skipped automatically in projects without a user interface',
         ],
       },
@@ -1261,19 +1265,19 @@ const data: PageData = {
         id: 'macos',
         label: 'macOS',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requirements:</strong> git, Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requirements:</strong> Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'linux',
         label: 'Linux',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requirements:</strong> git, Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requirements:</strong> Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
       },
       {
         id: 'windows',
         label: 'Windows',
         command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
-        requirementsHtml: '<strong>Requirements:</strong> git, PowerShell 5.1+ (pre-installed on Windows 10/11), Claude Code installed.<br>Python not required. After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.<br>Alternative: you can also use the bash installer with WSL or Git Bash.',
+        requirementsHtml: '<strong>Requirements:</strong> PowerShell 5.1+ (pre-installed on Windows 10/11), Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.<br>Alternative: you can also use the bash installer with WSL or Git Bash.',
       },
     ],
     uninstall: {
@@ -1440,12 +1444,12 @@ personalidad:
       {
         svgContent: '<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>',
         question: 'What are optional agents?',
-        answerHtml: 'They are 8 specialised agents you can activate based on your project\'s needs: <strong>data-engineer</strong> (databases), <strong>ux-reviewer</strong> (accessibility and usability), <strong>performance-engineer</strong> (performance), <strong>github-manager</strong> (repository management), <strong>seo-specialist</strong> (web positioning), <strong>copywriter</strong> (text and spelling), <strong>The Librarian</strong> (persistent memory: historical queries about project decisions, commits and iterations) and <strong>The Interpreter</strong> (internationalisation: i18n key audit, hardcoded string detection, per-locale format validation).<br><br>Alfred analyses your project and suggests which to activate. You can also manage them manually with <strong>/alfred-dev:config</strong>. They are activated or deactivated without reinstalling anything.',
+        answerHtml: 'They are 9 specialised agents you can activate based on your project\'s needs: <strong>data-engineer</strong> (databases), <strong>ux-reviewer</strong> (accessibility and usability), <strong>performance-engineer</strong> (performance), <strong>github-manager</strong> (repository management), <strong>seo-specialist</strong> (web positioning), <strong>copywriter</strong> (text and spelling), <strong>The Librarian</strong> (persistent memory: historical queries about project decisions, commits and iterations), <strong>The Interpreter</strong> (internationalisation: i18n key audit, hardcoded string detection, per-locale format validation) and <strong>Lucius</strong> (external technical second opinion with Codex CLI).<br><br>Alfred analyses your project and suggests which to activate. You can also manage them manually with <strong>/alfred-dev:config</strong>. They are activated or deactivated without reinstalling anything.',
       },
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         question: 'How many skills does it have in total?',
-        answerHtml: '60 skills distributed across 13 domains. The original 7 domains (product, architecture, development, security, quality, DevOps, documentation) cover the standard lifecycle. The 6 new ones (data, UX, performance, GitHub, SEO, marketing) correspond to the optional agents. Existing domains have also been expanded: documentation went from 4 to 9 skills, security from 5 to 6, and quality from 4 to 6.',
+        answerHtml: 'The repository maintains an internal catalog of 61 skills distributed across 14 domains. The original 7 domains (product, architecture, development, security, quality, DevOps, documentation) cover the standard lifecycle. The 6 optional-agent domains (data, UX, performance, GitHub, SEO, marketing) broaden the plugin scope, and Selina adds a dedicated design-system domain. The public Claude Code manifest currently registers 5 top-level skills; the rest are reused as internal plugin playbooks.',
       },
       {
         svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
@@ -1501,41 +1505,52 @@ personalidad:
 
   changelog: [
     {
-      version: '0.6.0',
-      date: '2026-03-31',
+      version: '0.5.1',
+      date: '2026-04-10',
       added: [
-        '<strong>Lucius — The Technical Director</strong> (9th optional agent): external technical audit by invoking the <code>codex</code> binary with GPT-5.4. Analyses the full project and delivers a structured report with diagnosis and prescription per item.',
-        '<strong><code>/alfred-dev:lucius</code> command</strong>: entry point with five scopes — <code>all</code>, <code>security</code>, <code>tests</code>, <code>architecture</code>, <code>performance</code>. Target directory is configurable.',
-        '<strong>Structured report in four sections</strong>: Critical (blocking), Relevant (recommended), Opportunities (non-urgent improvement) and What\'s working well (recognition of good practices).',
-        '<strong>Automatic preflight</strong>: Lucius verifies that <code>codex</code> is installed and authenticated before running the audit. If anything fails, it explains the fix.',
-        '<strong>HARD-GATE</strong>: Lucius never modifies files. It only reads, analyses and reports. The decision to implement always rests with the user.',
+        '<strong>Canonical Selina catalog with 10 base design systems</strong>: <code>core/selina_style_catalog.py</code> gathers the free/contextual mode plus nine trend-led families so the visual phase starts from an explicit vocabulary.',
+        '<strong>Visual demo gallery</strong>: <code>core/selina_style_demo.py</code> and <code>visual/scripts/write-style-demo-gallery.py</code> generate a browsable catalog before the three final proposals are locked.',
+        '<strong>Palettes and type pairings per family</strong>: each design system declares colour modes, typography pairings and links to references or Google Fonts.',
       ],
       changed: [
-        '19 agents total: 10 core + 9 optional.',
-        '26 commands available in the plugin.',
-        'Model distribution: 6 opus (Alfred, product-owner, architect, senior-dev, security-officer, Lucius) + 13 sonnet.',
-        'Landing updated: agent counter, Lucius card before Selina, optional agents section.',
-        '<code>core/personality.py</code> updated with Selina and Lucius (17 → 19 agents).',
+        'Selina is no longer framed as “three isolated styles”: it now works from 10 base design systems and narrows them down to three comparable proposals based on the PRD, audience, and stack.',
+        'Version aligned to 0.5.1 across plugin, marketplace, installers, packages, Memory MCP, session report, README, changelog, docs and landing.',
+        'The landing explains more faithfully how Selina enters the flow and what it really means to close a design system before touching frontend code.',
+      ],
+      fixed: [
+        'Update surface without drift: internal fallback points that still returned an older release now reflect the current version.',
+        'Release tests are less brittle: the suite no longer depends on thin Astro wrappers or hardcoded version paths when the manifest is the real source of truth.',
       ],
     },
     {
       version: '0.5.0',
       date: '2026-03-31',
       added: [
-        '<strong>Selina — The Stylist</strong> (10th core agent): phase 1b of the <code>feature</code> workflow. Presents three visual style directions in the browser before the architect designs any components. Only active in projects with a user interface.',
-        '<strong>Local visual server</strong>: zero-dependency HTTP + WebSocket server (<code>visual/scripts/server.cjs</code>) to render style options in three columns with hot-reload and graceful shutdown.',
-        '<strong>Visual style skill</strong> (<code>skills/estilo/style-direction/SKILL.md</code>): guide for starting the server, writing HTML proposals, reading the user\'s choice and generating <code>docs/style-direction.md</code>.',
-        '<strong>Conditional phase</strong>: new <code>has_frontend</code> condition in the orchestrator. The phase is skipped automatically in projects without a UI.',
+        '<strong>Lucius — The Technical Director</strong>: new optional agent that acts as an external technical second opinion. It invokes <code>codex review</code> with GPT-5.4 in read-only mode and returns diagnosis + prescription per item.',
+        '<strong><code>/alfred-dev:lucius</code> command</strong>: entry point for the audit. It accepts an optional target directory and scope (<code>all</code>, <code>security</code>, <code>tests</code>, <code>architecture</code>, <code>performance</code>).',
+        '<strong>Structured report per item</strong>: Lucius returns diagnosis + prescription + effort (S/M/L) + suggested implementer (Alfred or Codex) in four sections: Critical, Relevant, Opportunities and What\'s working well.',
+        '<strong>Prerequisite preflight</strong>: checks that <code>codex</code> is on the PATH and authenticated. If something is missing, it stops with clear install instructions.',
+        '<strong>Hard gate with no modifications</strong>: the <code>codex review</code> subcommand enables native <code>sandbox: read-only</code> and <code>approval: never</code>, guaranteeing that no files are touched.',
+        '<strong>Selina — The Stylist</strong>: new core agent (10th) that occupies phase 1b of the <code>feature</code> workflow and presents three style directions before component design starts.',
+        '<strong>Local visual server</strong>: zero-dependency HTTP + WebSocket server in <code>visual/scripts/server.cjs</code> with hot reload, per-project sessions and graceful shutdown.',
+        '<strong>Visual style skill</strong>: <code>skills/estilo/style-direction/SKILL.md</code> guides Selina to start the server, propose options, capture the selection and generate <code>docs/style-direction.md</code>.',
+        '<strong>Conditional <code>visual_style</code> phase</strong>: the orchestrator only enables it when <code>config_loader.has_frontend(stack)</code> detects a public UI.',
+        '<strong><code>_advance_skipping_phases</code> helper</strong>: extracted orchestrator function that skips phases whose condition is not met and reduces cognitive complexity.',
       ],
       changed: [
-        '5 agents updated to read <code>docs/style-direction.md</code> as a style reference: architect, senior-dev, ux-reviewer, copywriter, seo-specialist.',
-        'README updated: 10 core agents, up to 7 phases, agent table with Selina and workflow example with phase 1b.',
+        '19 agents total: the plugin moves from 18 to 19 agents (10 core + 9 optional) with Lucius included.',
+        '26 commands: <code>/alfred-dev:lucius</code> joins the manifest and the public surface of the plugin.',
+        'Version aligned to 0.5.0 across plugin, marketplace, installers, packages, README, changelog, docs and landing.',
+        'Landing updated: Lucius card appears before Selina with a “New” badge, optional-agent use cases and counters updated to 19 agents and 26 commands.',
       ],
       fixed: [
         'Native module imports in <code>server.cjs</code>: mandatory <code>node:</code> prefix (<code>node:http</code>, <code>node:crypto</code>, <code>node:fs</code>, <code>node:path</code>).',
         '<code>Number.parseInt</code> instead of <code>parseInt</code> in <code>server.cjs</code> (SonarQube linting rule).',
-        'Cognitive complexity in <code>config_loader.py</code>: <code>_count_source_files</code> (38 → ~6) and <code>suggest_optional_agents</code> (18 → ~3) resolved by extracting helper functions.',
+        'Reduced cognitive complexity of <code>handleRequest</code>: the <code>/files/*</code> block was extracted into <code>serveStaticFile()</code>.',
+        '<code>catch</code> block without unused variable: <code>catch (e)</code> becomes <code>catch {}</code> in <code>serveStaticFile</code>.',
+        'Cognitive complexity in <code>config_loader.py</code>: <code>_count_source_files</code> and <code>suggest_optional_agents</code> were simplified by extracting reusable helpers.',
         'SonarQube skill registered in <code>plugin.json</code>: the file existed but was missing from the plugin manifest.',
+        'Docker permissions in subagents: <code>Bash(docker ...)</code> entries in <code>~/.claude/settings.json</code> let <code>security-officer</code> start SonarQube without asking the user for confirmation.',
       ],
     },
     {
@@ -1894,11 +1909,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.6.0',
+    version: 'v0.5.1',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Claude Code plugin. 18 agents. 60 skills. 13 hooks. 25 commands. Visual style with Selina. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
+    tagline: 'Claude Code plugin. 19 agents. Internal catalog of 61 skills. 13 hooks. 26 commands. 10 design systems with Selina. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
     slogan: 'Automated software engineering for Claude Code.',
     disclaimer: {
       linkText: 'Disclaimer',

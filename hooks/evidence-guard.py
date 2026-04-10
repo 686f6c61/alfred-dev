@@ -32,6 +32,19 @@ from evidence_guard_lib import (
 _LOG_PREFIX = "[evidence-guard]"
 
 
+def _get_tool_result(data: dict) -> dict:
+    """Normaliza payloads historicos y actuales del runtime de hooks."""
+    tool_result = data.get("tool_result")
+    if isinstance(tool_result, dict):
+        return tool_result
+
+    tool_output = data.get("tool_output")
+    if isinstance(tool_output, dict):
+        return tool_output
+
+    return {}
+
+
 def main():
     """Punto de entrada del hook PostToolUse para Bash.
 
@@ -52,19 +65,20 @@ def main():
 
     try:
         tool_input = data.get("tool_input", {})
-        tool_output = data.get("tool_output", {})
+        tool_result = _get_tool_result(data)
 
         command = tool_input.get("command", "")
         if not command or not is_test_command(command):
             sys.exit(0)
 
         # Extraer la salida del comando
-        stdout = tool_output.get("stdout", "")
-        stderr = tool_output.get("stderr", "")
+        stdout = tool_result.get("stdout", "") or tool_result.get("output", "")
+        stderr = tool_result.get("stderr", "")
+        exit_code = tool_result.get("exit_code")
         output = f"{stdout}\n{stderr}"
 
         # Detectar resultado y registrar evidencia
-        result = detect_test_result(output)
+        result = detect_test_result(output, exit_code=exit_code)
         record_evidence(command, result)
 
         if result == "unknown":

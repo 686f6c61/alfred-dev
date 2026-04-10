@@ -1,0 +1,5035 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import dataEs from '@/i18n/data.es';
+import dataEn from '@/i18n/data.en';
+import type { Locale } from '@/i18n/ui';
+import { readdirSync, readFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
+
+interface Props {
+  locale?: Locale;
+}
+
+const { locale = 'es' } = Astro.props as Props;
+const isEn = locale === 'en';
+const data = isEn ? dataEn : dataEs;
+const canonicalUrl = isEn ? 'https://alfred-dev.com/en/' : 'https://alfred-dev.com/';
+const alternateUrl = isEn ? 'https://alfred-dev.com/' : 'https://alfred-dev.com/en/';
+const repoRootPath = resolvePath(process.cwd(), '..');
+const tr = (es: string, en: string) => (isEn ? en : es);
+
+const stripMd = (value: string) =>
+  value
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+const formatDateEs = (value: string) => {
+  const [year, month, day] = value.split('-');
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+};
+const formatDate = (value: string) => (isEn ? value : formatDateEs(value));
+const ensureQuestionPunctuation = (value: string) => {
+  const normalized = value.trim().replace(/^¿+/, '').replace(/\?+$/, '');
+  return isEn ? `${normalized}?` : `¿${normalized}?`;
+};
+const readRepoFile = (path: string) => readFileSync(resolvePath(repoRootPath, path), 'utf8');
+type AgentMeta = {
+  id: string;
+  file: string;
+  label: string;
+  cardSummary: string;
+  tone: string;
+  group: 'core' | 'optional';
+  wide?: boolean;
+};
+type CommandRuntimeMeta = {
+  mode: string;
+  detail: string;
+  notes: string[];
+  coreAgents?: string[];
+  optionalAgents?: string[];
+  layerIds?: string[];
+};
+const titleWordMap: Record<string, string> = {
+  ux: 'UX',
+  qa: 'QA',
+  seo: 'SEO',
+  i18n: 'I18n',
+  github: 'GitHub',
+  devops: 'DevOps',
+  api: 'API',
+  adr: 'ADR',
+  ci: 'CI',
+  cd: 'CD',
+};
+const upperFirst = (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value);
+const titleFromId = (value: string) =>
+  value
+    .split('-')
+    .map((part) => titleWordMap[part.toLowerCase()] ?? upperFirst(part))
+    .join(' ');
+const getSection = (source: string, patterns: string[]) => {
+  for (const pattern of patterns) {
+    const match = new RegExp(`^##\\s+${pattern}\\s*$`, 'mi').exec(source);
+    if (!match) continue;
+    const start = match.index + match[0].length;
+    const rest = source.slice(start);
+    const next = rest.search(/^##\s+/m);
+    return (next === -1 ? rest : rest.slice(0, next)).trim();
+  }
+  return '';
+};
+const getParagraphs = (section: string, max = 1) =>
+  section
+    .split(/\n\s*\n/)
+    .map((part) => stripMd(part))
+    .filter(Boolean)
+    .slice(0, max);
+const getTableData = (section: string) => {
+  const rows: Record<string, string> = {};
+  for (const line of section.split('\n')) {
+    if (!line.trim().startsWith('|') || line.includes('---')) continue;
+    const cells = line
+      .split('|')
+      .slice(1, -1)
+      .map((cell) => stripMd(cell));
+    if (cells.length >= 2) {
+      rows[cells[0].toLowerCase()] = cells[1];
+    }
+  }
+  return rows;
+};
+const getTableValue = (rows: Record<string, string>, keys: string[]) => {
+  for (const key of keys) {
+    const found = Object.entries(rows).find(([rowKey]) => rowKey.includes(key.toLowerCase()));
+    if (found) return found[1];
+  }
+  return '';
+};
+const getListItems = (section: string) =>
+  section
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^(- |\d+\.\s)/.test(line))
+    .map((line) => stripMd(line.replace(/^(- |\d+\.\s)/, '')))
+    .filter(Boolean);
+const getBullets = (section: string, markers: string[]) => {
+  const lines = section.split('\n');
+  const markerIndex = lines.findIndex((line) =>
+    markers.some((marker) => new RegExp(marker, 'i').test(stripMd(line))),
+  );
+  if (markerIndex === -1) return [];
+  const items: string[] = [];
+  for (let index = markerIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (!line) continue;
+    if (/^(?:\*\*|###|##)/.test(line) && items.length > 0) break;
+    if (/^- /.test(line)) {
+      items.push(stripMd(line.replace(/^- /, '')));
+      continue;
+    }
+    if (items.length > 0) break;
+  }
+  return items;
+};
+const parseFrontmatterField = (source: string, field: string) => {
+  const match = source.match(new RegExp(`^${field}:\\s*(.+)$`, 'm'));
+  return match ? stripMd(match[1].replace(/^"(.*)"$/, '$1')) : '';
+};
+const icon = (paths: string) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">${paths}</svg>`;
+
+const icons = {
+  github: icon(
+    '<path d="M9 19c-5 1.5-5-2.5-7-3"/><path d="M15 22v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 19 4.77 5.07 5.07 0 0 0 18.91 1S17.73.65 15 2.48a13.38 13.38 0 0 0-6 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77 5.44 5.44 0 0 0 3.5 8.53c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>',
+  ),
+  changelog: icon(
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>',
+  ),
+  reality: icon(
+    '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
+  ),
+  team: icon(
+    '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  ),
+  commands: icon(
+    '<path d="M8 8 4 12l4 4"/><path d="M16 8l4 4-4 4"/><path d="M13 5l-2 14"/>',
+  ),
+  skills: icon(
+    '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  ),
+  layers: icon(
+    '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
+  ),
+  install: icon(
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  ),
+  apple: icon(
+    '<path d="M16.4 7.2c-.9 1-1.4 2.2-1.3 3.4 1.4.1 2.6-.4 3.5-1.5.8-.9 1.2-2 1.2-3.3-1.5 0-2.6.5-3.4 1.4Z"/><path d="M12.6 8.3c1.6 0 2.3-1 3.7-1 1.1 0 2 .5 2.8 1.6-2.3 1.3-1.9 4.8.5 5.7-.6 1.8-1.7 3.9-3.5 3.9-1 0-1.8-.6-2.9-.6-1.1 0-1.8.6-2.9.6-2.2 0-5-4.8-4.6-8.1.3-2.3 1.9-3.8 4-3.8 1.2 0 2.2.7 2.9.7.6 0 1.6-.7 3-.7Z"/>',
+  ),
+  linux: icon(
+    '<path d="M12 3c2.1 0 3.8 1.8 3.8 4.1 0 1.1-.4 2.1-1.1 2.9.9.7 1.5 1.8 1.5 3v2.3c0 2-1.5 3.7-3.5 3.7h-1.4c-2 0-3.5-1.7-3.5-3.7V13c0-1.2.6-2.3 1.5-3-.7-.8-1.1-1.8-1.1-2.9C8.2 4.8 9.9 3 12 3Z"/><circle cx="10.5" cy="7.4" r="0.8"/><circle cx="13.5" cy="7.4" r="0.8"/><path d="M10.4 10.3c.6.5 1 .7 1.6.7s1-.2 1.6-.7"/><path d="M9.3 18.6 8 21"/><path d="M14.7 18.6 16 21"/>',
+  ),
+  windows: icon(
+    '<path d="M3 5.4 10.6 4v7.2H3V5.4Z"/><path d="M12 3.8 21 2v9.2h-9V3.8Z"/><path d="M3 12.8h7.6V20L3 18.6v-5.8Z"/><path d="M12 12.8h9V22l-9-1.8v-7.4Z"/>',
+  ),
+  faq: icon(
+    '<circle cx="12" cy="12" r="10"/><path d="M9.25 9a3 3 0 1 1 5.5 1.5c-.8 1.1-1.75 1.6-2.25 2.5"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  ),
+  update: icon(
+    '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9A9 9 0 0 1 17 5l6 5"/><path d="M20.49 15A9 9 0 0 1 7 19l-6-5"/>',
+  ),
+  uninstall: icon(
+    '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  ),
+};
+
+const uiText = {
+  locale,
+  languageLabel: isEn ? 'Español' : 'English',
+  languageHref: isEn ? '/' : '/en/',
+  originAriaLabel: tr('Abrir historia de Alfred Dev', 'Open Alfred Dev story'),
+  topbarNote: tr('Plugin independiente para Claude Code', 'Independent plugin for Claude Code'),
+  technicalVision: tr('Visión técnica', 'Technical vision'),
+  latestRelease: tr('Última release', 'Latest release'),
+  expand: tr('ampliar', 'expand'),
+  manifestoLead: tr('La experiencia principal vive en Claude Code.', 'The main experience lives in Claude Code.'),
+  manifestoBody: tr(
+    'La web solo aparece cuando añade una capa útil al flujo: sistema de diseño con Selina, Memory UI, changelog y comandos de instalación listos para usar.',
+    'The browser only appears when it adds something useful to the flow: Selina design-system direction, Memory UI, changelog, and installation commands ready to copy.',
+  ),
+  whatAlfredDoes: tr('Lo que hace Alfred', 'What Alfred actually does'),
+  teamTitle: tr('Equipo', 'Team'),
+  agentsReal: tr('agentes reales', 'real agents'),
+  teamNote: tr(
+    'Publicados en plugin.json. Núcleo y opcionales, con nombres y función real del plugin.',
+    'Published in plugin.json. Core and optional agents with their real names and function in the plugin.',
+  ),
+  core: tr('Core', 'Core'),
+  optional: tr('Opcionales', 'Optional'),
+  coreTitle: tr('Núcleo operativo', 'Operational core'),
+  coreBody: tr(
+    'Orquestación, alcance, arquitectura, implementación, seguridad, QA, release, trazabilidad y sistema de diseño.',
+    'Orchestration, scope, architecture, implementation, security, QA, release, traceability, and design-system direction.',
+  ),
+  optionalTitle: tr('Especialistas activables', 'Activatable specialists'),
+  optionalBody: tr(
+    'Se activan según stack, tarea o configuración: datos, UX, rendimiento, GitHub, SEO, i18n, copy, memoria y auditoría externa.',
+    'They activate depending on stack, task, or config: data, UX, performance, GitHub, SEO, i18n, copy, memory, and external audit.',
+  ),
+  openSheet: tr('Abrir ficha', 'Open profile'),
+  commandsTitle: tr('Comandos', 'Commands'),
+  commandsNote: tr(
+    'Los 26 comandos públicos del plugin, agrupados por entrada, orientación, construcción, control y operación.',
+    'The 26 public plugin commands, grouped by entry, orientation, build, control, and operations.',
+  ),
+  openCommandAriaPrefix: tr('Abrir ficha de', 'Open profile for'),
+  skillsTitle: tr('Skills y playbooks', 'Skills and playbooks'),
+  skillsBadge: tr('61 internos / 5 públicas', '61 internal / 5 public'),
+  internalPlaybooks: tr('playbooks internos', 'internal playbooks'),
+  domainsCovered: tr('14 dominios cubiertos', '14 domains covered'),
+  skillsBody: tr(
+    'El catálogo interno encapsula decisiones repetibles para incidentes, releases, dependencias, estilo, QA, seguridad y entrega.',
+    'The internal catalog encapsulates repeatable decisions for incidents, releases, dependencies, style, QA, security, and delivery.',
+  ),
+  publicSkills: tr('Skills públicas hoy', 'Public skills today'),
+  skillsFooter: tr(
+    'Procedimientos versionados dentro del plugin, no prompts sueltos.',
+    'Versioned procedures inside the plugin, not loose prompts.',
+  ),
+  auxiliaryLayers: tr('Capas auxiliares', 'Auxiliary layers'),
+  auxiliaryLayersBadge: tr('6 activas', '6 active'),
+  auxiliaryOpen: tr('Abrir ficha', 'Open profile'),
+  installSection: tr('Cómo empezar', 'How to start'),
+  installStepsBadge: tr('03 pasos', '03 steps'),
+  startInThreeSteps: tr('Empieza en 3 pasos', 'Start in 3 steps'),
+  entryFlow: tr('entry flow', 'entry flow'),
+  installUpdateUninstall: tr('Instalar, actualizar y desinstalar', 'Install, update, and uninstall'),
+  installPreviewTitle: tr('Instalación en macOS', 'Install on macOS'),
+  copy: tr('Copiar', 'Copy'),
+  installPreviewBody: tr(
+    'El comando registra la fuente GitHub global en Claude Code y deja Alfred Dev listo para instalar o actualizar.',
+    'The command registers the global GitHub source in Claude Code and leaves Alfred Dev ready to install or update.',
+  ),
+  update: tr('Actualizar', 'Update'),
+  uninstall: tr('Desinstalar', 'Uninstall'),
+  faq: 'FAQ',
+  closingTitle: tr(
+    'Si ya usas Claude Code, instala Alfred Dev y entra al flujo con contexto, memoria y equipo completo.',
+    'If you already use Claude Code, install Alfred Dev and enter the flow with context, memory, and a full team.',
+  ),
+  closingBody: tr(
+    'Plugin independiente para equipos que quieren pasar de prompt aislado a flujo operativo con estado, trazabilidad y gates.',
+    'Independent plugin for teams that want to move from isolated prompts to an operational flow with state, traceability, and gates.',
+  ),
+  repository: tr('Repositorio', 'Repository'),
+  createdBy: tr('Creado por @686f6c61', 'Created by @686f6c61'),
+  independentDisclaimer: tr(
+    'Proyecto independiente. No oficial. No afiliado a Anthropic ni a Claude Code.',
+    'Independent project. Unofficial. Not affiliated with Anthropic or Claude Code.',
+  ),
+  installModalTitle: tr('Instalación', 'Installation'),
+  close: tr('Cerrar', 'Close'),
+  installHint: tr(
+    'El comando se copia automáticamente cuando el navegador lo permite. Si no, usa el botón Copiar.',
+    'The command is copied automatically when the browser allows it. Otherwise use the Copy button.',
+  ),
+  uninstallModalTitle: tr('Desinstalar Alfred Dev', 'Uninstall Alfred Dev'),
+  clearPathsTitle: tr('Dos caminos claros', 'Two clear paths'),
+  clearPathsBody: tr(
+    'Si solo quieres quitar Alfred Dev de Claude Code, usa el script de tu sistema. Si la instalación quedó a medias o quieres revisar cada rastro, usa la ruta manual.',
+    'If you only want to remove Alfred Dev from Claude Code, use the script for your system. If the installation was left half-done or you want to review every trace, use the manual path.',
+  ),
+  uninstallBashBody: tr(
+    'Primero intenta la desinstalación nativa con Claude CLI y luego limpia caché, marketplace y registros residuales.',
+    'It first tries native uninstallation with the Claude CLI and then cleans cache, marketplace, and residual records.',
+  ),
+  uninstallWindowsBody: tr(
+    'Hace la misma limpieza completa en Windows: plugin, marketplace, caché y JSON internos si siguen teniendo rastro.',
+    'It performs the same full cleanup on Windows: plugin, marketplace, cache, and internal JSON files if they still keep traces.',
+  ),
+  uninstallNativeStep: tr('1. Intenta la vía nativa de Claude Code', '1. Try Claude Code native removal first'),
+  uninstallCleanupStep: tr('2. Si quedan restos, revisa estas rutas', '2. If anything remains, review these paths'),
+  uninstallKeepStep: tr('3. Esto no se borra automáticamente', '3. This is not deleted automatically'),
+  uninstallKeepBody: tr(
+    'Si quieres limpieza total de un proyecto concreto, elimina esos ficheros a mano dentro de cada repo donde hayas usado Alfred Dev.',
+    'If you want full cleanup for a specific project, delete those files manually inside each repo where you used Alfred Dev.',
+  ),
+  uninstallFinalNote: tr(
+    'Después de desinstalar, reinicia Claude Code para que el cambio se aplique de verdad.',
+    'After uninstalling, restart Claude Code so the change is really applied.',
+  ),
+  fullChangelog: tr('Changelog completo', 'Full changelog'),
+  added: tr('Añadido', 'Added'),
+  changed: tr('Cambiado', 'Changed'),
+  fixed: tr('Corregido', 'Fixed'),
+  systemPrinciples: tr('Principios de sistema', 'System principles'),
+  openChangelog: tr('Abrir changelog', 'Open changelog'),
+  commandCoreLabel: tr('Núcleo', 'Core'),
+  commandOptionalLabel: tr('Opcionales', 'Optional'),
+  commandLayersLabel: tr('Capas', 'Layers'),
+  mode: tr('Modo', 'Mode'),
+  commandCoreEntry: tr('Núcleo que entra', 'Core agents involved'),
+  commandOptionalEntry: tr('Opcionales que pueden entrar', 'Optional agents that may join'),
+  commandLayerEntry: tr('Capas activas', 'Active layers'),
+  commandReality: tr('Qué hace de verdad', 'What it really does'),
+  agentLabel: tr('Agente', 'Agent'),
+  agentRoleLabel: tr('Rol', 'Role'),
+  type: tr('Tipo', 'Type'),
+  model: tr('Modelo', 'Model'),
+  tools: tr('Herramientas', 'Tools'),
+  howItEnters: tr('Cómo entra en el flujo', 'How it enters the flow'),
+  whatItDoesTitle: tr('Qué hace', 'What it does'),
+  whatItDoesntTitle: tr('Qué no hace', "What it doesn't do"),
+  runtimeLayer: tr('Runtime', 'Runtime'),
+  layerTitle: tr('Capa auxiliar', 'Auxiliary layer'),
+  layerAdds: tr('Qué aporta', 'What it adds'),
+  copied: tr('Copiado', 'Copied'),
+  manualCopy: tr('Copia manual', 'Copy manually'),
+  installationOn: tr('Instalación en', 'Install on'),
+  coreTag: tr('Core', 'Core'),
+  optionalTag: tr('Opcional', 'Optional'),
+};
+
+const installCommands = {
+  macos: {
+    label: tr('Instalar en macOS', 'Install on macOS'),
+    platform: 'macOS',
+    icon: icons.apple,
+    command:
+      'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
+  },
+  linux: {
+    label: tr('Instalar en Linux', 'Install on Linux'),
+    platform: 'Linux',
+    icon: icons.linux,
+    command:
+      'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
+  },
+  windows: {
+    label: tr('Instalar en Windows', 'Install on Windows'),
+    platform: 'Windows',
+    icon: icons.windows,
+    command:
+      'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
+  },
+};
+const uninstallGuides = {
+  bash: {
+    title: 'macOS / Linux',
+    command:
+      'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.sh | bash',
+  },
+  windows: {
+    title: 'Windows',
+    command:
+      'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.ps1 | iex',
+  },
+  manual: {
+    title: tr('Manual', 'Manual'),
+    commands: [
+      'claude plugin uninstall alfred-dev@alfred-dev',
+      'claude plugin marketplace remove alfred-dev',
+    ],
+    cleanup: [
+      '~/.claude/plugins/cache/alfred-dev/',
+      '~/.claude/plugins/marketplaces/alfred-dev/',
+      '~/.claude/plugins/known_marketplaces.json',
+      '~/.claude/plugins/installed_plugins.json',
+      '~/.claude/settings.json',
+    ],
+    keep: [
+      '.claude/alfred-dev.local.md',
+      '.claude/alfred-dev-state.json',
+    ],
+  },
+};
+
+const whatItDoes = [
+  {
+    index: '01',
+    title: tr('Decide el siguiente paso', 'Decides the next step'),
+    body: tr(
+      'Lee el repo, la sesión y el estado de SonIA para arrancar por map-codebase, discuss, feature o verify sin montar el flujo a mano.',
+      'Reads the repo, the current session, and SonIA state to start with map-codebase, discuss, feature, or verify without assembling the flow by hand.',
+    ),
+    tone: 'butter',
+  },
+  {
+    index: '02',
+    title: tr('Expone el estado operativo', 'Exposes operational state'),
+    body: tr(
+      'Kanban, bloqueos, handoff, UAT, memoria y siguiente acción quedan visibles desde CLI con progress, standup, blocked, validate y search.',
+      'Kanban, blockers, handoff, UAT, memory, and the next action stay visible from the CLI with progress, standup, blocked, validate, and search.',
+    ),
+    tone: 'mint',
+  },
+  {
+    index: '03',
+    title: tr('Entrega con evidencia', 'Ships with evidence'),
+    body: tr(
+      'El flujo obliga a pasar por diseño técnico, TDD, seguridad, QA, documentación y release antes de cerrar una fase.',
+      'The flow forces technical design, TDD, security, QA, documentation, and release work before a phase can be closed.',
+    ),
+    tone: 'sky',
+  },
+];
+
+const agentMeta: AgentMeta[] = [
+  { id: 'alfred', file: 'alfred.md', label: 'Alfred', cardSummary: tr('Orquesta flujo, fases y gates.', 'Orchestrates flow, phases, and gates.'), tone: 'butter', group: 'core' },
+  { id: 'product-owner', file: 'product-owner.md', label: 'Product Owner', cardSummary: tr('Define problema, alcance y criterios.', 'Defines problem, scope, and criteria.'), tone: 'mint', group: 'core' },
+  { id: 'architect', file: 'architect.md', label: 'Architect', cardSummary: tr('Diseña la solución técnica.', 'Designs the technical solution.'), tone: 'lavender', group: 'core' },
+  { id: 'senior-dev', file: 'senior-dev.md', label: 'Senior Dev', cardSummary: tr('Implementa el trabajo principal.', 'Implements the main work.'), tone: 'sky', group: 'core' },
+  { id: 'security-officer', file: 'security-officer.md', label: 'Security Officer', cardSummary: tr('Protege gates y riesgos.', 'Protects gates and risks.'), tone: 'peach', group: 'core' },
+  { id: 'qa-engineer', file: 'qa-engineer.md', label: 'QA Engineer', cardSummary: tr('Valida y busca regresiones.', 'Validates changes and hunts regressions.'), tone: 'butter', group: 'core' },
+  { id: 'devops-engineer', file: 'devops-engineer.md', label: 'DevOps Engineer', cardSummary: tr('Empaqueta y despliega.', 'Packages and deploys.'), tone: 'mint', group: 'core' },
+  { id: 'tech-writer', file: 'tech-writer.md', label: 'Tech Writer', cardSummary: tr('Documenta artefactos y cambios.', 'Documents artifacts and changes.'), tone: 'pink', group: 'core' },
+  { id: 'project-manager', file: 'project-manager.md', label: 'Project Manager / SonIA', cardSummary: tr('PM operativo: kanban, estado y trazabilidad.', 'Operational PM: kanban, state, and traceability.'), tone: 'pink', group: 'core', wide: true },
+  { id: 'selina', file: 'selina.md', label: 'Selina', cardSummary: tr('Define el sistema de diseño.', 'Defines the design system.'), tone: 'lavender', group: 'core', wide: true },
+  { id: 'data-engineer', file: 'data-engineer.md', label: 'Data Engineer', cardSummary: tr('Datos, esquemas y migraciones.', 'Data, schemas, and migrations.'), tone: 'sky', group: 'optional' },
+  { id: 'ux-reviewer', file: 'ux-reviewer.md', label: 'UX Reviewer', cardSummary: tr('Experiencia y accesibilidad.', 'User experience and accessibility.'), tone: 'pink', group: 'optional' },
+  { id: 'performance-engineer', file: 'performance-engineer.md', label: 'Performance Engineer', cardSummary: tr('Mide y optimiza rendimiento.', 'Measures and optimizes performance.'), tone: 'lavender', group: 'optional' },
+  { id: 'github-manager', file: 'github-manager.md', label: 'GitHub Manager', cardSummary: tr('Repo, PRs y releases.', 'Repo, PRs, and releases.'), tone: 'mint', group: 'optional' },
+  { id: 'seo-specialist', file: 'seo-specialist.md', label: 'SEO Specialist', cardSummary: tr('Visibilidad pública y SEO.', 'Public visibility and SEO.'), tone: 'butter', group: 'optional' },
+  { id: 'copywriter', file: 'copywriter.md', label: 'Copywriter', cardSummary: tr('Mensajes, tono y CTAs.', 'Messaging, tone, and CTAs.'), tone: 'peach', group: 'optional' },
+  { id: 'librarian', file: 'librarian.md', label: 'Librarian', cardSummary: tr('Memoria del proyecto bajo demanda.', 'On-demand project memory.'), tone: 'butter', group: 'optional' },
+  { id: 'i18n-specialist', file: 'i18n-specialist.md', label: 'I18n Specialist', cardSummary: tr('Locales, formatos y cadenas.', 'Locales, formats, and strings.'), tone: 'sky', group: 'optional' },
+  { id: 'lucius', file: 'lucius.md', label: 'Lucius', cardSummary: tr('Segunda opinión técnica externa.', 'External technical second opinion.'), tone: 'lavender', group: 'optional' },
+];
+const agentVoiceMap: Record<Locale, Record<string, string>> = {
+  es: {
+    alfred:
+      'Es el eje central de Alfred Dev. No ejecuta tareas técnicas por sí mismo: coordina al resto del equipo, decide qué agente entra, en qué orden y con qué objetivo.',
+    'product-owner':
+      'Está obsesionado con entender el problema real antes de pensar en la solución. Su criterio es simple: si no resuelve una necesidad real de un usuario real, no merece entrar en alcance.',
+    architect:
+      'Piensa en sistemas, dependencias y límites. Convierte un PRD aprobado en un diseño técnico sólido para que la implementación no dependa de decisiones improvisadas.',
+    'senior-dev':
+      'Es quien convierte diseño en código mantenible. Trabaja con foco en claridad, pruebas y decisiones pragmáticas para que cada cambio se pueda sostener en el tiempo.',
+    'security-officer':
+      'Opera desde la desconfianza profesional: busca vulnerabilidades, revisa exposición y evita que un detalle técnico termine siendo un riesgo real de negocio.',
+    'qa-engineer':
+      'Su trabajo es romper el cambio antes de que lo haga producción. Busca regresiones, casos límite y zonas débiles que el resto del equipo tiende a dar por buenas demasiado pronto.',
+    'devops-engineer':
+      'Mantiene la infraestructura, CI/CD y despliegues bajo control. Si un proceso se repite o una entrega depende de pasos manuales, su terreno natural es automatizarlo.',
+    'tech-writer':
+      'Traduce jerga técnica a documentación utilizable. Aterriza decisiones, guías y cambios para que el producto no dependa sólo de la memoria de quien lo implementó.',
+    'project-manager':
+      'SonIA es la memoria operativa del flujo. No programa ni diseña: convierte PRDs, fases, tareas, bloqueos y evidencia en un estado legible y trazable para todo el equipo.',
+    selina:
+      'Define el sistema de diseño antes de construir UI de verdad. Parte de 10 familias base, fuerza una decisión explícita entre 3 finalistas y la convierte en una referencia reutilizable para frontend.',
+    'data-engineer':
+      'Piensa en tablas, relaciones, migraciones y consistencia. Entra cuando el modelo de datos puede condicionar la estabilidad del producto mucho más que cualquier detalle visual.',
+    'ux-reviewer':
+      'Defiende al usuario final desde usabilidad y accesibilidad. Revisa si los flujos son comprensibles, si sobran pasos y si la interfaz excluye a alguien sin necesidad.',
+    'performance-engineer':
+      'Mide, perfila y optimiza. Su trabajo es evitar que la latencia, el peso del bundle o el coste de render degraden la experiencia y la conversión.',
+    'github-manager':
+      'Ordena el repositorio como superficie operativa: issues, PRs, releases y automatismos. Entra para que el trabajo colaborativo no dependa del caos ni de la memoria informal.',
+    'seo-specialist':
+      'Piensa en descubrimiento orgánico y señales públicas. Revisa estructura, metadatos y rendimiento para que una página correcta también sea encontrable.',
+    copywriter:
+      'Cuida la redacción de superficies públicas. Ajusta tono, claridad y CTAs para que el producto explique bien su valor sin sonar genérico ni inflado.',
+    librarian:
+      'Es el archivista riguroso del proyecto. Cuando entra, responde sólo con memoria trazable y deja claro qué sabe, qué no sabe y de dónde sale cada afirmación.',
+    'i18n-specialist':
+      'Se encarga de que el producto pueda hablar varios idiomas sin trampas. Revisa claves, cobertura por locale, formatos regionales y señales que rompen la traducibilidad real.',
+    lucius:
+      'Es la segunda opinión técnica externa del equipo. No forma parte del loop normal de implementación: entra para auditar con distancia antes de cerrar o publicar.',
+  },
+  en: {
+    alfred:
+      'He is the central axis of Alfred Dev. He does not execute technical work himself: he coordinates the rest of the team, decides which agent enters, in what order, and for what objective.',
+    'product-owner':
+      'He is obsessed with understanding the real problem before thinking about the solution. His rule is simple: if it does not solve a real need for a real user, it does not deserve to enter scope.',
+    architect:
+      'He thinks in systems, dependencies, and boundaries. He turns an approved PRD into a solid technical design so implementation does not depend on improvised decisions.',
+    'senior-dev':
+      'He turns design into maintainable code. He works with clarity, tests, and pragmatic decisions so every change can be sustained over time.',
+    'security-officer':
+      'He operates from professional distrust: he looks for vulnerabilities, reviews exposure, and prevents a technical detail from becoming a real business risk.',
+    'qa-engineer':
+      'His job is to break the change before production does. He looks for regressions, edge cases, and weak spots the rest of the team is too ready to accept.',
+    'devops-engineer':
+      'He keeps infrastructure, CI/CD, and deployments under control. If a process repeats or a release depends on manual steps, his natural terrain is automation.',
+    'tech-writer':
+      'He translates technical jargon into usable documentation. He turns decisions, guides, and changes into assets the product can keep beyond the memory of the implementer.',
+    'project-manager':
+      'SonIA is the operational memory of the flow. She does not code or design: she turns PRDs, phases, tasks, blockers, and evidence into a readable and traceable state for the whole team.',
+    selina:
+      'She defines the design system before real UI gets built. She starts from 10 base families, forces an explicit decision between 3 finalists, and turns it into a reusable frontend reference.',
+    'data-engineer':
+      'He thinks in tables, relationships, migrations, and consistency. He comes in when the data model can shape product stability more than any visual detail.',
+    'ux-reviewer':
+      'He defends the end user through usability and accessibility. He checks whether flows are understandable, whether steps are unnecessary, and whether the interface excludes anyone.',
+    'performance-engineer':
+      'He measures, profiles, and optimizes. His job is to stop latency, bundle weight, or render cost from degrading experience and conversion.',
+    'github-manager':
+      'He orders the repository as an operational surface: issues, PRs, releases, and automations. He comes in so collaboration does not depend on chaos or informal memory.',
+    'seo-specialist':
+      'He thinks in organic discovery and public signals. He reviews structure, metadata, and performance so a correct page is also discoverable.',
+    copywriter:
+      'He looks after public-facing writing. He adjusts tone, clarity, and CTAs so the product explains its value well without sounding generic or inflated.',
+    librarian:
+      'He is the strict archivist of the project. When he enters, he answers only with traceable memory and makes clear what he knows, what he does not know, and where each statement comes from.',
+    'i18n-specialist':
+      'She makes sure the product can speak multiple languages without shortcuts. She reviews keys, locale coverage, regional formats, and signals that break real translatability.',
+    lucius:
+      'He is the team external technical second opinion. He is not part of the normal implementation loop: he enters to audit from a distance before closure or publication.',
+  },
+};
+
+const englishAgentSource = [...dataEn.coreAgents.agents, ...dataEn.optionalAgents.agents];
+const englishAgentProfileMap = {
+  alfred: englishAgentSource.find((agent) => agent.name === 'Alfred'),
+  'project-manager': englishAgentSource.find((agent) => agent.name === 'SonIA'),
+  'product-owner': englishAgentSource.find((agent) => agent.alias === 'Product Owner'),
+  architect: englishAgentSource.find((agent) => agent.alias === 'Architect'),
+  'senior-dev': englishAgentSource.find((agent) => agent.alias === 'Senior Dev'),
+  'security-officer': englishAgentSource.find((agent) => agent.alias === 'Security Officer'),
+  'qa-engineer': englishAgentSource.find((agent) => agent.alias === 'QA Engineer'),
+  'devops-engineer': englishAgentSource.find((agent) => agent.alias === 'DevOps Engineer'),
+  'tech-writer': englishAgentSource.find((agent) => agent.alias === 'Tech Writer'),
+  selina: englishAgentSource.find((agent) => agent.name === 'Selina'),
+  'data-engineer': englishAgentSource.find((agent) => agent.alias === 'Data Engineer'),
+  'ux-reviewer': englishAgentSource.find((agent) => agent.alias === 'UX Reviewer'),
+  'performance-engineer': englishAgentSource.find((agent) => agent.alias === 'Performance Engineer'),
+  'github-manager': englishAgentSource.find((agent) => agent.alias === 'GitHub Manager'),
+  'seo-specialist': englishAgentSource.find((agent) => agent.alias === 'SEO Specialist'),
+  copywriter: englishAgentSource.find((agent) => agent.alias === 'Copywriter'),
+  librarian: englishAgentSource.find((agent) => agent.alias === 'Project memory'),
+  'i18n-specialist': englishAgentSource.find((agent) => agent.alias === 'i18n Specialist'),
+  lucius: englishAgentSource.find((agent) => agent.name === 'Lucius'),
+};
+
+const buildEnglishAgentLists = (meta: AgentMeta, role: string) => ({
+  does: [
+    role,
+    'Works inside Alfred coordinated flow rather than as an isolated actor.',
+  ],
+  doesnt: [
+    'Does not replace the rest of the team or skip quality gates.',
+    'Does not take ownership outside its domain.',
+  ],
+  flowItems: [
+    meta.group === 'core'
+      ? 'Alfred can bring this agent in as part of the core workflow when its phase begins.'
+      : 'Alfred activates this specialist only when the stack, task, or config justify it.',
+    'Its output is persisted through the orchestrated state, not through ad hoc side channels.',
+  ],
+});
+
+const agentCatalog = agentMeta.map((meta) => {
+  const source = readRepoFile(`docs/agents/${meta.file}`);
+  const heading = stripMd(source.match(/^#\s+(.+)$/m)?.[1] ?? meta.label);
+  const [aliasPart, straplinePart = ''] = heading.split(/\s+--\s+/);
+  const introSection = getSection(source, ['Qu[ií]en es']);
+  const introParagraphs = getParagraphs(introSection, 2);
+  const configRows = getTableData(getSection(source, ['Configuraci[oó]n t[eé]cnica']));
+  const responsibilities = getSection(source, ['Responsabilidades']);
+  const flows = getSection(source, ['Flujos']);
+  const englishProfile = englishAgentProfileMap[meta.id as keyof typeof englishAgentProfileMap];
+  const englishLists = buildEnglishAgentLists(meta, englishProfile?.role ?? meta.cardSummary);
+
+  return {
+    ...meta,
+    alias: isEn ? upperFirst(englishProfile?.alias ?? meta.label) : upperFirst(aliasPart),
+    strapline: isEn ? upperFirst(englishProfile?.phrase ?? '') : upperFirst(stripMd(straplinePart)),
+    cardSummary: upperFirst(meta.cardSummary),
+    summary: upperFirst(introParagraphs[0] ?? meta.cardSummary),
+    description: introParagraphs.map(upperFirst).join('\n\n'),
+    voice: upperFirst(agentVoiceMap[locale][meta.id] ?? introParagraphs[1] ?? introParagraphs[0] ?? meta.cardSummary),
+    role: isEn ? upperFirst(englishProfile?.alias ?? meta.label) : getTableValue(configRows, ['Rol']) || meta.label,
+    model: isEn
+      ? upperFirst(englishProfile?.model ?? (getTableValue(configRows, ['Modelo']) || 'N/A'))
+      : getTableValue(configRows, ['Modelo']) || 'N/D',
+    tools: getTableValue(configRows, ['Herramientas']) || 'N/D',
+    type: isEn ? (meta.group === 'core' ? 'Core' : 'Optional') : getTableValue(configRows, ['Tipo']) || (meta.group === 'core' ? 'Núcleo' : 'Opcional'),
+    does: isEn ? englishLists.does : getBullets(responsibilities, ['Lo que hace', 'Qu[eé] hace']).slice(0, 4).map(upperFirst),
+    doesnt: isEn ? englishLists.doesnt : getBullets(responsibilities, ['Lo que NO hace', 'Qu[eé] NO hace', 'Qu[eé] no hace']).slice(0, 4).map(upperFirst),
+    flowItems: isEn ? englishLists.flowItems : getListItems(flows).slice(0, 4).map(upperFirst),
+  };
+});
+
+const coreAgents = agentCatalog.filter((agent) => agent.group === 'core');
+const optionalAgents = agentCatalog.filter((agent) => agent.group === 'optional');
+const allOptionalAgentIds = optionalAgents.map((agent) => agent.id);
+
+const commandGroups = [
+  {
+    count: '03',
+    name: tr('Entrada', 'Entry'),
+    subtitle: tr('Arranque y ayuda', 'Bootstrap and help'),
+    tone: 'peach',
+    description: tr(
+      'Cargar Alfred, fijar configuración y entender la superficie pública del plugin.',
+      'Load Alfred, set configuration, and understand the public surface of the plugin.',
+    ),
+    chips: ['alfred', 'config', 'help'],
+  },
+  {
+    count: '07',
+    name: tr('Orientación', 'Orientation'),
+    subtitle: tr('Contexto y continuidad', 'Context and continuity'),
+    tone: 'sky',
+    description: tr(
+      'Leer el estado real del repo y decidir el siguiente paso sin reabrir todo el contexto.',
+      'Read the real state of the repo and decide the next step without reopening all context.',
+    ),
+    chips: ['map-codebase', 'discuss', 'next', 'status', 'progress', 'pause', 'resume'],
+  },
+  {
+    count: '06',
+    name: tr('Construcción', 'Build'),
+    subtitle: tr('Entrega y auditoría', 'Delivery and audit'),
+    tone: 'pink',
+    description: tr(
+      'Abrir entrega real: features, cambios rápidos, fixes, exploración técnica, ship y auditoría.',
+      'Open real delivery work: features, quick changes, fixes, technical exploration, ship, and audit.',
+    ),
+    chips: ['feature', 'quick', 'fix', 'spike', 'ship', 'audit'],
+  },
+  {
+    count: '05',
+    name: tr('Control', 'Control'),
+    subtitle: tr('Verificación y bloqueos', 'Verification and blockers'),
+    tone: 'butter',
+    description: tr(
+      'Verificar UAT, detectar bloqueos y revisar la salud operativa antes de seguir o cerrar.',
+      'Verify UAT, detect blockers, and review operational health before continuing or closing.',
+    ),
+    chips: ['verify', 'validate', 'blocked', 'in-progress', 'standup'],
+  },
+  {
+    count: '05',
+    name: tr('Operación', 'Operations'),
+    subtitle: tr('Memoria y mantenimiento', 'Memory and maintenance'),
+    tone: 'lavender',
+    description: tr(
+      'Buscar en memoria, abrir la UI local, sincronizar GitHub, actualizar y pedir una segunda opinión.',
+      'Search memory, open the local UI, sync GitHub, update, and request a second opinion.',
+    ),
+    chips: ['search', 'memory-ui', 'sync-github', 'update', 'lucius'],
+  },
+];
+const commandRuntimeMeta: Record<string, CommandRuntimeMeta> = {
+  alfred: {
+    mode: 'Contextual',
+    detail:
+      'Clasifica la intención del usuario y el estado del proyecto para disparar el comando correcto sin obligar a navegar un menú manual.',
+    notes: [
+      'Lee continuidad, handoff, UAT y contexto persistente antes de decidir.',
+      'Prioriza rutas operativas como next, resume, verify o map-codebase cuando el estado ya lo deja claro.',
+      'Solo pregunta al usuario cuando hay ambigüedad real entre dos caminos con consecuencias distintas.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  config: {
+    mode: 'Setup',
+    detail:
+      'Ajusta autonomía, memoria, personalidad y catálogo opcional del proyecto para que el runtime responda con el equipo correcto.',
+    notes: [
+      'Es el punto canónico para activar o desactivar especialistas opcionales.',
+      'Define cómo trabaja Alfred en el repo antes de entrar en flujos largos.',
+      'Deja cerrados memoria local, autonomía y composición dinámica de equipo.',
+    ],
+    coreAgents: ['alfred'],
+    optionalAgents: allOptionalAgentIds,
+    layerIds: ['sonia', 'memory-ui'],
+  },
+  help: {
+    mode: 'Catálogo',
+    detail:
+      'Expone la superficie pública del plugin para entender qué comandos existen, qué agentes hay y cuándo conviene usar cada capa.',
+    notes: [
+      'Resume comandos, flujos, agentes y límites del sistema.',
+      'Sirve como mapa público del plugin, no como flujo de ejecución.',
+      'Hace visible qué parte del equipo es núcleo y qué parte es opcional.',
+    ],
+    coreAgents: coreAgents.map((agent) => agent.id),
+    optionalAgents: allOptionalAgentIds,
+  },
+  discuss: {
+    mode: 'Refinado',
+    detail:
+      'Aterriza una idea o feature antes de abrir un flujo de implementación completo, intentando resolver el refinado con el menor número de especialistas posible.',
+    notes: [
+      'Alfred intenta resolver primero y solo llama apoyo si realmente aporta.',
+      'Product Owner es el criterio principal para alcance y problema real.',
+      'UX, copy e i18n entran solo si la idea toca interfaz o texto visible.',
+    ],
+    coreAgents: ['alfred', 'product-owner'],
+    optionalAgents: ['ux-reviewer', 'copywriter', 'i18n-specialist'],
+    layerIds: ['sonia'],
+  },
+  'map-codebase': {
+    mode: 'Brownfield',
+    detail:
+      'Analiza un repositorio existente y construye un mapa persistente del codebase antes de abrir feature, fix o audit en un brownfield.',
+    notes: [
+      'Cruza arquitectura, desarrollo, seguridad y PM operativo sobre el repo real.',
+      'Genera contexto reutilizable para continuidad, memoria y siguientes comandos.',
+      'Evita arrancar un equipo multiagente a ciegas en proyectos ya existentes.',
+    ],
+    coreAgents: ['alfred', 'architect', 'senior-dev', 'security-officer', 'project-manager'],
+    layerIds: ['sonia', 'continuity'],
+  },
+  next: {
+    mode: 'Operativo',
+    detail:
+      'Decide el siguiente paso operativo y lo ejecuta solo cuando la ruta es inequívoca a partir del estado persistido del proyecto.',
+    notes: [
+      'Usa continuity como señal primaria para no reabrir contexto manualmente.',
+      'Puede redirigir a resume, verify, map-codebase u otro comando operativo.',
+      'Está pensado para seguir trabajando, no para explicar todo el sistema otra vez.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  status: {
+    mode: 'Operativo',
+    detail:
+      'Muestra el estado de la sesión activa sin reabrir fases ni volver a ejecutar el flujo completo.',
+    notes: [
+      'Lee sesión activa, handoff, UAT y artefactos operativos para resumir el punto exacto.',
+      'Hace visible fase actual, gates pendientes y siguiente comando recomendado.',
+      'No intenta avanzar el flujo desde la propia lectura de estado.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  progress: {
+    mode: 'Operativo',
+    detail:
+      'Resume el proyecto desde SonIA: progreso, kanban, bloqueos, trazabilidad y señal operativa principal.',
+    notes: [
+      'Es la vista compacta del estado operativo real del proyecto.',
+      'Cruza backlog, in progress, blocked, done y trazabilidad.',
+      'Está orientado a decidir el siguiente movimiento, no a rehacer análisis técnico.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'continuity'],
+  },
+  pause: {
+    mode: 'Operativo',
+    detail:
+      'Pausa la sesión actual y deja un handoff explícito para que el trabajo pueda retomarse sin pérdida de fase ni gate.',
+    notes: [
+      'Persiste estado de pausa y contexto de continuidad.',
+      'Sirve para cortar una sesión sin degradar trazabilidad.',
+      'Prepara el terreno para resume o next en la siguiente entrada.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  resume: {
+    mode: 'Operativo',
+    detail:
+      'Retoma una sesión activa o un handoff pendiente y deja claro el siguiente paso exacto sin abrir una nueva iteración por sorpresa.',
+    notes: [
+      'Recupera flujo, fase actual, gate pendiente y acción concreta.',
+      'Limpia marcas de pausa y deja constancia de la reanudación.',
+      'No lanza un flujo nuevo: recompone el contexto y te deja listo para seguir.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  blocked: {
+    mode: 'Operativo',
+    detail:
+      'Lista los bloqueos visibles del kanban local para decidir si toca resolver dependencias, validar o pausar.',
+    notes: [
+      'Lee el tablero de SonIA y devuelve solo bloqueos reales.',
+      'Está pensado para quitar fricción operativa, no para abrir un flujo técnico.',
+      'La salida acaba orientando el siguiente comando más útil.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia'],
+  },
+  'in-progress': {
+    mode: 'Operativo',
+    detail:
+      'Muestra el trabajo que está en marcha ahora mismo en el kanban local del proyecto.',
+    notes: [
+      'Se centra en tareas activas y foco actual del equipo.',
+      'Ayuda a evitar duplicidades y a ver si una fase sigue viva.',
+      'Funciona como lectura rápida del tablero, no como backlog completo.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia'],
+  },
+  standup: {
+    mode: 'Operativo',
+    detail:
+      'Devuelve un standup corto y accionable desde SonIA con tareas en curso, bloqueos y siguiente paso recomendado.',
+    notes: [
+      'Compacta el estado diario sin reabrir el flujo entero.',
+      'Se apoya en counts, tareas clave en curso y señal operativa principal.',
+      'No intenta cerrar gates ni rehacer análisis profundo del repo.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia'],
+  },
+  validate: {
+    mode: 'Operativo',
+    detail:
+      'Valida la integridad operativa del estado local: kanban, trazabilidad, UAT y sincronía con GitHub si existe.',
+    notes: [
+      'Emite un veredicto claro sobre la salud del estado operativo.',
+      'Detecta huecos entre tareas, evidencia, UAT y espejo remoto.',
+      'No corrige artefactos: valida y recomienda el siguiente paso.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'github-sync'],
+  },
+  search: {
+    mode: 'Operativo',
+    detail:
+      'Busca texto en los artefactos de SonIA y en la memoria SQLite del proyecto sin convertir la respuesta en un análisis largo.',
+    notes: [
+      'Prioriza coincidencias exactas o cercanas en el estado operativo.',
+      'Distingue entre resultados documentales y resultados de memoria persistente.',
+      'Es la vía rápida para recuperar decisiones, tareas o contexto perdido.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'memory-ui'],
+  },
+  'memory-ui': {
+    mode: 'Operativo',
+    detail:
+      'Abre la interfaz local de memoria sobre SQLite para revisar timeline, decisiones, commits, health y búsqueda.',
+    notes: [
+      'Hace visible una memoria que de otro modo quedaría enterrada en la base local.',
+      'Trabaja sobre SQLite WAL con FTS5, no sobre un servicio remoto.',
+      'Sirve para inspección operativa y trazabilidad, no para sustituir Claude Code.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['memory-ui', 'sonia'],
+  },
+  'sync-github': {
+    mode: 'Operativo',
+    detail:
+      'Refleja el tablero local de SonIA en GitHub Issues sin perder que la fuente de verdad sigue estando en el proyecto.',
+    notes: [
+      'Sincroniza desde el estado local hacia GitHub, no al revés.',
+      'Actualiza artefactos de sync y puede cerrar o retirar issues generados por Alfred.',
+      'Si gh no está listo, lo deja visible y sugiere apoyo de GitHub Manager.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    optionalAgents: ['github-manager'],
+    layerIds: ['sonia', 'github-sync'],
+  },
+  verify: {
+    mode: 'Operativo',
+    detail:
+      'Prepara o registra la validación manual del entregable actual sin reinterpretar los tests automáticos.',
+    notes: [
+      'Sin argumento prepara el checklist de UAT; con aprobado, rechazado o pendiente persiste el resultado.',
+      'Cierra verificación humana, no quality gates técnicas.',
+      'Mantiene el historial de aceptación manual vinculado al flujo real.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'hooks-evidence'],
+  },
+  feature: {
+    mode: 'Flujo',
+    detail:
+      'Abre el ciclo completo de producto, arquitectura, implementación, seguridad, QA, documentación y entrega.',
+    notes: [
+      'Compone equipo según stack, contexto y opcionales configurados.',
+      'Selina solo entra cuando el proyecto tiene superficie visual real y trabaja con 10 sistemas de diseño base antes de cerrar 3 finalistas.',
+      'Pasa por gates y evidencia antes de cerrar cada fase.',
+    ],
+    coreAgents: [
+      'product-owner',
+      'architect',
+      'senior-dev',
+      'security-officer',
+      'qa-engineer',
+      'tech-writer',
+      'devops-engineer',
+      'selina',
+    ],
+    optionalAgents: allOptionalAgentIds,
+    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+  },
+  quick: {
+    mode: 'Flujo',
+    detail:
+      'Resuelve un cambio pequeño y acotado con menos ceremonia, pero manteniendo seguridad, tests y validación.',
+    notes: [
+      'Recorta burocracia, no rigor técnico.',
+      'Senior Dev, seguridad y QA siguen siendo núcleo fijo.',
+      'Escala a especialistas solo cuando el cambio lo exige de verdad.',
+    ],
+    coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
+    optionalAgents: [
+      'data-engineer',
+      'ux-reviewer',
+      'performance-engineer',
+      'seo-specialist',
+      'copywriter',
+      'i18n-specialist',
+      'lucius',
+    ],
+    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+  },
+  fix: {
+    mode: 'Flujo',
+    detail:
+      'Ataca bugs y regresiones con diagnóstico, corrección TDD y validación posterior antes de dar el cambio por bueno.',
+    notes: [
+      'Empieza por aislar el problema antes de corregir.',
+      'Desarrollo, seguridad y QA forman el núcleo del loop.',
+      'Los especialistas opcionales entran según la naturaleza real del bug.',
+    ],
+    coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
+    optionalAgents: [
+      'data-engineer',
+      'ux-reviewer',
+      'performance-engineer',
+      'seo-specialist',
+      'copywriter',
+      'i18n-specialist',
+      'lucius',
+    ],
+    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+  },
+  spike: {
+    mode: 'Flujo',
+    detail:
+      'Investiga un tema técnico sin comprometer código de producción y deja una recomendación documentada.',
+    notes: [
+      'Architect compara alternativas y Senior Dev prototipa.',
+      'El resultado es conocimiento estructurado, no entrega a producción.',
+      'Los opcionales solo entran bajo demanda si el tema lo justifica.',
+    ],
+    coreAgents: ['architect', 'senior-dev'],
+    layerIds: ['sonia'],
+  },
+  audit: {
+    mode: 'Flujo',
+    detail:
+      'Lanza una auditoría paralela sobre calidad, seguridad, arquitectura y documentación para dejar un diagnóstico transversal del proyecto.',
+    notes: [
+      'Ejecuta cuatro revisiones en paralelo como núcleo por defecto.',
+      'Lucius puede entrar después como segunda opinión técnica externa.',
+      'Si SonarQube no puede correr, deja visible la degradación y sigue con trazabilidad.',
+    ],
+    coreAgents: ['qa-engineer', 'security-officer', 'architect', 'tech-writer'],
+    optionalAgents: ['lucius'],
+    layerIds: ['hooks-evidence'],
+  },
+  ship: {
+    mode: 'Flujo',
+    detail:
+      'Prepara la entrega a producción: auditoría final, documentación, empaquetado y despliegue con confirmación humana.',
+    notes: [
+      'No deja pasar despliegue sin firma y confirmación explícita.',
+      'QA, seguridad, documentación y DevOps forman el núcleo del release.',
+      'Puede incorporar copy, GitHub y Lucius como soporte de cierre.',
+    ],
+    coreAgents: ['qa-engineer', 'security-officer', 'tech-writer', 'devops-engineer'],
+    optionalAgents: ['copywriter', 'github-manager', 'lucius'],
+    layerIds: ['hooks-evidence', 'github-sync', 'continuity'],
+  },
+  lucius: {
+    mode: 'Auditoría externa',
+    detail:
+      'Invoca una segunda opinión técnica externa vía Codex CLI en modo read-only para contrastar el trabajo hecho.',
+    notes: [
+      'Usa codex review con GPT-5.4 y devuelve diagnóstico más prescripción por ítem.',
+      'No sustituye el sign-off canónico del flujo principal.',
+      'Puede centrarse en all, security, tests, architecture o performance.',
+    ],
+    coreAgents: ['alfred', 'architect'],
+    optionalAgents: ['lucius'],
+  },
+  update: {
+    mode: 'Mantenimiento',
+    detail:
+      'Comprueba la última release en GitHub, compara semver real y ejecuta el instalador correcto si el usuario acepta actualizar.',
+    notes: [
+      'Lee la versión instalada desde la caché del plugin y la compara con GitHub Releases.',
+      'Si hay versión nueva, ofrece actualizar ahora o dejarlo para luego.',
+      'Tras actualizar, recuerda reiniciar Claude Code para cargar el plugin nuevo.',
+    ],
+    coreAgents: ['alfred'],
+  },
+};
+const commandRuntimeMetaEn: Record<string, CommandRuntimeMeta> = {
+  alfred: {
+    mode: 'Contextual',
+    detail:
+      'Classifies user intent and project state so it can trigger the right command without forcing a manual menu.',
+    notes: [
+      'Reads continuity, handoff, UAT, and persistent context before deciding.',
+      'Only asks the user when two routes would have materially different consequences.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  config: {
+    mode: 'Setup',
+    detail:
+      'Adjusts autonomy, memory, personality, and optional catalog so runtime responds with the right team for the repo.',
+    notes: [
+      'This is the canonical place to enable or disable optional specialists.',
+      'Leaves memory, autonomy, and runtime composition explicitly configured.',
+    ],
+    coreAgents: ['alfred'],
+    optionalAgents: allOptionalAgentIds,
+    layerIds: ['sonia', 'memory-ui'],
+  },
+  help: {
+    mode: 'Catalog',
+    detail:
+      'Exposes the public surface of the plugin so you can understand commands, agents, and runtime layers without entering a workflow.',
+    notes: [
+      'It maps the system; it does not execute it.',
+      'Makes core and optional parts of the team visible in one place.',
+    ],
+    coreAgents: coreAgents.map((agent) => agent.id),
+    optionalAgents: allOptionalAgentIds,
+  },
+  discuss: {
+    mode: 'Refinement',
+    detail:
+      'Refines an idea or feature before opening a full implementation workflow, using the smallest team that still gives signal.',
+    notes: [
+      'Product Owner is the main lens for scope and real problem.',
+      'UX, copy, and i18n join only if the idea touches visible interface or content.',
+    ],
+    coreAgents: ['alfred', 'product-owner'],
+    optionalAgents: ['ux-reviewer', 'copywriter', 'i18n-specialist'],
+    layerIds: ['sonia'],
+  },
+  'map-codebase': {
+    mode: 'Brownfield',
+    detail:
+      'Analyzes an existing repository and builds a persistent codebase map before opening feature, fix, or audit in a brownfield project.',
+    notes: [
+      'Crosses architecture, development, security, and PM signals over the real repo.',
+      'Avoids starting a multi-agent team blind on an existing system.',
+    ],
+    coreAgents: ['alfred', 'architect', 'senior-dev', 'security-officer', 'project-manager'],
+    layerIds: ['sonia', 'continuity'],
+  },
+  next: {
+    mode: 'Operational',
+    detail:
+      'Decides the next operational step and executes it only when the route is unambiguous from persisted project state.',
+    notes: [
+      'Uses continuity as the primary signal so you do not have to reopen context manually.',
+      'Can redirect to resume, verify, map-codebase, or another operational command.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  status: {
+    mode: 'Operational',
+    detail:
+      'Shows the state of the active session without reopening phases or replaying the entire flow.',
+    notes: [
+      'Makes current phase, pending gates, and recommended next command visible.',
+      'It is a read of state, not a step forward.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  progress: {
+    mode: 'Operational',
+    detail:
+      'Summarizes the project from SonIA: progress, kanban, blockers, traceability, and the main operational signal.',
+    notes: [
+      'Acts as the compact read of real project state.',
+      'Helps decide the next move without rerunning technical analysis.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'continuity'],
+  },
+  pause: {
+    mode: 'Operational',
+    detail:
+      'Pauses the current session and leaves an explicit handoff so work can resume without losing phase or gate.',
+    notes: [
+      'Persists pause state and continuity context.',
+      'Prepares the ground for resume or next in the following entry.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  resume: {
+    mode: 'Operational',
+    detail:
+      'Resumes an active session or pending handoff and makes the exact next step explicit without opening a new iteration by surprise.',
+    notes: [
+      'Recovers workflow, current phase, pending gate, and concrete next action.',
+      'Rebuilds context first; it does not silently start a new flow.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['continuity', 'sonia'],
+  },
+  blocked: {
+    mode: 'Operational',
+    detail:
+      'Lists visible blockers from the local kanban so the team can decide whether to resolve dependencies, validate, or pause.',
+    notes: [
+      'Reads only real blockers from SonIA board state.',
+      'Its output points to the most useful next command.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia'],
+  },
+  'in-progress': {
+    mode: 'Operational',
+    detail:
+      'Shows the work currently in flight on the project local kanban.',
+    notes: [
+      'Focuses on active tasks and current team attention.',
+      'Useful to avoid duplication before picking up work.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia'],
+  },
+  standup: {
+    mode: 'Operational',
+    detail:
+      'Returns a short actionable standup from SonIA with work in progress, blockers, and the recommended next step.',
+    notes: [
+      'Compresses the daily state without reopening the whole flow.',
+      'Designed as an operational briefing, not as a deep repo audit.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia'],
+  },
+  validate: {
+    mode: 'Operational',
+    detail:
+      'Validates the integrity of local operational state: kanban, traceability, UAT, and GitHub sync if it exists.',
+    notes: [
+      'Returns a clear verdict on operational health.',
+      'Does not repair artifacts; it validates and recommends the next step.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'github-sync'],
+  },
+  search: {
+    mode: 'Operational',
+    detail:
+      'Searches SonIA artifacts and project SQLite memory without turning the response into a long analysis.',
+    notes: [
+      'Distinguishes between documentary matches and persistent-memory matches.',
+      'Useful to recover decisions, tasks, or lost context quickly.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'memory-ui'],
+  },
+  'memory-ui': {
+    mode: 'Operational',
+    detail:
+      'Opens the local memory UI on top of SQLite so you can inspect timeline, decisions, commits, health, and search.',
+    notes: [
+      'Makes project memory visible instead of burying it inside the local database.',
+      'Works over local SQLite WAL with FTS5, not a remote service.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['memory-ui', 'sonia'],
+  },
+  'sync-github': {
+    mode: 'Operational',
+    detail:
+      'Mirrors SonIA local board into GitHub Issues without giving up the project as the source of truth.',
+    notes: [
+      'Sync goes from local state to GitHub, never the other way around.',
+      'If gh is not ready, it leaves the limitation visible and suggests GitHub Manager support.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    optionalAgents: ['github-manager'],
+    layerIds: ['sonia', 'github-sync'],
+  },
+  verify: {
+    mode: 'Operational',
+    detail:
+      'Prepares or records manual validation of the current deliverable without reinterpreting automated tests.',
+    notes: [
+      'Without arguments it prepares UAT; with approved, rejected, or pending it persists the result.',
+      'Closes human validation, not technical quality gates.',
+    ],
+    coreAgents: ['alfred', 'project-manager'],
+    layerIds: ['sonia', 'hooks-evidence'],
+  },
+  feature: {
+    mode: 'Flow',
+    detail:
+      'Opens the complete cycle of product, architecture, implementation, security, QA, documentation, and delivery.',
+    notes: [
+      'Builds the team according to stack, context, and configured optionals.',
+      'Selina only enters when the project has a real visual surface and works from 10 base design systems before closing 3 finalists.',
+    ],
+    coreAgents: [
+      'product-owner',
+      'architect',
+      'senior-dev',
+      'security-officer',
+      'qa-engineer',
+      'tech-writer',
+      'devops-engineer',
+      'selina',
+    ],
+    optionalAgents: allOptionalAgentIds,
+    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+  },
+  quick: {
+    mode: 'Flow',
+    detail:
+      'Resolves a small bounded change with less ceremony, while keeping security, tests, and validation in place.',
+    notes: [
+      'Cuts bureaucracy, not technical rigor.',
+      'Scales to specialists only when the change really needs them.',
+    ],
+    coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
+    optionalAgents: [
+      'data-engineer',
+      'ux-reviewer',
+      'performance-engineer',
+      'seo-specialist',
+      'copywriter',
+      'i18n-specialist',
+      'lucius',
+    ],
+    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+  },
+  fix: {
+    mode: 'Flow',
+    detail:
+      'Attacks bugs and regressions with diagnosis, TDD correction, and post-fix validation before the change is accepted.',
+    notes: [
+      'Starts by isolating the problem before changing code.',
+      'Development, security, and QA form the stable loop.',
+    ],
+    coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
+    optionalAgents: [
+      'data-engineer',
+      'ux-reviewer',
+      'performance-engineer',
+      'seo-specialist',
+      'copywriter',
+      'i18n-specialist',
+      'lucius',
+    ],
+    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+  },
+  spike: {
+    mode: 'Flow',
+    detail:
+      'Investigates a technical topic without committing production code and leaves a documented recommendation behind.',
+    notes: [
+      'Architect compares alternatives and Senior Dev prototypes.',
+      'The result is structured knowledge, not a production release.',
+    ],
+    coreAgents: ['architect', 'senior-dev'],
+    layerIds: ['sonia'],
+  },
+  audit: {
+    mode: 'Flow',
+    detail:
+      'Launches a parallel audit over quality, security, architecture, and documentation to leave a transversal project diagnosis.',
+    notes: [
+      'Runs four parallel reviews as the default core.',
+      'Lucius can join afterward as an external second opinion.',
+    ],
+    coreAgents: ['qa-engineer', 'security-officer', 'architect', 'tech-writer'],
+    optionalAgents: ['lucius'],
+    layerIds: ['hooks-evidence'],
+  },
+  ship: {
+    mode: 'Flow',
+    detail:
+      'Prepares delivery to production: final audit, documentation, packaging, and deployment with human confirmation.',
+    notes: [
+      'Does not allow deployment without explicit sign-off.',
+      'QA, security, documentation, and DevOps form the release nucleus.',
+    ],
+    coreAgents: ['qa-engineer', 'security-officer', 'tech-writer', 'devops-engineer'],
+    optionalAgents: ['copywriter', 'github-manager', 'lucius'],
+    layerIds: ['hooks-evidence', 'github-sync', 'continuity'],
+  },
+  lucius: {
+    mode: 'External audit',
+    detail:
+      'Invokes an external technical second opinion through Codex CLI in read-only mode to contrast the work already done.',
+    notes: [
+      'Uses codex review with GPT-5.4 and returns diagnosis plus prescription per item.',
+      'It does not replace the canonical sign-off of the main workflow.',
+    ],
+    coreAgents: ['alfred', 'architect'],
+    optionalAgents: ['lucius'],
+  },
+  update: {
+    mode: 'Maintenance',
+    detail:
+      'Checks the latest GitHub release, compares real semver, and runs the correct installer if the user accepts the update.',
+    notes: [
+      'Reads the installed version from plugin cache and compares it with GitHub Releases.',
+      'After updating, it reminds you to restart Claude Code so the new plugin loads.',
+    ],
+    coreAgents: ['alfred'],
+  },
+};
+const activeCommandRuntimeMeta = isEn ? commandRuntimeMetaEn : commandRuntimeMeta;
+const commandCatalog = commandGroups.flatMap((group) =>
+  group.chips.map((id) => {
+    const source = readRepoFile(`commands/${id}.md`);
+    const meta = activeCommandRuntimeMeta[id];
+    return {
+      id,
+      label: `/alfred-dev:${id}`,
+      shortLabel: id,
+      group: group.name,
+      subtitle: group.subtitle,
+      tone: group.tone,
+      description: upperFirst(isEn ? meta?.detail ?? `Alfred Dev ${id} command.` : parseFrontmatterField(source, 'description') || `Comando ${id} de Alfred Dev.`),
+      detail: meta?.detail ?? (isEn ? 'Operational plugin surface.' : 'Superficie operativa del plugin.'),
+      mode: meta?.mode ?? (isEn ? 'Operational' : 'Operativo'),
+      notes: meta?.notes ?? [],
+      coreAgents: meta?.coreAgents ?? [],
+      optionalAgents: meta?.optionalAgents ?? [],
+      layerIds: meta?.layerIds ?? [],
+    };
+  }),
+);
+
+const skillDomainMeta: Record<string, { label: string; summary: string }> = {
+  arquitectura: { label: tr('Arquitectura', 'Architecture'), summary: tr('Stack, ADRs, dependencias y diseño de sistema.', 'Stack, ADRs, dependencies, and system design.') },
+  calidad: { label: tr('Calidad', 'Quality'), summary: tr('Revisión, regresión, testing, Sonar e incidentes.', 'Review, regression, testing, Sonar, and incidents.') },
+  datos: { label: tr('Datos', 'Data'), summary: tr('Esquema, migraciones y optimización de consultas.', 'Schema, migrations, and query optimization.') },
+  desarrollo: { label: tr('Desarrollo', 'Development'), summary: tr('Exploración de código, TDD, refactor y respuesta a review.', 'Code exploration, TDD, refactor, and review response.') },
+  devops: { label: 'DevOps', summary: tr('CI/CD, deploy, Docker, observabilidad y releases.', 'CI/CD, deploy, Docker, observability, and releases.') },
+  documentacion: { label: tr('Documentación', 'Documentation'), summary: tr('API, README, onboarding, changelog y guías.', 'API, README, onboarding, changelog, and guides.') },
+  estilo: { label: tr('Estilo', 'Style'), summary: tr('Dirección visual antes de tocar frontend.', 'Visual direction before touching frontend.') },
+  github: { label: 'GitHub', summary: tr('Issues, PRs, releases y setup de repositorio.', 'Issues, PRs, releases, and repository setup.') },
+  marketing: { label: tr('Marketing', 'Marketing'), summary: tr('Copy, tono y CTAs para superficies públicas.', 'Copy, tone, and CTAs for public surfaces.') },
+  producto: { label: tr('Producto', 'Product'), summary: tr('PRD, historias, criterios y análisis competitivo.', 'PRD, stories, criteria, and competitive analysis.') },
+  rendimiento: { label: tr('Rendimiento', 'Performance'), summary: tr('Benchmarks, profiling y bundle size.', 'Benchmarks, profiling, and bundle size.') },
+  seguridad: { label: tr('Seguridad', 'Security'), summary: tr('OWASP, SBOM, dependencias y compliance.', 'OWASP, SBOM, dependencies, and compliance.') },
+  seo: { label: 'SEO', summary: tr('Meta tags, structured data y Lighthouse.', 'Meta tags, structured data, and Lighthouse.') },
+  ux: { label: 'UX', summary: tr('Accesibilidad, flujos y heurísticas de usabilidad.', 'Accessibility, flows, and usability heuristics.') },
+};
+const skillDomainOrder = [
+  'producto',
+  'arquitectura',
+  'desarrollo',
+  'calidad',
+  'seguridad',
+  'datos',
+  'devops',
+  'documentacion',
+  'estilo',
+  'ux',
+  'seo',
+  'marketing',
+  'github',
+  'rendimiento',
+];
+const featuredSkillIds = ['incident-response', 'sonarqube', 'release-planning', 'dependency-strategy', 'style-direction'];
+const collectSkillFiles = (root: string, bucket: string[] = []) => {
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const entryPath = resolvePath(root, entry.name);
+    if (entry.isDirectory()) {
+      collectSkillFiles(entryPath, bucket);
+    } else if (entry.isFile() && entry.name === 'SKILL.md') {
+      bucket.push(entryPath);
+    }
+  }
+  return bucket;
+};
+const skillCatalog = collectSkillFiles(resolvePath(repoRootPath, 'skills')).map((skillPath) => {
+  const source = readFileSync(skillPath, 'utf8');
+  const relativePath = skillPath.slice(repoRootPath.length).replace(/^[/\\]/, '');
+  const [, domainId, skillId] = relativePath.match(/^skills\/([^/]+)\/([^/]+)\/SKILL\.md$/) ?? [];
+  const description =
+    parseFrontmatterField(source, 'description') ||
+    (skillId === 'style-direction'
+      ? 'Fija el sistema de diseño con 10 bases y 3 finalistas antes de tocar frontend.'
+      : `Skill interno de ${skillDomainMeta[domainId]?.label ?? titleFromId(domainId)}.`);
+
+  return {
+    id: skillId,
+    label: titleFromId(skillId),
+    domainId,
+    domainLabel: skillDomainMeta[domainId]?.label ?? titleFromId(domainId),
+    description: upperFirst(description),
+    featured: featuredSkillIds.includes(skillId),
+  };
+});
+const skillDomains = skillDomainOrder
+  .map((domainId) => ({
+    id: domainId,
+    label: skillDomainMeta[domainId]?.label ?? titleFromId(domainId),
+    summary: skillDomainMeta[domainId]?.summary ?? '',
+    skills: skillCatalog.filter((skill) => skill.domainId === domainId),
+  }))
+  .filter((domain) => domain.skills.length > 0)
+  .map((domain) => ({
+    ...domain,
+    count: domain.skills.length,
+    examples: domain.skills.slice(0, 3).map((skill) => skill.label),
+  }));
+const featuredSkills = featuredSkillIds
+  .map((skillId) => skillCatalog.find((skill) => skill.id === skillId))
+  .filter((skill): skill is (typeof skillCatalog)[number] => Boolean(skill));
+
+const auxiliaryLayers = [
+  {
+    id: 'sonia',
+    title: 'SonIA',
+    body: tr('Tablero, trazabilidad y estado operativo en tiempo real.', 'Board, traceability, and real-time operational state.'),
+    detail: tr(
+      'Es la memoria operativa del flujo: convierte PRDs, fases, tareas, bloqueos y evidencia en un estado legible para todo el equipo.',
+      'It is the operational memory of the flow: it turns PRDs, phases, tasks, blockers, and evidence into a readable state for the whole team.',
+    ),
+    points: [
+      tr('Hace visible el progreso real y los bloqueos activos.', 'Makes real progress and active blockers visible.'),
+      tr('Sostiene continuidad, handoff y trazabilidad entre fases.', 'Sustains continuity, handoff, and traceability across phases.'),
+      tr('Da contexto a comandos como progress, standup, blocked y validate.', 'Gives context to commands such as progress, standup, blocked, and validate.'),
+    ],
+  },
+  {
+    id: 'selina-layer',
+    title: 'Selina',
+    body: tr('10 sistemas de diseño base antes de tocar CSS o componentes.', '10 base design systems before touching CSS or components.'),
+    detail: tr(
+      'Entra antes de construir UI final. Parte de un catálogo de 10 sistemas de diseño base, reduce el espacio a 3 propuestas comparables y deja la decisión cerrada en una dirección reusable.',
+      'It enters before final UI is built. It starts from a catalog of 10 base design systems, narrows the space to 3 comparable proposals, and leaves the decision closed as a reusable direction.',
+    ),
+    points: [
+      tr('Evita improvisar frontend sin criterio de sistema de diseño.', 'Prevents frontend improvisation without design-system criteria.'),
+      tr('Abre una fase visual sólo cuando el stack tiene superficie pública y UI real.', 'Opens a visual phase only when the stack has a public surface and real UI.'),
+      tr('Convierte una preferencia difusa en una referencia concreta para implementación.', 'Turns a vague preference into a concrete implementation reference.'),
+    ],
+  },
+  {
+    id: 'continuity',
+    title: 'Continuity',
+    body: tr('next, pause, resume y handoff sin perder fase ni gate.', 'next, pause, resume, and handoff without losing phase or gate.'),
+    detail: tr(
+      'Mantiene el hilo operativo de la sesión para que el trabajo no dependa de memoria informal ni de releer todo el contexto cada vez.',
+      'Keeps the operational thread of the session so work does not depend on informal memory or rereading all context every time.',
+    ),
+    points: [
+      tr('Congela y recupera estado real del flujo.', 'Freezes and restores the real state of the flow.'),
+      tr('Permite handoff entre sesiones sin saltarse gates.', 'Allows handoff between sessions without skipping gates.'),
+      tr('Hace que next, pause y resume sean operativos de verdad.', 'Makes next, pause, and resume truly operational.'),
+    ],
+  },
+  {
+    id: 'github-sync',
+    title: 'GitHub Sync',
+    body: tr('Espejo opcional del tablero local en GitHub Issues.', 'Optional mirror of the local board in GitHub Issues.'),
+    detail: tr(
+      'Replica el estado operativo a GitHub cuando el equipo necesita visibilidad externa del flujo, sin convertir GitHub en la fuente principal de verdad.',
+      'Replicates operational state to GitHub when the team needs external visibility of the flow, without turning GitHub into the main source of truth.',
+    ),
+    points: [
+      tr('Sirve como espejo de seguimiento, no como orquestador.', 'Works as a tracking mirror, not as the orchestrator.'),
+      tr('Mantiene sincronía entre estado local y superficie colaborativa.', 'Keeps local state and collaborative surface in sync.'),
+      tr('Es opcional para no forzar dependencia de GitHub en todos los repos.', 'It is optional so GitHub is not forced on every repo.'),
+    ],
+  },
+  {
+    id: 'memory-ui',
+    title: 'Memory UI',
+    body: tr('Timeline, decisiones, commits y health sobre SQLite local.', 'Timeline, decisions, commits, and health on local SQLite.'),
+    detail: tr(
+      'Abre una vista local sobre la memoria persistente del proyecto para inspeccionar decisiones, actividad y salud de la base de conocimiento.',
+      'Opens a local view over the project persistent memory to inspect decisions, activity, and knowledge-base health.',
+    ),
+    points: [
+      tr('Muestra timeline, decisiones, commits e iteraciones.', 'Shows timeline, decisions, commits, and iterations.'),
+      tr('Lee SQLite local con WAL y búsqueda FTS5.', 'Reads local SQLite with WAL and FTS5 search.'),
+      tr('Evita tratar la memoria como una caja negra.', 'Avoids treating memory like a black box.'),
+    ],
+  },
+  {
+    id: 'hooks-evidence',
+    title: 'Hooks + Evidence',
+    body: tr('Guards automáticos para tests, evidence y cierre de fase.', 'Automatic guards for tests, evidence, and phase closure.'),
+    detail: tr(
+      'Es la capa que intercepta eventos de Claude Code, valida evidencia real y frena avances cuando una fase no ha demostrado su calidad.',
+      'It is the layer that intercepts Claude Code events, validates real evidence, and stops progress when a phase has not demonstrated its quality.',
+    ),
+    points: [
+      tr('Registra salida real de tests y comandos críticos.', 'Records real output from tests and critical commands.'),
+      tr('Verifica quality gates antes de cerrar fase.', 'Verifies quality gates before closing a phase.'),
+      tr('Reduce la distancia entre lo que un agente afirma y lo que el sistema puede probar.', 'Reduces the distance between what an agent claims and what the system can prove.'),
+    ],
+  },
+];
+
+const technicalVision = {
+  kicker: 'Python 3.10+ · Node.js · SQLite local · MCP + Hooks',
+  badge: 'System map',
+  title: 'Visión técnica del plugin',
+  repoUrl: 'https://github.com/686f6c61/alfred-dev',
+  lead:
+    'Alfred no es un prompt pack. Es un sistema de orquestación de ingeniería con 19 agentes, 26 comandos, seis flujos principales y quality gates automáticas que obligan a demostrar el trabajo antes de avanzar.',
+  summary:
+    'Opera sobre tres capas coordinadas: un core Python que orquesta y persiste estado, una superficie pública en Astro y una capa visual de Node.js nativo para Selina. El orquestador es la única fuente de verdad del flujo.',
+  highlights: [
+    { label: 'Core', value: 'Python 3.10+' },
+    { label: 'Sitio', value: 'Astro 6 + TypeScript' },
+    { label: 'Memoria', value: 'SQLite WAL + FTS5' },
+    { label: 'Flujos', value: '6 quality-gated' },
+    { label: 'Comandos', value: '26' },
+    { label: 'Agentes especializados', value: '19' },
+  ],
+  sections: [
+    {
+      title: 'Qué es este proyecto',
+      body:
+        'Transforma desarrollo asistido por IA en un proceso gobernado por fases secuenciales, agentes especializados y puntos de control que no se pueden saltar sin evidencia.',
+      bullets: [
+        'Trabaja con 19 agentes especializados y responsabilidades delimitadas.',
+        'Automatiza seis flujos principales: feature, fix, spike, ship, audit y quick.',
+        'Detecta el stack tecnológico del repo y adapta artefactos, testing y agentes opcionales.',
+      ],
+    },
+    {
+      title: 'Resumen operativo para reconstrucción',
+      body:
+        'La superficie visible son 26 ficheros de comandos y un catálogo de agentes, pero el sistema real vive detrás: core Python, hooks del ciclo de vida, memoria SQLite y un orchestrator que no delega el estado a nadie más.',
+      bullets: [
+        '10 agentes de núcleo quedan fuera de plugin.json y entran sólo a través del flujo orquestado.',
+        '9 agentes opcionales sí son configurables y activables según stack o tarea.',
+        'Las quality gates son duras: evidence-guard y quality-gate frenan el avance si falta prueba real.',
+        'Cada fase puede reintentarse hasta 5 veces antes de escalar al usuario.',
+      ],
+    },
+    {
+      title: 'Stack tecnológico',
+      body:
+        'El proyecto opera sobre ecosistemas separados pero coordinados: Python para orquestación y memoria, Astro para la documentación pública y Node.js nativo para el runtime visual de Selina.',
+      bullets: [
+        'El core usa Python 3.10+ para orchestrator, config_loader, memory, continuity y hooks.',
+        'La web pública vive en Astro estático con TypeScript y sitemap.',
+        'Selina usa módulos nativos de Node.js para servir la galería de 10 sistemas de diseño y la ronda final de propuestas, sin dependencias externas.',
+        'El desarrollo se apoya en pytest para Python y astro check para la parte web.',
+      ],
+    },
+    {
+      title: 'Arquitectura por capas',
+      body:
+        'Commands, agentes, core, hooks, MCP y servidor visual están separados. Los commands no llaman agentes directamente: activan al orchestrator, y Alfred decide qué entra y en qué orden.',
+      bullets: [
+        'Commands visibles -> orchestrator.py -> agentes y fases.',
+        'Hooks interceptan SessionStart, PreToolUse, PostToolUse y Stop.',
+        'memory_server expone herramientas MCP para consultar memoria desde cualquier agente.',
+        'Los agentes no se comunican entre sí; todo pasa por Alfred y el estado de sesión.',
+      ],
+    },
+    {
+      title: 'Persistencia y base de datos',
+      body:
+        'La memoria persistente vive en .claude/alfred-memory.db. Está diseñada para ser local, portable y segura, no para depender de servicios remotos o infraestructura adicional.',
+      bullets: [
+        'SQLite local con modo WAL y búsqueda FTS5.',
+        'Persistencia de decisiones, commits, iteraciones y eventos.',
+        'Permisos 0600 y sanitización con 14 patrones regex para secretos.',
+        'Migración automática del esquema y purga configurable con retention_days.',
+      ],
+    },
+    {
+      title: 'Lógica de negocio y quality gates',
+      body:
+        'El sistema resuelve un problema muy concreto: evitar que el desarrollo con IA salte fases críticas y cierre trabajo sin seguridad, QA, documentación o evidencia suficiente.',
+      bullets: [
+        'Sin evidencia registrada, una afirmación de “tests pasan” no vale.',
+        'Security Officer aparece de forma transversal en arquitectura, calidad y entrega.',
+        'La fase visual de Selina sólo se activa cuando el stack tiene frontend y usa un catálogo base de 10 sistemas antes de cerrar la dirección final.',
+        'Las gates de usuario y las automáticas están separadas; autopilot no salta seguridad ni evidencia.',
+      ],
+    },
+    {
+      title: 'Runtime y componentes auxiliares',
+      body:
+        'Además del core, el sistema añade piezas operativas que vuelven usable el flujo en el día a día: continuidad, memoria consultable, sincronía opcional con GitHub y servidor visual con timeout.',
+      bullets: [
+        'Continuity mantiene next, pause, resume y handoff sin perder fase.',
+        'Memory UI abre timeline, decisiones, commits y health sobre SQLite local.',
+        'GitHub Sync refleja el estado local en issues cuando conviene compartir seguimiento.',
+        'El runtime visual de Selina usa timeout de 30 minutos, comprueba el proceso padre cada 60 segundos y soporta tanto galería base como selección final.',
+      ],
+    },
+    {
+      title: 'Puesta en marcha y reconstrucción',
+      body:
+        'Para reconstruirlo o ponerlo en marcha no hace falta una infraestructura compleja, pero sí respetar las reglas que hacen fiable el sistema.',
+      bullets: [
+        'Claude Code, Python 3.10+ y Node.js deben estar disponibles en el entorno.',
+        'La memoria SQLite se crea automáticamente al activar memoria en /alfred-dev:config.',
+        'map-codebase, discuss y quick generan contexto útil para que la memoria no nazca vacía.',
+        'El error más caro sería romper el aislamiento de agentes o dejar que otra capa sustituya al orchestrator como fuente de verdad.',
+      ],
+    },
+  ],
+  principles: [
+    'El orchestrator es la única fuente de verdad del estado.',
+    'Los quality gates son infranqueables sin evidencia.',
+    'Seguridad aparece de forma transversal en arquitectura, calidad y entrega.',
+    'La memoria y la continuidad evitan perder contexto entre sesiones.',
+    'Los agentes de núcleo no deben invocarse fuera del flujo orquestado.',
+  ],
+};
+
+const alfredOrigin = {
+  kicker: 'Historia y motivación',
+  badge: 'Origen',
+  lead: 'La idea era construir el asistente que un desarrollador realmente querría tener a su lado.',
+  summary:
+    'Alfred Dev nace de una intuición muy simple: el mejor asistente para desarrollar software no es el que más habla, sino el que entiende contexto, pone orden, resuelve bien y mantiene el nivel cuando el trabajo se complica.',
+  highlights: [
+    { label: 'Idea base', value: 'Contexto + criterio' },
+    { label: 'Nombre', value: 'Alfred' },
+    { label: 'Tono', value: 'Ironía sobria' },
+    { label: 'Estándar', value: 'Impecable' },
+  ],
+  sections: [
+    {
+      title: 'Qué quería construir',
+      body:
+        'No quería otro prompt bonito ni una colección de personajes haciendo teatro. Quería un sistema que ayudara de verdad a un desarrollador: alguien que ordena el trabajo, detecta lo importante, mantiene continuidad entre sesiones y empuja hacia una ejecución seria.',
+    },
+    {
+      title: 'Por qué se llama Alfred',
+      body:
+        'El nombre viene de Alfred Pennyworth, la figura de Batman que siempre estaba donde hacía falta. No era el protagonista visible, pero era el que sostenía la operación con criterio, calma y fiabilidad. Resolutivo, preciso, elegante en la ejecución y capaz de decir las cosas con una ironía seca cuando tocaba, sin dejar de ser impecable.',
+    },
+    {
+      title: 'Qué quería trasladar de esa referencia',
+      body:
+        'Me interesaba esa mezcla difícil: un asistente con personalidad, pero sin histrionismo; con estilo, pero sin frivolidad; con criterio propio, pero al servicio del trabajo. Alfred Dev intenta capturar justo eso: ayudarte a tomar mejores decisiones, anticipar problemas y mantener el listón alto sin convertir la herramienta en un espectáculo.',
+    },
+    {
+      title: 'Cómo se traduce en el plugin',
+      body:
+        'Por eso Alfred orquesta agentes, memoria, quality gates, trazabilidad y continuidad en vez de limitarse a contestar prompts. La ambición del producto es sencilla de explicar y difícil de ejecutar: que, como desarrollador, sientas que por fin tienes un asistente serio, fiable y con oficio.',
+    },
+  ],
+};
+const technicalVisionEn = {
+  kicker: 'Python 3.10+ · Node.js · Local SQLite · MCP + Hooks',
+  badge: 'System map',
+  title: 'Plugin technical vision',
+  repoUrl: 'https://github.com/686f6c61/alfred-dev',
+  lead:
+    'Alfred is not a prompt pack. It is an engineering orchestration system with 19 agents, 26 commands, six main workflows, and automatic quality gates that force work to be demonstrated before it can advance.',
+  summary:
+    'It operates over three coordinated layers: a Python core that orchestrates and persists state, a public Astro surface, and a native Node.js visual layer for Selina. The orchestrator is the only source of truth for the flow.',
+  highlights: [
+    { label: 'Core', value: 'Python 3.10+' },
+    { label: 'Site', value: 'Astro 6 + TypeScript' },
+    { label: 'Memory', value: 'SQLite WAL + FTS5' },
+    { label: 'Flows', value: '6 quality-gated' },
+    { label: 'Commands', value: '26' },
+    { label: 'Specialized agents', value: '19' },
+  ],
+  sections: [
+    {
+      title: 'What this project is',
+      body:
+        'It turns AI-assisted development into a process governed by sequential phases, specialized agents, and control points that cannot be skipped without evidence.',
+      bullets: [
+        'Works with 19 specialized agents and tightly bounded responsibilities.',
+        'Automates six main workflows: feature, fix, spike, ship, audit, and quick.',
+        'Detects the repo technology stack and adapts artifacts, testing, and optional agents.',
+      ],
+    },
+    {
+      title: 'Operational summary for reconstruction',
+      body:
+        'The visible surface is 26 command files and an agent catalog, but the real system lives behind that: Python core, lifecycle hooks, SQLite memory, and an orchestrator that never delegates state to anyone else.',
+      bullets: [
+        '10 core agents stay outside plugin.json and enter only through orchestrated flow.',
+        '9 optional agents can be configured and activated according to stack or task.',
+        'Quality gates are hard: evidence-guard and quality-gate stop progress if real proof is missing.',
+        'Each phase can retry up to 5 times before escalation to the user.',
+      ],
+    },
+    {
+      title: 'Technology stack',
+      body:
+        'The project operates over separated but coordinated ecosystems: Python for orchestration and memory, Astro for public documentation, and native Node.js for Selina visual server.',
+      bullets: [
+        'The core uses Python 3.10+ for orchestrator, config_loader, memory, continuity, and hooks.',
+        'The public website lives in static Astro with TypeScript and sitemap.',
+        'Selina uses native Node.js modules: http, crypto, fs, and path, with no external dependencies.',
+        'Development relies on pytest for Python and astro check for the website.',
+      ],
+    },
+    {
+      title: 'Layered architecture',
+      body:
+        'Commands, agents, core, hooks, MCP, and visual server are separated. Commands do not call agents directly: they activate the orchestrator, and Alfred decides what enters and in what order.',
+      bullets: [
+        'Visible commands -> orchestrator.py -> agents and phases.',
+        'Hooks intercept SessionStart, PreToolUse, PostToolUse, and Stop.',
+        'memory_server exposes MCP tools to query memory from any agent.',
+        'Agents do not talk to each other; everything goes through Alfred and session state.',
+      ],
+    },
+    {
+      title: 'Persistence and database',
+      body:
+        'Persistent memory lives in .claude/alfred-memory.db. It is designed to be local, portable, and safe, not dependent on remote services or additional infrastructure.',
+      bullets: [
+        'Local SQLite with WAL mode and FTS5 search.',
+        'Persistence of decisions, commits, iterations, and events.',
+        '0600 permissions and sanitization with 14 regex patterns for secrets.',
+        'Automatic schema migration and configurable purge with retention_days.',
+      ],
+    },
+    {
+      title: 'Business logic and quality gates',
+      body:
+        'The system solves a very concrete problem: stopping AI-driven development from skipping critical phases and closing work without enough security, QA, documentation, or evidence.',
+      bullets: [
+        'Without recorded evidence, a claim like “tests pass” does not count.',
+        'Security Officer appears transversally in architecture, quality, and delivery.',
+        'Selina visual phase activates only when the stack has frontend surface.',
+        'User gates and automatic gates stay separated; autopilot never skips security or evidence.',
+      ],
+    },
+    {
+      title: 'Runtime and auxiliary components',
+      body:
+        'Beyond the core, the system adds operational pieces that make the flow usable day to day: continuity, inspectable memory, optional GitHub sync, and a visual server with timeout.',
+      bullets: [
+        'Continuity keeps next, pause, resume, and handoff without losing phase.',
+        'Memory UI opens timeline, decisions, commits, and health over local SQLite.',
+        'GitHub Sync mirrors local state to issues when shared tracking is useful.',
+        'Selina visual server uses a 30-minute timeout and checks the parent process every 60 seconds.',
+      ],
+    },
+    {
+      title: 'Boot and reconstruction',
+      body:
+        'You do not need complex infrastructure to rebuild or boot it, but you do need to respect the rules that make the system reliable.',
+      bullets: [
+        'Claude Code, Python 3.10+, and Node.js must be available in the environment.',
+        'SQLite memory is created automatically when memory is enabled in /alfred-dev:config.',
+        'map-codebase, discuss, and quick generate useful context so memory does not start empty.',
+        'The most expensive mistake would be breaking agent isolation or allowing another layer to replace the orchestrator as the source of truth.',
+      ],
+    },
+  ],
+  principles: [
+    'The orchestrator is the only source of truth for state.',
+    'Quality gates are impassable without evidence.',
+    'Security appears transversally in architecture, quality, and delivery.',
+    'Memory and continuity prevent context loss between sessions.',
+    'Core agents must not be invoked outside the orchestrated flow.',
+  ],
+};
+const alfredOriginEn = {
+  kicker: 'History and motivation',
+  badge: 'Origin',
+  lead: 'The idea was to build the assistant a developer would actually want beside them.',
+  summary:
+    'Alfred Dev starts from a very simple intuition: the best assistant for software development is not the one that talks the most, but the one that understands context, imposes order, solves things well, and keeps the level high when work gets hard.',
+  highlights: [
+    { label: 'Core idea', value: 'Context + judgment' },
+    { label: 'Name', value: 'Alfred' },
+    { label: 'Tone', value: 'Dry irony' },
+    { label: 'Standard', value: 'Impeccable' },
+  ],
+  sections: [
+    {
+      title: 'What we wanted to build',
+      body:
+        'We did not want another pretty prompt or a collection of characters performing theatre. We wanted a system that genuinely helps a developer: something that organizes work, detects what matters, keeps continuity between sessions, and pushes toward serious execution.',
+    },
+    {
+      title: 'Why it is called Alfred',
+      body:
+        'The name comes from Alfred Pennyworth, Batman’s figure who was always where he was needed. He was not the visible protagonist, but he was the one sustaining the operation with judgment, calm, and reliability. Resolute, precise, elegant in execution, and capable of saying things with dry irony when needed without losing professionalism.',
+    },
+    {
+      title: 'What we wanted to bring from that reference',
+      body:
+        'What mattered was that difficult mix: an assistant with personality but no theatrics; with style but no frivolity; with judgment of its own but in service of the work. Alfred Dev tries to capture exactly that: help you make better decisions, anticipate problems, and keep the bar high without turning the tool into a show.',
+    },
+    {
+      title: 'How that becomes a plugin',
+      body:
+        'That is why Alfred orchestrates agents, memory, quality gates, traceability, and continuity instead of merely answering prompts. The product ambition is simple to explain and difficult to execute: as a developer, you should feel that you finally have a serious, reliable assistant with real craft.',
+    },
+  ],
+};
+const activeTechnicalVision = isEn ? technicalVisionEn : technicalVision;
+const activeAlfredOrigin = isEn ? alfredOriginEn : alfredOrigin;
+const collaborationIssueUrl = `${data.footer.githubUrl}/issues`;
+const collaborationEgg = {
+  label: tr('ALFRED DEV / COLABORACIÓN', 'ALFRED DEV / COLLABORATION'),
+  lead: tr(
+    'Si te apetece colaborar en Alfred Dev, deja una issue en el repo.',
+    'If you want to collaborate on Alfred Dev, open an issue in the repo.',
+  ),
+  body: tr(
+    'Si compartimos enfoque y estilo de trabajo, te daré prioridad para colaborar y figurar como coautor.',
+    'If we share the same approach and way of working, you will get priority to collaborate and be credited as a co-author.',
+  ),
+  cta: tr('Issues abiertas en:', 'Open issues at:'),
+  url: collaborationIssueUrl,
+};
+
+const faqItems = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 15].map((index) => ({
+  ...data.faq.items[index],
+  question: ensureQuestionPunctuation(data.faq.items[index].question),
+}));
+
+const faqColumns = [faqItems.slice(0, 6), faqItems.slice(6)];
+
+const latestChangelog = data.changelog[0];
+const changelogPreview = [
+  {
+    label: uiText.added,
+    items: (latestChangelog?.added ?? []).slice(0, 3).map(stripMd),
+  },
+  {
+    label: uiText.changed,
+    items: (latestChangelog?.changed ?? []).slice(0, 3).map(stripMd),
+  },
+  {
+    label: uiText.fixed,
+    items: (latestChangelog?.fixed ?? []).slice(0, 3).map(stripMd),
+  },
+].filter((section) => section.items.length > 0);
+
+const softwareApplicationLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: data.meta.og.siteName,
+  description: data.meta.description,
+  url: data.meta.canonical,
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'macOS, Linux, Windows',
+  inLanguage: isEn ? 'en-US' : 'es-ES',
+  softwareVersion: data.footer.version.replace(/^v/i, ''),
+  datePublished: '2026-03-21',
+  dateModified: latestChangelog?.date ?? '2026-03-31',
+  image: data.meta.og.image,
+  screenshot: data.meta.og.image,
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'EUR',
+  },
+  author: {
+    '@type': 'Person',
+    name: '686f6c61',
+    url: data.footer.githubUrl,
+    sameAs: [data.footer.githubUrl, 'https://x.com/686f6c61'],
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: data.meta.og.siteName,
+    url: data.footer.githubUrl,
+    logo: 'https://alfred-dev.com/favicon.png',
+  },
+});
+
+const faqPageLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: data.faq.items.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answerHtml.replace(/<[^>]*>/g, ''),
+    },
+  })),
+});
+
+const websiteLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: data.meta.og.siteName,
+  url: data.meta.canonical,
+  inLanguage: isEn ? 'en-US' : 'es-ES',
+});
+
+const organizationLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: data.meta.og.siteName,
+  url: data.footer.githubUrl,
+  logo: 'https://alfred-dev.com/favicon.png',
+  sameAs: [data.footer.githubUrl, 'https://x.com/686f6c61'],
+});
+---
+
+<BaseLayout
+  title={data.meta.title}
+  description={data.meta.description}
+  canonical={canonicalUrl}
+  locale={isEn ? 'en-US' : 'es-ES'}
+  ogLocale={data.meta.locale}
+  alternates={[
+    { hreflang: isEn ? 'en' : 'es', href: canonicalUrl },
+    { hreflang: isEn ? 'es' : 'en', href: alternateUrl },
+    { hreflang: 'x-default', href: isEn ? alternateUrl : canonicalUrl },
+  ]}
+  ogTitle={data.meta.og.title}
+  ogDescription={data.meta.og.description}
+  ogImage={data.meta.og.image}
+  ogImageWidth={data.meta.og.imageWidth}
+  ogImageHeight={data.meta.og.imageHeight}
+  ogImageType={data.meta.og.imageType}
+  ogImageAlt={data.meta.og.imageAlt}
+  twitterCard={data.meta.twitter.card}
+  twitterTitle={data.meta.twitter.title}
+  twitterDescription={data.meta.twitter.description}
+  twitterImage={data.meta.twitter.image}
+  twitterImageAlt={data.meta.twitter.imageAlt}
+  twitterSite={data.meta.twitter.site}
+  twitterCreator={data.meta.twitter.creator}
+>
+  <script slot="head" is:inline type="application/ld+json" set:html={softwareApplicationLd} />
+  <script slot="head" is:inline type="application/ld+json" set:html={faqPageLd} />
+  <script slot="head" is:inline type="application/ld+json" set:html={websiteLd} />
+  <script slot="head" is:inline type="application/ld+json" set:html={organizationLd} />
+  <script slot="head" is:inline id="agent-catalog" type="application/json" set:html={JSON.stringify(agentCatalog)} />
+  <script slot="head" is:inline id="command-catalog" type="application/json" set:html={JSON.stringify(commandCatalog)} />
+  <script slot="head" is:inline id="layer-catalog" type="application/json" set:html={JSON.stringify(auxiliaryLayers)} />
+  <script slot="head" is:inline id="landing-ui-copy" type="application/json" set:html={JSON.stringify(uiText)} />
+  <script slot="head" is:inline id="collaboration-egg" type="application/json" set:html={JSON.stringify(collaborationEgg)} />
+
+  <main id="contenido" class="beta-page">
+    <header class="topbar panel panel-cream">
+      <div class="topbar__brand">
+        <button type="button" class="topbar__brand-trigger" data-origin-trigger aria-label={uiText.originAriaLabel}>
+          <span class="mini-tag mini-tag--black">ALFRED DEV</span>
+        </button>
+        <span class="mini-tag mini-tag--peach">{data.footer.version}</span>
+        <span class="topbar__note">{uiText.topbarNote}</span>
+      </div>
+      <div class="topbar__actions">
+        <button class="topbar__link topbar__link--icon" type="button" data-tech-trigger>
+          <span class="topbar__icon" set:html={icons.reality}></span>
+          {uiText.technicalVision}
+        </button>
+        <a class="topbar__link topbar__link--icon" href={data.footer.githubUrl} target="_blank" rel="noreferrer">
+          <span class="topbar__icon" set:html={icons.github}></span>
+          GitHub
+        </a>
+        <a class="topbar__link" href={uiText.languageHref} hreflang={uiText.locale === 'es' ? 'en' : 'es'}>
+          {uiText.languageLabel}
+        </a>
+      </div>
+    </header>
+
+    <section class="hero-grid">
+      <div class="panel panel-pink hero-copy">
+        <div class="hero-copy__eyebrow">{tr('Claude Code, pero con equipo', 'Claude Code, but with a team')}</div>
+        <div class="hero-copy__sticker">{tr('PLUGIN PARA CLAUDE CODE', 'PLUGIN FOR CLAUDE CODE')}</div>
+        <h1>{tr('UN SISTEMA DE TRABAJO PARA CLAUDE CODE', 'A WORK SYSTEM FOR CLAUDE CODE')}</h1>
+        <p class="hero-copy__body">
+          {tr(
+            '19 agentes reales, 26 comandos, 61 playbooks internos, memoria SQLite por proyecto y PM operativo. Alfred convierte Claude Code en un flujo con continuidad, contexto y gates de calidad.',
+            '19 real agents, 26 commands, 61 internal playbooks, per-project SQLite memory, and operational PM. Alfred turns Claude Code into a flow with continuity, context, and quality gates.',
+          )}
+        </p>
+
+        <div class="hero-stats">
+          <span class="hero-chip hero-chip--butter">{tr('19 agentes', '19 agents')}</span>
+          <span class="hero-chip hero-chip--mint">{tr('26 comandos', '26 commands')}</span>
+          <span class="hero-chip hero-chip--sky">{tr('SQLite + PM', 'SQLite + PM')}</span>
+        </div>
+
+        <div class="hero-install">
+          {Object.values(installCommands).map((item, index) => (
+            <button
+              type="button"
+              class={`hero-install__button tone-${index === 0 ? 'butter' : index === 1 ? 'sky' : 'mint'}`}
+              data-install-trigger
+              data-platform={item.platform}
+              data-command={item.command}
+            >
+              <span class="platform-action__icon" set:html={item.icon}></span>
+              <span class="platform-action__label">{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div class="hero-install__note">
+          <span class="mini-tag mini-tag--black">{tr('Instaladores por sistema', 'Installers by platform')}</span>
+          <span class="hero-install__helper">{tr('Cada botón abre un popup con el comando listo para copiar.', 'Each button opens a popup with the command ready to copy.')}</span>
+        </div>
+      </div>
+
+      <div class="hero-side">
+        <div class="panel panel-cream changelog-card">
+          <div class="changelog-card__head">
+            <h2>CHANGELOG</h2>
+            <button type="button" class="mini-tag mini-tag--pink" data-changelog-trigger>{uiText.expand}</button>
+          </div>
+          <div class="changelog-card__release">
+            <div class="changelog-card__release-main">
+              <span class="mini-tag mini-tag--black">{uiText.latestRelease}</span>
+              <strong>v{latestChangelog.version}</strong>
+            </div>
+            <span class="changelog-card__date">{formatDate(latestChangelog.date)}</span>
+          </div>
+          <div class="changelog-card__sections">
+            {changelogPreview.map((section, index) => (
+              <article class={`changelog-card__section tone-${index === 0 ? 'butter' : index === 1 ? 'pink' : 'sky'}`}>
+                <strong>{section.label}</strong>
+                <ul>
+                  {section.items.map((item) => (
+                    <li>{item}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="manifesto-strip panel panel-butter">
+      <strong>{uiText.manifestoLead}</strong>
+      <span>{uiText.manifestoBody}</span>
+    </section>
+
+    <section class="beta-section">
+      <div class="section-heading">
+        <span class="section-icon" set:html={icons.reality}></span>
+        <span class="mini-tag mini-tag--black">{uiText.whatAlfredDoes}</span>
+      </div>
+      <div class="reality-grid">
+        {whatItDoes.map((item) => (
+          <article class={`panel reality-card tone-${item.tone}`}>
+            <div class="reality-card__index">{item.index}</div>
+            <div class="reality-card__body">
+              <h2>{item.title}</h2>
+              <p>{item.body}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="beta-section" id="agentes">
+      <div class="section-heading section-heading--wide">
+        <h2 class="headline">
+          <span class="section-icon section-icon--inline" set:html={icons.team}></span>
+          {uiText.teamTitle} <span class="counter">19</span> {uiText.agentsReal}
+        </h2>
+        <div class="headline-note">
+          {uiText.teamNote}
+        </div>
+      </div>
+
+      <div class="team-group">
+        <div class="team-group__header panel panel-cream">
+          <div class="team-group__count">
+            <span>10</span>
+            <small>{uiText.core}</small>
+          </div>
+          <div>
+            <h3>{uiText.coreTitle}</h3>
+            <p>{uiText.coreBody}</p>
+          </div>
+        </div>
+
+        <div class="team-grid team-grid--core">
+          {coreAgents.map((agent) => (
+            <article class={`panel agent-card tone-${agent.tone} ${agent.wide ? 'agent-card--wide' : ''}`}>
+              <button type="button" class="agent-card__button" data-agent-trigger data-agent-id={agent.id}>
+                <span class="agent-card__meta">{uiText.core}</span>
+                <h4>{agent.label}</h4>
+                <p>{agent.cardSummary}</p>
+                <span class="agent-card__cta">{uiText.openSheet}</span>
+              </button>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div class="team-group">
+        <div class="team-group__header panel panel-cream">
+          <div class="team-group__count team-group__count--sky">
+            <span>09</span>
+            <small>{uiText.optional}</small>
+          </div>
+          <div>
+            <h3>{uiText.optionalTitle}</h3>
+            <p>{uiText.optionalBody}</p>
+          </div>
+        </div>
+
+        <div class="team-grid team-grid--optional">
+          {optionalAgents.map((agent) => (
+            <article class={`panel agent-card tone-${agent.tone}`}>
+              <button type="button" class="agent-card__button" data-agent-trigger data-agent-id={agent.id}>
+                <span class="agent-card__meta">{uiText.optional}</span>
+                <h4>{agent.label}</h4>
+                <p>{agent.cardSummary}</p>
+                <span class="agent-card__cta">{uiText.openSheet}</span>
+              </button>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="beta-section" id="comandos">
+      <div class="section-heading section-heading--wide">
+        <h2 class="headline">
+          <span class="section-icon section-icon--inline" set:html={icons.commands}></span>
+          {uiText.commandsTitle} <span class="counter counter--sky">26</span>
+        </h2>
+        <div class="headline-note">
+          {uiText.commandsNote}
+        </div>
+      </div>
+
+      <div class="commands-list">
+        {commandGroups.map((group) => (
+          <article class={`panel command-row tone-${group.tone}`}>
+            <div class="command-row__rail">
+              <strong>{group.count}</strong>
+              <h3>{group.name}</h3>
+              <span>{group.subtitle}</span>
+            </div>
+            <div class="command-row__content">
+              <p>{group.description}</p>
+              <div class="command-row__chips">
+                {group.chips.map((chip) => (
+                  <button
+                    type="button"
+                    class="command-chip command-chip--action"
+                    data-command-trigger
+                    data-command-id={chip}
+                    aria-label={`${uiText.openCommandAriaPrefix} /alfred-dev:${chip}`}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="beta-section" id="skills">
+      <div class="skills-grid">
+        <article class="panel tone-sky skills-card">
+          <div class="skills-card__head">
+            <h2>
+              <span class="title-icon" set:html={icons.skills}></span>
+              {uiText.skillsTitle}
+            </h2>
+            <span class="mini-tag mini-tag--black">{uiText.skillsBadge}</span>
+          </div>
+
+          <div class="skills-card__body">
+            <div class="skills-card__meter">
+              <strong>61</strong>
+              <span>{uiText.internalPlaybooks}</span>
+              <small>{uiText.domainsCovered}</small>
+            </div>
+
+            <div class="skills-card__copy">
+              <p>{uiText.skillsBody}</p>
+              <h3>{uiText.publicSkills}</h3>
+              <div class="skills-card__chips">
+                {featuredSkills.map((skill) => (
+                  <span class="command-chip command-chip--dark">{skill.label}</span>
+                ))}
+              </div>
+              <div class="skills-card__footer">
+                {uiText.skillsFooter}
+              </div>
+            </div>
+          </div>
+
+          <div class="skills-card__domains">
+            {skillDomains.slice(0, 6).map((domain) => (
+              <div class="skills-domain">
+                <div class="skills-domain__head">
+                  <strong>{domain.label}</strong>
+                  <span>{domain.count} skills</span>
+                </div>
+                <small>{domain.skills.map((skill) => skill.label).join(' · ')}</small>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article class="panel tone-pink aux-card">
+          <div class="skills-card__head">
+            <h2>
+              <span class="title-icon" set:html={icons.layers}></span>
+              {uiText.auxiliaryLayers}
+            </h2>
+            <span class="mini-tag mini-tag--black">{uiText.auxiliaryLayersBadge}</span>
+          </div>
+
+          <div class="aux-grid">
+            {auxiliaryLayers.map((item) => (
+              <article class="aux-tile">
+                <button type="button" class="aux-tile__button" data-layer-trigger data-layer-id={item.id}>
+                  <strong>{item.title}</strong>
+                  <span>{item.body}</span>
+                  <small>{uiText.auxiliaryOpen}</small>
+                </button>
+              </article>
+            ))}
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="beta-section" id="instalar">
+      <div class="section-heading">
+        <h2 class="headline headline--small">
+          <span class="section-icon section-icon--inline" set:html={icons.install}></span>
+          {uiText.installSection} <span class="mini-tag mini-tag--black">{uiText.installStepsBadge}</span>
+        </h2>
+      </div>
+
+      <div class="start-grid">
+        <article class="panel tone-sky start-card">
+          <div class="start-card__head">
+            <h3>{uiText.startInThreeSteps}</h3>
+            <span class="mini-tag mini-tag--black">entry flow</span>
+          </div>
+
+          <div class="start-step">
+            <strong>01</strong>
+            <div>
+              <h4>{tr('Instala Alfred Dev', 'Install Alfred Dev')}</h4>
+              <p>{tr('Usa el instalador de tu sistema; registra el plugin y deja el runtime listo para trabajar.', 'Use the installer for your system; it registers the plugin and leaves the runtime ready to work.')}</p>
+            </div>
+          </div>
+
+          <div class="start-step">
+            <strong>02</strong>
+            <div>
+              <h4>{tr('Configura stack y equipo', 'Configure stack and team')}</h4>
+              <p>{tr('Ejecuta ', 'Run ')}<code>/alfred-dev:config</code>{tr(' para fijar stack, memoria, autonomía y opcionales.', ' to set stack, memory, autonomy, and optional agents.')}</p>
+            </div>
+          </div>
+
+          <div class="start-step">
+            <strong>03</strong>
+            <div>
+              <h4>{tr('Entra por el comando correcto', 'Enter through the right command')}</h4>
+              <p>{tr('Nuevo repo: ', 'New repo: ')}<code>/alfred-dev:alfred</code>. {tr('Repo existente: ', 'Existing repo: ')}<code>/alfred-dev:map-codebase</code> {tr('y', 'and')} <code>/alfred-dev:discuss</code>.</p>
+            </div>
+          </div>
+
+          <div class="start-card__footer">
+            {tr('Brownfield primero: ', 'Brownfield first: ')}<code>/map-codebase</code> {tr('y', 'and')} <code>/discuss</code>. {tr('Greenfield', 'Greenfield')}: <code>/alfred-dev:alfred</code>.
+          </div>
+        </article>
+
+        <article class="panel tone-peach install-card">
+          <div class="start-card__head">
+            <h3>{uiText.installUpdateUninstall}</h3>
+            <span class="mini-tag mini-tag--black">CLI-FIRST</span>
+          </div>
+
+          <div class="install-row">
+            {Object.values(installCommands).map((item, index) => (
+              <button
+                type="button"
+                class={`install-trigger tone-${index === 0 ? 'peach' : index === 1 ? 'butter' : 'sky'}`}
+                data-install-trigger
+                data-platform={item.platform}
+                data-command={item.command}
+              >
+                <span class="platform-action__icon" set:html={item.icon}></span>
+                <span class="platform-action__label">{item.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div class="install-preview">
+            <div class="install-preview__bar">
+              <span>{uiText.installPreviewTitle}</span>
+              <span class="preview-copy">{uiText.copy}</span>
+            </div>
+            <code>curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash</code>
+            <p>{uiText.installPreviewBody}</p>
+          </div>
+
+          <div class="utility-row">
+            <div class="utility-pill">
+              <span class="utility-pill__label utility-pill__label--peach">
+                <span class="utility-pill__icon" set:html={icons.update}></span>
+                {uiText.update}
+              </span>
+              <code>/alfred-dev:update</code>
+              <small>{tr('Lee release notes y decide desde Claude Code.', 'Read release notes and decide from Claude Code.')}</small>
+            </div>
+            <button type="button" class="utility-pill utility-pill--button" data-uninstall-trigger>
+              <span class="utility-pill__label utility-pill__label--sky">
+                <span class="utility-pill__icon" set:html={icons.uninstall}></span>
+                {uiText.uninstall}
+              </span>
+              <code>uninstall.sh o uninstall.ps1</code>
+              <small>{tr('Limpia plugin, marketplace y restos operativos. Abrir guía.', 'Cleans plugin, marketplace, and operational leftovers. Open guide.')}</small>
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="beta-section" id="faq">
+      <div class="section-heading">
+        <h2 class="headline headline--small">
+          <span class="section-icon section-icon--inline" set:html={icons.faq}></span>
+          {uiText.faq}
+        </h2>
+      </div>
+
+      <div class="faq-grid">
+        {faqColumns.map((column, columnIndex) => (
+          <article class={`panel ${columnIndex === 0 ? 'tone-butter' : 'tone-pink'} faq-panel`}>
+            {column.map((item) => (
+              <div class="faq-item">
+                <h3>{item.question}</h3>
+                <div set:html={item.answerHtml}></div>
+              </div>
+            ))}
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="closing-cta panel panel-mint">
+      <div>
+        <h2>{uiText.closingTitle}</h2>
+        <p>{uiText.closingBody}</p>
+      </div>
+      <div class="closing-cta__actions">
+        {Object.values(installCommands).map((item, index) => (
+          <button
+            type="button"
+            class={`closing-cta__button tone-${index === 0 ? 'peach' : index === 1 ? 'butter' : 'sky'}`}
+            data-install-trigger
+            data-platform={item.platform}
+            data-command={item.command}
+          >
+            <span class="platform-action__icon" set:html={item.icon}></span>
+            <span class="platform-action__label">{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+
+    <footer class="footer panel panel-cream">
+      <div class="footer__top">
+        <div>
+          <strong>Alfred Dev</strong>
+          <span>{data.footer.slogan}</span>
+        </div>
+        <div class="footer__meta">
+          <a href="https://x.com/686f6c61" target="_blank" rel="noreferrer">{uiText.createdBy}</a>
+          <a href={data.footer.githubUrl} target="_blank" rel="noreferrer">{uiText.repository}</a>
+          <a href={`${data.footer.githubUrl}/issues`} target="_blank" rel="noreferrer">Issues</a>
+          <a href={uiText.languageHref} hreflang={uiText.locale === 'es' ? 'en' : 'es'}>{uiText.languageLabel}</a>
+          <span>{data.footer.version}</span>
+          <span>{data.footer.license}</span>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>{uiText.independentDisclaimer}</span>
+      </div>
+    </footer>
+  </main>
+
+  <dialog id="install-modal" class="modal">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <strong id="install-modal-title">{uiText.installModalTitle}</strong>
+        <div class="modal__actions">
+          <button type="button" id="install-copy-button" class="modal__copy">{uiText.copy}</button>
+          <button type="submit" class="modal__close">{uiText.close}</button>
+        </div>
+      </div>
+      <pre id="install-modal-command" class="modal__command"></pre>
+      <p class="modal__hint">{uiText.installHint}</p>
+    </form>
+  </dialog>
+
+  <dialog id="uninstall-modal" class="modal modal--large">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <strong>{uiText.uninstallModalTitle}</strong>
+        <button type="submit" class="modal__close">{uiText.close}</button>
+      </div>
+
+      <div class="uninstall-modal">
+        <article class="uninstall-modal__lead">
+          <h3>{uiText.clearPathsTitle}</h3>
+          <p>{uiText.clearPathsBody}</p>
+        </article>
+
+        <div class="uninstall-modal__grid">
+          <article class="uninstall-card">
+            <div class="uninstall-card__head">
+              <h4>{uninstallGuides.bash.title}</h4>
+              <button
+                type="button"
+                class="modal__copy"
+                data-copy-command
+                data-copy-value={uninstallGuides.bash.command}
+              >
+                {uiText.copy}
+              </button>
+            </div>
+            <pre class="modal__command modal__command--inline">{uninstallGuides.bash.command}</pre>
+            <p>{uiText.uninstallBashBody}</p>
+          </article>
+
+          <article class="uninstall-card">
+            <div class="uninstall-card__head">
+              <h4>{uninstallGuides.windows.title}</h4>
+              <button
+                type="button"
+                class="modal__copy"
+                data-copy-command
+                data-copy-value={uninstallGuides.windows.command}
+              >
+                {uiText.copy}
+              </button>
+            </div>
+            <pre class="modal__command modal__command--inline">{uninstallGuides.windows.command}</pre>
+            <p>{uiText.uninstallWindowsBody}</p>
+          </article>
+        </div>
+
+        <article class="uninstall-card uninstall-card--manual">
+          <div class="uninstall-card__head">
+            <h4>{uninstallGuides.manual.title}</h4>
+          </div>
+
+          <div class="uninstall-manual">
+            <div class="uninstall-manual__block">
+              <strong>{uiText.uninstallNativeStep}</strong>
+              {uninstallGuides.manual.commands.map((command) => (
+                <div class="uninstall-manual__command">
+                  <code>{command}</code>
+                  <button type="button" class="modal__copy" data-copy-command data-copy-value={command}>
+                    {uiText.copy}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div class="uninstall-manual__block">
+              <strong>{uiText.uninstallCleanupStep}</strong>
+              <ul>
+                {uninstallGuides.manual.cleanup.map((item) => (
+                  <li><code>{item}</code></li>
+                ))}
+              </ul>
+            </div>
+
+            <div class="uninstall-manual__block">
+              <strong>{uiText.uninstallKeepStep}</strong>
+              <ul>
+                {uninstallGuides.manual.keep.map((item) => (
+                  <li><code>{item}</code></li>
+                ))}
+              </ul>
+              <p>{uiText.uninstallKeepBody}</p>
+            </div>
+          </div>
+        </article>
+
+        <p class="uninstall-modal__note">{uiText.uninstallFinalNote}</p>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="changelog-modal" class="modal modal--large">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <strong>{uiText.fullChangelog}</strong>
+        <button type="submit" class="modal__close">{uiText.close}</button>
+      </div>
+      <div class="changelog-modal__body">
+        {data.changelog.map((entry) => (
+          <article class="changelog-entry">
+            <header>
+              <h3>v{entry.version}</h3>
+              <span>{formatDate(entry.date)}</span>
+            </header>
+            {entry.added && entry.added.length > 0 && (
+              <div>
+                <strong>{uiText.added}</strong>
+                <ul>
+                  {entry.added.map((item) => (
+                    <li set:html={item}></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {entry.changed && entry.changed.length > 0 && (
+              <div>
+                <strong>{uiText.changed}</strong>
+                <ul>
+                  {entry.changed.map((item) => (
+                    <li set:html={item}></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {entry.fixed && entry.fixed.length > 0 && (
+              <div>
+                <strong>{uiText.fixed}</strong>
+                <ul>
+                  {entry.fixed.map((item) => (
+                    <li set:html={item}></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="origin-modal" class="modal modal--xl">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <div class="agent-modal__title-wrap">
+          <strong>Alfred Dev</strong>
+          <span class="mini-tag mini-tag--butter">{activeAlfredOrigin.badge}</span>
+        </div>
+        <button type="submit" class="modal__close">{uiText.close}</button>
+      </div>
+
+      <div class="tech-modal">
+        <aside class="tech-modal__summary">
+          <span class="agent-modal__eyebrow">{activeAlfredOrigin.kicker}</span>
+          <h3>{activeAlfredOrigin.lead}</h3>
+          <p class="tech-modal__summary-copy">{activeAlfredOrigin.summary}</p>
+
+          <div class="tech-modal__highlights">
+            {activeAlfredOrigin.highlights.map((item) => (
+              <div class="tech-pill">
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+        </aside>
+
+        <div class="tech-modal__grid">
+          {activeAlfredOrigin.sections.map((section) => (
+            <article class="tech-card">
+              <h4>{section.title}</h4>
+              <p>{section.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="tech-modal" class="modal modal--xl">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <div class="agent-modal__title-wrap">
+          <strong>{activeTechnicalVision.title}</strong>
+          <span class="mini-tag mini-tag--peach">{activeTechnicalVision.badge}</span>
+        </div>
+        <button type="submit" class="modal__close">{uiText.close}</button>
+      </div>
+
+      <div class="tech-modal">
+        <aside class="tech-modal__summary">
+          <span class="agent-modal__eyebrow">{activeTechnicalVision.kicker}</span>
+          <h3>{activeTechnicalVision.lead}</h3>
+          <p class="tech-modal__summary-copy">{activeTechnicalVision.summary}</p>
+
+          <div class="tech-modal__highlights">
+            {activeTechnicalVision.highlights.map((item) => (
+              <div class="tech-pill">
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div class="tech-modal__principles">
+            <h4>{uiText.systemPrinciples}</h4>
+            <ul>
+              {activeTechnicalVision.principles.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div class="tech-modal__actions">
+            <a class="tech-modal__repo" href={activeTechnicalVision.repoUrl} target="_blank" rel="noreferrer">
+              <span class="topbar__icon" set:html={icons.github}></span>
+              <span>686f6c61/alfred-dev</span>
+            </a>
+            <button type="button" class="tech-modal__changelog" data-changelog-trigger>
+              <span class="topbar__icon" set:html={icons.changelog}></span>
+              <span>{uiText.openChangelog}</span>
+            </button>
+          </div>
+        </aside>
+
+        <div class="tech-modal__grid">
+          {activeTechnicalVision.sections.map((section) => (
+            <article class="tech-card">
+              <h4>{section.title}</h4>
+              <p>{section.body}</p>
+              {section.bullets && (
+                <ul>
+                  {section.bullets.map((item) => (
+                    <li>{item}</li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="command-modal" class="modal modal--large">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <div class="agent-modal__title-wrap">
+          <strong id="command-modal-title">/alfred-dev:command</strong>
+          <span id="command-modal-chip" class="mini-tag mini-tag--sky">{tr('Operativo', 'Operational')}</span>
+        </div>
+        <button type="submit" class="modal__close">{uiText.close}</button>
+      </div>
+
+      <div class="command-modal">
+        <aside class="command-modal__summary">
+          <span id="command-modal-group" class="agent-modal__eyebrow">{tr('Grupo', 'Group')}</span>
+          <h3 id="command-modal-summary">{tr('Resumen', 'Summary')}</h3>
+          <p id="command-modal-detail" class="command-modal__detail"></p>
+
+          <div class="command-modal__stats">
+            <div class="tech-pill">
+              <strong id="command-modal-core-count">0</strong>
+              <span>{uiText.commandCoreLabel}</span>
+            </div>
+            <div class="tech-pill">
+              <strong id="command-modal-optional-count">0</strong>
+              <span>{uiText.commandOptionalLabel}</span>
+            </div>
+            <div class="tech-pill">
+              <strong id="command-modal-layer-count">0</strong>
+              <span>{uiText.commandLayersLabel}</span>
+            </div>
+            <div class="tech-pill">
+              <strong id="command-modal-mode">{tr('Operativo', 'Operational')}</strong>
+              <span>{uiText.mode}</span>
+            </div>
+          </div>
+        </aside>
+
+        <div class="command-modal__body">
+          <section class="agent-modal__section">
+            <h4>{uiText.commandCoreEntry}</h4>
+            <div id="command-modal-core" class="command-modal__buttons"></div>
+          </section>
+
+          <section class="agent-modal__section">
+            <h4>{uiText.commandOptionalEntry}</h4>
+            <div id="command-modal-optional" class="command-modal__buttons"></div>
+          </section>
+
+          <section class="agent-modal__section">
+            <h4>{uiText.commandLayerEntry}</h4>
+            <div id="command-modal-layers" class="command-modal__buttons"></div>
+          </section>
+
+          <section class="agent-modal__section agent-modal__section--full">
+            <h4>{uiText.commandReality}</h4>
+            <ul id="command-modal-notes"></ul>
+          </section>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="agent-modal" class="modal modal--large">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <div class="agent-modal__title-wrap">
+          <strong id="agent-modal-title">{uiText.agentLabel}</strong>
+          <span id="agent-modal-chip" class="mini-tag mini-tag--peach">{uiText.core}</span>
+        </div>
+        <button type="submit" class="modal__close">{uiText.close}</button>
+      </div>
+
+      <div class="agent-modal">
+        <aside class="agent-modal__summary">
+          <span id="agent-modal-role" class="agent-modal__eyebrow">{uiText.agentRoleLabel}</span>
+          <h3 id="agent-modal-summary">{tr('Resumen', 'Summary')}</h3>
+          <p id="agent-modal-voice"></p>
+
+          <dl class="agent-modal__specs">
+            <div>
+              <dt>{uiText.type}</dt>
+              <dd id="agent-modal-type"></dd>
+            </div>
+            <div>
+              <dt>{uiText.model}</dt>
+              <dd id="agent-modal-model"></dd>
+            </div>
+            <div>
+              <dt>{uiText.tools}</dt>
+              <dd id="agent-modal-tools"></dd>
+            </div>
+          </dl>
+        </aside>
+
+        <div class="agent-modal__body">
+          <section class="agent-modal__section agent-modal__section--full">
+            <h4>{uiText.howItEnters}</h4>
+            <ul id="agent-modal-flow"></ul>
+          </section>
+
+          <section class="agent-modal__section">
+            <h4>{uiText.whatItDoesTitle}</h4>
+            <ul id="agent-modal-does"></ul>
+          </section>
+
+          <section class="agent-modal__section">
+            <h4>{uiText.whatItDoesntTitle}</h4>
+            <ul id="agent-modal-doesnt"></ul>
+          </section>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="layer-modal" class="modal">
+    <form method="dialog" class="modal__surface">
+      <div class="modal__bar">
+        <div class="agent-modal__title-wrap">
+          <strong id="layer-modal-title">{uiText.layerTitle}</strong>
+          <span class="mini-tag mini-tag--sky">{uiText.runtimeLayer}</span>
+        </div>
+        <button type="submit" class="modal__close">{uiText.close}</button>
+      </div>
+
+      <div class="layer-modal">
+        <p id="layer-modal-detail" class="layer-modal__lead"></p>
+
+        <section class="agent-modal__section">
+          <h4>{uiText.layerAdds}</h4>
+          <ul id="layer-modal-points"></ul>
+        </section>
+      </div>
+    </form>
+  </dialog>
+
+  <script is:inline>
+    const installDialog = document.getElementById('install-modal');
+    const uninstallDialog = document.getElementById('uninstall-modal');
+    const installTitle = document.getElementById('install-modal-title');
+    const installCommand = document.getElementById('install-modal-command');
+    const installCopyButton = document.getElementById('install-copy-button');
+    const changelogDialog = document.getElementById('changelog-modal');
+    const originDialog = document.getElementById('origin-modal');
+    const techDialog = document.getElementById('tech-modal');
+    const commandDialog = document.getElementById('command-modal');
+    const agentDialog = document.getElementById('agent-modal');
+    const layerDialog = document.getElementById('layer-modal');
+    const uiCopyNode = document.getElementById('landing-ui-copy');
+    const agentCatalogNode = document.getElementById('agent-catalog');
+    const commandCatalogNode = document.getElementById('command-catalog');
+    const layerCatalogNode = document.getElementById('layer-catalog');
+    const collaborationEggNode = document.getElementById('collaboration-egg');
+    const uiCopy = uiCopyNode ? JSON.parse(uiCopyNode.textContent || '{}') : {};
+    const agentCatalog = agentCatalogNode ? JSON.parse(agentCatalogNode.textContent || '[]') : [];
+    const commandCatalog = commandCatalogNode ? JSON.parse(commandCatalogNode.textContent || '[]') : [];
+    const layerCatalog = layerCatalogNode ? JSON.parse(layerCatalogNode.textContent || '[]') : [];
+    const collaborationEgg = collaborationEggNode ? JSON.parse(collaborationEggNode.textContent || '{}') : null;
+    const commandTitle = document.getElementById('command-modal-title');
+    const commandChip = document.getElementById('command-modal-chip');
+    const commandGroup = document.getElementById('command-modal-group');
+    const commandSummary = document.getElementById('command-modal-summary');
+    const commandDetail = document.getElementById('command-modal-detail');
+    const commandCoreCount = document.getElementById('command-modal-core-count');
+    const commandOptionalCount = document.getElementById('command-modal-optional-count');
+    const commandLayerCount = document.getElementById('command-modal-layer-count');
+    const commandMode = document.getElementById('command-modal-mode');
+    const commandCore = document.getElementById('command-modal-core');
+    const commandOptional = document.getElementById('command-modal-optional');
+    const commandLayers = document.getElementById('command-modal-layers');
+    const commandNotes = document.getElementById('command-modal-notes');
+    const agentTitle = document.getElementById('agent-modal-title');
+    const agentChip = document.getElementById('agent-modal-chip');
+    const agentRole = document.getElementById('agent-modal-role');
+    const agentSummary = document.getElementById('agent-modal-summary');
+    const agentVoice = document.getElementById('agent-modal-voice');
+    const agentType = document.getElementById('agent-modal-type');
+    const agentModel = document.getElementById('agent-modal-model');
+    const agentTools = document.getElementById('agent-modal-tools');
+    const agentDoes = document.getElementById('agent-modal-does');
+    const agentDoesnt = document.getElementById('agent-modal-doesnt');
+    const agentFlow = document.getElementById('agent-modal-flow');
+    const layerTitle = document.getElementById('layer-modal-title');
+    const layerDetail = document.getElementById('layer-modal-detail');
+    const layerPoints = document.getElementById('layer-modal-points');
+    const commandTagClass = {
+      peach: 'mini-tag mini-tag--peach',
+      pink: 'mini-tag mini-tag--pink',
+      sky: 'mini-tag mini-tag--sky',
+      butter: 'mini-tag mini-tag--butter',
+      lavender: 'mini-tag mini-tag--lavender',
+    };
+
+    const copyText = async (text, button) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = button.textContent;
+        button.textContent = uiCopy.copied || 'Copied';
+        setTimeout(() => {
+          button.textContent = original;
+        }, 1200);
+      } catch {
+        button.textContent = uiCopy.manualCopy || 'Copy manually';
+      }
+    };
+
+    document.querySelectorAll('[data-install-trigger]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const platform = button.dataset.platform || uiCopy.installModalTitle || 'Installation';
+        const command = button.dataset.command || '';
+
+        installTitle.textContent = `${uiCopy.installationOn || 'Install on'} ${platform}`;
+        installCommand.textContent = command;
+        installCopyButton.dataset.command = command;
+
+        if (!installDialog.open) {
+          installDialog.showModal();
+        }
+
+        if (command) {
+          await copyText(command, installCopyButton);
+        }
+      });
+    });
+
+    installCopyButton?.addEventListener('click', async () => {
+      const command = installCopyButton.dataset.command || '';
+      if (command) {
+        await copyText(command, installCopyButton);
+      }
+    });
+
+    document.querySelectorAll('[data-copy-command]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const command = button.dataset.copyValue || '';
+        if (command) {
+          await copyText(command, button);
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-changelog-trigger]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (techDialog?.open) {
+          techDialog.close();
+        }
+        if (!changelogDialog.open) {
+          changelogDialog.showModal();
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-origin-trigger]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (!originDialog?.open) {
+          originDialog.showModal();
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-tech-trigger]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (!techDialog.open) {
+          techDialog.showModal();
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-uninstall-trigger]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (!uninstallDialog?.open) {
+          uninstallDialog.showModal();
+        }
+      });
+    });
+
+    const renderAgentList = (target, items, emptyLabel) => {
+      if (!target) return;
+      target.innerHTML = '';
+      const values = Array.isArray(items) && items.length > 0 ? items : [emptyLabel];
+
+      values.forEach((item) => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        target.appendChild(li);
+      });
+    };
+
+    const renderEntityButtons = (target, items, triggerKind, emptyLabel) => {
+      if (!target) return;
+      target.innerHTML = '';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'command-modal__empty';
+        empty.textContent = emptyLabel;
+        target.appendChild(empty);
+        return;
+      }
+
+      items.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `command-modal__pill command-modal__pill--${triggerKind}`;
+        button.textContent = item.label || item.title || item.id;
+
+        if (triggerKind === 'agent') {
+          button.dataset.agentTrigger = '';
+          button.dataset.agentId = item.id;
+        } else if (triggerKind === 'layer') {
+          button.dataset.layerTrigger = '';
+          button.dataset.layerId = item.id;
+        }
+
+        target.appendChild(button);
+      });
+    };
+
+    const openAgent = (agentId) => {
+      const agent = agentCatalog.find((entry) => entry.id === agentId);
+      if (!agent || !agentDialog) return;
+
+      if (commandDialog?.open) {
+        commandDialog.close();
+      }
+
+      if (agentTitle) agentTitle.textContent = agent.label;
+      if (agentChip) {
+        agentChip.textContent = agent.group === 'core' ? (uiCopy.coreTag || 'Core') : (uiCopy.optionalTag || 'Optional');
+        agentChip.className = `mini-tag ${agent.group === 'core' ? 'mini-tag--peach' : 'mini-tag--sky'}`;
+      }
+      if (agentRole) agentRole.textContent = agent.role;
+      if (agentSummary) agentSummary.textContent = agent.cardSummary;
+      if (agentVoice) agentVoice.textContent = agent.voice;
+      if (agentType) agentType.textContent = agent.type;
+      if (agentModel) agentModel.textContent = agent.model;
+      if (agentTools) agentTools.textContent = agent.tools;
+
+      renderAgentList(agentDoes, agent.does, uiCopy.locale === 'en' ? 'Coordinates work and contributes judgment inside its domain.' : 'Coordina y aporta criterio sobre su ámbito.');
+      renderAgentList(agentDoesnt, agent.doesnt, uiCopy.locale === 'en' ? 'It does not replace the rest of the flow or invent work outside scope.' : 'No sustituye al resto del flujo ni inventa trabajo fuera de alcance.');
+      renderAgentList(agentFlow, agent.flowItems, uiCopy.locale === 'en' ? 'It enters when Alfred or the user need its specific judgment.' : 'Entra cuando Alfred o el usuario necesitan su criterio específico.');
+
+      if (!agentDialog.open) {
+        agentDialog.showModal();
+      }
+    };
+
+    const openLayer = (layerId) => {
+      const layer = layerCatalog.find((entry) => entry.id === layerId);
+      if (!layer || !layerDialog) return;
+
+      if (commandDialog?.open) {
+        commandDialog.close();
+      }
+
+      if (layerTitle) layerTitle.textContent = layer.title;
+      if (layerDetail) layerDetail.textContent = layer.detail;
+      renderAgentList(layerPoints, layer.points, uiCopy.locale === 'en' ? 'Adds an operational capability complementary to the main flow.' : 'Aporta una capacidad operativa complementaria al flujo principal.');
+
+      if (!layerDialog.open) {
+        layerDialog.showModal();
+      }
+    };
+
+    const openCommand = (commandId) => {
+      const command = commandCatalog.find((entry) => entry.id === commandId);
+      if (!command || !commandDialog) return;
+
+      const core = (command.coreAgents || [])
+        .map((id) => agentCatalog.find((entry) => entry.id === id))
+        .filter(Boolean);
+      const optional = (command.optionalAgents || [])
+        .map((id) => agentCatalog.find((entry) => entry.id === id))
+        .filter(Boolean);
+      const layers = (command.layerIds || [])
+        .map((id) => layerCatalog.find((entry) => entry.id === id))
+        .filter(Boolean);
+
+      if (commandTitle) commandTitle.textContent = command.label;
+      if (commandChip) {
+        commandChip.textContent = command.mode;
+        commandChip.className = commandTagClass[command.tone] || 'mini-tag mini-tag--black';
+      }
+      if (commandGroup) commandGroup.textContent = `${command.group} / ${command.subtitle}`;
+      if (commandSummary) commandSummary.textContent = command.description;
+      if (commandDetail) commandDetail.textContent = command.detail;
+      if (commandCoreCount) commandCoreCount.textContent = String(core.length);
+      if (commandOptionalCount) commandOptionalCount.textContent = String(optional.length);
+      if (commandLayerCount) commandLayerCount.textContent = String(layers.length);
+      if (commandMode) commandMode.textContent = command.mode;
+
+      renderEntityButtons(commandCore, core, 'agent', uiCopy.locale === 'en' ? 'No additional core team enters here.' : 'Aquí no entra un equipo de núcleo adicional.');
+      renderEntityButtons(commandOptional, optional, 'agent', uiCopy.locale === 'en' ? 'No optional specialists enter here by default.' : 'Aquí no entran opcionales por defecto.');
+      renderEntityButtons(commandLayers, layers, 'layer', uiCopy.locale === 'en' ? 'This command does not activate specific auxiliary layers.' : 'Este comando no activa capas auxiliares específicas.');
+      renderAgentList(commandNotes, command.notes, uiCopy.locale === 'en' ? 'Follow the protocol documented for the command itself.' : 'Sigue el protocolo documentado del propio comando.');
+
+      if (!commandDialog.open) {
+        commandDialog.showModal();
+      }
+    };
+
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const commandTrigger = target.closest('[data-command-trigger]');
+      if (commandTrigger instanceof HTMLElement) {
+        event.preventDefault();
+        openCommand(commandTrigger.dataset.commandId);
+        return;
+      }
+
+      const agentTrigger = target.closest('[data-agent-trigger]');
+      if (agentTrigger instanceof HTMLElement) {
+        event.preventDefault();
+        openAgent(agentTrigger.dataset.agentId);
+        return;
+      }
+
+      const layerTrigger = target.closest('[data-layer-trigger]');
+      if (layerTrigger instanceof HTMLElement) {
+        event.preventDefault();
+        openLayer(layerTrigger.dataset.layerId);
+      }
+    });
+
+    // Easter egg para quien abra DevTools y quiera empujar el proyecto.
+    if (collaborationEgg?.url) {
+      console.groupCollapsed(
+        `%c${collaborationEgg.label || 'ALFRED DEV / COLLABORATION'}`,
+        'background:#111111;color:#f7f0e8;padding:6px 10px;font-weight:800;font-family:\"JetBrains Mono\", monospace;',
+      );
+      if (collaborationEgg.lead) {
+        console.info(collaborationEgg.lead);
+      }
+      if (collaborationEgg.body) {
+        console.info(collaborationEgg.body);
+      }
+      console.info(`${collaborationEgg.cta || 'Open issues at:'} ${collaborationEgg.url}`);
+      console.groupEnd();
+    }
+  </script>
+
+  <style>
+    :global(body) {
+      background: #f7f0e8;
+      color: #111111;
+      font-family: var(--font-body);
+    }
+
+    :global(a),
+    :global(button) {
+      color: inherit;
+    }
+
+    main.beta-page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px 32px 40px;
+      display: grid;
+      gap: 18px;
+    }
+
+    section {
+      padding: 0;
+    }
+
+    code,
+    pre,
+    .command-chip,
+    .mini-tag {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .panel {
+      border: 4px solid #111111;
+      box-shadow: 10px 10px 0 rgba(17, 17, 17, 0.22);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .headline,
+    .counter,
+    .team-group__count span,
+    .command-row__rail strong,
+    .skills-card__meter strong {
+      font-family: var(--font-display);
+      letter-spacing: -0.04em;
+    }
+
+    .panel-pink,
+    .tone-pink {
+      background: #efc6d2;
+    }
+
+    .panel-butter,
+    .tone-butter {
+      background: #f6e7a2;
+    }
+
+    .panel-sky,
+    .tone-sky {
+      background: #bfd4f4;
+    }
+
+    .panel-mint,
+    .tone-mint {
+      background: #cfe3d2;
+    }
+
+    .panel-peach,
+    .tone-peach {
+      background: #f3c59c;
+    }
+
+    .panel-lavender,
+    .tone-lavender {
+      background: #cfc6ee;
+    }
+
+    .panel-cream {
+      background: #f7f0e8;
+    }
+
+    .panel-dark {
+      background: #111111;
+      color: #f7f0e8;
+    }
+
+    .mini-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      border: 3px solid #111111;
+    }
+
+    .mini-tag--black {
+      background: #111111;
+      color: #f7f0e8;
+    }
+
+    .mini-tag--peach {
+      background: #f3c59c;
+      color: #111111;
+    }
+
+    .mini-tag--pink {
+      background: #efc6d2;
+      color: #111111;
+    }
+
+    .mini-tag--sky {
+      background: #bfd4f4;
+      color: #111111;
+    }
+
+    .mini-tag--butter {
+      background: #f6e7a2;
+      color: #111111;
+    }
+
+    .mini-tag--lavender {
+      background: #cfc6ee;
+      color: #111111;
+    }
+
+    .mini-tag--green {
+      background: #cfe3d2;
+      color: #111111;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 16px;
+    }
+
+    .topbar__brand,
+    .topbar__actions,
+    .hero-stats,
+    .hero-install,
+    .hero-install__note,
+    .command-row__chips,
+    .skills-card__chips,
+    .install-row,
+    .closing-cta__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .topbar__note,
+    .topbar__link,
+    .hero-install__helper {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .topbar__link {
+      background: transparent;
+      border: 0;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .topbar__brand-trigger {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .topbar__link--icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 2px;
+    }
+
+    .topbar__icon,
+    .section-icon,
+    .title-icon,
+    .utility-pill__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+    }
+
+    .topbar__icon svg,
+    .section-icon svg,
+    .title-icon svg,
+    .utility-pill__icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #111111;
+      background: #111111;
+      color: #f7f0e8;
+    }
+
+    .section-icon--inline {
+      transform: translateY(2px);
+    }
+
+    .title-icon {
+      width: 28px;
+      height: 28px;
+      margin-right: 8px;
+      border: 2px solid #111111;
+      background: #111111;
+      color: #f7f0e8;
+    }
+
+    .hero-grid,
+    .skills-grid,
+    .start-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(0, 1.9fr) minmax(420px, 1fr);
+    }
+
+    .hero-copy {
+      position: relative;
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero-copy__eyebrow {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-copy__sticker {
+      position: absolute;
+      top: 20px;
+      right: 22px;
+      background: #f6e7a2;
+      border: 3px solid #111111;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      transform: rotate(-4deg);
+    }
+
+    .hero-copy h1 {
+      max-width: 11ch;
+      font-size: clamp(48px, 7vw, 78px);
+      line-height: 0.92;
+      font-weight: 900;
+    }
+
+    .hero-copy__body {
+      max-width: 760px;
+      font-size: 21px;
+      line-height: 1.22;
+      font-weight: 500;
+    }
+
+    .hero-chip,
+    .command-chip,
+    .install-trigger,
+    .hero-install__button,
+    .closing-cta__button {
+      border: 3px solid #111111;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      background: #f7f0e8;
+      cursor: pointer;
+      box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.22);
+    }
+
+    .install-trigger,
+    .hero-install__button,
+    .closing-cta__button {
+      width: auto;
+      max-width: 100%;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+
+    .platform-action__icon {
+      width: 15px;
+      height: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .platform-action__icon :global(svg) {
+      width: 100%;
+      height: 100%;
+    }
+
+    .platform-action__label {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .hero-chip {
+      cursor: default;
+      box-shadow: none;
+      padding: 7px 10px;
+    }
+
+    .command-chip {
+      cursor: default;
+      padding: 6px 10px;
+      font-size: 12px;
+      box-shadow: none;
+    }
+
+    .command-chip--action {
+      cursor: pointer;
+    }
+
+    .command-chip--action:hover,
+    .command-chip--action:focus-visible {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.22);
+    }
+
+    .command-chip--dark {
+      background: #111111;
+      color: #f7f0e8;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .changelog-card,
+    .skills-card,
+    .aux-card,
+    .start-card,
+    .install-card,
+    .faq-panel {
+      display: grid;
+      gap: 12px;
+    }
+
+    .changelog-card {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .changelog-card__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .changelog-card h2 {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .changelog-card__release {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .changelog-card__release-main {
+      display: grid;
+      gap: 8px;
+    }
+
+    .changelog-card__release-main strong {
+      font-size: clamp(30px, 5vw, 44px);
+      line-height: 0.95;
+      font-weight: 900;
+    }
+
+    .changelog-card__date {
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .changelog-card__sections {
+      display: grid;
+      gap: 12px;
+    }
+
+    .changelog-card__section {
+      border: 3px solid #111111;
+      background: #ffffff;
+      padding: 12px 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .changelog-card__section strong {
+      display: inline-flex;
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      background: #111111;
+      color: #f5efe6;
+      padding: 6px 8px 5px;
+      transform: rotate(-1.2deg);
+      box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.2);
+    }
+
+    .changelog-card__section ul {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .changelog-card__section li {
+      font-size: 13px;
+      line-height: 1.3;
+      font-weight: 700;
+      position: relative;
+      padding-left: 14px;
+    }
+
+    .changelog-card__section li::before {
+      content: '■';
+      position: absolute;
+      left: 0;
+      top: 0.2em;
+      font-size: 10px;
+      line-height: 1;
+      color: #111111;
+    }
+
+    .manifesto-strip {
+      padding: 16px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .manifesto-strip strong {
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .manifesto-strip span {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .beta-section {
+      display: grid;
+      gap: 16px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .section-heading--wide {
+      display: grid;
+      gap: 10px;
+    }
+
+    .headline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: clamp(32px, 4vw, 52px);
+      line-height: 0.96;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .headline--small {
+      font-size: clamp(28px, 4vw, 42px);
+    }
+
+    .counter {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      padding: 2px 12px;
+      border: 4px solid #111111;
+      background: #f3c59c;
+      transform: rotate(-4deg);
+    }
+
+    .counter--sky {
+      background: #bfd4f4;
+    }
+
+    .headline-note {
+      background: #111111;
+      color: #f7f0e8;
+      padding: 10px 14px;
+      border: 4px solid #111111;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .reality-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .reality-card,
+    .agent-card,
+    .team-group__header,
+    .command-row,
+    .utility-pill {
+      padding: 16px 18px;
+    }
+
+    .reality-card {
+      display: grid;
+      gap: 12px;
+      min-height: 148px;
+    }
+
+    .reality-card__index {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 26px;
+      font-weight: 900;
+    }
+
+    .reality-card__body h2 {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.02;
+      margin-bottom: 8px;
+    }
+
+    .reality-card__body p {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .team-group {
+      display: grid;
+      gap: 14px;
+    }
+
+    .team-group__header {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .team-group__count {
+      background: #111111;
+      color: #f7f0e8;
+      padding: 12px;
+      display: grid;
+      gap: 2px;
+      align-self: stretch;
+    }
+
+    .team-group__count span {
+      color: #f3c59c;
+      font-size: 42px;
+      font-weight: 900;
+      line-height: 0.9;
+    }
+
+    .team-group__count small {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .team-group__count--sky span {
+      color: #bfd4f4;
+    }
+
+    .team-group__header h3 {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .team-group__header p {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.28;
+    }
+
+    .team-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .team-grid--core {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .team-grid--optional {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .agent-card {
+      min-height: 138px;
+      display: grid;
+      padding: 0;
+    }
+
+    .agent-card--wide {
+      grid-column: span 2;
+    }
+
+    .agent-card__button {
+      width: 100%;
+      min-height: 138px;
+      border: 0;
+      background: transparent;
+      padding: 16px 18px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .agent-card__meta,
+    .agent-card__cta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.1;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .agent-card__meta {
+      width: fit-content;
+      padding: 5px 8px;
+      background: #111111;
+      color: #f7f0e8;
+      border: 2px solid #111111;
+    }
+
+    .agent-card__cta {
+      color: rgba(17, 17, 17, 0.75);
+    }
+
+    .agent-card h4 {
+      font-size: 22px;
+      line-height: 0.95;
+      font-weight: 900;
+    }
+
+    .agent-card p {
+      font-size: 13px;
+      line-height: 1.28;
+      font-weight: 700;
+    }
+
+    .commands-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .command-row {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .command-row__rail {
+      background: #111111;
+      color: #f7f0e8;
+      padding: 18px;
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+
+    .command-row__rail strong {
+      font-size: 54px;
+      line-height: 0.9;
+      font-weight: 900;
+      color: currentColor;
+    }
+
+    .command-row__rail h3 {
+      font-size: 28px;
+      line-height: 0.98;
+      font-weight: 900;
+    }
+
+    .command-row__rail span {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .command-row__content {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .command-row__content p {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .skills-card,
+    .aux-card,
+    .start-card,
+    .install-card,
+    .faq-panel,
+    .closing-cta,
+    .footer {
+      padding: 18px;
+    }
+
+    .skills-card__head,
+    .start-card__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .skills-card__head h2,
+    .start-card__head h3,
+    .install-card h3 {
+      display: inline-flex;
+      align-items: center;
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .skills-card__body {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 16px;
+    }
+
+    .skills-card__meter {
+      background: #111111;
+      color: #f7f0e8;
+      padding: 16px;
+      display: grid;
+      gap: 4px;
+      align-content: start;
+    }
+
+    .skills-card__meter strong {
+      font-size: 62px;
+      line-height: 0.88;
+      color: #f3c59c;
+    }
+
+    .skills-card__meter span {
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .skills-card__meter small {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .skills-card__copy {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .skills-card__copy p,
+    .skills-card__copy h3 {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .skills-card__copy h3 {
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .skills-card__footer {
+      background: #f7f0e8;
+      border: 2px solid #111111;
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .skills-card__domains {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .skills-domain {
+      background: #f7f0e8;
+      border: 2px solid #111111;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .skills-domain__head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+
+    .skills-domain strong {
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .skills-domain span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .skills-domain small {
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+
+    .aux-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .aux-tile {
+      background: #f7f0e8;
+      border: 2px solid #111111;
+      padding: 0;
+      display: block;
+    }
+
+    .aux-tile__button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 10px 12px;
+      display: grid;
+      gap: 4px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .aux-tile strong {
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.05;
+    }
+
+    .aux-tile span {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .aux-tile small {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: rgba(17, 17, 17, 0.75);
+    }
+
+    .start-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .start-card {
+      display: grid;
+      gap: 12px;
+    }
+
+    .start-step {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 12px;
+      background: #f7f0e8;
+      border: 2px solid #111111;
+      padding: 12px 14px;
+    }
+
+    .start-step strong {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 30px;
+      font-weight: 900;
+      color: #d7743e;
+      line-height: 1;
+    }
+
+    .start-step h4 {
+      font-size: 15px;
+      line-height: 1.08;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    .start-step p,
+    .install-preview p,
+    .faq-item div {
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .start-card__footer {
+      background: #111111;
+      color: #f7f0e8;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .install-card {
+      display: grid;
+      gap: 12px;
+    }
+
+      .install-row,
+      .utility-row {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .utility-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .install-row > *,
+      .utility-row > * {
+        min-height: 100%;
+      }
+
+    .install-preview {
+      background: #f7f0e8;
+      border: 3px solid #111111;
+      box-shadow: 6px 6px 0 rgba(17, 17, 17, 0.22);
+      padding-bottom: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .install-preview__bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: #111111;
+      color: #f7f0e8;
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .preview-copy {
+      background: #f3c59c;
+      color: #111111;
+      padding: 6px 10px;
+    }
+
+    .install-preview code {
+      padding: 0 14px;
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+      font-weight: 700;
+    }
+
+    .install-preview p {
+      padding: 0 14px;
+    }
+
+    .utility-pill {
+      background: #111111;
+      color: #f7f0e8;
+      display: grid;
+      gap: 8px;
+      min-height: 92px;
+      align-content: start;
+    }
+
+    .utility-pill--button {
+      border: 0;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .utility-pill--button:hover,
+    .utility-pill--button:focus-visible {
+      transform: translate(-2px, -2px);
+      box-shadow: 8px 8px 0 rgba(17, 17, 17, 0.24);
+    }
+
+    .utility-pill code {
+      font-size: 12px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .utility-pill__label {
+      width: fit-content;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 8px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #111111;
+    }
+
+    .utility-pill__label--peach {
+      background: #f3c59c;
+    }
+
+    .utility-pill__label--sky {
+      background: #bfd4f4;
+    }
+
+    .utility-pill small {
+      font-size: 11px;
+      line-height: 1.3;
+      font-weight: 700;
+      color: #f1e7db;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .faq-item + .faq-item {
+      border-top: 2px solid rgba(17, 17, 17, 0.2);
+      padding-top: 14px;
+    }
+
+    .faq-item h3 {
+      font-size: 18px;
+      line-height: 1.05;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .closing-cta {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      align-items: start;
+    }
+
+    .closing-cta h2 {
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 0.95;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .closing-cta p {
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .closing-cta__actions {
+      align-content: start;
+    }
+
+    .closing-cta__button,
+    .install-trigger {
+      text-align: left;
+    }
+
+    .footer {
+      display: grid;
+      gap: 14px;
+    }
+
+    .footer__top {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .footer__top strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    .footer__top span,
+    .footer__meta {
+      font-size: 13px;
+      line-height: 1.3;
+      font-weight: 700;
+    }
+
+    .footer__meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .footer__bottom {
+      border-top: 2px solid #111111;
+      padding-top: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .modal {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      max-width: min(760px, calc(100vw - 32px));
+      width: 100%;
+      position: fixed;
+      inset: 0;
+      margin: auto;
+    }
+
+    .modal--large {
+      max-width: min(960px, calc(100vw - 32px));
+    }
+
+    .modal--xl {
+      max-width: min(1180px, calc(100vw - 32px));
+    }
+
+    .modal::backdrop {
+      background: rgba(17, 17, 17, 0.55);
+    }
+
+    .modal__surface {
+      border: 4px solid #111111;
+      box-shadow: 10px 10px 0 rgba(17, 17, 17, 0.22);
+      background: #f7f0e8;
+      padding: 0 0 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .modal__bar {
+      background: #111111;
+      color: #f7f0e8;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .modal__actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal__copy,
+    .modal__close {
+      border: 3px solid #111111;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .modal__copy {
+      background: #f3c59c;
+      color: #111111;
+    }
+
+    .modal__close {
+      background: #bfd4f4;
+      color: #111111;
+    }
+
+    .modal__command {
+      margin: 0 16px;
+      padding: 14px;
+      border: 3px solid #111111;
+      background: #111111;
+      color: #f7f0e8;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 13px;
+      line-height: 1.45;
+      min-height: 72px;
+    }
+
+    .modal__hint {
+      margin: 0 16px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .agent-modal {
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      max-height: min(72vh, 860px);
+      overflow: auto;
+    }
+
+    .agent-modal__title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .agent-modal__summary,
+    .agent-modal__section {
+      border: 3px solid #111111;
+      background: #ffffff;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .agent-modal__eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .agent-modal__summary h3 {
+      font-size: 28px;
+      line-height: 0.95;
+      font-weight: 900;
+    }
+
+    .agent-modal__summary p,
+    .agent-modal__specs dd,
+    :global(.agent-modal__section li) {
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    .agent-modal__specs {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .agent-modal__specs div {
+      border-top: 2px solid rgba(17, 17, 17, 0.18);
+      padding-top: 10px;
+    }
+
+    .agent-modal__specs dt,
+    .agent-modal__section h4 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .agent-modal__specs dd {
+      margin: 6px 0 0;
+      word-break: break-word;
+    }
+
+    .agent-modal__body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-content: start;
+    }
+
+    .agent-modal__section--full {
+      grid-column: 1 / -1;
+    }
+
+    :global(.agent-modal__section ul) {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 0;
+    }
+
+    .command-modal {
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 16px;
+      max-height: min(72vh, 860px);
+      overflow: auto;
+    }
+
+    .command-modal__summary {
+      border: 3px solid #111111;
+      background: #111111;
+      color: #f7f0e8;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .command-modal__summary h3 {
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .command-modal__detail {
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 700;
+      color: #f1e7db;
+    }
+
+    .command-modal__stats {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .command-modal__body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-content: start;
+    }
+
+    .command-modal__buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    :global(.command-modal__pill) {
+      appearance: none;
+      border: 2px solid #111111;
+      background: #f7f0e8;
+      padding: 10px 12px;
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.2);
+      transition:
+        transform 120ms ease,
+        box-shadow 120ms ease,
+        background-color 120ms ease,
+        color 120ms ease;
+    }
+
+    :global(.command-modal__pill:hover) {
+      transform: translate(-2px, -2px);
+      box-shadow: 7px 7px 0 rgba(17, 17, 17, 0.22);
+    }
+
+    :global(.command-modal__pill:focus-visible) {
+      outline: 3px solid #111111;
+      outline-offset: 2px;
+      transform: translate(-2px, -2px);
+      box-shadow: 7px 7px 0 rgba(17, 17, 17, 0.22);
+    }
+
+    :global(.command-modal__pill:active) {
+      transform: translate(0, 0);
+      box-shadow: 3px 3px 0 rgba(17, 17, 17, 0.18);
+    }
+
+    :global(.command-modal__pill--agent) {
+      background: #bfd4f4;
+      color: #111111;
+    }
+
+    :global(.command-modal__pill--layer) {
+      background: #efc6d2;
+      color: #111111;
+    }
+
+    :global(.command-modal__pill--agent:hover),
+    :global(.command-modal__pill--agent:focus-visible) {
+      background: #a9c2ee;
+    }
+
+    :global(.command-modal__pill--layer:hover),
+    :global(.command-modal__pill--layer:focus-visible) {
+      background: #e7b4c5;
+    }
+
+    :global(.command-modal__empty) {
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    .tech-modal {
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      max-height: min(74vh, 900px);
+      overflow: auto;
+    }
+
+    .tech-modal__summary {
+      border: 3px solid #111111;
+      background: #111111;
+      color: #f7f0e8;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .tech-modal__summary h3 {
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .tech-modal__summary-copy {
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 700;
+      color: #f1e7db;
+    }
+
+    .tech-modal__highlights {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tech-pill {
+      background: #f7f0e8;
+      color: #111111;
+      border: 3px solid #111111;
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .tech-pill strong {
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .tech-pill span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .tech-modal__principles {
+      display: grid;
+      gap: 10px;
+    }
+
+    .tech-modal__actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .tech-modal__repo,
+    .tech-modal__changelog {
+      width: 100%;
+      border: 3px solid #111111;
+      background: #f7f0e8;
+      color: #111111;
+      padding: 10px 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+
+    .tech-modal__changelog {
+      background: #bfd4f4;
+    }
+
+    .tech-modal__principles h4,
+    .tech-card h4,
+    .layer-modal__lead {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tech-modal__principles ul {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    .tech-modal__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-content: start;
+    }
+
+    .tech-card {
+      border: 3px solid #111111;
+      background: #ffffff;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .tech-card h4 {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      padding: 7px 10px 6px;
+      background: #111111;
+      color: #f7f0e8;
+      border: 3px solid #111111;
+      box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.18);
+      transform: rotate(-1.2deg);
+    }
+
+    .tech-card p {
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+
+    .tech-card ul {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    .layer-modal {
+      padding: 0 16px;
+      display: grid;
+      gap: 16px;
+      max-height: min(72vh, 700px);
+      overflow: auto;
+    }
+
+    .layer-modal__lead {
+      border: 3px solid #111111;
+      background: #111111;
+      color: #f7f0e8;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .changelog-modal__body {
+      padding: 0 16px;
+      display: grid;
+      gap: 16px;
+      max-height: min(70vh, 820px);
+      overflow: auto;
+    }
+
+    .uninstall-modal {
+      padding: 0 16px;
+      display: grid;
+      gap: 16px;
+      max-height: min(72vh, 860px);
+      overflow: auto;
+    }
+
+    .uninstall-modal__lead,
+    .uninstall-card {
+      border: 3px solid #111111;
+      background: #ffffff;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .uninstall-modal__lead {
+      background: #111111;
+      color: #f7f0e8;
+    }
+
+    .uninstall-modal__lead h3,
+    .uninstall-card__head h4 {
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .uninstall-modal__lead p,
+    .uninstall-card p,
+    .uninstall-manual li,
+    .uninstall-modal__note {
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+
+    .uninstall-modal__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .uninstall-card__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .modal__command--inline {
+      margin: 0;
+      min-height: auto;
+    }
+
+    .uninstall-card--manual {
+      background: #f7f0e8;
+    }
+
+    .uninstall-manual {
+      display: grid;
+      gap: 14px;
+    }
+
+    .uninstall-manual__block {
+      display: grid;
+      gap: 10px;
+    }
+
+    .uninstall-manual__block strong {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .uninstall-manual__block ul {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .uninstall-manual__command {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+      border: 2px solid #111111;
+      background: #ffffff;
+      padding: 10px 12px;
+    }
+
+    .uninstall-manual__command code {
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .uninstall-modal__note {
+      border: 3px solid #111111;
+      background: #bfd4f4;
+      padding: 12px 14px;
+    }
+
+    .changelog-entry {
+      border: 3px solid #111111;
+      background: #ffffff;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .changelog-entry header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .changelog-entry h3 {
+      font-size: 26px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .changelog-entry header span {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .changelog-entry strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .changelog-entry ul {
+      padding-left: 18px;
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .changelog-entry li + li {
+      margin-top: 2px;
+    }
+
+    @media (max-width: 1160px) {
+      .hero-grid,
+      .skills-grid,
+      .start-grid,
+      .closing-cta {
+        grid-template-columns: 1fr;
+      }
+
+      .agent-modal {
+        grid-template-columns: 1fr;
+      }
+
+      .command-modal {
+        grid-template-columns: 1fr;
+      }
+
+      .tech-modal,
+      .tech-modal__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .uninstall-modal__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-copy h1 {
+        max-width: none;
+      }
+
+      .team-grid--core,
+      .team-grid--optional,
+      .reality-grid,
+      .faq-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .agent-card--wide {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 820px) {
+      main.beta-page {
+        padding: 14px 14px 28px;
+      }
+
+      .topbar,
+      .team-group__header,
+      .command-row,
+      .skills-card__body,
+      .team-grid--core,
+      .team-grid--optional,
+      .reality-grid,
+      .faq-grid,
+      .install-row,
+      .utility-row {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-grid,
+      .skills-grid,
+      .start-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .agent-modal__body {
+        grid-template-columns: 1fr;
+      }
+
+      .command-modal__body {
+        grid-template-columns: 1fr;
+      }
+
+      .tech-modal__highlights {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .uninstall-manual__command {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-copy {
+        padding: 20px;
+      }
+
+      .hero-copy__sticker {
+        position: static;
+        width: fit-content;
+      }
+
+      .team-group__count,
+      .command-row__rail {
+        width: 100%;
+      }
+
+      .command-row__rail strong {
+        font-size: 42px;
+      }
+
+      .agent-card--wide {
+        grid-column: auto;
+      }
+
+      .headline {
+        font-size: 32px;
+      }
+
+      .section-icon {
+        width: 30px;
+        height: 30px;
+      }
+
+      .closing-cta__actions {
+        width: 100%;
+      }
+    }
+  </style>
+</BaseLayout>

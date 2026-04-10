@@ -35,6 +35,36 @@ El `senior-dev` escribe primero un test que reproduce el bug, luego implementa e
 Activa `qa-engineer` y `security-officer` en paralelo para regression testing y security check.
 **GATE (automático+seguridad):** QA y seguridad aprueban. Se evalúa siempre, incluso en autopilot.
 
+### Especialistas opcionales en `fix`
+
+Si hay opcionales activos en `equipo_sesion` (ya sea por composición dinámica
+efímera o por fallback a `.claude/alfred-dev.local.md`), intégralos donde más
+aportan:
+
+- `diagnostico`: `data-engineer`, `performance-engineer`, `ux-reviewer`
+- `correccion`: `data-engineer`, `copywriter`, `i18n-specialist`
+- `validacion`: `performance-engineer`, `ux-reviewer`, `seo-specialist`, `i18n-specialist`
+- `lucius`: revisión secuencial de cierre en `validacion`
+
+`github-manager` y `librarian` no forman parte del loop estándar de `fix`: úsalos solo si el contexto lo pide de forma explícita.
+Consulta `equipo_sesion` como fuente runtime canónica. Si no existe equipo
+efímero, usa el equipo persistido que el orquestador ya haya derivado desde
+`.claude/alfred-dev.local.md`.
+
 ## Loop iterativo
 
 Si una gate no se supera al primer intento, corrige los problemas y vuelve a intentarlo. Maximo 5 intentos por fase. Si tras 5 intentos la gate sigue sin superarse, informa al usuario y espera instrucciones. En modo autopilot, si agotas los 5 intentos, deten el flujo e informa del problema -- no sigas reintentando indefinidamente.
+
+## Cierre canónico del comando
+
+- NO cierres con una explicación larga si el estado del fix ya quedó
+  persistido.
+- Si una gate de usuario queda pendiente, usa un único `AskUserQuestion`
+  navegable y pegado a la fase actual.
+- Si el flujo sigue abierto, apóyate en `.claude/alfred-dev-state.json` y en
+  `docs/project/current.md`, `docs/project/progress.md` y
+  `docs/project/traceability.md` para dejar visible:
+  - bug/causa raíz en curso
+  - fase actual
+  - especialistas activos o bajo demanda
+  - siguiente paso esperado
