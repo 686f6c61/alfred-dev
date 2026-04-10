@@ -359,6 +359,8 @@ const installCommands = {
       'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
   },
 };
+const assetVersion = data.footer.version.replace(/^v/i, '');
+const brandIconHref = `/favicon-32.png?v=${assetVersion}`;
 const uninstallGuides = {
   bash: {
     title: 'macOS / Linux',
@@ -1990,6 +1992,9 @@ const organizationLd = JSON.stringify({
     <header class="topbar panel panel-cream">
       <div class="topbar__brand">
         <button type="button" class="topbar__brand-trigger" data-origin-trigger aria-label={uiText.originAriaLabel}>
+          <span class="topbar__brand-mark" aria-hidden="true">
+            <img src={brandIconHref} alt="" width="28" height="28" loading="eager" decoding="async" />
+          </span>
           <span class="mini-tag mini-tag--black">ALFRED DEV</span>
         </button>
         <span class="mini-tag mini-tag--peach">{data.footer.version}</span>
@@ -3379,6 +3384,26 @@ const organizationLd = JSON.stringify({
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      gap: 10px;
+    }
+
+    .topbar__brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border: 3px solid #111111;
+      background: #cfc6ee;
+      box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.18);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .topbar__brand-mark img {
+      display: block;
+      width: 28px;
+      height: 28px;
     }
 
     .topbar__link--icon {
