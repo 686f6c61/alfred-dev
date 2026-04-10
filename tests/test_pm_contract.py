@@ -63,11 +63,28 @@ class TestPmCommandWrappers(unittest.TestCase):
         self.assertIn('allow-stop-once "$PWD" --command "/alfred-dev:validate"', command)
         self.assertIn('python3 .claude/alfred-continuity.py validate "$PWD"', command)
         self.assertIn(".claude/alfred-github-sync.json", command)
+        self.assertIn("No añadas una segunda capa de resumen", command)
+        self.assertIn("`Resumen`, `Checks`, `Avisos`, `Errores`", command)
+
+    def test_discuss_uses_helper_without_reopening_the_interview(self):
+        command = _read("commands/discuss.md")
+        self.assertIn('python3 .claude/alfred-continuity.py discuss "$PWD" --raw "$ARGUMENTS"', command)
+        self.assertIn("foco, alcance, riesgo, pregunta abierta clave y", command)
+        self.assertIn("NO lo reenvuelvas con una segunda entrevista", command)
+
+    def test_verify_uses_helper_first_and_does_not_rewrap(self):
+        command = _read("commands/verify.md")
+        self.assertIn('python3 .claude/alfred-continuity.py verify "$PWD" --raw "$ARGUMENTS"', command)
+        self.assertIn("Si el helper devuelve una respuesta válida, úsala como respuesta final", command)
+        self.assertIn("NO añadas una segunda capa de resumen", command)
 
     def test_search_uses_helper(self):
         command = _read("commands/search.md")
         self.assertIn('allow-stop-once "$PWD" --command "/alfred-dev:search"', command)
         self.assertIn('python3 .claude/alfred-continuity.py search "$PWD" --raw "$ARGUMENTS"', command)
+        self.assertIn("incluso", command)
+        self.assertIn("no hay coincidencias", command)
+        self.assertIn("NO uses `AskUserQuestion`", command)
         self.assertIn(".claude/alfred-memory.db", command)
 
     def test_sync_github_uses_helper(self):
@@ -77,6 +94,7 @@ class TestPmCommandWrappers(unittest.TestCase):
         self.assertIn(".claude/alfred-github-sync.json", command)
         self.assertIn("docs/project/github-sync.md", command)
         self.assertIn("github-manager", command)
+        self.assertIn("úsala como respuesta final y termina", command)
 
 
 class TestPluginManifestIncludesPmCommands(unittest.TestCase):

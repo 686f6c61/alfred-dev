@@ -1,2 +1,9 @@
 # Sesiones del servidor visual de Selina
 .alfred-dev/visual/
+
+# Artefactos locales de Python y testing
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage-html/

@@ -32,7 +32,7 @@ from core.continuity import (
     is_session_paused,
     load_stop_hook_bypass,
 )
-from core.orchestrator import FLOWS, load_state
+from core.orchestrator import FLOWS, get_effective_agents, load_state
 from core.session_report import generate_report
 
 
@@ -173,8 +173,22 @@ def build_block_message(session, fase, gate_tipo):
     comando = session.get("comando", "")
     descripcion_fase = fase.get("descripcion", "")
     descripcion_sesion = session.get("descripcion", "Sin descripcion")
-    agentes = fase.get("agentes", [])
+    agentes = list(fase.get("agentes", []))
     agentes_str = ", ".join(agentes) if agentes else "sin agentes asignados"
+    equipo = session.get("equipo_sesion") or {}
+    opcionales = equipo.get("opcionales_activos")
+    if isinstance(opcionales, dict):
+        efectivos = get_effective_agents(fase.get("nombre", ""), opcionales)
+        if efectivos["paralelo"]:
+            agentes_str += (
+                " | opcionales en paralelo: "
+                + ", ".join(efectivos["paralelo"])
+            )
+        if efectivos["secuencial"]:
+            agentes_str += (
+                " | opcionales secuenciales: "
+                + ", ".join(efectivos["secuencial"])
+            )
     nombre_fase = fase.get("nombre", "desconocida")
     is_autopilot = session.get("autopilot", False)
 
@@ -308,9 +322,6 @@ def main():
 
     flow = FLOWS[comando]
 
-    # Generar informe parcial
-    handle_session_report(session, project_dir, completed=False)
-
     if is_session_paused(session):
         if os.path.isfile(handoff_path):
             sys.exit(0)
@@ -328,6 +339,9 @@ def main():
 
     if not should_block(session, flow):
         sys.exit(0)
+
+    # Solo generar informe parcial si realmente vamos a bloquear la parada.
+    handle_session_report(session, project_dir, completed=False)
 
     fase_numero = session.get("fase_numero", 0)
     fase = flow["fases"][fase_numero]

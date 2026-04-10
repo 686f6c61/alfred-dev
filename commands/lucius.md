@@ -51,4 +51,5 @@ No hay integración con la OpenAI API directa — Lucius usa exclusivamente el C
 Lucius es una **segunda opinión**, no una orden de trabajo. El informe que produce
 incluye sugerencias de con quién implementar cada mejora (Alfred o Codex CLI), pero
 la decisión final siempre es del usuario. Ningún ítem del informe se implementa
-automáticamente.
+automáticamente. Tampoco sustituye el sign-off de QA, seguridad o arquitectura:
+si detecta un riesgo, Alfred y el usuario deciden si corresponde reabrir el cierre.

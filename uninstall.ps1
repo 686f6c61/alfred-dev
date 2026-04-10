@@ -3,6 +3,12 @@
 #
 # Uso:
 #   irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.ps1 | iex
+#
+# Estrategia:
+#   1. Si Claude CLI está disponible, desinstalar el plugin y eliminar el
+#      marketplace usando la vía nativa.
+#   2. Limpiar cualquier resto físico en cache/ y marketplaces/.
+#   3. Limpiar de forma residual los JSON internos si todavía quedan rastros.
 # ---------------------------------------------------------------------------
 
 $ErrorActionPreference = 'Stop'
@@ -60,6 +66,18 @@ Write-Host ""
 Write-Host "Desinstalando Alfred Dev" -ForegroundColor White
 Write-Host ""
 
+# Intentar primero la vía canónica de Claude Code.
+$ClaudeCli = Get-Command claude -ErrorAction SilentlyContinue
+if ($null -ne $ClaudeCli) {
+    Write-Info "Desinstalando plugin con Claude CLI..."
+    & claude plugin uninstall $PluginKey 2>&1 | Out-Null
+    & claude plugin marketplace remove $PluginName 2>&1 | Out-Null
+    Write-Ok "Claude CLI ha intentado desregistrar el plugin y el marketplace"
+}
+else {
+    Write-Info "El comando 'claude' no esta disponible; se aplicara limpieza manual de seguridad"
+}
+
 # Eliminar cache del plugin
 if (Test-Path $CacheDir) {
     Remove-Item $CacheDir -Recurse -Force
@@ -84,7 +102,7 @@ if (Test-Path $KnownMarketplaces) {
     if ($null -ne $known -and $known.PSObject.Properties.Name -contains $PluginName) {
         $known.PSObject.Properties.Remove($PluginName)
         Write-JsonFileAtomic $KnownMarketplaces $known
-        Write-Ok "Marketplace eliminado de known_marketplaces.json"
+        Write-Ok "Marketplace limpiado de known_marketplaces.json"
     }
 }
 
@@ -96,7 +114,7 @@ if (Test-Path $InstalledFile) {
         $installed.plugins.PSObject.Properties.Name -contains $PluginKey) {
         $installed.plugins.PSObject.Properties.Remove($PluginKey)
         Write-JsonFileAtomic $InstalledFile $installed
-        Write-Ok "Registro eliminado de installed_plugins.json"
+        Write-Ok "Registro limpiado de installed_plugins.json"
     }
 }
 
@@ -108,7 +126,7 @@ if (Test-Path $SettingsFile) {
         $settings.enabledPlugins.PSObject.Properties.Name -contains $PluginKey) {
         $settings.enabledPlugins.PSObject.Properties.Remove($PluginKey)
         Write-JsonFileAtomic $SettingsFile $settings
-        Write-Ok "Plugin deshabilitado en settings.json"
+        Write-Ok "Plugin limpiado de settings.json"
     }
 }
 else {

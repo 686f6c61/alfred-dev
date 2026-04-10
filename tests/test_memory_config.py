@@ -9,7 +9,11 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core.memory_config import is_memory_enabled, load_memory_config
+from core.memory_config import (
+    DEFAULT_MEMORY_CONFIG,
+    is_memory_enabled,
+    load_memory_config,
+)
 
 
 class TestMemoryConfig(unittest.TestCase):
@@ -59,3 +63,39 @@ class TestMemoryConfig(unittest.TestCase):
         self.assertTrue(config["capture_commits"])
         self.assertEqual(config["retention_days"], 14)
         self.assertTrue(is_memory_enabled(self._tmpdir))
+
+    def test_ignores_memory_block_outside_frontmatter(self):
+        """No debe activar memoria desde el cuerpo Markdown."""
+        with open(self._config_path, "w", encoding="utf-8") as handle:
+            handle.write("# Notas\n\nmemoria:\n  enabled: true\n")
+
+        config = load_memory_config(self._tmpdir)
+        self.assertEqual(config, DEFAULT_MEMORY_CONFIG)
+        self.assertFalse(is_memory_enabled(self._tmpdir))
+
+    def test_ignores_unclosed_frontmatter(self):
+        """Un frontmatter mal cerrado no debe aplicarse parcialmente."""
+        with open(self._config_path, "w", encoding="utf-8") as handle:
+            handle.write("---\nmemoria:\n  enabled: true\n")
+
+        config = load_memory_config(self._tmpdir)
+        self.assertEqual(config, DEFAULT_MEMORY_CONFIG)
+        self.assertFalse(is_memory_enabled(self._tmpdir))
+
+    def test_invalid_values_fall_back_to_defaults(self):
+        """Los valores semánticamente inválidos deben caer al default."""
+        with open(self._config_path, "w", encoding="utf-8") as handle:
+            handle.write(
+                "---\n"
+                "memoria:\n"
+                "  enabled: maybe\n"
+                "  sync_to_native: 1\n"
+                "  sync_commits_limit: 0\n"
+                "  capture_decisions: quizas\n"
+                "  capture_commits: nope\n"
+                "  retention_days: -5\n"
+                "---\n"
+            )
+
+        config = load_memory_config(self._tmpdir)
+        self.assertEqual(config, DEFAULT_MEMORY_CONFIG)

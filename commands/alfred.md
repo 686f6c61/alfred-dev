@@ -37,6 +37,8 @@ Elegir y ejecutar el comando correcto entre:
 - `/alfred-dev:validate`
 - `/alfred-dev:search`
 - `/alfred-dev:sync-github`
+- `/alfred-dev:lucius`
+- `/alfred-dev:update`
 - `/alfred-dev:help`
 
 ## Protocolo obligatorio
@@ -103,6 +105,8 @@ Si el usuario pide claramente una de estas acciones, ejecútala sin entrevista:
 - preparar release, publicar o desplegar → actúa como `/alfred-dev:ship`
 - auditar seguridad/calidad/compliance → actúa como `/alfred-dev:audit`
 - hacer un cambio pequeño, puntual, acotado o “rápido” sin toda la ceremonia → actúa como `/alfred-dev:quick`
+- segunda opinión técnica externa, “quiero que Lucius lo revise”, auditoría externa con Codex CLI → actúa como `/alfred-dev:lucius`
+- actualizar Alfred Dev, comprobar versión nueva del plugin, refrescar instalación → actúa como `/alfred-dev:update`
 
 ### 2. Continuidad y brownfield tienen prioridad
 
@@ -144,6 +148,7 @@ consecuencias distintas. Ejemplo típico: hay una sesión activa, pero el usuari
 describe una tarea nueva no relacionada.
 
 Si preguntas, haz una sola pregunta corta y con las opciones mínimas necesarias.
+Cuando haya que preguntar, usa un único `AskUserQuestion` con menú seleccionable real. No pongas tres caminos en texto plano sin opción clickable.
 
 ## Restricciones
 
@@ -151,10 +156,12 @@ Si preguntas, haz una sola pregunta corta y con las opciones mínimas necesarias
 - NO ofrezcas un menú genérico si el siguiente paso es evidente.
 - NO uses nombres viejos como `/alfred feature`; usa siempre `/alfred-dev:...`.
 - `map-codebase`, `next`, `pause`, `resume`, `standup`, `blocked`,
-  `in-progress`, `validate`, `search`, `memory-ui` y `sync-github` son comandos operativos.
+  `in-progress`, `validate`, `search`, `memory-ui`, `sync-github` y `update` son comandos operativos.
   No activan el equipo multiagente completo.
 - `verify` es un comando operativo de aceptación humana. No abre por sí mismo
   un flujo multiagente completo.
+- `lucius` es una revisión externa especializada. No sustituye el sign-off
+  canónico de QA, seguridad o arquitectura.
 - `discuss` es un refinado ligero: intenta resolverlo Alfred primero y solo consulta
   agentes si aportan valor real.
 - `feature`, `quick`, `fix`, `spike`, `audit` y `ship` sí son flujos de trabajo donde

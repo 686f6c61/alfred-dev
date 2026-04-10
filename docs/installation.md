@@ -1,152 +1,96 @@
 # Instalación y cadena de carga
 
-Instalar un plugin en Claude Code no es tan simple como copiar ficheros a un directorio. Claude Code implementa un sistema de carga por eslabones: el plugin debe estar registrado en tres ficheros JSON distintos y existir fisicamente en dos directorios concretos dentro de `~/.claude/plugins/`. Si falta cualquiera de estos cinco eslabones, Claude Code ignora el plugin de forma silenciosa, sin mostrar ningun error ni advertencia. Este documento explica cada paso del proceso, por que es necesario y como los scripts de instalación lo automatizan.
+Alfred Dev ya no instala el plugin copiando repositorios ni editando a mano los
+JSON internos de Claude Code. El flujo actual delega la instalación en la CLI
+nativa de Claude Code y solo añade una capa de verificación y parcheo donde el
+plugin lo necesita de verdad: detección de Python 3.10+ y ajuste de `hooks.json`
+y `mcp.json` cuando `python3` del sistema no es compatible.
 
-La razon de esta arquitectura en cadena es doble. Por un lado, Claude Code necesita distinguir entre plugins que simplemente estan descargados y plugins que el usuario ha decidido activar de forma explícita. Por otro, el sistema de marketplaces permite que varios repositorios publiquen plugins independientes, y cada uno necesita su propio registro. El resultado es un modelo de cinco eslabones donde cada pieza cumple una función específica.
+Esto importa porque la cadena de carga sigue existiendo, pero el responsable de
+materializarla ya no es un script artesanal del plugin, sino `claude plugin
+marketplace add` y `claude plugin install`. Los instaladores de Alfred Dev se
+limitan a dejar el entorno listo, pedir a Claude Code que registre globalmente
+la fuente GitHub del plugin e instalar la versión nueva.
+
+Importante: aquí `marketplace` es el nombre del subcomando de Claude Code, no
+una tienda oficial de plugins. Alfred Dev es un plugin independiente y no oficial.
+La orden:
+
+```bash
+claude plugin marketplace add 686f6c61/alfred-dev
+```
+
+le dice a Claude Code que registre una **fuente GitHub propia** en
+`known_marketplaces.json`, de forma global para ese usuario, para que la
+primera instalación y las siguientes actualizaciones usen el mismo origen.
 
 ---
 
 ## Los cinco eslabones de la cadena de carga
 
-Cada eslabon tiene una responsabilidad concreta. Si alguno falta o esta mal configurado, el plugin no se carga y Claude Code no emite ningun diagnóstico. Por eso es fundamental entender que hace cada uno y donde se ubica.
+Claude Code sigue necesitando los mismos cinco eslabones para cargar un plugin:
 
-### 1. Registro del marketplace
+1. registro global de la fuente GitHub;
+2. copia local del origen;
+3. caché operativa del plugin;
+4. registro de instalación;
+5. habilitación en `settings.json`.
 
-**Fichero:** `~/.claude/plugins/known_marketplaces.json`
+La diferencia es que Alfred Dev **no los gestiona ya uno por uno**. Los
+comandos de Claude Code se encargan de materializarlos:
 
-Claude Code solo busca plugins en marketplaces que conozca. El marketplace oficial de Anthropic viene registrado de serie, pero los plugins externos --como Alfred Dev-- necesitan registrar su propio marketplace, que en la practica es un repositorio de GitHub. Este fichero contiene un mapa donde la clave es el nombre del marketplace y el valor describe su origen y ubicacion local.
-
-Para Alfred Dev, la entrada tiene esta forma:
-
-```json
-{
-  "alfred-dev": {
-    "source": {
-      "source": "github",
-      "repo": "686f6c61/alfred-dev"
-    },
-    "installLocation": "~/.claude/plugins/marketplaces/alfred-dev",
-    "lastUpdated": "2026-02-21T10:00:00.000Z"
-  }
-}
+```bash
+claude plugin marketplace add 686f6c61/alfred-dev
+claude plugin install alfred-dev@alfred-dev
 ```
 
-Sin este registro, Claude Code desconoce la existencia del marketplace y, por tanto, de todos sus plugins.
+Si alguno de esos eslabones queda roto, el plugin puede seguir sin cargarse de
+forma silenciosa, pero el contrato del instalador actual es este:
 
-### 2. Directorio del marketplace
-
-**Ruta:** `~/.claude/plugins/marketplaces/alfred-dev/`
-
-Es la copia local del catalogo del marketplace. El fichero clave que Claude Code lee es `.claude-plugin/marketplace.json`, que describe los plugins disponibles en ese marketplace: nombre, descripción, versión y ruta del código fuente. Además, el directorio contiene una copia de los ficheros del plugin (agentes, comandos, skills) que Claude Code utiliza para la resolución de dependencias.
-
-La razon de tener esta copia separada de la cache es que Claude Code trata el marketplace como un catalogo consultable --para listar plugins disponibles, por ejemplo-- mientras que la cache es la copia de ejecución real.
-
-### 3. Cache del plugin
-
-**Ruta:** `~/.claude/plugins/cache/alfred-dev/alfred-dev/<versión>/`
-
-Este directorio contiene todos los ficheros que Claude Code carga al iniciar sesión: agentes, comandos, hooks, skills, modulos del nucleo, servidores MCP y el manifiesto `.claude-plugin/plugin.json`. Es la copia operativa del plugin, la que realmente se ejecuta.
-
-La estructura versionada (`cache/alfred-dev/alfred-dev/0.4.7/`) permite que coexistan varias versiones en disco, aunque Claude Code solo carga la que esta referenciada en `installed_plugins.json`. Esto facilita las actualizaciones y los rollbacks sin perder la versión anterior.
-
-Los artefactos de desarrollo (directorio `.git`, tests, scripts de instalación) se eliminan de la cache durante la instalación para mantener limpio el entorno de ejecución.
-
-### 4. Registro de instalación
-
-**Fichero:** `~/.claude/plugins/installed_plugins.json`
-
-Este fichero es el inventario central de plugins instalados. Cada entrada registra la ruta de la cache, la versión, la fecha de instalación y el SHA del commit de Git desde el que se instalo. Sin este registro, Claude Code ignora por completo el directorio de la cache, aunque contenga todos los ficheros necesarios.
-
-La clave de cada plugin sigue el formato `<plugin>@<marketplace>`, que en el caso de Alfred Dev es `alfred-dev@alfred-dev`. La entrada tiene esta estructura:
-
-```json
-{
-  "versión": 2,
-  "plugins": {
-    "alfred-dev@alfred-dev": [
-      {
-        "scope": "user",
-        "installPath": "~/.claude/plugins/cache/alfred-dev/alfred-dev/0.4.7",
-        "versión": "0.4.7",
-        "installedAt": "2026-02-21T10:00:00.000Z",
-        "lastUpdated": "2026-02-21T10:00:00.000Z",
-        "gitCommitSha": "abc123..."
-      }
-    ]
-  }
-}
-```
-
-El campo `gitCommitSha` es especialmente relevante para plugins externos: permite verificar que la copia local corresponde a un commit concreto del repositorio de origen.
-
-### 5. Habilitacion
-
-**Fichero:** `~/.claude/settings.json` (sección `enabledPlugins`)
-
-Un plugin puede estar instalado (eslabones 1 a 4 completos) pero no activo. Este último eslabon es un mapa booleano que permite al usuario habilitar o deshabilitar plugins sin desinstalarlos. Claude Code solo carga los plugins cuya clave tenga valor `true`.
-
-```json
-{
-  "enabledPlugins": {
-    "alfred-dev@alfred-dev": true
-  }
-}
-```
-
-Este diseño separa la gestion del ciclo de vida (instalar/desinstalar) de la preferencia del usuario (activar/desactivar), lo que permite desactivar temporalmente un plugin sin perder su configuración.
+- verificar requisitos locales mínimos;
+- registrar o refrescar la fuente GitHub global de Alfred Dev;
+- reinstalar o actualizar el plugin mediante la CLI nativa;
+- parchear la instalación para usar un Python compatible si hace falta;
+- recordar que Claude Code debe reiniciarse.
 
 ### Resumen de los cinco eslabones
 
-| # | Eslabon | Ubicacion | Función |
-|---|---------|-----------|---------|
-| 1 | Registro del marketplace | `known_marketplaces.json` | Dar a conocer el repositorio de plugins a Claude Code |
-| 2 | Directorio del marketplace | `marketplaces/alfred-dev/` | Catalogo local de plugins disponibles |
-| 3 | Cache del plugin | `cache/alfred-dev/alfred-dev/0.4.7/` | Ficheros operativos que Claude Code carga en ejecución |
-| 4 | Registro de instalación | `installed_plugins.json` | Inventario con versión, ruta y SHA del commit |
-| 5 | Habilitacion | `settings.json > enabledPlugins` | Interruptor de activacion/desactivacion |
+| # | Eslabón | Ubicación | Quién lo actualiza ahora |
+|---|---------|-----------|--------------------------|
+| 1 | Registro global de la fuente | `known_marketplaces.json` | `claude plugin marketplace add/remove` |
+| 2 | Copia local del origen | `~/.claude/plugins/marketplaces/alfred-dev/` | `claude plugin marketplace add` |
+| 3 | Caché del plugin | `~/.claude/plugins/cache/alfred-dev/alfred-dev/<version>/` | `claude plugin install` |
+| 4 | Registro de instalación | `installed_plugins.json` | `claude plugin install/uninstall` |
+| 5 | Habilitación | `settings.json > enabledPlugins` | `claude plugin install/uninstall` |
 
 ---
 
 ## Diagrama del proceso de instalación
 
-El siguiente diagrama muestra la secuencia completa que ejecuta `install.sh`. Los cinco pasos se corresponden con los cinco eslabones descritos arriba. El script clona el repositorio una sola vez y distribuye los ficheros a los directorios correspondientes.
+El flujo real actual es este:
 
 ```mermaid
 sequenceDiagram
     box rgb(40, 40, 50) Script de instalación
-        participant S as install.sh
+        participant S as "install.sh / install.ps1"
     end
-    box rgb(30, 60, 80) Origen remoto
-        participant GH as GitHub<br/>686f6c61/alfred-dev
+    box rgb(30, 60, 80) Entorno local
+        participant U as "Usuario / shell"
+        participant C as "Claude CLI"
     end
-    box rgb(50, 40, 60) Sistema de ficheros local
-        participant P as ~/.claude/plugins/
-    end
-    box rgb(40, 60, 40) Entorno de ejecución
-        participant CC as Claude Code
+    box rgb(50, 40, 60) Ficheros locales
+        participant P as "~/.claude/plugins/"
     end
 
-    S->>S: Verificar requisitos (git, python3, ~/.claude/)
-    S->>GH: git clone --depth 1
-    GH-->>S: Repositorio completo + SHA del commit
-
-    Note over S,P: Paso 1 -- Registro del marketplace
-    S->>P: Escribir entrada en known_marketplaces.json
-
-    Note over S,P: Paso 2 -- Directorio del marketplace
-    S->>P: Copiar .claude-plugin/ y modulos a marketplaces/alfred-dev/
-
-    Note over S,P: Paso 3 -- Cache del plugin
-    S->>P: Copiar repositorio a cache/alfred-dev/alfred-dev/0.4.7/<br/>Eliminar artefactos de desarrollo (.git, tests)
-
-    Note over S,P: Paso 4 -- Registro de instalación
-    S->>P: Actualizar installed_plugins.json<br/>con versión, ruta y gitCommitSha
-
-    Note over S,P: Paso 5 -- Habilitacion
-    S->>P: Establecer enabledPlugins["alfred-dev@alfred-dev"] = true<br/>en settings.json
-
-    S-->>CC: El usuario debe reiniciar Claude Code
-    Note over CC: Los plugins se cargan<br/>unicamente al inicio de sesión
+    U->>S: Ejecutar instalador remoto
+    S->>S: Verificar Claude Code, HOME/USERPROFILE y Python 3.10+
+    S->>C: claude plugin marketplace remove alfred-dev (si existe)
+    S->>C: claude plugin marketplace add 686f6c61/alfred-dev
+    C-->>P: Registrar fuente global en known_marketplaces.json
+    S->>C: claude plugin install alfred-dev@alfred-dev
+    C-->>P: Refrescar cache + installed_plugins + enabledPlugins
+    S->>P: Parchar hooks.json / mcp.json si python3 no sirve
+    S-->>U: Reinicia Claude Code
 ```
 
 ---
@@ -161,53 +105,60 @@ sequenceDiagram
 curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash
 ```
 
-El script esta disenado para ser idempotente: si se ejecuta varias veces, sobreescribe la instalación anterior sin dejar residuos ni provocar conflictos. No es necesario desinstalar antes de reinstalar.
+Si ya tienes el repo clonado o descargado localmente, puedes ejecutar el mismo
+instalador directamente desde esa copia:
 
-### Variables principales
+```bash
+bash ./install.sh
+```
 
-Las variables al inicio del script definen toda la configuración. Estan centralizadas para facilitar su modificacion si cambia la estructura del plugin.
+El script es idempotente: si ya existe una instalación previa, la refresca en
+vez de exigir desinstalación manual.
 
-| Variable | Valor | Propósito |
-|----------|-------|-----------|
-| `PLUGIN_NAME` | `alfred-dev` | Identificador del plugin en todo el sistema |
-| `REPO` | `686f6c61/alfred-dev` | Repositorio de GitHub de origen |
-| `VERSIÓN` | `0.4.7` | Versión que se instala |
-| `CLAUDE_DIR` | `$HOME/.claude` | Directorio raiz de Claude Code |
-| `PLUGINS_DIR` | `$CLAUDE_DIR/plugins` | Directorio base de plugins |
-| `INSTALL_DIR` | `cache/alfred-dev/alfred-dev/0.4.7` | Ruta final de la cache versionada |
+### Qué verifica
 
-### Verificaciones previas
+Antes de tocar la instalación, el script comprueba:
 
-Antes de tocar nada en el sistema de ficheros, el script comprueba tres requisitos:
+1. que existe un `HOME` válido;
+2. que existe `~/.claude/`;
+3. que el comando `claude` está disponible;
+4. que existe un Python **3.10 o superior**.
 
-1. **`$HOME` válido:** la variable debe existir y apuntar a un directorio real. Si no, las rutas derivadas serian incorrectas.
-2. **Directorio `~/.claude/`:** debe existir, lo que implica que Claude Code esta instalado.
-3. **Dependencias:** `git` y `python3` deben estar disponibles en el PATH.
+La detección de Python no se limita a `python3`: prueba también variantes como
+`python3.13`, `python3.12`, `python3.11` o `python3.10`, y en macOS revisa las
+rutas habituales de Homebrew (`/opt/homebrew/bin`, `/usr/local/bin`) si el
+intérprete del PATH es demasiado antiguo.
 
-Si alguna verificación falla, el script aborta con un mensaje explicativo.
+### Qué hace realmente
 
-### Escritura atomica con Python
+Una vez verificado el entorno:
 
-Todas las operaciones sobre ficheros JSON utilizan una función de escritura atomica implementada con Python: se escribe un fichero temporal en el mismo directorio y luego se renombra con `os.replace()`. La razon de usar este patron --en vez de escribir directamente-- es evitar la corrupcion del fichero si el proceso se interrumpe a mitad de escritura. Un `os.replace()` es una operación atomica a nivel del sistema de ficheros, así que el fichero destino siempre contiene JSON válido.
+1. desinstala la instancia previa del plugin si sigue registrada;
+2. elimina el registro previo de Alfred Dev si existe;
+3. ejecuta `claude plugin marketplace add 686f6c61/alfred-dev`;
+4. confirma que Claude Code dejó registrada la fuente GitHub en `known_marketplaces.json`;
+5. ejecuta `claude plugin install alfred-dev@alfred-dev`;
+6. si el `python3` por defecto no es válido pero sí hay otro Python
+   compatible, parchea la instalación para que hooks y MCP usen esa ruta.
 
-El script delega en Python (en lugar de `jq` u otras herramientas) porque `python3` tiene mayor presencia en instalaciones estandar de macOS y Linux, y porque la lógica de actualización de JSON requiere mas control del que ofrece un simple `jq`.
+Si coexisten varias versiones del plugin en `~/.claude/plugins/cache/alfred-dev/`,
+el instalador parchea de forma determinista la instalación activa: primero la
+ruta exacta `cache/alfred-dev/alfred-dev/<version>` y, si esa estructura no
+está disponible, la versión más reciente cuyo `plugin.json` declare la misma
+versión que el instalador acaba de desplegar.
 
-### Limpieza ante interrupciones
+### Parcheo de Python compatible
 
-El script registra un trap `cleanup` en `EXIT` que elimina el directorio temporal de clonacion si el proceso aborta por error, `SIGINT` u otra señal. En el camino feliz, el directorio temporal se limpia explícitamente antes de terminar, sin esperar al trap.
+El instalador no recompila ni rehace el plugin. Solo actualiza dos puntos del
+runtime instalado cuando `python3` no apunta a una versión válida:
 
-### Estructura de directorios copiados al marketplace
+- `hooks/hooks.json`, reemplazando `python3 ${CLAUDE_PLUGIN_ROOT}` por la ruta
+  absoluta del intérprete compatible;
+- `.claude-plugin/mcp.json`, sustituyendo el `command` del servidor
+  `alfred-memory`.
 
-El script copia al directorio del marketplace tanto los metadatos (`.claude-plugin/marketplace.json`, `.claude-plugin/plugin.json`) como los modulos funcionales:
-
-- `agents/`, `commands/`, `skills/`, `hooks/`, `core/`, `templates/`
-- Ficheros raiz: `README.md`, `package.json`, `uninstall.sh`, `uninstall.ps1`
-
-Solo se copian los directorios y ficheros que existen; el script no falla si alguno esta ausente.
-
-### Limpieza de la cache
-
-Despues de copiar el repositorio clonado a la cache, el script elimina artefactos que no son necesarios en tiempo de ejecución: `.git/`, `site/`, `install.sh`, `tests/`, `.pytest_cache/`. Esto reduce el tamaño de la cache y evita confusiones entre los ficheros de desarrollo y los operativos.
+Ese parcheo es importante sobre todo en macOS, donde `/usr/bin/python3` puede
+seguir siendo 3.9 aunque el usuario tenga 3.12+ instalado por Homebrew o pyenv.
 
 ---
 
@@ -221,33 +172,43 @@ Despues de copiar el repositorio clonado a la cache, el script elimina artefacto
 irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex
 ```
 
-La lógica es identica a la del script bash, con las adaptaciones propias de PowerShell. Las principales diferencias son:
+La filosofía es la misma que en Bash: la CLI de Claude Code hace la instalación
+real y el script añade detección robusta de Python y parcheo de runtime.
 
 ### Diferencias con el script bash
 
 | Aspecto | Bash (`install.sh`) | PowerShell (`install.ps1`) |
 |---------|---------------------|---------------------------|
-| Ruta base | `$HOME/.claude` | `$env:USERPROFILE\.claude` |
-| Lectura de JSON | `python3` con `json.load` | `ConvertFrom-Json` nativo |
-| Escritura de JSON | `python3` con `json.dump` | `ConvertTo-Json -Depth 10` nativo |
-| Escritura atomica | `tempfile.mkstemp` + `os.replace` | `[System.IO.Path]::GetTempFileName()` + `Move-Item -Force` |
-| Copia de ficheros | `cp -r` | `Copy-Item -Recurse -Force` |
-| Dependencias | `git`, `python3` | Solo `git` (PowerShell tiene JSON nativo) |
+| Ruta base | `$HOME/.claude` | `$env:USERPROFILE\\.claude` |
+| Detección de Python | `python3`, `python3.13`... + rutas Homebrew | `py -3.13`, `py -3.12`, `py -3.11`, `py -3.10`, `python3`, `python` |
+| Verificación de Claude | `command -v claude` | `Get-Command claude` |
+| Escritura auxiliar | `sed` + escritura directa | `ConvertFrom-Json` / `ConvertTo-Json` + `Write-TextFileAtomic` |
+| Parcheo runtime | reemplazo textual en JSON | mutación estructurada del JSON |
 
-La ventaja del script PowerShell es que no requiere `python3` como dependencia: PowerShell incluye cmdlets nativos para manipular JSON (`ConvertFrom-Json`, `ConvertTo-Json`). La escritura atomica se implementa con `[System.IO.Path]::GetTempFileName()` seguido de `Move-Item -Force`, que ofrece las mismas garantias de integridad.
-
-Las funciones auxiliares `Read-JsonFile` y `Write-JsonFileAtomic` encapsulan la lectura con manejo de errores y la escritura atomica respectivamente, manteniendo la misma estructura que el script bash.
+En Windows, Python 3.10+ sigue siendo obligatorio porque hooks, core y MCP se
+ejecutan también allí sobre Python. El instalador prueba primero el launcher
+`py` y después `python3` o `python`, y actualiza `hooks.json` y `mcp.json`
+para usar la ruta exacta del intérprete encontrado.
 
 ---
 
 ## Desinstalacion
 
-Los scripts de desinstalacion (`uninstall.sh` para macOS/Linux, `uninstall.ps1` para Windows) eliminan los cinco eslabones de la cadena de carga en el orden lógico adecuado.
+Los scripts de desinstalacion (`uninstall.sh` para macOS/Linux, `uninstall.ps1`
+para Windows) siguen ya la misma filosofía que la instalación: primero intentan
+usar la CLI nativa de Claude Code y luego limpian restos físicos o registros si
+quedara algún rastro.
 
 **macOS / Linux:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.sh | bash
+```
+
+Desde una copia local del repo:
+
+```bash
+bash ./uninstall.sh
 ```
 
 **Windows (PowerShell):**
@@ -258,6 +219,14 @@ irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.ps1 | i
 
 ### Que se elimina
 
+El flujo actual de desinstalación es:
+
+1. `claude plugin uninstall alfred-dev@alfred-dev` si la CLI está disponible;
+2. `claude plugin marketplace remove alfred-dev` si la CLI está disponible;
+3. borrado de restos en `cache/alfred-dev/` y `marketplaces/alfred-dev/`;
+4. limpieza residual de `known_marketplaces.json`,
+   `installed_plugins.json` y `settings.json` si todavía hubiera entradas.
+
 El proceso de desinstalacion toca exclusivamente los componentes del plugin dentro de `~/.claude/plugins/` y `~/.claude/settings.json`. La siguiente tabla detalla cada operación en el orden en que se ejecuta:
 
 | Orden | Operación | Descripción |
@@ -267,6 +236,9 @@ El proceso de desinstalacion toca exclusivamente los componentes del plugin dent
 | 3 | Limpiar `known_marketplaces.json` | Elimina la entrada `alfred-dev` del mapa de marketplaces conocidos |
 | 4 | Limpiar `installed_plugins.json` | Elimina la entrada `alfred-dev@alfred-dev` del inventario de plugins |
 | 5 | Limpiar `settings.json` | Elimina la clave `alfred-dev@alfred-dev` de `enabledPlugins` |
+
+La limpieza manual de JSON queda como red de seguridad para instalaciones
+antiguas, estados intermedios o residuos que la CLI no hubiera retirado.
 
 ### Que no se elimina
 
@@ -283,24 +255,28 @@ Despues de la desinstalacion, es necesario reiniciar Claude Code para que los ca
 
 ## Actualización
 
-La actualización se gestiona a traves del comando `/alfred-dev:update`, que comprueba si hay una versión mas reciente en GitHub y ofrece instalarla.
+La actualización se gestiona a traves del comando `/alfred-dev:update`, que
+comprueba si hay una versión mas reciente en GitHub y, si existe, presenta un
+único menú seleccionable para decidir si se aplica o no.
 
 ### Como funciona el proceso
 
 El flujo de actualización consta de cuatro pasos que el comando ejecuta de forma interactiva:
 
-**Paso 1 -- Obtener la versión instalada.** El comando busca el fichero `plugin.json` mas reciente dentro de `~/.claude/plugins/cache/alfred-dev/` y lee el campo `versión`. Si coexisten varias versiones en cache (por actualizaciones previas), selecciona la mas reciente por fecha de modificacion.
+**Paso 1 -- Obtener la versión instalada.** El comando busca el fichero `plugin.json` mas reciente dentro de `~/.claude/plugins/cache/alfred-dev/` y lee el campo `version`. Si coexisten varias versiones en cache (por actualizaciones previas), selecciona la mas reciente por fecha de modificacion.
 
 **Paso 2 -- Consultar la última release en GitHub.** Hace una peticion a la API de GitHub en `https://api.github.com/repos/686f6c61/alfred-dev/releases/latest` y extrae el `tag_name` (versión), el `name` (titulo de la release), el `body` (notas del cambio) y la fecha de publicacion.
 
-**Paso 3 -- Comparar versiones.** Si el `tag_name` (sin el prefijo `v`) es distinto de la versión instalada, muestra al usuario las notas de la release y le pregunta si quiere actualizar. Si las versiones coinciden, informa de que el plugin esta al dia y termina.
+**Paso 3 -- Comparar versiones.** El `tag_name` (sin el prefijo `v`) y la versión instalada deben compararse como semver real, nunca como texto plano. `0.10.0` es mayor que `0.9.0`, aunque lexicograficamente parezca lo contrario. Si la release es mas nueva, el comando muestra las notas y ofrece un único menú con dos opciones: actualizar ahora o cancelar. Si las versiones coinciden, informa de que el plugin esta al dia y termina.
 
 **Paso 4 -- Ejecutar la actualización.** Si el usuario acepta, el comando detecta la plataforma (`uname -s`) y ejecuta el instalador correspondiente:
 
 - **macOS / Linux:** `curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash`
 - **Windows:** `irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex`
 
-Los instaladores son idempotentes: sobreescriben la cache con la nueva versión, actualizan `installed_plugins.json` con el nuevo SHA y versión, y mantienen la habilitacion en `settings.json`. No es necesario desinstalar antes de actualizar.
+Los instaladores son idempotentes: vuelven a registrar el marketplace,
+reinstalan el plugin mediante la CLI nativa de Claude Code y mantienen la
+habilitación activa. No es necesario desinstalar antes de actualizar.
 
 Tras la actualización, el usuario debe reiniciar Claude Code para que se cargue la nueva versión.
 
@@ -322,7 +298,7 @@ python3 -c "import json; print(json.dumps(json.load(open('$HOME/.claude/plugins/
 ls -la ~/.claude/plugins/marketplaces/alfred-dev/.claude-plugin/
 
 # 3. Comprobar que la cache existe y contiene plugin.json
-ls -la ~/.claude/plugins/cache/alfred-dev/alfred-dev/0.4.7/.claude-plugin/
+ls -la ~/.claude/plugins/cache/alfred-dev/alfred-dev/*/.claude-plugin/
 
 # 4. Comprobar el registro de instalación
 python3 -c "import json; d=json.load(open('$HOME/.claude/plugins/installed_plugins.json')); print(json.dumps(d.get('plugins',{}).get('alfred-dev@alfred-dev','NO ENCONTRADO'), indent=2))"
@@ -349,19 +325,28 @@ Si los scripts no se ejecutan, es probable que no tengan permiso de ejecución. 
 chmod +x install.sh
 ```
 
-### El fichero JSON esta corrupto
+### El fichero JSON interno esta corrupto
 
-Si algun fichero JSON (`known_marketplaces.json`, `installed_plugins.json`, `settings.json`) contiene JSON invalido, tanto la instalación como la carga del plugin fallaran. El script de instalación muestra un mensaje de error específico indicando cual fichero esta corrupto y como restaurarlo. Por ejemplo:
+Si algun fichero interno de Claude Code (`known_marketplaces.json`,
+`installed_plugins.json`, `settings.json`) contiene JSON invalido, tanto la
+instalación como la carga del plugin pueden fallar. El instalador actual no
+reconstruye esos ficheros por su cuenta: normalmente verás un error propagado
+desde la propia CLI de Claude Code o un estado incompleto tras `claude plugin
+marketplace add` / `claude plugin install`.
+
+Si sospechas corrupcion en esos ficheros, la recuperación sigue siendo manual.
+Por ejemplo:
 
 ```bash
 # Restaurar known_marketplaces.json
 echo '{}' > ~/.claude/plugins/known_marketplaces.json
 
 # Restaurar installed_plugins.json
-echo '{"versión":2,"plugins":{}}' > ~/.claude/plugins/installed_plugins.json
+echo '{"version":2,"plugins":{}}' > ~/.claude/plugins/installed_plugins.json
 ```
 
-Despues de restaurar el fichero, se puede ejecutar el instalador de nuevo para reconstruir las entradas del plugin.
+Despues de restaurar el fichero, se puede ejecutar el instalador de nuevo para
+que la CLI de Claude Code reconstruya las entradas del plugin.
 
 ### Resumen rápido de diagnóstico
 

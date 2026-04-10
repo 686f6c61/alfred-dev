@@ -51,6 +51,9 @@ Después de ejecutar el Bash:
   `docs/project/discovery.md` y `docs/project/current.md`; úsalo como base de tu
   respuesta final y NO vuelvas a usar `Write` ni `Edit` sobre esos artefactos salvo
   que hayas caído de verdad al modo manual;
+- si el helper ya deja visibles foco, alcance, riesgo, pregunta abierta clave y
+  siguiente comando, NO lo reenvuelvas con una segunda entrevista ni con un
+  resumen alternativo;
 - si el helper indica que hay sesión activa o handoff pendiente, actúa como
   `/alfred-dev:next` o `/alfred-dev:resume` según corresponda;
 - si el helper falla, no está disponible o `Bash` es denegado, NO lo reintentes:
@@ -82,6 +85,7 @@ Solo en modo manual lee, en este orden:
    - si `Bash` fue denegado, no vuelvas a intentarlo en este comando;
    - no abras una entrevista larga;
    - solo haz **una** pregunta corta si hay un bloqueo real que cambie el rumbo;
+   - si al cierre quedan dos o tres salidas plausibles (`feature`, `quick`, `fix`, `spike`), usa **un único menú seleccionable real** con `AskUserQuestion`; no cierres con bullets ambiguos ni con texto que no se pueda seleccionar;
    - si faltan detalles menores, explicita supuestos razonables y sigue;
    - si la idea ya está suficientemente clara, produce el refinado directamente.
 
@@ -109,6 +113,8 @@ Al cerrar, deja uno de estos siguientes pasos:
 - `/alfred-dev:quick` si el cambio resultante es pequeño y acotado
 - `/alfred-dev:fix` si lo que en realidad hay es una corrección concreta
 - `/alfred-dev:spike` si siguen faltando datos técnicos y toca investigar
+
+Si hay más de una salida razonable de verdad, presenta solo esas rutas en un único menú navegable y deja una recomendada cuando corresponda.
 
 ## Restricciones
 

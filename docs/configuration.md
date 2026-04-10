@@ -1,8 +1,8 @@
 # Configuración
 
-Alfred Dev esta disenado para adaptarse a cada proyecto sin que el desarrollador tenga que rellenar formularios ni editar ficheros de configuración a mano. Al iniciarse, el plugin analiza el directorio del proyecto, detecta el stack tecnologico y aplica valores por defecto sensatos para cada apartado: autonomía, personalidad, agentes opcionales y memoria. Todo es opcional. Un proyecto sin fichero de configuración funciona igual de bien que uno con todas las secciones definidas, porque los valores por defecto cubren el caso general.
+Alfred Dev esta disenado para adaptarse a cada proyecto sin que el desarrollador tenga que rellenar formularios ni editar ficheros de configuración a mano. Al iniciarse, el plugin analiza el directorio del proyecto, detecta el stack tecnologico y aplica valores por defecto sensatos para cada apartado: autonomía, personalidad, agentes opcionales y memoria. `load_config()` puede funcionar sin fichero local, pero `session-bootstrap.sh` y `session-start.sh` materializan `.claude/alfred-dev.local.md` en la primera sesión para dejar un estado operativo explicito y estable.
 
-Cuando el desarrollador quiere personalizar el comportamiento --ajustar el nivel de autonomía, activar agentes especializados o cambiar el tono de las respuestas--, puede hacerlo creando un fichero `.claude/alfred-dev.local.md` en la raiz del proyecto o ejecutando `/alfred-dev:config` desde la interfaz del plugin. El formato combina YAML frontmatter para los valores estructurados con Markdown libre para notas de contexto, lo que permite que el mismo fichero sea legible tanto por humanos como por el parser del plugin.
+Cuando el desarrollador quiere personalizar el comportamiento --ajustar el nivel de autonomía, activar agentes especializados o cambiar el tono de las respuestas--, puede hacerlo editando `.claude/alfred-dev.local.md` o ejecutando `/alfred-dev:config` desde la interfaz del plugin. El formato combina YAML frontmatter para los valores estructurados con Markdown libre para notas de contexto, lo que permite que el mismo fichero sea legible tanto por humanos como por el parser del plugin. Desde la ronda actual, `/alfred-dev:config` ya no depende solo del prompt: `config_loader.py` expone `build_config_section_summaries()`, `build_config_section_menu()`, `apply_config_section_update()`, `build_config_section_change_preview()`, `update_config_section()` y `update_project_config_section()` para resumir el estado real, construir el menú principal navegable, aplicar cambios por sección, confirmar el diff efectivo y persistir el resultado sin reimplementar el round-trip del fichero.
 
 
 ## Detección automática de stack
@@ -129,31 +129,41 @@ Para proyectos Node, el parser lee `dependencies` y `devDependencies` de `packag
 
 La configuración de Alfred Dev vive en `.claude/alfred-dev.local.md`, dentro del directorio del proyecto. Se utiliza el formato YAML frontmatter (delimitado por `---`) para los valores estructurados, seguido de contenido Markdown libre para notas y contexto adicional.
 
-La razon de este formato hibrido es practica: YAML cubre la configuración tipada (booleanos, números, listas), mientras que el cuerpo Markdown permite al desarrollador añadir instrucciones en lenguaje natural que Alfred inyecta en su contexto. El fichero es editable a mano, pero la forma recomendada de gestionarlo es a traves del comando `/alfred-dev:config`, que guia al usuario por cada sección de forma interactiva.
+La razon de este formato hibrido es practica: YAML cubre la configuración tipada (booleanos, números, listas), mientras que el cuerpo Markdown permite al desarrollador añadir instrucciones en lenguaje natural que Alfred inyecta en su contexto. El fichero es editable a mano, pero la forma recomendada de gestionarlo es a traves del comando `/alfred-dev:config`, que guia al usuario por cada sección de forma interactiva. El menú principal de secciones y sus descripciones ya salen de `build_config_section_menu()` / `build_config_section_summaries()`, la confirmación de cambios puede apoyarse en `build_config_section_change_preview()`, y la persistencia final en `update_config_section()` / `update_project_config_section()`, así que la UX de `config` no depende de reescribir a mano el estado actual, el diff esperado ni el guardado final en cada prompt.
 
-La fusion con los valores por defecto es recursiva: el desarrollador solo necesita definir las claves que quiere cambiar. El resto se hereda automáticamente del `DEFAULT_CONFIG` del plugin. Esto significa que un fichero con una sola linea (`nivel_sarcasmo: 5`) es perfectamente válido.
+La fusion con los valores por defecto es recursiva: el desarrollador solo necesita definir las claves que quiere cambiar. El resto se hereda automáticamente del `DEFAULT_CONFIG` del plugin. El runtime acepta alias legacy como `autonomía`, pero la escritura canónica del plugin es `autonomia`.
 
-### Sección `autonomía`
+### Sección `autonomia`
 
-La autonomía controla cuanto puede decidir el plugin por su cuenta en cada area funcional del flujo de trabajo. Cada clave representa un dominio y acepta uno de los tres niveles de autonomía descritos mas adelante en este documento.
+La autonomía controla cuanto puede decidir el plugin por su cuenta en cada fase canónica del flujo de trabajo. Cada clave representa una fase real del orquestador y acepta uno de los tres niveles de autonomía descritos mas adelante en este documento.
 
-| Clave        | Descripción                                           | Valor por defecto |
-|--------------|-------------------------------------------------------|-------------------|
-| `producto`   | Fase de producto: requisitos, historias de usuario     | `interactivo`     |
-| `seguridad`  | Auditorias de seguridad, threat models                 | `autonomo`        |
-| `refactor`   | Refactorizaciones y limpieza de código                 | `interactivo`     |
-| `docs`       | Generacion de documentación                            | `autonomo`        |
-| `tests`      | Ejecución y generacion de tests                        | `autonomo`        |
+| Clave            | Descripción                                                     | Valor por defecto |
+|------------------|-----------------------------------------------------------------|-------------------|
+| `producto`       | Descubrimiento y definición funcional                            | `autonomo`        |
+| `arquitectura`   | Diseño técnico y validación arquitectónica                       | `autonomo`        |
+| `desarrollo`     | Implementación, TDD y cambios de código                          | `autonomo`        |
+| `calidad`        | QA, seguridad operativa y revisión de calidad                    | `autonomo`        |
+| `documentacion`  | Documentación y artefactos de soporte                            | `autonomo`        |
+| `entrega`        | Validación final, ship y cierre                                  | `autonomo`        |
+
+Alias legacy aceptados al leer configuración existente:
+
+- `refactor` -> `desarrollo`
+- `tests` -> `calidad`
+- `docs` / `documentación` -> `documentacion`
+- `devops` -> `entrega`
+- `seguridad` -> se proyecta sobre `arquitectura`, `calidad` y `entrega`
 
 Ejemplo:
 
 ```yaml
-autonomía:
+autonomia:
   producto: interactivo
-  seguridad: autonomo
-  refactor: semi-autonomo
-  docs: autonomo
-  tests: autonomo
+  arquitectura: interactivo
+  desarrollo: semi-autonomo
+  calidad: semi-autonomo
+  documentacion: autonomo
+  entrega: semi-autonomo
 ```
 
 ### Sección `proyecto`
@@ -216,6 +226,7 @@ Activa o desactiva los agentes opcionales del plugin. Cada agente es un especial
 | `seo-specialist`         | Especialista SEO (meta tags, Core Vitals)   | `false`           |
 | `copywriter`             | Copywriter (CTAs, tono, textos publicos)    | `false`           |
 | `i18n-specialist`        | Especialista i18n (traducciones, locales)   | `false`           |
+| `lucius`                 | Director técnico externo (segunda opinión)  | `false`           |
 
 Ejemplo:
 
@@ -229,7 +240,10 @@ agentes_opcionales:
   seo-specialist: false
   copywriter: false
   i18n-specialist: false
+  lucius: false
 ```
+
+La memoria persistente y `librarian` son piezas relacionadas pero separadas: activar `memoria.enabled` hace que Alfred registre y exponga historial, pero no escribe `librarian: true` automáticamente. El Bibliotecario sigue siendo un agente opcional que el usuario activa cuando quiere consultas históricas dentro de los flujos.
 
 ### Sección `memoria`
 
@@ -237,7 +251,7 @@ Controla la memoria persistente del proyecto. Cuando esta activa, Alfred registr
 
 | Clave               | Descripción                                      | Valor por defecto |
 |----------------------|--------------------------------------------------|-------------------|
-| `enabled`            | Activa o desactiva la memoria persistente        | `false`           |
+| `enabled`            | Activa o desactiva la memoria persistente        | `false` en `load_config()` |
 | `sync_to_native`     | Proyectar SQLite a memorias `.md` nativas de Claude Code | `true` |
 | `sync_commits_limit` | Numero de commits recientes a proyectar en la memoria nativa | `10` |
 | `capture_decisions`  | Registrar decisiones de diseño automáticamente   | `true`            |
@@ -255,6 +269,8 @@ memoria:
   capture_commits: true
   retention_days: 365
 ```
+
+Aunque `DEFAULT_MEMORY_CONFIG` parte de `enabled: false`, la primera sesión del proyecto siembra `.claude/alfred-dev.local.md` con `memoria.enabled: true` si el fichero local no existía. A partir de ese momento, cualquier `enabled: false` explícito del usuario se respeta y no se vuelve a sobrescribir.
 
 ### Sección `compliance`
 
@@ -287,9 +303,9 @@ Ejemplo de uso típico: indicar convenciones del equipo, restricciones de negoci
 
 La autonomía es uno de los conceptos mas importantes de Alfred Dev porque determina hasta que punto el plugin puede tomar decisiones sin pedir permiso. La razon de ofrecer varios niveles es que cada equipo y cada fase del desarrollo tienen necesidades distintas: la fase de producto requiere validación humana constante (los requisitos son decisiones de negocio), mientras que la ejecución de tests es mecánica y no necesita supervision.
 
-Alfred Dev define tres niveles de autonomía que se aplican a cada dominio funcional de forma independiente. Esto significa que un mismo proyecto puede tener la fase de producto en modo interactivo y la de documentación en modo autonomo.
+Alfred Dev define tres niveles de autonomía que se aplican a cada fase de forma independiente. Esto significa que un mismo proyecto puede tener `producto` en modo interactivo y `documentacion` en modo autonomo.
 
-### Interactivo (valor por defecto para producto y refactor)
+### Interactivo
 
 En este nivel, Alfred pide confirmacion en cada gate antes de avanzar. Es el modo mas conservador y el recomendado para fases donde las decisiones tienen impacto directo en el negocio o la arquitectura.
 
@@ -297,7 +313,7 @@ En la practica, durante un flujo `/alfred-dev:feature`:
 
 - **Producto**: Alfred presenta los requisitos y la historia de usuario, y espera a que el desarrollador los apruebe antes de pasar a arquitectura.
 - **Arquitectura**: El diseño técnico y el threat model se presentan para revision. No se empieza a codificar hasta que el desarrollador da el visto bueno.
-- **Desarrollo**: Si el refactor esta en interactivo, cada cambio estructural se propone antes de aplicarse.
+- **Desarrollo**: Si `desarrollo` esta en interactivo, los cambios estructurales relevantes se proponen antes de aplicarse.
 - **Entrega**: El changelog y la validación final requieren aprobacion explícita.
 
 ### Semi-autonomo
@@ -334,12 +350,12 @@ Para entender como la autonomía interactua con cada fase, conviene conocer los 
 | `usuario+seguridad`      | Requiere aprobacion del desarrollador y auditoría de seguridad positiva.   |
 | `automático+seguridad`   | Requiere tests verdes, seguridad OK y resultado favorable.                 |
 
-El nivel de autonomía modifica el comportamiento de las gates de tipo `usuario`: en modo interactivo, siempre se pide confirmacion; en semi-autonomo, solo las de usuario; en autonomo, ninguna (salvo fallo en las condiciones automáticas).
+El nivel de autonomía modifica el comportamiento de las gates de tipo `usuario`: en modo interactivo, siempre se pide confirmacion; en semi-autonomo, solo las de usuario; en autonomo, ninguna (salvo fallo en las condiciones automáticas). La excepción explícita es `ship:despliegue`: aunque el flujo esté en autopilot, esa fase mantiene confirmación humana obligatoria antes de publicar.
 
 
 ## Descubrimiento de agentes opcionales
 
-Alfred Dev incluye 9 agentes de nucleo que siempre estan activos (Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA, DevOps, Tech Writer y Project Manager) y 8 agentes opcionales que el desarrollador activa segun las necesidades de su proyecto. Los agentes opcionales no son genéricos: cada uno esta especializado en un dominio concreto y solo tiene sentido en proyectos que lo necesitan.
+Alfred Dev incluye 10 agentes de nucleo que siempre estan activos (Alfred, Product Owner, Selina, Arquitecto, Senior Dev, Security Officer, QA, SonIA, Tech Writer y DevOps) y 9 agentes opcionales que el desarrollador activa segun las necesidades de su proyecto. Los agentes opcionales no son genéricos: cada uno esta especializado en un dominio concreto y solo tiene sentido en proyectos que lo necesitan.
 
 La función `suggest_optional_agents()` en `config_loader.py` analiza el proyecto y sugiere que agentes opcionales podrian ser utiles. La lógica de sugerencia se basa en indicadores objetivos del proyecto, no en preferencias arbitrarias. A continuacion se detalla la lógica de cada sugerencia:
 
@@ -351,12 +367,16 @@ La función `suggest_optional_agents()` en `config_loader.py` analiza el proyect
 | `ux-reviewer`          | El framework detectado esta en la lista de frameworks frontend (Next, Nuxt, Astro, Remix, Gatsby, Svelte, Solid, Qwik, Vue, React, Angular) | Si hay interfaz de usuario, tiene sentido revisar accesibilidad y flujos.     |
 | `seo-specialist`       | Se detectan ficheros HTML publicos (en raiz, `public/`, `site/`, `dist/` o `docs/`)         | Si hay contenido web público, el SEO importa para la visibilidad.             |
 | `copywriter`           | Se detectan ficheros HTML publicos (misma condicion que SEO)                                 | Los textos publicos necesitan cuidar el tono, los CTAs y la coherencia.       |
-| `github-manager`       | El proyecto tiene un remote Git configurado (se lee `.git/config`)                          | Si hay remote, hay PRs, issues y releases que gestionar.                      |
+| `github-manager`       | El proyecto tiene un remote GitHub configurado (se lee `.git/config`)                        | Si hay GitHub, hay PRs, issues y releases que gestionar.                      |
 | `performance-engineer` | El proyecto tiene mas de 50 ficheros de código fuente (hasta 3 niveles de profundidad)      | Los proyectos grandes se benefician de profiling y optimizacion.              |
-| `librarian`            | La memoria persistente esta habilitada en la configuración local                            | Si hay memoria activa, el Bibliotecario consulta decisiones e historial.      |
+| `librarian`            | La memoria persistente esta habilitada en la configuración local                            | Si hay memoria activa, el Bibliotecario consulta decisiones e historial bajo demanda. |
 | `i18n-specialist`      | Se detectan directorios o ficheros de i18n (`i18n/`, `locales/`, `translations/`, etc.)     | Si hay señales de internacionalización, revisar claves, formatos y cadenas.   |
 
 El recuento de ficheros fuente ignora directorios de dependencias y artefactos (`node_modules`, `.git`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `venv`, `vendor`, `target`, `.cargo`) para no inflar artificialmente la cuenta.
+
+Estas sugerencias estáticas son deliberadamente conservadoras. Peticiones directas como "la query tarda 2 segundos" o "el bundle pesa demasiado" no pasan por esta tabla: Alfred las resuelve en la capa semántica de composición dinámica, donde puede activar `performance-engineer`, `data-engineer` o ambos según la causa probable.
+
+`lucius` no aparece en esta tabla porque `suggest_optional_agents()` no lo decide por I/O del proyecto. Su valor depende de la tarea actual y se presenta en la tercera pregunta de auditoría externa durante la composicion dinámica.
 
 ### Flujo de activacion
 
@@ -384,7 +404,7 @@ La composicion dinámica se ejecuta al invocar cualquier flujo y opera en tres c
 ```
 1. CONTEXTO DEL PROYECTO  (config_loader.py)
    suggest_optional_agents() -- señales basadas en I/O
-   --> ORM detectado, frontend, HTML público, remote Git, etc.
+   --> ORM detectado, frontend, HTML público, remote GitHub, etc.
 
 2. RAZONAMIENTO SEMÁNTICO  (Alfred)
    Alfred analiza la tarea + señales del proyecto y decide
@@ -392,8 +412,8 @@ La composicion dinámica se ejecuta al invocar cualquier flujo y opera en tres c
    --> preseleccion razonada, no por keywords
 
 3. PRESENTACION + EJECUCIÓN
-   Los agentes se presentan con AskUserQuestion en 2 preguntas
-   multiSelect de 4 opciones: técnicos y contenido/UX.
+   Los agentes se presentan con AskUserQuestion en 3 menús
+   navegables por grupo: tecnicos, contenido/UX y auditoria externa.
    Los recomendados llevan «(Recomendado)» en el label.
    --> equipo_sesion efimero
 ```
@@ -409,10 +429,12 @@ La función `suggest_optional_agents()` en `config_loader.py` analiza el proyect
 | ORM detectado | data-engineer | `detect_stack()` detecta Prisma, Drizzle, etc. |
 | Framework frontend | ux-reviewer | Next, React, Vue, Svelte, etc. |
 | HTML público | seo-specialist, copywriter | `index.html` o ficheros en `public/`, `site/` |
-| Remote Git | github-manager | `.git/config` contiene `[remote "..."]` |
+| Remote GitHub | github-manager | `.git/config` contiene una URL `github.com` |
 | Proyecto grande | performance-engineer | Mas de 50 ficheros fuente |
 | Memoria activa | librarian | `.claude/alfred-dev.local.md` con `memoria: enabled: true` |
 | Ficheros i18n | i18n-specialist | Directorios `i18n/`, `locales/`, `translations/`, etc. |
+
+`lucius` queda fuera de esta tabla por diseño: es un agente de auditoría externa activado por contexto de tarea, no por señales estáticas del proyecto.
 
 ### Capa semántica: Alfred como razonador
 
@@ -425,24 +447,33 @@ Ejemplos de razonamiento semántico:
 | "Implementar pagos con Stripe" | senior-dev, quiza data-engineer | Entiende que "pagos" es lógica de negocio, no automáticamente datos |
 | "Dark mode en el dashboard" | ux-reviewer | Entiende que afecta a la interfaz aunque no diga "formulario" |
 | "¿Por que se eligio SQLite?" | librarian | Entiende que es una pregunta sobre decisiones pasadas |
-| "El endpoint tarda 3 segundos" | performance-engineer | Entiende que es un problema de rendimiento |
+| "El endpoint tarda 3 segundos" | performance-engineer, quizá data-engineer | Entiende que primero hay que medir; si el cuello cae en queries o persistencia, suma al especialista de datos |
 
 ### Capa de presentacion: todos los agentes visibles
 
-Los comandos presentan al usuario **todos** los agentes opcionales mediante `AskUserQuestion` con 2 preguntas `multiSelect` de 4 opciones cada una (limite de la herramienta). Los que Alfred considera relevantes llevan «(Recomendado)» al final del label con una razon contextual en la descripcion. Los demas aparecen con una descripcion breve de su especialidad, para que el usuario pueda activar cualquiera que Alfred no haya detectado.
+Los comandos presentan al usuario **todos** los agentes opcionales mediante `AskUserQuestion` con 3 menús navegables por grupo, no con una llamada gigante difícil de usar. Cada grupo se recorre por separado y, si el usuario quiere activar más de un agente del mismo grupo, Alfred vuelve a mostrar ese mismo menú para elegir **uno por interacción** hasta que el usuario indica `Seguir sin activar más` o `Listo con este grupo`. Los que Alfred considera relevantes llevan «(Recomendado)» al final del label con una razon contextual en la descripcion. Los demas aparecen con una descripcion breve de su especialidad, para que el usuario pueda activar cualquiera que Alfred no haya detectado.
+
+Desde v0.6, esa UX ya no depende solo del prompt: `core/optional_agents.py`
+actúa como fuente canónica del menú con `build_optional_agent_group_menu()` y
+`build_optional_agent_group_menus()`, que fijan grupos, orden, labels visibles,
+descripciones base y opción de salida.
 
 ```
-Pregunta 1 -- Técnicos (multiSelect):
+Menú 1 -- Técnicos:
+  Seguir sin activar más
   Data Engineer     -- "El proyecto usa Prisma y la tarea implica migración (Recomendado)"
   Performance Eng.  -- "Optimización de rendimiento, profiling y benchmarks"
   GitHub Manager    -- "Remote git configurado (Recomendado)"
-  Librarian         -- "Memoria persistente, historial de decisiones"
 
-Pregunta 2 -- Contenido y UX (multiSelect):
+Menú 2 -- Contenido y UX:
+  Seguir sin activar más
   UX Reviewer       -- "Revisión de accesibilidad, usabilidad y flujos"
   SEO Specialist    -- "Posicionamiento web, meta tags, Core Web Vitals"
   Copywriter        -- "Textos publicos, CTAs, tono de comunicación"
-  i18n Specialist   -- "Internacionalización, claves i18n, formatos por locale"
+
+Menú 3 -- Auditoría:
+  Seguir sin activar más
+  Lucius            -- "Segunda opinión técnica externa para esta tarea"
 ```
 
 ### Ejecución: equipo efimero en el orquestador
@@ -460,6 +491,7 @@ equipo_sesion = {
         "seo-specialist": False,
         "copywriter": False,
         "i18n-specialist": False,
+        "lucius": False,
     },
     "infra": {
         "memoria": True,
@@ -471,15 +503,15 @@ equipo_sesion = {
 Antes de inyectar el equipo en la sesión, `run_flow()` lo valida con `_validate_equipo_sesion()`. Las reglas de validación son:
 
 - El primer nivel exige exactamente tres claves: `opcionales_activos`, `infra` y `fuente`.
-- `opcionales_activos` exige como mínimo las claves de los 8 agentes opcionales conocidos. Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validación.
+- `opcionales_activos` exige como mínimo las claves de los 9 agentes opcionales conocidos. Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validación.
 - `infra` exige exactamente `memoria`, de tipo booleano.
-- `fuente` debe ser la cadena `"composicion_dinamica"`.
+- `fuente` debe ser una fuente runtime reconocida: `"composicion_dinamica"` para composicion efimera o `"config_persistida"` cuando el equipo se deriva de `.claude/alfred-dev.local.md`.
 
-Si la validación falla, el equipo se descarta con un aviso a stderr y el motivo se registra en `session["equipo_sesion_error"]` para que los consumidores downstream puedan informar al usuario. La sesión se crea igualmente, pero sin agentes opcionales, lo que garantiza que un equipo mal formado nunca rompe el flujo.
+Si la validación falla, el equipo se descarta con un aviso a stderr y el motivo se registra en `session["equipo_sesion_error"]` para que los consumidores downstream puedan informar al usuario. Si existía configuración persistida válida en el proyecto, `run_flow()` hace fallback a esa configuración antes de quedarse sin equipo.
 
 ### Retrocompatibilidad
 
-La composicion dinámica es un camino nuevo, no un reemplazo del existente. Si `equipo_sesion` no se pasa a `run_flow()`, la sesión se crea exactamente como antes (leyendo la configuración persistente). Un proyecto que ya tiene agentes configurados en `.claude/alfred-dev.local.md` sigue funcionando sin cambios.
+La composicion dinámica es un camino nuevo, no un reemplazo del existente. Si `equipo_sesion` no se pasa a `run_flow()`, el orquestador intenta derivar el equipo desde la configuración persistente del proyecto actual (o del `project_dir` explícito si se pasa). Un proyecto que ya tiene agentes configurados en `.claude/alfred-dev.local.md` sigue funcionando sin cambios y deja ese equipo reflejado también en `alfred-dev-state.json`.
 
 Los mecanismos de seleccion de agentes opcionales coexisten:
 
@@ -504,11 +536,11 @@ Los mecanismos de seleccion de agentes opcionales coexisten:
 
 La memoria persistente es una capa lateral que permite a Alfred Dev conservar el historial del proyecto entre sesiones: decisiones de diseño, commits, iteraciones y eventos del flujo de trabajo. Sin memoria, cada sesión de Alfred empieza de cero; con memoria, el plugin puede responder preguntas como "por que decidimos usar SQLite en vez de PostgreSQL" o "que se implemento en la iteracion 3" con evidencia verificable.
 
-La razon de que sea opcional y este desactivada por defecto es que no todos los proyectos necesitan trazabilidad formal. Un script de 50 lineas no necesita memoria persistente; un proyecto de equipo con decisiones arquitectonicas recurrentes, si.
+La razón de que siga siendo configurable es que no todos los proyectos necesitan la misma persistencia. Un script de 50 lineas no necesita la misma trazabilidad que un producto con varias iteraciones y decisiones arquitectonicas. Por eso el primer arranque la activa para ofrecer continuidad desde el minuto uno, pero el usuario puede desactivarla en cuanto quiera con `memoria.enabled: false`.
 
 ### Activacion
 
-Para activar la memoria, se añade la sección `memoria` al frontmatter del fichero de configuración con `enabled: true`. También se puede activar de forma interactiva con `/alfred-dev:config` eligiendo la sección de memoria.
+Para activar la memoria, se añade la sección `memoria` al frontmatter del fichero de configuración con `enabled: true`. También se puede activar de forma interactiva con `/alfred-dev:config` eligiendo la sección de memoria. Si el proyecto nunca tuvo fichero local, los hooks de arranque ya lo habrán sembrado con `enabled: true`; desactivarla consiste en escribir `enabled: false`, no en borrar la base de datos.
 
 Al activarse, Alfred crea automáticamente la base de datos SQLite en `.claude/alfred-memory.db` con permisos `0600` (solo el propietario puede leer y escribir). El esquema incluye tablas para iteraciones, decisiones, commits, eventos y vinculos entre commits y decisiones.
 
@@ -582,13 +614,13 @@ El siguiente ejemplo muestra un fichero de configuración con todas las seccione
 
 ```yaml
 ---
-autonomía:
+autonomia:
   producto: interactivo
   arquitectura: interactivo
-  seguridad: autonomo
-  refactor: semi-autonomo
-  docs: autonomo
-  tests: autonomo
+  desarrollo: semi-autonomo
+  calidad: semi-autonomo
+  documentacion: autonomo
+  entrega: semi-autonomo
 
 proyecto:
   runtime: node
@@ -607,6 +639,7 @@ agentes_opcionales:
   seo-specialist: false
   copywriter: false
   i18n-specialist: false
+  lucius: false
 
 memoria:
   enabled: true
@@ -618,6 +651,8 @@ memoria:
 
 personalidad:
   nivel_sarcasmo: 3
+  verbosidad: normal
+  idioma: es
   celebrar_victorias: true
   insultar_malas_practicas: true
 

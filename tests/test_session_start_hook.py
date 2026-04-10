@@ -7,11 +7,17 @@ Protegen el contexto operativo que Alfred inyecta al arrancar en Claude Code.
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 
 
 _PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, _PROJECT_ROOT)
+
+from core.memory import MemoryDB
+from core.memory_config import load_memory_config
+from core.memory_sync import resolve_memory_dir
 
 
 def _read(relative_path: str) -> str:
@@ -59,12 +65,8 @@ class TestSessionStartHookContract(unittest.TestCase):
         self.assertIn('"async": true', self.hooks_json)
 
     def test_bootstrap_hook_ensures_cli_first_autonomy(self):
-        self.assertIn("autonomia:", self.bootstrap)
-        self.assertIn("producto: autonomo", self.bootstrap)
-        self.assertIn("arquitectura: autonomo", self.bootstrap)
-        self.assertIn("desarrollo: autonomo", self.bootstrap)
-        self.assertIn("documentacion: autonomo", self.bootstrap)
-        self.assertIn("entrega: autonomo", self.bootstrap)
+        self.assertIn("ensure_bootstrap_local_config", self.bootstrap)
+        self.assertIn("from core.config_loader import ensure_bootstrap_local_config", self.bootstrap)
 
     def test_bootstrap_hook_prepares_local_permissions_and_wrapper(self):
         self.assertIn('.claude/settings.local.json', self.bootstrap)
@@ -118,6 +120,83 @@ class TestSessionBootstrapRuntime(unittest.TestCase):
                 self.assertEqual(payload["defaultMode"], "acceptEdits")
                 self.assertIn("Bash(python3 .claude/alfred-continuity.py *)", payload["permissions"]["allow"])
 
+    def test_bootstrap_injects_valid_frontmatter_when_body_only_mentions_memory(self):
+        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-bootstrap.sh")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_dir = os.path.join(tmpdir, ".claude")
+            os.makedirs(claude_dir, exist_ok=True)
+            local_config = os.path.join(claude_dir, "alfred-dev.local.md")
+            with open(local_config, "w", encoding="utf-8") as fh:
+                fh.write("# Notas\n\nmemoria:\n  enabled: true\n")
+
+            result = subprocess.run(
+                [script_path],
+                cwd=tmpdir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue(load_memory_config(tmpdir)["enabled"])
+            with open(local_config, "r", encoding="utf-8") as fh:
+                self.assertTrue(fh.read().startswith("---\n"))
+
+    def test_bootstrap_preserves_explicit_memory_disable(self):
+        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-bootstrap.sh")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_dir = os.path.join(tmpdir, ".claude")
+            os.makedirs(claude_dir, exist_ok=True)
+            local_config = os.path.join(claude_dir, "alfred-dev.local.md")
+            with open(local_config, "w", encoding="utf-8") as fh:
+                fh.write(
+                    "---\n"
+                    "autonomia:\n"
+                    "  producto: autonomo\n"
+                    "memoria:\n"
+                    "  enabled: false\n"
+                    "---\n"
+                )
+
+            result = subprocess.run(
+                [script_path],
+                cwd=tmpdir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertFalse(load_memory_config(tmpdir)["enabled"])
+
+    def test_bootstrap_does_not_create_memory_db_when_explicitly_disabled(self):
+        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-bootstrap.sh")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_dir = os.path.join(tmpdir, ".claude")
+            os.makedirs(claude_dir, exist_ok=True)
+            with open(
+                os.path.join(claude_dir, "alfred-dev.local.md"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                fh.write("---\nmemoria:\n  enabled: false\n---\n")
+
+            result = subprocess.run(
+                [script_path],
+                cwd=tmpdir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertFalse(
+                os.path.exists(os.path.join(claude_dir, "alfred-memory.db"))
+            )
+
 
 class TestSessionStartRuntime(unittest.TestCase):
     def test_session_start_emits_context_without_shell_substitution_errors(self):
@@ -151,6 +230,185 @@ class TestSessionStartRuntime(unittest.TestCase):
             self.assertEqual(hook_output, "SessionStart")
             additional_context = payload["hookSpecificOutput"]["additionalContext"]
             self.assertIn("consume-prefetch <project_dir> --expected <comando>", additional_context)
+
+    def test_session_start_emits_effective_config_summary(self):
+        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_dir = os.path.join(tmpdir, ".claude")
+            os.makedirs(claude_dir, exist_ok=True)
+            with open(
+                os.path.join(claude_dir, "alfred-dev.local.md"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                fh.write(
+                    "---\n"
+                    "autonomia:\n"
+                    "  producto: autonomo\n"
+                    "  arquitectura: autonomo\n"
+                    "  desarrollo: autonomo\n"
+                    "  calidad: interactivo\n"
+                    "  documentacion: autonomo\n"
+                    "  entrega: autonomo\n"
+                    "agentes_opcionales:\n"
+                    "  lucius: true\n"
+                    "  seo-specialist: true\n"
+                    "memoria:\n"
+                    "  enabled: false\n"
+                    "personalidad:\n"
+                    "  nivel_sarcasmo: 5\n"
+                    "  idioma: en\n"
+                    "  verbosidad: alta\n"
+                    "  celebrar_victorias: false\n"
+                    "  insultar_malas_practicas: false\n"
+                    "---\n"
+                )
+
+            result = subprocess.run(
+                [script_path],
+                cwd=tmpdir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            additional_context = payload["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("### Configuración efectiva", additional_context)
+            self.assertIn("Autopilot por configuración: no", additional_context)
+            self.assertIn("Autopilot efectivo (config/estado): no", additional_context)
+            self.assertIn("Memoria persistente: inactiva", additional_context)
+            self.assertIn("Personalidad: sarcasmo=5, idioma=en, verbosidad=alta", additional_context)
+            self.assertIn("celebrar_victorias=no", additional_context)
+            self.assertIn("insultar_malas_practicas=no", additional_context)
+            self.assertIn("Agentes opcionales activos: seo-specialist, lucius", additional_context)
+
+    def test_session_start_preserves_explicit_memory_disable(self):
+        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_dir = os.path.join(tmpdir, ".claude")
+            os.makedirs(claude_dir, exist_ok=True)
+            with open(
+                os.path.join(claude_dir, "alfred-dev.local.md"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                fh.write(
+                    "---\n"
+                    "autonomia:\n"
+                    "  producto: autonomo\n"
+                    "memoria:\n"
+                    "  enabled: false\n"
+                    "---\n"
+                )
+
+            result = subprocess.run(
+                [script_path],
+                cwd=tmpdir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertFalse(load_memory_config(tmpdir)["enabled"])
+            self.assertFalse(
+                os.path.exists(os.path.join(claude_dir, "alfred-memory.db"))
+            )
+
+    def test_session_start_uses_canonical_sync_to_native_config(self):
+        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
+
+        with tempfile.TemporaryDirectory() as tmpdir, tempfile.TemporaryDirectory() as home_dir:
+            claude_dir = os.path.join(tmpdir, ".claude")
+            os.makedirs(claude_dir, exist_ok=True)
+            with open(
+                os.path.join(claude_dir, "alfred-dev.local.md"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                fh.write(
+                    "---\n"
+                    "memoria:\n"
+                    "  enabled: true\n"
+                    "  sync_to_native: true\n"
+                    "---\n\n"
+                    "# Notas\n\n"
+                    "sync_to_native: false\n"
+                )
+
+            db = MemoryDB(os.path.join(claude_dir, "alfred-memory.db"))
+            iteration_id = db.start_iteration("feature", "Contexto sync")
+            db.log_decision(
+                title="Mantener sync nativa",
+                chosen="Sí",
+                iteration_id=iteration_id,
+            )
+            db.complete_iteration(iteration_id)
+            db.close()
+
+            env = os.environ.copy()
+            env["HOME"] = home_dir
+            result = subprocess.run(
+                [script_path],
+                cwd=tmpdir,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            memory_dir = resolve_memory_dir(
+                os.path.realpath(tmpdir),
+                projects_base=os.path.join(home_dir, ".claude", "projects"),
+            )
+            self.assertIsNotNone(memory_dir)
+            self.assertTrue(
+                any(name.endswith(".md") for name in os.listdir(memory_dir)),
+                msg=f"No se generaron memorias nativas en {memory_dir}",
+            )
+
+    def test_session_start_falls_back_to_project_decisions_when_active_iteration_is_empty(self):
+        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_dir = os.path.join(tmpdir, ".claude")
+            os.makedirs(claude_dir, exist_ok=True)
+            with open(
+                os.path.join(claude_dir, "alfred-dev.local.md"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                fh.write("---\nmemoria:\n  enabled: true\n---\n")
+
+            db = MemoryDB(os.path.join(claude_dir, "alfred-memory.db"))
+            feature_id = db.start_iteration("feature", "Decisión histórica")
+            db.log_decision(
+                title="Usar API estable",
+                chosen="Responses API",
+                iteration_id=feature_id,
+            )
+            db.complete_iteration(feature_id)
+            db.start_iteration("session", "Sesión vacía actual")
+            db.close()
+
+            result = subprocess.run(
+                [script_path],
+                cwd=tmpdir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            additional_context = payload["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("La iteracion activa aun no tiene decisiones", additional_context)
+            self.assertIn("Usar API estable", additional_context)
 
 
 if __name__ == "__main__":

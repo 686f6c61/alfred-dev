@@ -4,7 +4,7 @@ color: white
 description: |
   Usar para gestión de repositorios GitHub: creación de repos, configuración
   de branch protection, flujos de PR, releases, issue templates y labels.
-  Se activa cuando el proyecto tiene un remote Git y necesita gestión de
+  Se activa cuando el proyecto tiene un remote GitHub y necesita gestión de
   repositorio. También se puede invocar directamente para cualquier operación
   con gh CLI. Si gh no está instalado, ofrece instalarlo automáticamente
   (siempre con permiso del usuario). Si no está autenticado, lanza

@@ -12,7 +12,6 @@ Politica: fail-open. Si algo falla, sale con exit 0.
 
 import json
 import os
-import re
 import sys
 from typing import Any, Dict, List, Optional
 
@@ -49,17 +48,25 @@ def build_compact_context(
     return "\n".join(lines)
 
 
+def _is_memory_enabled(project_dir: str) -> bool:
+    """Consulta la configuración canónica de memoria del proyecto."""
+    plugin_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if plugin_root not in sys.path:
+        sys.path.insert(0, plugin_root)
+
+    try:
+        from core.memory_config import is_memory_enabled
+    except ImportError:
+        return False
+
+    return is_memory_enabled(project_dir)
+
+
 def main():
     """Punto de entrada del hook PreCompact."""
     # Comprobar si la memoria esta habilitada
-    config_path = os.path.join(os.getcwd(), ".claude", "alfred-dev.local.md")
-    try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        pattern = r"memoria:\s*\n(?:\s*#[^\n]*\n|\s*\w+:[^\n]*\n)*?\s*enabled:\s*true"
-        if not re.search(pattern, content):
-            sys.exit(0)
-    except (OSError, FileNotFoundError):
+    project_dir = os.getcwd()
+    if not _is_memory_enabled(project_dir):
         sys.exit(0)
 
     # Importar MemoryDB
@@ -71,7 +78,7 @@ def main():
     except ImportError:
         sys.exit(0)
 
-    db_path = os.path.join(os.getcwd(), ".claude", "alfred-memory.db")
+    db_path = os.path.join(project_dir, ".claude", "alfred-memory.db")
     if not os.path.isfile(db_path):
         sys.exit(0)
 
@@ -81,6 +88,8 @@ def main():
         active = db.get_active_iteration()
         if active:
             decisions = db.get_decisions(iteration_id=active["id"], limit=10)
+            if not decisions:
+                decisions = db.get_decisions(limit=5)
         else:
             decisions = db.get_decisions(limit=5)
 

@@ -48,7 +48,7 @@ Antes de empezar, lee `.claude/alfred-dev.local.md` y comprueba el nivel de auto
 
 Si el modo autopilot NO está activo, sigue el comportamiento interactivo habitual (pedir aprobación al usuario en cada gate de usuario).
 
-## Flujo de 6 fases
+## Flujo de hasta 7 fases
 
 Ejecuta las siguientes fases en orden, respetando las quality gates:
 
@@ -64,7 +64,9 @@ Activa el agente `product-owner` usando la herramienta Task con subagent_type ap
 Selina lee el PRD aprobado, infiere el contexto visual del producto y presenta tres
 direcciones de estilo en el navegador. El usuario abre la URL local, ve las tres
 opciones lado a lado y hace clic en la que prefiere. La eleccion se persiste en
-`docs/style-direction.md` y alimenta a todos los agentes posteriores.
+`docs/style-direction.md` y sirve de referencia obligatoria para `architect` y
+`senior-dev`, además de cualquier opcional de frontend o contenido que esté
+activo en ese flujo.
 
 Si el proyecto no tiene frontend (detectado por `config_loader`), esta fase se salta
 automaticamente.
@@ -107,17 +109,42 @@ Guarda el estado en `.claude/alfred-dev-state.json` al iniciar y después de cad
 
 ## Agentes opcionales
 
-Si el proyecto tiene agentes opcionales activados en `.claude/alfred-dev.local.md`, inclúyelos en las fases correspondientes:
+Si el flujo tiene agentes opcionales activos en `equipo_sesion` (ya sea por
+composición dinámica efímera o por fallback a `.claude/alfred-dev.local.md`),
+inclúyelos en las fases correspondientes:
 
 | Agente opcional | Fase | Modo |
 |----------------|------|------|
 | **data-engineer** | Arquitectura, Desarrollo | En paralelo con los de núcleo |
 | **performance-engineer** | Calidad | En paralelo con los de núcleo |
 | **github-manager** | Entrega | Después del devops-engineer |
-| **librarian** | Todas (consulta historial) | En paralelo con los de núcleo |
+| **librarian** | Consulta histórica bajo demanda | No se integra por fase; úsalo cuando la memoria activa aporte contexto real |
 | **ux-reviewer** | Producto, Calidad | En paralelo con los de núcleo |
 | **seo-specialist** | Calidad | En paralelo con los de núcleo |
 | **copywriter** | Documentación | En paralelo con tech-writer |
 | **i18n-specialist** | Desarrollo, Calidad | En paralelo con los de núcleo |
+| **lucius** | Calidad | Auditoría secuencial de cierre después del núcleo |
 
-Comprueba en `.claude/alfred-dev.local.md` qué agentes opcionales están activos antes de cada fase. Si un agente opcional está activo y tiene integración en esa fase, lánzalo con Task usando su subagent_type registrado.
+Antes de cada fase, consulta `equipo_sesion` como fuente runtime canónica. Si
+no existe equipo efímero, usa el equipo persistido del proyecto ya derivado
+por el orquestador desde `.claude/alfred-dev.local.md`. Si un agente opcional
+está activo y tiene integración en esa fase, lánzalo con Task usando su
+subagent_type registrado.
+
+## Cierre canónico del comando
+
+- NO cierres `/alfred-dev:feature` con un resumen libre si el estado ya quedó
+  persistido.
+- Si una gate de usuario queda pendiente, usa un único `AskUserQuestion`
+  navegable y coherente con la fase actual; no mezcles rutas alternativas fuera
+  de esa gate.
+- Si el flujo sigue activo, apóyate en `.claude/alfred-dev-state.json` y en los
+  artefactos operativos ya generados (`docs/project/current.md`,
+  `docs/project/progress.md`, `docs/project/traceability.md`) para dejar
+  visible:
+  - fase actual
+  - gate pendiente
+  - equipo runtime
+  - siguiente paso esperado
+- Si el flujo se redirige a `quick`, `fix` o `spike`, explica la discrepancia
+  de forma breve y deja una única salida accionable.

@@ -111,15 +111,8 @@ const { hero, copyHint, copiedHint } = Astro.props;
       try {
         await navigator.clipboard.writeText(cmd);
       } catch {
-        /* Fallback para navegadores sin Clipboard API */
-        const textarea = document.createElement('textarea');
-        textarea.value = cmd;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
+        /* Fallback manual para navegadores sin Clipboard API */
+        window.prompt(hintCopy || 'Copy this command:', cmd);
       }
 
       const hint = btn.querySelector('.copy-hint');
@@ -342,17 +335,38 @@ const { hero, copyHint, copiedHint } = Astro.props;
     }
 
     .hero-cta {
-      font-size: 11px;
-      padding: 10px 16px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-areas:
+        'label hint'
+        'command command';
+      align-items: start;
+      gap: 8px 12px;
+      width: min(100%, 440px);
       max-width: 100%;
+      padding: 12px 14px;
+      text-align: left;
     }
 
     .hero-cta-text {
-      white-space: nowrap;
+      grid-area: command;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.45;
     }
 
     .hero-cta-label {
+      grid-area: label;
       font-size: 10px;
+    }
+
+    .hero-cta .copy-hint {
+      grid-area: hint;
+      justify-self: end;
+      text-align: right;
     }
 
     .hero-feature {

@@ -41,14 +41,16 @@
   --cyan: #4ec9c9;
   --white: #c8c8d0;
   --magenta: #d46ab2;
-  --font-display: 'Outfit', system-ui, sans-serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Archivo Black', system-ui, sans-serif;
+  --font-body: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --anchor-offset: 104px;
 }
 
 /* ── Base ─────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: var(--anchor-offset);
 }
 
 body {
@@ -81,6 +83,10 @@ a:hover {
 /* ── Secciones ────────────────────────────────────── */
 section {
   padding: 80px 0;
+}
+
+section[id] {
+  scroll-margin-top: var(--anchor-offset);
 }
 
 .section-header {
@@ -171,5 +177,11 @@ section {
 
   html {
     scroll-behavior: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --anchor-offset: 64px;
   }
 }

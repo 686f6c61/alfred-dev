@@ -2,9 +2,12 @@
 """Tests para el hook de verificación ortográfica."""
 
 import importlib.util
+import json
 import os
 import sys
 import unittest
+from io import StringIO
+from unittest.mock import patch
 
 # El fichero del hook usa guión (spelling-guard.py), convención de los hooks
 # de Alfred Dev. Python no permite importar módulos con guión directamente,
@@ -15,6 +18,7 @@ _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 
 find_accent_errors = _mod.find_accent_errors
+prepare_text_for_spellcheck = _mod.prepare_text_for_spellcheck
 should_inspect = _mod.should_inspect
 ACCENT_WORDS = _mod.ACCENT_WORDS
 
@@ -110,6 +114,59 @@ class TestFindAccentErrors(unittest.TestCase):
         self.assertEqual(found, {"metodo", "autenticacion", "validacion", "parametro"})
 
 
+class TestPrepareTextForSpellcheck(unittest.TestCase):
+    """Verifica la reducción de ruido técnico antes de buscar errores."""
+
+    def test_markdown_ignores_fenced_and_inline_code(self):
+        text = (
+            "Usa `modulo auth` y revisa la version.\n\n"
+            "```bash\npython3 script.py --modulo auth --version v1\n```"
+        )
+        prepared = prepare_text_for_spellcheck(text, "/proyecto/README.md")
+        errors = find_accent_errors(prepared)
+
+        self.assertEqual(errors, [("version", "versión")])
+
+    def test_javascript_ignores_route_like_paths(self):
+        text = 'const route = "/api/version/publico";'
+        prepared = prepare_text_for_spellcheck(text, "/proyecto/src/app.ts")
+
+        self.assertEqual(find_accent_errors(prepared), [])
+
+    def test_html_keeps_user_facing_attribute_text_but_not_attribute_names(self):
+        text = '<div data-modulo="auth" aria-label="navegacion principal"></div>'
+        prepared = prepare_text_for_spellcheck(text, "/proyecto/index.html")
+        errors = find_accent_errors(prepared)
+
+        found = {wrong.lower() for wrong, _ in errors}
+        self.assertNotIn("modulo", found)
+        self.assertIn("navegacion", found)
+
+    def test_css_ignores_selectors_and_only_checks_comments(self):
+        text = ".pagina-principal { color: red; }\n/* navegacion principal */"
+        prepared = prepare_text_for_spellcheck(text, "/proyecto/site/app.css")
+        errors = find_accent_errors(prepared)
+
+        found = {wrong.lower() for wrong, _ in errors}
+        self.assertNotIn("pagina", found)
+        self.assertIn("navegacion", found)
+
+    def test_toml_ignores_keys_but_checks_string_values(self):
+        text = (
+            'version = "1.0.0"\n'
+            'description = "Modulo basico"\n'
+            '# configuracion pendiente\n'
+        )
+        prepared = prepare_text_for_spellcheck(text, "/proyecto/pyproject.toml")
+        errors = find_accent_errors(prepared)
+
+        found = {wrong.lower() for wrong, _ in errors}
+        self.assertNotIn("version", found)
+        self.assertIn("modulo", found)
+        self.assertIn("basico", found)
+        self.assertIn("configuracion", found)
+
+
 class TestAccentDictionary(unittest.TestCase):
     """Verifica la integridad del diccionario de tildes."""
 
@@ -134,6 +191,56 @@ class TestAccentDictionary(unittest.TestCase):
     def test_minimum_dictionary_size(self):
         """El diccionario tiene al menos 50 entradas para ser útil."""
         self.assertGreaterEqual(len(ACCENT_WORDS), 50)
+
+
+class TestMainFlow(unittest.TestCase):
+    """Verifica el comportamiento del hook completo con payloads reales."""
+
+    def _run_main(self, payload: dict) -> tuple[int, str]:
+        stderr_capture = StringIO()
+        exit_code = None
+
+        with patch("sys.stdin", StringIO(json.dumps(payload))):
+            with patch("sys.stderr", stderr_capture):
+                try:
+                    _mod.main()
+                except SystemExit as exc:
+                    exit_code = exc.code
+
+        return exit_code, stderr_capture.getvalue()
+
+    def test_markdown_code_examples_do_not_trigger_warning(self):
+        code, stderr = self._run_main({
+            "tool_input": {
+                "file_path": "/proyecto/README.md",
+                "content": "```bash\npython3 script.py --modulo auth --version v1\n```",
+            }
+        })
+
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, "")
+
+    def test_plain_spanish_text_still_triggers_warning(self):
+        code, stderr = self._run_main({
+            "tool_input": {
+                "file_path": "/proyecto/README.md",
+                "content": "La configuracion del modulo requiere revision.",
+            }
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("Tildes ausentes", stderr)
+
+    def test_javascript_route_path_does_not_trigger_warning(self):
+        code, stderr = self._run_main({
+            "tool_input": {
+                "file_path": "/proyecto/src/routes.ts",
+                "content": 'const route = "/api/version/publico";',
+            }
+        })
+
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, "")
 
 
 if __name__ == "__main__":

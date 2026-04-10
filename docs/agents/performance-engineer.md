@@ -35,16 +35,14 @@ No optimiza prematuramente ni sacrifica legibilidad por rendimiento sin una just
 - No sacrifica legibilidad por rendimiento sin una justificacion clara con números.
 - No hace micro-optimizaciones que no tengan impacto medible en la experiencia real.
 - No asume que algo es lento sin perfilarlo: las intuiciones sobre rendimiento suelen estar equivocadas.
+- No reescribe esquemas, migraciones ni índices por defecto: si el cuello real está en persistencia, colabora con el data-engineer en vez de sustituirlo.
 
 ## Cuando se activa
 
-La función `suggest_optional_agents` detecta al Cronometro en proyectos grandes o con requisitos de rendimiento. Las señales contextuales que busca incluyen:
+La activación del Cronometro también tiene dos capas:
 
-- Proyectos con un número significativo de ficheros o dependencias que sugieran complejidad.
-- Presencia de herramientas de bundling (Webpack, Vite, Rollup, esbuild) que indiquen preocupacion por el tamaño del entregable.
-- Configuración de monitorizacion de rendimiento (Lighthouse CI, web-vitals, benchmarks existentes).
-- Peticion directa del usuario sobre latencia, consumo de memoria, tamaño de bundle o rendimiento general.
-- Endpoints API con requisitos de latencia explicitos o problemas de respuesta lenta.
+- **Sugerencia estática (`suggest_optional_agents`)**: la heurística actual es conservadora y usa una sola señal objetiva: más de 50 ficheros fuente en el proyecto. No significa que siempre haya un problema, sino que el coste de medir rendimiento puede empezar a merecer la pena.
+- **Composición dinámica de equipo**: si la tarea habla de latencia, consumo de memoria, tamaño de bundle, tiempos de carga, throughput o cuellos de botella, Alfred puede activarlo aunque el proyecto no haya disparado la sugerencia estática.
 
 La razon de no activarse por defecto es que la optimizacion de rendimiento solo tiene sentido cuando hay un problema real o una escala que lo justifique. En proyectos pequeños o en fase temprana, el esfuerzo de optimizacion suele ser prematuro.
 
@@ -52,7 +50,7 @@ La razon de no activarse por defecto es que la optimizacion de rendimiento solo 
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | Alfred | Fase de calidad o bajo demanda para diagnóstico de rendimiento |
+| **Activado por** | Alfred | `feature:calidad`, `quick:validacion_rapida` y `fix:diagnostico/validacion` cuando hay señal de rendimiento |
 | **Colabora con** | El Artesano (senior-dev) | El Cronometro identifica el cuello de botella; el Artesano implementa el fix |
 | **Colabora con** | El Fontanero de Datos (data-engineer) | Si el cuello de botella es una query, el Fontanero la optimiza |
 | **Colabora con** | El Fontanero (devops-engineer) | Si el problema es de infraestructura (pool, workers, cache) |
@@ -66,9 +64,11 @@ Cuando el Cronometro esta activo, se integra en los flujos del equipo de la sigu
 
 2. **Antes de producir cualquier artefacto**, identifica el runtime y framework para elegir las herramientas de profiling adecuadas, y busca configuración de bundler (vite.config, webpack.config, etc.) para entender el pipeline de build.
 
-3. **Durante la fase de calidad**, trabaja en paralelo con otros agentes: si el cuello de botella esta en una query, deriva al data-engineer; si esta en la infraestructura, deriva al devops-engineer. El Cronometro diagnostica, los especialistas corrigen.
+3. **Durante `feature:calidad` y `quick:validacion_rapida`**, trabaja en paralelo con otros agentes: si el cuello de botella esta en una query, deriva al data-engineer; si esta en la infraestructura, deriva al devops-engineer. El Cronometro diagnostica y valida la mejora; los especialistas corrigen en su capa.
 
-4. **Al entregar**, pasa las propuestas de optimizacion al senior-dev para implementacion, siempre con la medicion baseline y la estimacion de mejora para que el equipo pueda validar el resultado.
+4. **En `fix`**, puede entrar ya desde `diagnostico` para localizar el cuello de botella y reaparece en `validacion` para comprobar que el arreglo mejora o al menos no degrada el comportamiento.
+
+5. **Al entregar**, pasa las propuestas de optimizacion al senior-dev para implementacion, siempre con la medicion baseline y la estimacion de mejora para que el equipo pueda validar el resultado.
 
 ## Frases
 

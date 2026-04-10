@@ -10,11 +10,19 @@ La filosofía detrás de esta arquitectura se puede resumir en tres principios:
 - **Herramientas restringidas.** No todos los agentes necesitan acceso al sistema de ficheros o a la terminal. Limitar las herramientas por agente reduce la superficie de error y fuerza la especialización.
 - **Quality gates entre fases.** Ningun artefacto pasa de una fase a la siguiente sin superar un punto de control. Estos gates pueden ser automáticos (tests verdes), manuales (aprobacion del usuario) o combinados (automático + seguridad).
 
+Hay una frontera especialmente importante en el núcleo:
+
+- **`product-owner`** decide **qué** problema se resuelve y **por qué**.
+- **`architect`** decide **cómo** se implementa técnicamente.
+- **`alfred`** decide **cuándo** interviene cada uno, en qué orden y con qué gate.
+
+Si esas tres responsabilidades se mezclan, el flujo deja de ser previsible. Por eso Alfred coordina, pero no redefine alcance ni diseño por su cuenta.
+
 ---
 
 ## Flujo feature: cronología de fases
 
-El flujo `feature` es el mas completo del sistema y el que mejor ilustra como colaboran los agentes. Cada feature nueva atraviesa seis fases secuenciales, y en cada fase intervienen agentes específicos. El security-officer aparece en tres fases distintas porque la seguridad no es un paso final sino una preocupacion transversal que acompana al desarrollo desde el diseño hasta la entrega.
+El flujo `feature` es el mas completo del sistema y el que mejor ilustra como colaboran los agentes. Cada feature nueva atraviesa **hasta siete fases** secuenciales: la fase visual `estilo_visual` solo aparece cuando el proyecto tiene frontend. El security-officer aparece en tres fases distintas porque la seguridad no es un paso final sino una preocupacion transversal que acompana al desarrollo desde el diseño hasta la entrega.
 
 ```mermaid
 timeline
@@ -23,6 +31,10 @@ timeline
         : product-owner
         : Análisis de requisitos
         : Gate - aprobacion del usuario
+    estilo visual
+        : selina
+        : Dirección de estilo visual (solo con frontend)
+        : Gate - eleccion del usuario
     arquitectura
         : architect + security-officer
         : Diseño técnico y threat model
@@ -84,7 +96,7 @@ Estos nueve agentes cubren necesidades específicas que no todos los proyectos t
 | `copywriter` | El Pluma | sonnet | opcional | magenta | contenido |
 | `librarian` | El Bibliotecario | sonnet | opcional | ambar | memoria |
 | `i18n-specialist` | La Interprete | sonnet | opcional | cyan | internacionalizacion |
-| `lucius` | Lucius — El Director Técnico | opus | opcional | ambar | auditoría técnica externa |
+| `lucius` | Lucius — El Director Técnico Externo | opus | opcional | ambar | auditoría técnica externa |
 
 ---
 
@@ -92,9 +104,9 @@ Estos nueve agentes cubren necesidades específicas que no todos los proyectos t
 
 La distinción entre agentes de nucleo y opcionales no es arbitraria. Responde a una pregunta practica: que necesita *cualquier* proyecto de software, y que solo necesitan *algunos* proyectos.
 
-Los **nueve agentes de nucleo** estan siempre activos porque cubren las fases universales del desarrollo: definir que se construye (product-owner), decidir como se construye (architect), construirlo (senior-dev), verificar que funciona (qa-engineer), documentarlo (tech-writer), desplegarlo (devops-engineer), protegerlo (security-officer), gestionar el proyecto y la trazabilidad (project-manager) y orquestarlo todo (alfred). Estos agentes se invocan desde los commands del plugin (`feature.md`, `fix.md`, `spike.md`, etc.) y **no aparecen en la sección `agents` del fichero `plugin.json`**. Son invisibles para Claude Code como entidades registradas: solo existen como ficheros `.md` que los commands referencian internamente cuando llaman a la herramienta Task. Esta invisibilidad es intencionada, porque el usuario no necesita invocarlos directamente; los flujos ya saben cuando y como utilizarlos.
+Los **diez agentes de nucleo** estan siempre activos porque cubren las fases universales del desarrollo: definir que se construye (product-owner), fijar una dirección visual cuando hay frontend (selina), decidir como se construye (architect), construirlo (senior-dev), verificar que funciona (qa-engineer), documentarlo (tech-writer), desplegarlo (devops-engineer), protegerlo (security-officer), gestionar el proyecto y la trazabilidad (project-manager) y orquestarlo todo (alfred). Estos agentes se invocan desde los commands del plugin (`feature.md`, `fix.md`, `spike.md`, etc.) y tambien aparecen en `plugin.json` para que la superficie publicada sea completa y el usuario pueda inspeccionarlos desde fuera de un flujo.
 
-Los **nueve agentes opcionales** cubren necesidades que dependen del tipo de proyecto. No todos los repositorios tienen base de datos (data-engineer), interfaz de usuario (ux-reviewer), landing publica que posicionar (seo-specialist), textos comerciales que redactar (copywriter), multiples idiomas que gestionar (i18n-specialist) o necesitan una auditoría técnica externa con una perspectiva independiente (lucius). Forzar a todos los proyectos a cargar estos agentes seria innecesario y añadirá ruido. Por eso, los opcionales **si se registran en `plugin.json`** (en la sección `agents`, con su modelo, descripción y color) y se activan o desactivan mediante la configuración local del proyecto (`.local.md`). El usuario puede invocarlos directamente o Alfred los integra en los flujos cuando estan habilitados.
+Los **nueve agentes opcionales** cubren necesidades que dependen del tipo de proyecto. No todos los repositorios tienen base de datos (data-engineer), interfaz de usuario (ux-reviewer), landing publica que posicionar (seo-specialist), textos comerciales que redactar (copywriter), multiples idiomas que gestionar (i18n-specialist) o necesitan una auditoría técnica externa con una perspectiva independiente (lucius). Forzar a todos los proyectos a cargar estos agentes seria innecesario y añadirá ruido. Por eso, los opcionales **si se registran en `plugin.json`** (en la sección `agents`, con su modelo, descripción y color) y se activan o desactivan mediante la configuración local del proyecto (`.local.md`). El usuario puede invocarlos directamente; Alfred integra automáticamente en fases solo a los que tienen integración declarada y deja el resto como especialistas bajo demanda.
 
 En resumen: los de nucleo siempre estan porque son imprescindibles; los opcionales se activan bajo demanda porque atienden necesidades específicas.
 
@@ -143,7 +155,7 @@ Los trece agentes restantes usan **sonnet**, que es mas rápido y eficiente en c
 
 ## Por que Task y no invocación directa
 
-Los agentes de nucleo no se registran como agentes en `plugin.json` y no se invocan directamente por el usuario. En su lugar, los commands del plugin los lanzan como subagentes mediante la herramienta **Task** de Claude Code. Esta decisión tiene tres ventajas fundamentales:
+Aunque hoy tambien aparecen registrados en `plugin.json`, los agentes de nucleo siguen usandose principalmente como subagentes lanzados por los commands del plugin mediante la herramienta **Task** de Claude Code. Esta decisión tiene tres ventajas fundamentales:
 
 **Aislamiento de contexto.** Cada agente arranca con un contexto limpio: su system prompt y los artefactos que Alfred le pasa. No hereda la conversacion acumulada de la sesión ni el contexto de otros agentes. Esto evita un problema habitual de los sistemas multiagente: la contaminación cruzada, donde las instrucciones o sesgos de un agente afectan al siguiente.
 
@@ -167,7 +179,8 @@ Cada agente tiene una ficha individual con su system prompt completo, herramient
 | `qa-engineer` | [qa-engineer.md](qa-engineer.md) | Ejecuta y disena tests; busca edge cases y regresiones. |
 | `devops-engineer` | [devops-engineer.md](devops-engineer.md) | Gestiona CI/CD, pipelines, despliegues y empaquetado de releases. |
 | `tech-writer` | [tech-writer.md](tech-writer.md) | Genera documentación técnica y de usuario comprensible para la comunidad. |
-| `project-manager` | [project-manager.md](project-manager.md) | Gestiona el proyecto: kanban, trazabilidad de criterios de aceptacion y seguimiento entre fases. |
+| `project-manager` | [project-manager.md](project-manager.md) | Materializa kanban, trazabilidad y siguiente paso operativo a partir del estado del flujo; no decide producto ni arquitectura. |
+| `selina` | [selina.md](selina.md) | Define la dirección visual del producto y cierra la fase 1b cuando hay frontend. |
 | `data-engineer` | [data-engineer.md](data-engineer.md) | Disena esquemas de datos, migraciones y optimiza queries. |
 | `ux-reviewer` | [ux-reviewer.md](ux-reviewer.md) | Revisa accesibilidad, flujos de usuario y coherencia de la interfaz. |
 | `performance-engineer` | [performance-engineer.md](performance-engineer.md) | Mide y optimiza rendimiento: tiempos de carga, bundles y metricas clave. |
@@ -175,5 +188,5 @@ Cada agente tiene una ficha individual con su system prompt completo, herramient
 | `seo-specialist` | [seo-specialist.md](seo-specialist.md) | Optimiza el posicionamiento: meta tags, datos estructurados y Core Web Vitals. |
 | `copywriter` | [copywriter.md](copywriter.md) | Redacta textos comerciales, CTAs y contenido con tono coherente y ortografia impecable. |
 | `librarian` | [librarian.md](librarian.md) | Gestiona la memoria persistente del proyecto: decisiones, historial y consultas. |
-| `i18n-specialist` | [i18n-specialist.md](../agents/optional/i18n-specialist.md) | Audita claves i18n, detecta cadenas hardcodeadas y valida formatos por locale. |
+| `i18n-specialist` | [i18n-specialist.md](i18n-specialist.md) | Audita claves i18n, detecta cadenas hardcodeadas y valida formatos por locale. |
 | `lucius` | [lucius.md](lucius.md) | Auditoría técnica externa vía Codex CLI; diagnóstico y prescripción por ítem. |

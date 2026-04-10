@@ -14,6 +14,7 @@ nueva dependencia es una superficie de ataque adicional.
 
 import json
 import os
+import re
 import sys
 
 # --- Ficheros de dependencias conocidos ---
@@ -32,8 +33,10 @@ DEPENDENCY_FILES = {
     # Python
     "pyproject.toml",
     "requirements.txt",
+    "requirements.in",
     "requirements-dev.txt",
     "requirements-prod.txt",
+    "constraints.txt",
     "setup.py",
     "setup.cfg",
     "Pipfile",
@@ -61,9 +64,81 @@ DEPENDENCY_FILES = {
     "build.gradle.kts",
     # .NET
     "packages.config",
+    "packages.lock.json",
+    "Directory.Packages.props",
     # Swift
     "Package.swift",
     "Package.resolved",
+    # Workspaces / monorepos
+    "pnpm-workspace.yaml",
+}
+
+_EDIT_GATED_MANIFESTS = {
+    "package.json",
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "Cargo.toml",
+    "mix.exs",
+    "composer.json",
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "Package.swift",
+    "Directory.Packages.props",
+}
+
+_DEPENDENCY_SECTION_PATTERNS = {
+    "package.json": (
+        r'"(?:dependencies|devDependencies|peerDependencies|optionalDependencies|bundledDependencies)"\s*:',
+        r'"(?:overrides|resolutions|packageExtensions|patchedDependencies)"\s*:',
+    ),
+    "pyproject.toml": (
+        r"(?im)^\s*dependencies\s*=",
+        r"(?im)^\s*\[project\.optional-dependencies\]",
+        r"(?im)^\s*\[tool\.poetry(?:\.group\.[^.]+)?\.dependencies\]",
+        r"(?im)^\s*\[dependency-groups\]",
+    ),
+    "setup.py": (r"\binstall_requires\b", r"\bextras_require\b"),
+    "setup.cfg": (r"(?im)^\s*install_requires\s*=", r"(?im)^\s*\[options\.extras_require\]"),
+    "Cargo.toml": (
+        r"(?im)^\s*\[(?:workspace\.)?(?:dev-|build-)?dependencies(?:\.[^\]]+)?\]",
+    ),
+    "mix.exs": (r"\bdeps\s+do\b", r"\{:[^,]+,\s*\""),
+    "composer.json": (r'"(?:require|require-dev|conflict|replace|provide)"\s*:',),
+    "pom.xml": (r"<dependency>", r"<dependencies>"),
+    "build.gradle": (r"\b(?:implementation|api|compileOnly|runtimeOnly|testImplementation|classpath)\b",),
+    "build.gradle.kts": (r"\b(?:implementation|api|compileOnly|runtimeOnly|testImplementation|classpath)\b",),
+    "Package.swift": (r"\.package\s*\(", r"dependencies\s*:\s*\["),
+    "Directory.Packages.props": (r"<Package(?:Reference|Version)\b",),
+}
+
+_ALWAYS_DEPENDENCY_FILES = {
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "bun.lockb",
+    "bun.lock",
+    "requirements.txt",
+    "requirements.in",
+    "requirements-dev.txt",
+    "requirements-prod.txt",
+    "constraints.txt",
+    "Pipfile",
+    "Pipfile.lock",
+    "poetry.lock",
+    "uv.lock",
+    "Cargo.lock",
+    "go.mod",
+    "go.sum",
+    "Gemfile",
+    "Gemfile.lock",
+    "mix.lock",
+    "composer.lock",
+    "packages.config",
+    "packages.lock.json",
+    "Package.resolved",
+    "pnpm-workspace.yaml",
 }
 
 
@@ -90,11 +165,55 @@ def is_dependency_file(file_path: str) -> bool:
     if basename.startswith("requirements") and basename.endswith(".txt"):
         return True
 
-    # Ficheros .csproj y .fsproj de .NET
-    if basename.endswith((".csproj", ".fsproj")):
+    # constraints-*.txt en Python
+    if basename.startswith("constraints") and basename.endswith(".txt"):
+        return True
+
+    # Ficheros de proyecto .NET
+    if basename.endswith((".csproj", ".fsproj", ".vbproj")):
         return True
 
     return False
+
+
+def has_dependency_signal(file_path: str, tool_input: dict) -> bool:
+    """Determina si la escritura toca dependencias y no solo metadata lateral."""
+    basename = os.path.basename(file_path)
+
+    if basename.startswith("requirements") and basename.endswith(".txt"):
+        return True
+    if basename.startswith("constraints") and basename.endswith(".txt"):
+        return True
+    if basename.endswith((".csproj", ".fsproj", ".vbproj")):
+        text = "\n".join(
+            part for part in (
+                tool_input.get("old_string", ""),
+                tool_input.get("new_string", ""),
+                tool_input.get("content", ""),
+            ) if part
+        )
+        return bool(re.search(r"<PackageReference\b|<PackageVersion\b", text))
+
+    if basename in _ALWAYS_DEPENDENCY_FILES:
+        return True
+
+    if basename not in _EDIT_GATED_MANIFESTS:
+        return True
+
+    text = "\n".join(
+        part for part in (
+            tool_input.get("old_string", ""),
+            tool_input.get("new_string", ""),
+        ) if part
+    )
+    if not text:
+        text = tool_input.get("content", "")
+
+    if not text:
+        return True
+
+    patterns = _DEPENDENCY_SECTION_PATTERNS.get(basename, ())
+    return any(re.search(pattern, text) for pattern in patterns)
 
 
 def main():
@@ -126,14 +245,19 @@ def main():
     if not is_dependency_file(file_path):
         sys.exit(0)
 
+    # En manifiestos mixtos intentamos reducir ruido cuando el cambio solo
+    # toca metadata o scripts y no las secciones de dependencias.
+    if not has_dependency_signal(file_path, tool_input):
+        sys.exit(0)
+
     basename = os.path.basename(file_path)
 
     print(
         f"\n"
         f"[El Paranoico] Cambio en dependencias detectado: {basename}\n"
         f"\n"
-        f"Se ha modificado un fichero de dependencias. Cada nueva dependencia\n"
-        f"es una superficie de ataque que aceptas de ojos cerrados.\n"
+        f"Se ha modificado un manifiesto o lockfile de dependencias. Cada nueva\n"
+        f"dependencia es una superficie de ataque que aceptas de ojos cerrados.\n"
         f"\n"
         f"Antes de seguir, pregúntate:\n"
         f"  - Es realmente necesaria esta dependencia?\n"

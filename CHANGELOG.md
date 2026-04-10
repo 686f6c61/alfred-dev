@@ -7,7 +7,26 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
-## [0.6.0] - 2026-03-31
+## [0.5.1] - 2026-04-10
+
+### Added
+
+- **Catálogo canónico de Selina con 10 sistemas de diseño base**: `core/selina_style_catalog.py` reúne el modo libre/contextual y nueve familias visuales guiadas por tendencia para que la fase visual parta de un vocabulario explícito, no de intuiciones sueltas.
+- **Galería de demos para comparar sistemas de diseño**: `core/selina_style_demo.py` y `visual/scripts/write-style-demo-gallery.py` generan una muestra navegable de los 10 sistemas con referencias, paletas, tipografías y tono antes de cerrar las 3 propuestas comparables.
+- **Paletas y tipografías por familia**: cada sistema de diseño declara modos cromáticos, pairing tipográfico y enlaces a Google Fonts o referencias visuales para que Selina pueda justificar la dirección elegida con señales verificables.
+
+### Changed
+
+- **Selina deja de presentarse como “tres estilos” aislados**: ahora se explica como una capa de dirección visual basada en 10 sistemas de diseño base que se reducen a 3 propuestas finales comparables según PRD, audiencia y stack.
+- **Versionado coherente a 0.5.1**: plugin, marketplace, instaladores, paquetes, memoria MCP, session report, README, changelog, docs y landing quedan alineados.
+- **Landing y docs públicas más fieles al runtime**: la home pasa a contar el catálogo de Selina, el estado real de la release y cómo encaja la fase visual dentro del flujo orquestado.
+
+### Fixed
+
+- **Superficie de actualización sin drift**: los puntos de versión internos que todavía caían por defecto a una release anterior pasan a reflejar la versión actual para no mezclar metadata vieja al instalar o consultar estado.
+- **Tests de release menos frágiles**: la suite deja de depender de wrappers finos de Astro o rutas hardcodeadas por versión cuando lo correcto es leer la fuente de verdad del manifiesto.
+
+## [0.5.0] - 2026-03-31
 
 ### Added
 
@@ -16,20 +35,6 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 - **Informe estructurado por ítem**: Lucius devuelve diagnóstico + prescripción + esfuerzo (S/M/L) + sugerencia de con quién implementar (Alfred o Codex) en cuatro secciones: Crítico, Relevante, Oportunidades y Lo que está bien.
 - **Preflight de prerequisitos**: verifica que `codex` está en el PATH y autenticado. Si falta algún requisito, para con instrucciones claras de instalación.
 - **HARD-GATE sin modificaciones**: el subcomando `codex review` activa `sandbox: read-only` y `approval: never` de forma nativa, garantizando que ningún fichero se toca.
-
-### Changed
-
-- **19 agentes totales**: el plugin pasa de 18 a 19 agentes (10 de núcleo + 9 opcionales) con la incorporación de Lucius.
-- **26 comandos**: se añade `/alfred-dev:lucius` al manifiesto del plugin.
-- **Versionado coherente a 0.6.0**: plugin, marketplace, instaladores, paquetes, README, changelog, docs y landing quedan alineados.
-- **Landing actualizada**: tarjeta de Lucius antes de Selina con badge «Nuevo», agente opcional con use cases, counts actualizados a 19 agentes y 26 comandos.
-
----
-
-## [0.5.0] - 2026-03-31
-
-### Added
-
 - **Selina — La Estilista**: nuevo agente de núcleo (10.º) que ocupa la fase 1b del flujo `feature`. Presenta tres direcciones de estilo visual en el navegador antes de que el architect diseñe componentes. Solo se activa si el proyecto tiene interfaz de usuario.
 - **Servidor visual local**: servidor HTTP + WebSocket de dependencias cero (`visual/scripts/server.cjs`) para renderizar opciones de estilo en tres columnas. Gestiona sesiones por proyecto, hot-reload vía `fs.watch`, registro de clics en `state/events` y cierre limpio ante `SIGTERM`.
 - **Skill de estilo visual** (`skills/estilo/style-direction/SKILL.md`): guía completa para que Selina arranque el servidor, escriba el HTML de opciones con `.style-grid`, lea la elección del usuario y genere `docs/style-direction.md`.
@@ -38,10 +43,10 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ### Changed
 
-- **5 agentes actualizados** para leer `docs/style-direction.md` como referencia de estilo: `architect`, `senior-dev`, `ux-reviewer`, `copywriter`, `seo-specialist`.
-- **`feature.md` actualizado**: documenta la fase 1b con instrucción explícita de activar Selina con la herramienta Task.
-- **`plugin.json` actualizado**: incluye el agente Selina y el skill de estilo visual en el manifiesto. Descripción actualizada a 10 agentes de núcleo.
-- **README actualizado**: recuento de agentes (9 → 10), fases (6 → 7), tabla de agentes con Selina, ejemplo de flujo con fase 1b.
+- **19 agentes totales**: el plugin pasa de 18 a 19 agentes (10 de núcleo + 9 opcionales) con la incorporación de Lucius.
+- **26 comandos**: se añade `/alfred-dev:lucius` al manifiesto del plugin.
+- **Versionado coherente a 0.5.0**: plugin, marketplace, instaladores, paquetes, README, changelog, docs y landing quedan alineados.
+- **Landing actualizada**: tarjeta de Lucius antes de Selina con badge «Nuevo», agente opcional con use cases, counts actualizados a 19 agentes y 26 comandos.
 
 ### Fixed
 

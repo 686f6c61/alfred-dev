@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import signal
 import socket
 import subprocess
@@ -33,7 +34,16 @@ if __package__ in {None, ""}:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config_loader import detect_stack
-from core.orchestrator import FLOWS, create_session, load_state, save_state
+from core.optional_agents import order_optional_agent_names
+from core.orchestrator import (
+    FLOWS,
+    OPTIONAL_INTEGRATIONS,
+    create_session,
+    get_effective_agents,
+    load_state,
+    run_flow,
+    save_state,
+)
 
 
 STATE_RELATIVE_PATH = os.path.join(".claude", "alfred-dev-state.json")
@@ -49,6 +59,7 @@ HANDOFF_MD_RELATIVE_PATH = os.path.join("docs", "project", "handoff.md")
 UAT_MD_RELATIVE_PATH = os.path.join("docs", "project", "uat.md")
 PROGRESS_MD_RELATIVE_PATH = os.path.join("docs", "project", "progress.md")
 TRACEABILITY_MD_RELATIVE_PATH = os.path.join("docs", "project", "traceability.md")
+STYLE_DIRECTION_RELATIVE_PATH = os.path.join("docs", "style-direction.md")
 KANBAN_BACKLOG_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "backlog.md")
 KANBAN_IN_PROGRESS_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "in-progress.md")
 KANBAN_DONE_RELATIVE_PATH = os.path.join("docs", "project", "kanban", "done.md")
@@ -59,6 +70,7 @@ GUI_PORT_RELATIVE_PATH = os.path.join(".claude", "alfred-gui-port")
 GUI_LOG_RELATIVE_PATH = os.path.join(".claude", "alfred-gui.log")
 MEMORY_UI_JSON_RELATIVE_PATH = os.path.join(".claude", "alfred-memory-ui.json")
 MEMORY_DB_RELATIVE_PATH = os.path.join(".claude", "alfred-memory.db")
+VISUAL_SESSION_ROOT_RELATIVE_PATH = os.path.join(".alfred-dev", "visual")
 
 _CODE_EXTENSIONS = {
     ".py",
@@ -96,6 +108,16 @@ _SKIP_DIRS = {
     ".scannerwork",
 }
 _GREENFIELD_COMMAND = "alfred"
+_NEXT_ACTION_SOURCE_LABELS = {
+    "state": "sesión activa",
+    "handoff": "handoff pendiente",
+    "verify": "verificación/UAT",
+    "brownfield": "mapa brownfield",
+    "discovery": "discovery",
+    "current": "estado operativo actual",
+    "project": "contexto del proyecto",
+    "default": "contexto mínimo",
+}
 _KANBAN_RELATIVE_BY_STATUS = {
     "backlog": KANBAN_BACKLOG_RELATIVE_PATH,
     "in-progress": KANBAN_IN_PROGRESS_RELATIVE_PATH,
@@ -108,6 +130,93 @@ _KANBAN_STATUS_LABELS = {
     "done": "done",
     "blocked": "blocked",
 }
+_KANBAN_TITLES = {
+    "backlog": "Backlog",
+    "in-progress": "In Progress",
+    "done": "Done",
+    "blocked": "Blocked",
+}
+_KNOWN_KANBAN_TASK_TYPES = frozenset({"generic", "main", "phase", "verify"})
+
+
+def _session_optional_agent_flags(session: Dict[str, Any]) -> Dict[str, bool]:
+    """Extrae los flags de agentes opcionales activos de una sesión."""
+    equipo = session.get("equipo_sesion")
+    if not isinstance(equipo, dict):
+        return {}
+    raw_flags = equipo.get("opcionales_activos")
+    if not isinstance(raw_flags, dict):
+        return {}
+    return {
+        str(agent_name).strip(): bool(is_active)
+        for agent_name, is_active in raw_flags.items()
+        if str(agent_name).strip()
+    }
+
+
+def _session_team_source_label(session: Dict[str, Any]) -> str:
+    """Devuelve una etiqueta humana para la fuente del equipo runtime."""
+    equipo = session.get("equipo_sesion")
+    if not isinstance(equipo, dict):
+        return ""
+
+    source = str(equipo.get("fuente", "")).strip()
+    if source == "config_persistida":
+        return "configuración persistida"
+    if source == "composicion_dinamica":
+        return "composición dinámica"
+    return ""
+
+
+def _format_optional_agent_summary(
+    parallel_optionals: List[str],
+    sequential_optionals: List[str],
+) -> str:
+    """Construye una frase breve con los opcionales activos en una fase."""
+    segments: List[str] = []
+    ordered_parallel = order_optional_agent_names(parallel_optionals)
+    ordered_sequential = order_optional_agent_names(sequential_optionals)
+    if ordered_parallel:
+        segments.append(
+            "paralelo: " + ", ".join(f"`{agent}`" for agent in ordered_parallel)
+        )
+    if ordered_sequential:
+        segments.append(
+            "secuencial: " + ", ".join(f"`{agent}`" for agent in ordered_sequential)
+        )
+    return "; ".join(segments)
+
+
+def _session_on_demand_optionals_for_flow(session: Dict[str, Any]) -> List[str]:
+    """Devuelve opcionales activos que no se integran en ninguna fase del flujo."""
+    command = str(session.get("comando", "")).strip()
+    flow = FLOWS.get(command, {})
+    flow_phases = {
+        str(phase_def.get("nombre", "")).strip()
+        for phase_def in (flow.get("fases") or [])
+        if str(phase_def.get("nombre", "")).strip()
+    }
+    active_flags = _session_optional_agent_flags(session)
+    active_names = [
+        agent_name
+        for agent_name, is_active in active_flags.items()
+        if is_active
+    ]
+
+    on_demand: List[str] = []
+    for agent_name in order_optional_agent_names(active_names):
+        integration = OPTIONAL_INTEGRATIONS.get(agent_name, {})
+        integrated_phases = {
+            str(phase_name).strip()
+            for phase_name in integration.get("fases", [])
+            if str(phase_name).strip()
+        }
+        if not flow_phases.intersection(integrated_phases):
+            on_demand.append(agent_name)
+    return on_demand
+_VISIBLE_KANBAN_TASK_TYPES = frozenset({"generic", "main"})
+_SYNCABLE_KANBAN_TASK_TYPES = frozenset({"generic", "main"})
+_KANBAN_RELATIVE_PATHS = frozenset(_KANBAN_RELATIVE_BY_STATUS.values())
 _GH_STATUS_LABELS = {
     "backlog": "alfred:backlog",
     "in-progress": "alfred:in-progress",
@@ -116,6 +225,34 @@ _GH_STATUS_LABELS = {
 }
 _GH_SYNC_LABEL = "alfred:sync"
 _GH_LEGACY_BOARD_LABEL = "alfred:board"
+_KNOWN_ALFRED_COMMANDS = frozenset({
+    "alfred",
+    "feature",
+    "quick",
+    "fix",
+    "spike",
+    "ship",
+    "audit",
+    "map-codebase",
+    "discuss",
+    "next",
+    "pause",
+    "resume",
+    "progress",
+    "standup",
+    "blocked",
+    "in-progress",
+    "verify",
+    "validate",
+    "search",
+    "sync-github",
+    "config",
+    "status",
+    "update",
+    "help",
+    "memory-ui",
+    "lucius",
+})
 
 
 def _project_path(project_dir: str, relative_path: str) -> str:
@@ -124,6 +261,16 @@ def _project_path(project_dir: str, relative_path: str) -> str:
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _load_active_session_state(project_dir: str) -> Optional[Dict[str, Any]]:
+    """Carga el estado activo si la sesión no está completada."""
+    state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
+    if not isinstance(state, dict):
+        return None
+    if state.get("fase_actual") == "completado":
+        return None
+    return state
 
 
 def _load_memory_runtime_config(project_dir: str) -> Dict[str, Any]:
@@ -314,8 +461,7 @@ def needs_codebase_map(project_dir: str) -> bool:
         return False
 
     codebase_map = _project_path(project_dir, CODEBASE_MAP_RELATIVE_PATH)
-    current_md = _project_path(project_dir, CURRENT_RELATIVE_PATH)
-    return not (os.path.isfile(codebase_map) and os.path.isfile(current_md))
+    return not os.path.isfile(codebase_map)
 
 
 def _normalize_request_description(raw_request: str, fallback: str) -> str:
@@ -397,6 +543,24 @@ def _task_reference(task: Dict[str, Any]) -> str:
     return title
 
 
+def _parse_kanban_metadata_line(raw_line: str) -> Optional[Tuple[str, str]]:
+    stripped = raw_line.strip()
+    patterns = (
+        r"^-\s+\*\*(?P<key>.+?):\*\*\s*(?P<value>.+?)\s*$",
+        r"^-\s+\*\*(?P<key>.+?)\*\*:\s*(?P<value>.+?)\s*$",
+        r"^-\s+(?P<key>[A-Za-zÀ-ÿ0-9 _/\-]+):\s*(?P<value>.+?)\s*$",
+    )
+    for pattern in patterns:
+        match = re.match(pattern, stripped)
+        if not match:
+            continue
+        key = _normalize_free_text(match.group("key")).replace(" ", "_")
+        value = _clean_inline_markdown(match.group("value"))
+        if key and value:
+            return key, value
+    return None
+
+
 def _parse_kanban_tasks(markdown: str, status: str, relative_path: str) -> List[Dict[str, Any]]:
     tasks: List[Dict[str, Any]] = []
     current: Optional[Dict[str, Any]] = None
@@ -414,6 +578,7 @@ def _parse_kanban_tasks(markdown: str, status: str, relative_path: str) -> List[
         evidence = metadata.get("evidencia") or metadata.get("evidence") or ""
         agent = metadata.get("agente") or metadata.get("agent") or ""
         notes = metadata.get("notas") or metadata.get("notes") or ""
+        task_type = _normalize_task_type(metadata.get("tipo") or metadata.get("type") or "")
 
         current.update(
             {
@@ -423,6 +588,7 @@ def _parse_kanban_tasks(markdown: str, status: str, relative_path: str) -> List[
                 "evidence": evidence,
                 "agent": agent,
                 "notes": notes,
+                "task_type": task_type,
                 "status": status,
                 "path": relative_path,
             }
@@ -431,11 +597,17 @@ def _parse_kanban_tasks(markdown: str, status: str, relative_path: str) -> List[
         tasks.append(current)
         current = None
 
-    heading_re = re.compile(r"^###\s+(?:\[(?P<id>[^\]]+)\]\s+)?(?P<title>.+?)\s*$")
-    metadata_re = re.compile(r"^- \*\*(?P<key>.+?):\*\*\s*(?P<value>.+?)\s*$")
+    heading_re = re.compile(r"^#{3,6}\s+(?:\[(?P<id>[^\]]+)\]\s+)?(?P<title>.+?)\s*$")
+    checkbox_task_re = re.compile(
+        r"^\s*-\s+\[(?: |x|X)\]\s+(?:\[(?P<id>[^\]]+)\]\s+)?(?P<title>.+?)\s*$"
+    )
+    bullet_id_task_re = re.compile(
+        r"^\s*-\s+(?:\[(?P<id>[^\]]+)\]\s+)(?P<title>.+?)\s*$"
+    )
 
     for raw_line in markdown.splitlines():
-        heading = heading_re.match(raw_line.strip())
+        stripped = raw_line.strip()
+        heading = heading_re.match(stripped)
         if heading:
             flush()
             current = {
@@ -446,14 +618,42 @@ def _parse_kanban_tasks(markdown: str, status: str, relative_path: str) -> List[
             }
             continue
 
+        checkbox_task = checkbox_task_re.match(raw_line)
+        if checkbox_task:
+            flush()
+            current = {
+                "id": (checkbox_task.group("id") or "").strip(),
+                "title": checkbox_task.group("title").strip(),
+                "metadata": {},
+                "body_lines": [],
+            }
+            continue
+
+        bullet_id_task = bullet_id_task_re.match(raw_line)
+        if bullet_id_task:
+            flush()
+            current = {
+                "id": (bullet_id_task.group("id") or "").strip(),
+                "title": bullet_id_task.group("title").strip(),
+                "metadata": {},
+                "body_lines": [],
+            }
+            continue
+
+        if stripped.startswith("#"):
+            flush()
+            continue
+
         if current is None:
             continue
 
-        current["body_lines"].append(raw_line.rstrip())
-        metadata = metadata_re.match(raw_line.strip())
+        metadata = _parse_kanban_metadata_line(raw_line)
         if metadata:
-            key = _normalize_free_text(metadata.group("key")).replace(" ", "_")
-            current["metadata"][key] = _clean_inline_markdown(metadata.group("value"))
+            key, value = metadata
+            current["metadata"][key] = value
+            continue
+
+        current["body_lines"].append(raw_line.rstrip())
 
     flush()
 
@@ -473,6 +673,7 @@ def _parse_kanban_tasks(markdown: str, status: str, relative_path: str) -> List[
                 "evidence": "",
                 "agent": "",
                 "notes": "",
+                "task_type": "generic",
                 "status": status,
                 "path": relative_path,
                 "fallback_index": index,
@@ -489,9 +690,1653 @@ def load_kanban_board(project_dir: str) -> Dict[str, List[Dict[str, Any]]]:
     return board
 
 
-def _summarize_tasks(tasks: List[Dict[str, Any]], limit: int = 3) -> List[str]:
+def _normalize_task_id(task_id: str) -> str:
+    cleaned = (task_id or "").strip().upper()
+    if not cleaned:
+        return ""
+    match = re.fullmatch(r"T[- ]?(\d+)", cleaned)
+    if match:
+        return f"T-{int(match.group(1)):03d}"
+    return cleaned
+
+
+def _normalize_task_type(task_type: str) -> str:
+    cleaned = _normalize_free_text(task_type).replace("_", "-")
+    if cleaned in {"", "generica", "generico"}:
+        return "generic"
+    aliases = {
+        "principal": "main",
+        "flujo": "main",
+        "fase": "phase",
+        "verificacion": "verify",
+        "validacion": "verify",
+    }
+    normalized = aliases.get(cleaned, cleaned)
+    if normalized in _KNOWN_KANBAN_TASK_TYPES:
+        return normalized
+    return "generic"
+
+
+def _infer_legacy_task_type(task: Dict[str, Any]) -> str:
+    title = " ".join((task.get("title", "") or "").split()).strip()
+    title_normalized = _normalize_free_text(title)
+    notes_normalized = _normalize_free_text(task.get("notes", ""))
+    agent = " ".join((task.get("agent", "") or "").split()).strip()
+    agent_normalized = _normalize_free_text(agent)
+
+    if (
+        "con /alfred-dev:verify" in title_normalized
+        or "validacion manual pendiente del flujo" in notes_normalized
+        or agent_normalized == "alfred:verify"
+    ):
+        return "verify"
+
+    match = re.match(r"^(?P<command>[a-z0-9-]+):(?P<phase>[a-z_]+)\s+[—-]", title)
+    if match:
+        command = match.group("command")
+        phase_name = match.group("phase")
+        flow = FLOWS.get(command)
+        if flow and any(phase.get("nombre") == phase_name for phase in flow.get("fases", [])):
+            return "phase"
+
+    if agent_normalized.startswith("alfred:"):
+        command = agent_normalized.split(":", 1)[1]
+        if command in FLOWS:
+            return "main"
+
+    if any(
+        signal in notes_normalized
+        for signal in (
+            "fase actual:",
+            "flujo completado",
+            "trabajo activo visible para sonia y la memory ui",
+            "fases completadas:",
+        )
+    ):
+        return "main"
+
+    return "generic"
+
+
+def _task_type(task: Dict[str, Any]) -> str:
+    return _normalize_task_type(str(task.get("task_type", "")))
+
+
+def _effective_task_type(task: Dict[str, Any]) -> str:
+    stored = _task_type(task)
+    if stored != "generic":
+        return stored
+    return _infer_legacy_task_type(task)
+
+
+def _is_internal_kanban_task(task: Dict[str, Any]) -> bool:
+    return _effective_task_type(task) not in _VISIBLE_KANBAN_TASK_TYPES
+
+
+def _is_visible_kanban_task(task: Dict[str, Any]) -> bool:
+    return _effective_task_type(task) in _VISIBLE_KANBAN_TASK_TYPES
+
+
+def _is_syncable_kanban_task(task: Dict[str, Any]) -> bool:
+    return _effective_task_type(task) in _SYNCABLE_KANBAN_TASK_TYPES
+
+
+def _normalize_task_criteria(criteria: Optional[List[str]], *fallback_texts: str) -> List[str]:
+    if criteria is not None:
+        collected = " ".join(item for item in criteria if isinstance(item, str))
+    else:
+        collected = " ".join(item for item in fallback_texts if isinstance(item, str))
+    return _extract_criteria_ids(collected)
+
+
+def _next_kanban_task_id(board: Dict[str, List[Dict[str, Any]]]) -> str:
+    highest = 0
+    for lane_tasks in board.values():
+        for task in lane_tasks:
+            normalized = _normalize_task_id(task.get("id", ""))
+            match = re.fullmatch(r"T-(\d+)", normalized)
+            if match:
+                highest = max(highest, int(match.group(1)))
+    return f"T-{highest + 1:03d}"
+
+
+def _build_kanban_task(
+    status: str,
+    *,
+    title: str,
+    task_id: str,
+    agent: str = "",
+    notes: str = "",
+    dependencies: str = "",
+    evidence: str = "",
+    criteria: Optional[List[str]] = None,
+    body: str = "",
+    task_type: str = "generic",
+) -> Dict[str, Any]:
+    cleaned_title = " ".join((title or "").split()).strip()
+    if not cleaned_title:
+        raise RuntimeError("La tarea SonIA necesita un título no vacío.")
+
+    cleaned_body = (body or "").strip()
+    cleaned_notes = " ".join((notes or "").split()).strip()
+    cleaned_dependencies = " ".join((dependencies or "").split()).strip()
+    cleaned_evidence = " ".join((evidence or "").split()).strip()
+    cleaned_agent = " ".join((agent or "").split()).strip()
+
+    return {
+        "id": _normalize_task_id(task_id),
+        "title": cleaned_title,
+        "metadata": {},
+        "body": cleaned_body,
+        "criteria": _normalize_task_criteria(
+            criteria,
+            cleaned_title,
+            cleaned_body,
+            cleaned_notes,
+            cleaned_dependencies,
+            cleaned_evidence,
+        ),
+        "dependencies": cleaned_dependencies,
+        "evidence": cleaned_evidence,
+        "agent": cleaned_agent,
+        "notes": cleaned_notes,
+        "task_type": _normalize_task_type(task_type),
+        "status": status,
+        "path": _KANBAN_RELATIVE_BY_STATUS[status],
+    }
+
+
+def _render_kanban_task(task: Dict[str, Any]) -> str:
+    lines = [f"### {_task_reference(task)}", ""]
+    task_type = _effective_task_type(task)
+    if task_type != "generic":
+        lines.append(f"- **Tipo:** {task_type}")
+    if task.get("agent"):
+        lines.append(f"- **Agente:** {task['agent']}")
+    if task.get("criteria"):
+        lines.append(f"- **Criterios:** {', '.join(task['criteria'])}")
+    if task.get("dependencies"):
+        lines.append(f"- **Dependencias:** {task['dependencies']}")
+    if task.get("notes"):
+        lines.append(f"- **Notas:** {task['notes']}")
+    if task.get("evidence"):
+        lines.append(f"- **Evidencia:** {task['evidence']}")
+    body = (task.get("body") or "").strip()
+    if body:
+        lines.extend(["", body])
+    return "\n".join(lines).rstrip()
+
+
+def _render_kanban_lane(status: str, tasks: List[Dict[str, Any]]) -> str:
+    title = _KANBAN_TITLES[status]
+    blocks = [_render_kanban_task(task) for task in sorted(tasks, key=_task_sort_key)]
+    if not blocks:
+        return f"# {title}\n"
+    return f"# {title}\n\n" + "\n\n".join(blocks).rstrip() + "\n"
+
+
+def _save_kanban_lane(project_dir: str, status: str, tasks: List[Dict[str, Any]]) -> str:
+    relative_path = _KANBAN_RELATIVE_BY_STATUS[status]
+    path = _project_path(project_dir, relative_path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(_render_kanban_lane(status, tasks))
+    return path
+
+
+def normalize_kanban_task_types(project_dir: str) -> Dict[str, Any]:
+    board = load_kanban_board(project_dir)
+    changed: List[Dict[str, str]] = []
+
+    for status in _KANBAN_RELATIVE_BY_STATUS:
+        lane_tasks = list(board.get(status, []))
+        lane_changed = False
+        normalized_lane: List[Dict[str, Any]] = []
+        for task in lane_tasks:
+            normalized_task = dict(task)
+            effective_type = _effective_task_type(task)
+            if _task_type(task) != effective_type:
+                normalized_task["task_type"] = effective_type
+                changed.append(
+                    {
+                        "id": normalized_task.get("id", ""),
+                        "title": normalized_task.get("title", ""),
+                        "task_type": effective_type,
+                        "status": status,
+                    }
+                )
+                lane_changed = True
+            normalized_lane.append(normalized_task)
+        if lane_changed:
+            _save_kanban_lane(project_dir, status, normalized_lane)
+
+    return {"count": len(changed), "changed": changed}
+
+
+def _find_kanban_task(
+    board: Dict[str, List[Dict[str, Any]]],
+    task_ref: str,
+) -> Tuple[str, int, Dict[str, Any]]:
+    normalized_ref = _normalize_free_text(task_ref)
+    normalized_id = _normalize_task_id(task_ref)
+    for status, lane_tasks in board.items():
+        for index, task in enumerate(lane_tasks):
+            task_id = _normalize_task_id(task.get("id", ""))
+            title = _normalize_free_text(task.get("title", ""))
+            reference = _normalize_free_text(_task_reference(task))
+            if normalized_id and task_id == normalized_id:
+                return status, index, task
+            if normalized_ref and normalized_ref in {title, reference}:
+                return status, index, task
+    raise RuntimeError(f"No se ha encontrado la tarea '{task_ref}' en el kanban.")
+
+
+def create_kanban_task(
+    project_dir: str,
+    status: str,
+    *,
+    title: str,
+    agent: str = "",
+    notes: str = "",
+    dependencies: str = "",
+    evidence: str = "",
+    criteria: Optional[List[str]] = None,
+    body: str = "",
+    task_id: str = "",
+    task_type: str = "generic",
+) -> Dict[str, Any]:
+    if status not in _KANBAN_RELATIVE_BY_STATUS:
+        raise RuntimeError(f"Columna kanban desconocida: {status}")
+
+    board = load_kanban_board(project_dir)
+    normalized_title = _normalize_free_text(title)
+    for existing in board.get(status, []):
+        if _normalize_free_text(existing.get("title", "")) != normalized_title:
+            continue
+        changed = False
+        updated = dict(existing)
+        if agent and not updated.get("agent"):
+            updated["agent"] = " ".join(agent.split())
+            changed = True
+        if notes and not updated.get("notes"):
+            updated["notes"] = " ".join(notes.split())
+            changed = True
+        if dependencies and not updated.get("dependencies"):
+            updated["dependencies"] = " ".join(dependencies.split())
+            changed = True
+        if evidence and not updated.get("evidence"):
+            updated["evidence"] = " ".join(evidence.split())
+            changed = True
+        if criteria is not None and not updated.get("criteria"):
+            updated["criteria"] = _normalize_task_criteria(criteria)
+            changed = True
+        if body and not updated.get("body"):
+            updated["body"] = body.strip()
+            changed = True
+        normalized_task_type = _normalize_task_type(task_type)
+        if normalized_task_type != "generic" and _task_type(updated) == "generic":
+            updated["task_type"] = normalized_task_type
+            changed = True
+        if changed:
+            lane_tasks = [
+                updated if task is existing else task
+                for task in board.get(status, [])
+            ]
+            _save_kanban_lane(project_dir, status, lane_tasks)
+            return updated
+        return existing
+
+    created = _build_kanban_task(
+        status,
+        title=title,
+        task_id=task_id or _next_kanban_task_id(board),
+        agent=agent,
+        notes=notes,
+        dependencies=dependencies,
+        evidence=evidence,
+        criteria=criteria,
+        body=body,
+        task_type=task_type,
+    )
+    lane_tasks = [*board.get(status, []), created]
+    _save_kanban_lane(project_dir, status, lane_tasks)
+    return created
+
+
+def update_kanban_task(
+    project_dir: str,
+    task_ref: str,
+    *,
+    status: Optional[str] = None,
+    title: Optional[str] = None,
+    agent: Optional[str] = None,
+    notes: Optional[str] = None,
+    dependencies: Optional[str] = None,
+    evidence: Optional[str] = None,
+    criteria: Optional[List[str]] = None,
+    body: Optional[str] = None,
+    task_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    board = load_kanban_board(project_dir)
+    current_status, index, existing = _find_kanban_task(board, task_ref)
+    target_status = status or current_status
+    if target_status not in _KANBAN_RELATIVE_BY_STATUS:
+        raise RuntimeError(f"Columna kanban desconocida: {target_status}")
+
+    updated = dict(existing)
+    if title is not None:
+        cleaned_title = " ".join(title.split()).strip()
+        if not cleaned_title:
+            raise RuntimeError("La tarea SonIA necesita un título no vacío.")
+        updated["title"] = cleaned_title
+    if agent is not None:
+        updated["agent"] = " ".join(agent.split()).strip()
+    if notes is not None:
+        updated["notes"] = " ".join(notes.split()).strip()
+    if dependencies is not None:
+        updated["dependencies"] = " ".join(dependencies.split()).strip()
+    if evidence is not None:
+        updated["evidence"] = " ".join(evidence.split()).strip()
+    if body is not None:
+        updated["body"] = body.strip()
+    if criteria is not None:
+        updated["criteria"] = _normalize_task_criteria(criteria)
+    if task_type is not None:
+        updated["task_type"] = _normalize_task_type(task_type)
+
+    updated["status"] = target_status
+    updated["path"] = _KANBAN_RELATIVE_BY_STATUS[target_status]
+    if criteria is None:
+        updated["criteria"] = _normalize_task_criteria(
+            None,
+            updated.get("title", ""),
+            updated.get("body", ""),
+            updated.get("notes", ""),
+            updated.get("dependencies", ""),
+            updated.get("evidence", ""),
+        )
+
+    current_lane = list(board.get(current_status, []))
+    current_lane.pop(index)
+    board[current_status] = current_lane
+    board[target_status] = [*board.get(target_status, []), updated]
+
+    for lane_status in {current_status, target_status}:
+        _save_kanban_lane(project_dir, lane_status, board.get(lane_status, []))
+    return updated
+
+
+def move_kanban_task(
+    project_dir: str,
+    task_ref: str,
+    target_status: str,
+    *,
+    agent: Optional[str] = None,
+    notes: Optional[str] = None,
+    dependencies: Optional[str] = None,
+    evidence: Optional[str] = None,
+    criteria: Optional[List[str]] = None,
+    body: Optional[str] = None,
+    task_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    return update_kanban_task(
+        project_dir,
+        task_ref,
+        status=target_status,
+        agent=agent,
+        notes=notes,
+        dependencies=dependencies,
+        evidence=evidence,
+        criteria=criteria,
+        body=body,
+        task_type=task_type,
+    )
+
+
+def delete_kanban_task(project_dir: str, task_ref: str) -> Dict[str, Any]:
+    board = load_kanban_board(project_dir)
+    current_status, index, existing = _find_kanban_task(board, task_ref)
+    lane_tasks = list(board.get(current_status, []))
+    lane_tasks.pop(index)
+    _save_kanban_lane(project_dir, current_status, lane_tasks)
+    return existing
+
+
+def _task_matches_candidate(task: Dict[str, Any], candidate: str) -> bool:
+    normalized_candidate = _normalize_free_text(candidate)
+    normalized_candidate_id = _normalize_task_id(candidate)
+    task_id = _normalize_task_id(task.get("id", ""))
+    if normalized_candidate_id and task_id == normalized_candidate_id:
+        return True
+    if not normalized_candidate:
+        return False
+    return normalized_candidate in {
+        _normalize_free_text(task.get("title", "")),
+        _normalize_free_text(_task_reference(task)),
+    }
+
+
+def _find_kanban_task_in_statuses(
+    board: Dict[str, List[Dict[str, Any]]],
+    candidates: List[str],
+    statuses: Tuple[str, ...],
+) -> Optional[Tuple[str, int, Dict[str, Any]]]:
+    cleaned_candidates = [
+        candidate for candidate in candidates
+        if isinstance(candidate, str) and candidate.strip()
+    ]
+    if not cleaned_candidates:
+        return None
+
+    for status in statuses:
+        for index, task in enumerate(board.get(status, [])):
+            if any(_task_matches_candidate(task, candidate) for candidate in cleaned_candidates):
+                return status, index, task
+    return None
+
+
+def _merge_task_notes(existing_notes: str, extra_note: str) -> str:
+    existing = " ".join((existing_notes or "").split()).strip()
+    extra = " ".join((extra_note or "").split()).strip()
+    if not existing:
+        return extra
+    if not extra:
+        return existing
+    if _normalize_free_text(extra) in _normalize_free_text(existing):
+        return existing
+    return f"{existing} {extra}"
+
+
+def _verification_task_title(description: str) -> str:
+    cleaned = " ".join((description or "").split()).strip()
+    if not cleaned:
+        return "Validar último flujo completado con /alfred-dev:verify."
+    return f"Validar '{cleaned}' con /alfred-dev:verify."
+
+
+def _ensure_verification_task(
+    project_dir: str,
+    *,
+    description: str,
+    command: str,
+) -> Dict[str, Any]:
+    return create_kanban_task(
+        project_dir,
+        "backlog",
+        title=_verification_task_title(description),
+        agent="alfred:verify",
+        notes=(
+            f"Validación manual pendiente del flujo '{command}'. "
+            "Cerrar con /alfred-dev:verify."
+        ),
+        task_type="verify",
+    )
+
+
+def _ensure_session_execution_task(
+    project_dir: str,
+    session: Dict[str, Any],
+) -> Dict[str, Any]:
+    description = " ".join((session.get("descripcion", "") or "").split()).strip()
+    command = str(session.get("comando", "alfred")).strip() or "alfred"
+    agent_label = f"alfred:{command}"
+
+    board = load_kanban_board(project_dir)
+    match = _find_kanban_task_in_statuses(
+        board,
+        [session.get("kanban_task_id", ""), description],
+        ("in-progress", "backlog"),
+    )
+    if match is not None:
+        current_status, _, task = match
+        task_ref = task.get("id") or task.get("title", "")
+        desired_agent = task.get("agent") or agent_label
+        if current_status == "backlog":
+            return move_kanban_task(
+                project_dir,
+                task_ref,
+                "in-progress",
+                agent=desired_agent,
+                notes=task.get("notes", ""),
+                dependencies=task.get("dependencies", ""),
+                evidence=task.get("evidence", ""),
+                criteria=task.get("criteria"),
+                body=task.get("body", ""),
+                task_type="main",
+            )
+        return update_kanban_task(
+            project_dir,
+            task_ref,
+            agent=desired_agent,
+            notes=task.get("notes", ""),
+            dependencies=task.get("dependencies", ""),
+            evidence=task.get("evidence", ""),
+            criteria=task.get("criteria"),
+            body=task.get("body", ""),
+            task_type="main",
+        )
+
+    return create_kanban_task(
+        project_dir,
+        "in-progress",
+        title=description or "Trabajo activo sin descripción",
+        agent=agent_label,
+        notes="Trabajo activo visible para SonIA y la Memory UI.",
+        task_type="main",
+    )
+
+
+def _delete_first_matching_kanban_task(
+    project_dir: str,
+    candidates: List[str],
+    *,
+    statuses: Tuple[str, ...] = ("backlog", "in-progress", "blocked", "done"),
+) -> Optional[Dict[str, Any]]:
+    board = load_kanban_board(project_dir)
+    match = _find_kanban_task_in_statuses(board, candidates, statuses)
+    if match is None:
+        return None
+    _, _, task = match
+    task_ref = task.get("id") or task.get("title", "")
+    return delete_kanban_task(project_dir, task_ref)
+
+
+def _sync_kanban_after_verify(
+    project_dir: str,
+    target: Dict[str, Any],
+    record: Dict[str, Any],
+) -> Dict[str, str]:
+    if target.get("source") != "completed-session":
+        return {}
+
+    state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH)) or {}
+    description = " ".join((target.get("target_description", "") or "").split()).strip()
+    command = str(target.get("target_command", "alfred")).strip() or "alfred"
+    agent_label = f"alfred:{command}"
+    main_candidates = [state.get("kanban_task_id", ""), description]
+    verify_candidates = [
+        state.get("kanban_verify_task_id", ""),
+        _verification_task_title(description),
+    ]
+
+    if record.get("status") == "pending":
+        verify_task = _ensure_verification_task(
+            project_dir,
+            description=description,
+            command=command,
+        )
+        return {"verify_task_id": verify_task.get("id", "")}
+
+    board = load_kanban_board(project_dir)
+    match = _find_kanban_task_in_statuses(
+        board,
+        main_candidates,
+        ("in-progress", "backlog", "blocked", "done"),
+    )
+
+    if record.get("status") == "approved":
+        evidence = f"UAT aprobada el {record.get('updated_at', _now_utc().isoformat())}"
+        if record.get("notes"):
+            evidence = f"{evidence} — {record['notes']}"
+
+        if match is not None:
+            _, _, task = match
+            task_ref = task.get("id") or task.get("title", "")
+            synced = move_kanban_task(
+                project_dir,
+                task_ref,
+                "done",
+                agent=task.get("agent") or agent_label,
+                notes=task.get("notes", ""),
+                dependencies=task.get("dependencies", ""),
+                evidence=evidence,
+                criteria=task.get("criteria"),
+                body=task.get("body", ""),
+                task_type="main",
+            )
+        else:
+            synced = create_kanban_task(
+                project_dir,
+                "done",
+                title=description or f"Cierre de {command}",
+                agent=agent_label,
+                notes="Cerrado tras verificación manual/UAT aprobada.",
+                evidence=evidence,
+                task_type="main",
+            )
+
+        _delete_first_matching_kanban_task(project_dir, verify_candidates)
+        return {"task_id": synced.get("id", ""), "task_status": "done"}
+
+    if record.get("status") == "rejected":
+        reject_note = (
+            f"UAT rechazada: {record['notes']}"
+            if record.get("notes")
+            else "UAT rechazada; revisar el cambio y repetir /alfred-dev:verify."
+        )
+
+        if match is not None:
+            _, _, task = match
+            task_ref = task.get("id") or task.get("title", "")
+            synced = move_kanban_task(
+                project_dir,
+                task_ref,
+                "blocked",
+                agent=task.get("agent") or agent_label,
+                notes=_merge_task_notes(task.get("notes", ""), reject_note),
+                dependencies=task.get("dependencies", ""),
+                evidence="",
+                criteria=task.get("criteria"),
+                body=task.get("body", ""),
+                task_type="main",
+            )
+        else:
+            synced = create_kanban_task(
+                project_dir,
+                "blocked",
+                title=description or f"Revisar {command}",
+                agent=agent_label,
+                notes=reject_note,
+                task_type="main",
+            )
+
+        _delete_first_matching_kanban_task(project_dir, verify_candidates)
+        return {"task_id": synced.get("id", ""), "task_status": "blocked"}
+
+    return {}
+
+
+def _project_dir_from_state_path(state_path: str) -> str:
+    absolute = os.path.abspath(state_path)
+    parent = os.path.dirname(absolute)
+    if os.path.basename(absolute) == "alfred-dev-state.json" and os.path.basename(parent) == ".claude":
+        return os.path.dirname(parent)
+    return parent
+
+
+def _load_matching_session_uat(project_dir: str, session: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if session.get("fase_actual") != "completado":
+        return None
+
+    command = str(session.get("comando", "desconocido")).strip() or "desconocido"
+    target_id = f"session:{command}:{_last_completed_at(session)}"
+    uat = load_uat(project_dir)
+    if isinstance(uat, dict) and uat.get("target_id") == target_id:
+        return uat
+    return None
+
+
+def _session_phase_summary(session: Dict[str, Any]) -> str:
+    completed = [
+        phase.get("nombre", "")
+        for phase in (session.get("fases_completadas") or [])
+        if isinstance(phase, dict) and phase.get("nombre")
+    ]
+    if not completed:
+        return "Sin fases completadas todavía."
+    return "Fases completadas: " + ", ".join(completed) + "."
+
+
+def _completed_style_visual_phase(session: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    for phase in (session.get("fases_completadas") or []):
+        if not isinstance(phase, dict):
+            continue
+        if phase.get("nombre") != "estilo_visual":
+            continue
+        if str(phase.get("resultado", "")).strip() == "saltada":
+            return None
+        return phase
+    return None
+
+
+def _load_latest_selina_choice(project_dir: str) -> Optional[Dict[str, Any]]:
+    visual_root = _project_path(project_dir, VISUAL_SESSION_ROOT_RELATIVE_PATH)
+    if not os.path.isdir(visual_root):
+        return None
+
+    try:
+        from core.selina_visual import read_latest_style_choice  # noqa: PLC0415
+    except Exception:
+        return None
+
+    latest_choice: Optional[Dict[str, Any]] = None
+    latest_key: Tuple[str, float] = ("", 0.0)
+
+    for entry in os.scandir(visual_root):
+        if not entry.is_dir():
+            continue
+        state_dir = os.path.join(entry.path, "state")
+        events_path = os.path.join(state_dir, "events")
+        if not os.path.isfile(events_path):
+            continue
+
+        choice = read_latest_style_choice(state_dir)
+        if not isinstance(choice, dict):
+            continue
+
+        timestamp = str(choice.get("timestamp", "")).strip()
+        try:
+            mtime = os.path.getmtime(events_path)
+        except OSError:
+            mtime = 0.0
+
+        candidate_key = (timestamp, mtime)
+        if candidate_key >= latest_key:
+            latest_key = candidate_key
+            latest_choice = choice
+
+    return latest_choice
+
+
+def _enrich_style_visual_phase_result(project_dir: str, phase_result: Dict[str, Any]) -> Dict[str, Any]:
+    enriched = dict(phase_result)
+    artifacts = [
+        str(item).strip()
+        for item in (enriched.get("artefactos") or [])
+        if str(item).strip()
+    ]
+    style_direction_path = _project_path(project_dir, STYLE_DIRECTION_RELATIVE_PATH)
+    if os.path.isfile(style_direction_path) and STYLE_DIRECTION_RELATIVE_PATH not in artifacts:
+        artifacts.append(STYLE_DIRECTION_RELATIVE_PATH)
+    enriched["artefactos"] = artifacts
+
+    choice = _load_latest_selina_choice(project_dir)
+    if isinstance(choice, dict):
+        enriched["selina_choice"] = choice.get("choice")
+        enriched["selina_label"] = choice.get("label")
+        enriched["selina_timestamp"] = choice.get("timestamp")
+
+    return enriched
+
+
+def _enrich_session_style_visual(project_dir: str, session: Dict[str, Any]) -> Dict[str, Any]:
+    phase_result = _completed_style_visual_phase(session)
+    if phase_result is None:
+        return session
+
+    enriched = dict(session)
+    phase_entries: List[Dict[str, Any]] = []
+    for phase in (session.get("fases_completadas") or []):
+        if not isinstance(phase, dict):
+            phase_entries.append(phase)
+            continue
+        if phase.get("nombre") == "estilo_visual" and str(phase.get("resultado", "")).strip() != "saltada":
+            phase_entries.append(_enrich_style_visual_phase_result(project_dir, phase))
+        else:
+            phase_entries.append(phase)
+
+    enriched["fases_completadas"] = phase_entries
+    global_artifacts = [
+        str(item).strip()
+        for item in (session.get("artefactos") or [])
+        if str(item).strip()
+    ]
+    if os.path.isfile(_project_path(project_dir, STYLE_DIRECTION_RELATIVE_PATH)):
+        if STYLE_DIRECTION_RELATIVE_PATH not in global_artifacts:
+            global_artifacts.append(STYLE_DIRECTION_RELATIVE_PATH)
+    enriched["artefactos"] = global_artifacts
+    return enriched
+
+
+def _phase_task_title(command: str, phase_name: str, description: str) -> str:
+    cleaned_description = " ".join((description or "").split()).strip() or "sin descripcion"
+    return f"{command}:{phase_name} — {cleaned_description}"
+
+
+def _phase_task_notes(
+    command: str,
+    phase_def: Dict[str, Any],
+    *,
+    phase_result: Optional[Dict[str, Any]] = None,
+    current_phase: bool = False,
+) -> str:
+    phase_name = phase_def.get("nombre", "desconocida")
+    agents = ", ".join(phase_def.get("agentes") or [])
+    base = f"Fase '{phase_name}' del flujo '{command}'."
+    if agents:
+        base += f" Agentes base: {agents}."
+
+    if phase_result is not None:
+        result = str(phase_result.get("resultado", "aprobado")).strip() or "aprobado"
+        if result == "saltada":
+            return f"{base} Fase saltada por condición del flujo."
+
+        iterations = phase_result.get("iteraciones", 0)
+        artifacts = phase_result.get("artefactos") or []
+        note = f"{base} Fase completada con resultado '{result}'."
+        if isinstance(iterations, int) and iterations > 0:
+            note += f" Iteraciones internas: {iterations}."
+        if artifacts:
+            note += f" Artefactos registrados: {len(artifacts)}."
+        if phase_result.get("selina_choice"):
+            label = phase_result.get("selina_label") or phase_result.get("selina_choice")
+            note += f" Elección visual: {label}."
+        return note
+
+    if current_phase:
+        gate_type = phase_def.get("gate_tipo", "sin gate")
+        return f"{base} Fase activa. Gate: {gate_type}."
+
+    return f"{base} Pendiente de ejecución."
+
+
+def _phase_task_evidence(phase_result: Optional[Dict[str, Any]]) -> str:
+    if not isinstance(phase_result, dict):
+        return ""
+    completed_at = str(phase_result.get("completada_en", "")).strip()
+    result = str(phase_result.get("resultado", "")).strip()
+    if result == "saltada":
+        return ""
+    if phase_result.get("selina_choice"):
+        label = str(phase_result.get("selina_label") or phase_result.get("selina_choice")).strip()
+        timestamp = str(phase_result.get("selina_timestamp", "")).strip() or completed_at
+        evidence = f"Elección visual '{label}' registrada"
+        if timestamp:
+            evidence += f" en {timestamp}"
+        artifacts = phase_result.get("artefactos") or []
+        if STYLE_DIRECTION_RELATIVE_PATH in artifacts:
+            evidence += f" y artefacto {STYLE_DIRECTION_RELATIVE_PATH} generado"
+        return evidence
+    if completed_at:
+        return f"Fase completada en {completed_at}"
+    return ""
+
+
+def _phase_task_body(
+    phase_def: Dict[str, Any],
+    *,
+    phase_result: Optional[Dict[str, Any]] = None,
+    current_phase: bool = False,
+) -> str:
+    phase_name = phase_def.get("nombre", "desconocida")
+    gate_type = phase_def.get("gate_tipo", "sin gate")
+    mode = "paralelo" if phase_def.get("paralelo") else "secuencial"
+    description = " ".join((phase_def.get("descripcion", "") or "").split()).strip()
+    artifacts = phase_result.get("artefactos") if isinstance(phase_result, dict) else []
+    if not isinstance(artifacts, list):
+        artifacts = []
+
+    result_label = "pendiente"
+    if phase_result is not None:
+        result_label = str(phase_result.get("resultado", "aprobado")).strip() or "aprobado"
+    elif current_phase:
+        result_label = "en curso"
+
+    lines = [
+        f"Nombre de fase: {phase_name}",
+        f"Gate: {gate_type}",
+        f"Ejecución: {mode}",
+        f"Estado de fase: {result_label}",
+    ]
+    if description:
+        lines.append(f"Objetivo: {description}")
+
+    if isinstance(phase_result, dict):
+        iterations = phase_result.get("iteraciones", 0)
+        if isinstance(iterations, int):
+            lines.append(f"Iteraciones internas: {iterations}")
+        completed_at = str(phase_result.get("completada_en", "")).strip()
+        if completed_at:
+            lines.append(f"Completada en: {completed_at}")
+        if phase_result.get("selina_choice"):
+            choice_label = str(phase_result.get("selina_label") or phase_result.get("selina_choice")).strip()
+            lines.append(f"Elección visual: {choice_label}")
+            choice_timestamp = str(phase_result.get("selina_timestamp", "")).strip()
+            if choice_timestamp:
+                lines.append(f"Elección registrada en: {choice_timestamp}")
+
+    if artifacts:
+        lines.append("Artefactos:")
+        lines.extend(f"* {item}" for item in artifacts if str(item).strip())
+    elif phase_result is not None and result_label != "saltada":
+        lines.append("Artefactos: sin artefactos explícitos")
+
+    return "\n".join(lines)
+
+
+def _sync_session_phase_tasks(project_dir: str, session: Dict[str, Any]) -> Dict[str, str]:
+    command = str(session.get("comando", "alfred")).strip() or "alfred"
+    flow = FLOWS.get(command)
+    if not flow:
+        return {}
+
+    description = " ".join((session.get("descripcion", "") or "").split()).strip()
+    completed_entries = {
+        phase.get("nombre", ""): phase
+        for phase in (session.get("fases_completadas") or [])
+        if isinstance(phase, dict) and phase.get("nombre")
+    }
+    current_phase = str(session.get("fase_actual", "")).strip()
+    stored_ids = session.get("kanban_phase_task_ids")
+    if not isinstance(stored_ids, dict):
+        stored_ids = {}
+
+    phase_task_ids: Dict[str, str] = {}
+    previous_task_id = ""
+
+    for phase_def in flow.get("fases", []):
+        phase_name = phase_def.get("nombre", "desconocida")
+        phase_result = completed_entries.get(phase_name)
+        is_current = current_phase == phase_name and phase_result is None
+        if phase_result is not None:
+            target_status = "done"
+        elif is_current:
+            target_status = "in-progress"
+        else:
+            target_status = "backlog"
+
+        title = _phase_task_title(command, phase_name, description)
+        notes = _phase_task_notes(
+            command,
+            phase_def,
+            phase_result=phase_result,
+            current_phase=is_current,
+        )
+        body = _phase_task_body(
+            phase_def,
+            phase_result=phase_result,
+            current_phase=is_current,
+        )
+        evidence = _phase_task_evidence(phase_result)
+        dependency = previous_task_id if previous_task_id else ""
+        agent = ", ".join(phase_def.get("agentes") or [])
+        criteria = _normalize_task_criteria(None, title, notes, body, evidence)
+
+        board = load_kanban_board(project_dir)
+        match = _find_kanban_task_in_statuses(
+            board,
+            [stored_ids.get(phase_name, ""), title],
+            ("in-progress", "backlog", "blocked", "done"),
+        )
+
+        if match is not None:
+            _, _, task = match
+            task_ref = task.get("id") or task.get("title", "")
+            merged_notes = _merge_task_notes(task.get("notes", ""), notes)
+            task_agent = task.get("agent") or agent
+            if target_status == task.get("status"):
+                synced = update_kanban_task(
+                    project_dir,
+                    task_ref,
+                    agent=task_agent,
+                    notes=merged_notes,
+                    dependencies=dependency if dependency else task.get("dependencies", ""),
+                    evidence=evidence if evidence else task.get("evidence", ""),
+                    criteria=criteria,
+                    body=body,
+                    task_type="phase",
+                )
+            else:
+                synced = move_kanban_task(
+                    project_dir,
+                    task_ref,
+                    target_status,
+                    agent=task_agent,
+                    notes=merged_notes,
+                    dependencies=dependency,
+                    evidence=evidence if evidence else task.get("evidence", ""),
+                    criteria=criteria,
+                    body=body,
+                    task_type="phase",
+                )
+        else:
+            synced = create_kanban_task(
+                project_dir,
+                target_status,
+                title=title,
+                agent=agent,
+                notes=notes,
+                dependencies=dependency,
+                evidence=evidence,
+                criteria=criteria,
+                body=body,
+                task_type="phase",
+            )
+
+        phase_task_ids[phase_name] = synced.get("id", "")
+        previous_task_id = synced.get("id", "") or previous_task_id
+
+    return phase_task_ids
+
+
+def _sync_session_main_task(project_dir: str, session: Dict[str, Any]) -> Dict[str, Any]:
+    description = " ".join((session.get("descripcion", "") or "").split()).strip()
+    command = str(session.get("comando", "alfred")).strip() or "alfred"
+    agent_label = f"alfred:{command}"
+    phase = str(session.get("fase_actual", "")).strip() or "desconocida"
+    uat = _load_matching_session_uat(project_dir, session)
+    uat_status = str(uat.get("status", "")).strip() if uat else ""
+
+    if phase == "completado":
+        if uat_status == "rejected":
+            target_status = "blocked"
+            session_note = (
+                f"Flujo completado en estado, pero UAT rechazada. "
+                f"{(uat.get('notes') or '').strip() or 'Necesita retrabajo antes de volver a verificar.'}"
+            )
+        elif uat_status == "approved":
+            target_status = "done"
+            session_note = "Flujo completado y UAT aprobada."
+        else:
+            target_status = "done"
+            session_note = "Flujo completado en estado; pendiente verificación manual/UAT."
+    else:
+        target_status = "in-progress"
+        session_note = f"Fase actual: {phase}."
+
+    summary_note = _session_phase_summary(session)
+    session_note = f"{session_note} {summary_note}".strip()
+
+    board = load_kanban_board(project_dir)
+    match = _find_kanban_task_in_statuses(
+        board,
+        [session.get("kanban_task_id", ""), description],
+        ("in-progress", "backlog", "blocked", "done"),
+    )
+
+    evidence = ""
+    if uat_status == "approved" and uat:
+        evidence = f"UAT aprobada el {uat.get('updated_at', _now_utc().isoformat())}"
+        if uat.get("notes"):
+            evidence = f"{evidence} — {uat['notes']}"
+
+    if match is not None:
+        _, _, task = match
+        task_ref = task.get("id") or task.get("title", "")
+        merged_notes = _merge_task_notes(task.get("notes", ""), session_note)
+        task_agent = task.get("agent") or agent_label
+        if target_status == task.get("status"):
+            return update_kanban_task(
+                project_dir,
+                task_ref,
+                agent=task_agent,
+                notes=merged_notes,
+                dependencies=task.get("dependencies", ""),
+                evidence=evidence if evidence else task.get("evidence", ""),
+                criteria=task.get("criteria"),
+                body=task.get("body", ""),
+                task_type="main",
+            )
+        return move_kanban_task(
+            project_dir,
+            task_ref,
+            target_status,
+            agent=task_agent,
+            notes=merged_notes,
+            dependencies=task.get("dependencies", ""),
+            evidence=evidence if evidence else task.get("evidence", ""),
+            criteria=task.get("criteria"),
+            body=task.get("body", ""),
+            task_type="main",
+        )
+
+    return create_kanban_task(
+        project_dir,
+        target_status,
+        title=description or f"Flujo {command}",
+        agent=agent_label,
+        notes=session_note,
+        evidence=evidence,
+        task_type="main",
+    )
+
+
+def sync_session_state_to_kanban(
+    state_path: str,
+    session: Dict[str, Any],
+) -> Dict[str, Any]:
+    if not isinstance(session, dict):
+        return session
+    if not session.get("comando") or not session.get("descripcion"):
+        return session
+
+    project_dir = _project_dir_from_state_path(state_path)
+    normalize_kanban_task_types(project_dir)
+    synced = _enrich_session_style_visual(project_dir, dict(session))
+    main_task = _sync_session_main_task(project_dir, synced)
+    synced["kanban_task_id"] = main_task.get("id", "")
+    synced["kanban_phase_task_ids"] = _sync_session_phase_tasks(project_dir, synced)
+
+    command = str(synced.get("comando", "alfred")).strip() or "alfred"
+    description = " ".join((synced.get("descripcion", "") or "").split()).strip()
+    phase = str(synced.get("fase_actual", "")).strip()
+    uat = _load_matching_session_uat(project_dir, synced)
+    uat_status = str(uat.get("status", "")).strip() if uat else ""
+
+    if phase == "completado" and uat_status in {"approved", "rejected"}:
+        _delete_first_matching_kanban_task(
+            project_dir,
+            [synced.get("kanban_verify_task_id", ""), _verification_task_title(description)],
+            statuses=("backlog", "in-progress"),
+        )
+        synced.pop("kanban_verify_task_id", None)
+        return synced
+
+    verify_task = _ensure_verification_task(
+        project_dir,
+        description=description,
+        command=command,
+    )
+    synced["kanban_verify_task_id"] = verify_task.get("id", "")
+    return synced
+
+
+def _dedupe_artifact_paths(paths: List[str]) -> List[str]:
+    seen: set[str] = set()
+    deduped: List[str] = []
+    for item in paths:
+        path = str(item).strip()
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        deduped.append(path)
+    return deduped
+
+
+def _kanban_tasks_by_id(board: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Dict[str, Any]]:
+    tasks: Dict[str, Dict[str, Any]] = {}
+    for status in ("backlog", "in-progress", "done", "blocked"):
+        for task in board.get(status, []):
+            if not isinstance(task, dict):
+                continue
+            task_id = str(task.get("id", "")).strip()
+            if task_id:
+                tasks[task_id] = task
+    return tasks
+
+
+def _phase_fallback_visible_criteria(phase_def: Dict[str, Any]) -> List[str]:
+    """Devuelve criterios visibles mínimos cuando la fase no define IDs CA-*.
+
+    El objetivo no es inventar criterios de aceptación formales, sino evitar
+    que la documentación automática quede vacía en fases donde el runtime sí
+    conoce el objetivo operativo y el tipo de gate.
+    """
+    criteria: List[str] = []
+    description = " ".join((phase_def.get("descripcion", "") or "").split()).strip()
+    gate = str(phase_def.get("gate_tipo", "")).strip()
+
+    if description:
+        criteria.append(description.rstrip("."))
+
+    if gate and gate not in {"libre", "sin gate"}:
+        criteria.append(f"Cerrar la gate `{gate}` sin bloqueos abiertos")
+
+    if not criteria:
+        phase_name = str(phase_def.get("nombre", "desconocida")).strip() or "desconocida"
+        criteria.append(f"Completar la fase `{phase_name}` con evidencia operativa visible")
+
+    return criteria
+
+
+def _build_phase_doc_rows(
+    session: Dict[str, Any],
+    board: Dict[str, List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    command = str(session.get("comando", "alfred")).strip() or "alfred"
+    description = " ".join((session.get("descripcion", "") or "").split()).strip() or "sin descripción"
+    flow = FLOWS.get(command, {})
+    current_phase = str(session.get("fase_actual", "")).strip()
+    completed_entries = {
+        str(phase.get("nombre", "")).strip(): phase
+        for phase in (session.get("fases_completadas") or [])
+        if isinstance(phase, dict) and str(phase.get("nombre", "")).strip()
+    }
+    tasks_by_id = _kanban_tasks_by_id(board)
+    stored_ids = session.get("kanban_phase_task_ids")
+    if not isinstance(stored_ids, dict):
+        stored_ids = {}
+    optional_flags = _session_optional_agent_flags(session)
+
+    rows: List[Dict[str, Any]] = []
+    for phase_def in flow.get("fases", []):
+        phase_name = str(phase_def.get("nombre", "")).strip() or "desconocida"
+        phase_result = completed_entries.get(phase_name)
+        if phase_result is not None:
+            status = str(phase_result.get("resultado", "aprobado")).strip() or "aprobado"
+        elif current_phase == phase_name:
+            status = "en curso"
+        else:
+            status = "pendiente"
+
+        phase_task = tasks_by_id.get(str(stored_ids.get(phase_name, "")).strip())
+        if phase_task is None:
+            title = _phase_task_title(command, phase_name, description)
+            match = _find_kanban_task_in_statuses(
+                board,
+                [title],
+                ("in-progress", "backlog", "blocked", "done"),
+            )
+            if match is not None:
+                _, _, phase_task = match
+
+        criteria = phase_task.get("criteria") if isinstance(phase_task, dict) else []
+        if not isinstance(criteria, list):
+            criteria = []
+        criteria = [str(item).strip() for item in criteria if str(item).strip()]
+        criteria_hints = _phase_fallback_visible_criteria(phase_def) if not criteria else []
+        evidence = ""
+        if isinstance(phase_task, dict):
+            evidence = " ".join((phase_task.get("evidence", "") or "").split()).strip()
+        artifacts = []
+        if isinstance(phase_result, dict):
+            artifacts = _dedupe_artifact_paths(list(phase_result.get("artefactos") or []))
+        effective_optionals = get_effective_agents(phase_name, optional_flags)
+        parallel_optionals = order_optional_agent_names(
+            list(effective_optionals.get("paralelo") or [])
+        )
+        sequential_optionals = order_optional_agent_names(
+            list(effective_optionals.get("secuencial") or [])
+        )
+
+        rows.append({
+            "name": phase_name,
+            "status": status,
+            "gate": str(phase_def.get("gate_tipo", "sin gate")).strip() or "sin gate",
+            "agents": list(phase_def.get("agentes") or []),
+            "parallel_optionals": parallel_optionals,
+            "sequential_optionals": sequential_optionals,
+            "iterations": int(phase_result.get("iteraciones", 0)) if isinstance(phase_result, dict) else 0,
+            "criteria": criteria,
+            "criteria_hints": criteria_hints,
+            "evidence": evidence,
+            "artifacts": artifacts,
+        })
+
+    return rows
+
+
+def _get_verify_task(
+    session: Dict[str, Any],
+    board: Dict[str, List[Dict[str, Any]]],
+) -> Optional[Dict[str, Any]]:
+    task_id = str(session.get("kanban_verify_task_id", "")).strip()
+    if not task_id:
+        return None
+    return _kanban_tasks_by_id(board).get(task_id)
+
+
+def _session_next_command(session: Dict[str, Any], uat: Optional[Dict[str, Any]]) -> str:
+    phase = str(session.get("fase_actual", "")).strip()
+    if phase != "completado":
+        return "/alfred-dev:resume"
+
+    uat_status = str((uat or {}).get("status", "")).strip()
+    if uat_status == "approved":
+        return "/alfred-dev:alfred"
+
+    next_after_completion = str(session.get("next_after_completion", "")).strip()
+    if next_after_completion:
+        return next_after_completion
+    return "/alfred-dev:verify"
+
+
+def _session_status_label(session: Dict[str, Any], uat: Optional[Dict[str, Any]]) -> str:
+    phase = str(session.get("fase_actual", "")).strip()
+    if phase == "completado":
+        uat_status = str((uat or {}).get("status", "")).strip()
+        if uat_status == "approved":
+            return "completado y verificado"
+        if uat_status == "rejected":
+            return "completado con UAT rechazada"
+        return "completado pendiente de UAT"
+    if is_session_paused(session):
+        return "pausado"
+    return "activo"
+
+
+def render_session_current_markdown(
+    session: Dict[str, Any],
+    *,
+    uat: Optional[Dict[str, Any]] = None,
+    board: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+) -> str:
+    command = str(session.get("comando", "alfred")).strip() or "alfred"
+    description = " ".join((session.get("descripcion", "") or "").split()).strip() or "sin descripción"
+    phase = str(session.get("fase_actual", "desconocida")).strip() or "desconocida"
+    completed = [
+        str(phase_entry.get("nombre", "")).strip()
+        for phase_entry in (session.get("fases_completadas") or [])
+        if isinstance(phase_entry, dict) and str(phase_entry.get("nombre", "")).strip()
+    ]
+    latest_completed = completed[-1] if completed else ""
+    next_command = _session_next_command(session, uat)
+    phase_rows = _build_phase_doc_rows(session, board or {})
+    current_row = next((row for row in phase_rows if row["name"] == phase), None)
+    team_source = _session_team_source_label(session)
+    on_demand_optionals = _session_on_demand_optionals_for_flow(session)
+
+    lines = [
+        "# Current",
+        "",
+        f"- Flujo: `{command}`.",
+        f"- Objetivo actual: {description}.",
+        f"- Estado: {_session_status_label(session, uat)}.",
+    ]
+    if team_source:
+        lines.append(f"- Origen del equipo runtime: {team_source}.")
+    if phase != "completado":
+        lines.append(f"- Fase actual: `{phase}`.")
+        if current_row:
+            lines.append(f"- Gate pendiente: `{current_row['gate']}`.")
+            if current_row["agents"]:
+                lines.append(
+                    "- Equipo base en esta fase: "
+                    + ", ".join(f"`{agent}`" for agent in current_row["agents"])
+                    + "."
+                )
+            optional_summary = _format_optional_agent_summary(
+                current_row.get("parallel_optionals", []),
+                current_row.get("sequential_optionals", []),
+            )
+            if optional_summary:
+                lines.append(f"- Especialistas opcionales activos: {optional_summary}.")
+    else:
+        lines.append("- Estado final registrado: `completado`.")
+    if on_demand_optionals:
+        lines.append(
+            "- Opcionales activos solo bajo demanda en este flujo: "
+            + ", ".join(f"`{agent}`" for agent in on_demand_optionals)
+            + "."
+        )
+    if latest_completed:
+        lines.append(f"- Última fase cerrada: `{latest_completed}`.")
+    if uat:
+        lines.append(f"- UAT: {_status_label(str(uat.get('status', '')).strip())}.")
+    lines.append(f"- Siguiente comando recomendado: {next_command}")
+    return "\n".join(lines) + "\n"
+
+
+def render_session_progress_markdown(
+    session: Dict[str, Any],
+    *,
+    board: Dict[str, List[Dict[str, Any]]],
+    uat: Optional[Dict[str, Any]] = None,
+) -> str:
+    command = str(session.get("comando", "alfred")).strip() or "alfred"
+    description = " ".join((session.get("descripcion", "") or "").split()).strip() or "sin descripción"
+    phase = str(session.get("fase_actual", "desconocida")).strip() or "desconocida"
+    flow = FLOWS.get(command, {})
+    total_phases = len(flow.get("fases", []))
+    completed_entries = [
+        phase_entry
+        for phase_entry in (session.get("fases_completadas") or [])
+        if isinstance(phase_entry, dict)
+    ]
+    completed_names = [
+        str(phase_entry.get("nombre", "")).strip()
+        for phase_entry in completed_entries
+        if str(phase_entry.get("nombre", "")).strip()
+    ]
+    visible_board = _filter_kanban_board_tasks(board, _is_visible_kanban_task)
+    backlog_total = len(visible_board.get("backlog", []))
+    in_progress_total = len(visible_board.get("in-progress", []))
+    done_total = len(visible_board.get("done", []))
+    blocked_total = len(visible_board.get("blocked", []))
+    total_visible = backlog_total + in_progress_total + done_total + blocked_total
+    progress_pct = round((done_total / total_visible) * 100) if total_visible else 0
+    artifacts = _dedupe_artifact_paths(list(session.get("artefactos") or []))
+    phase_rows = _build_phase_doc_rows(session, board)
+    team_source = _session_team_source_label(session)
+    on_demand_optionals = _session_on_demand_optionals_for_flow(session)
+
+    lines = [
+        "# Progress",
+        "",
+        f"- Flujo operativo: `{command}`.",
+        f"- Trabajo en curso: {description}.",
+        f"- Estado del flujo: {_session_status_label(session, uat)}.",
+        f"- Fases completadas: {len(completed_names)}/{total_phases}.",
+    ]
+    if team_source:
+        lines.append(f"- Origen del equipo runtime: {team_source}.")
+    if phase != "completado":
+        lines.append(f"- Fase actual: `{phase}`.")
+    if completed_names:
+        lines.append("- Fases cerradas: " + ", ".join(f"`{name}`" for name in completed_names) + ".")
+    if on_demand_optionals:
+        lines.append(
+            "- Opcionales activos solo bajo demanda en este flujo: "
+            + ", ".join(f"`{agent}`" for agent in on_demand_optionals)
+            + "."
+        )
+    lines.append(
+        f"- Kanban visible: {done_total} done, {in_progress_total} in progress, "
+        f"{backlog_total} backlog, {blocked_total} blocked."
+    )
+    lines.append(f"- Progreso visible estimado: {progress_pct} %.")
+    lines.append(f"- Artefactos acumulados: {len(artifacts)}.")
+    if uat:
+        lines.append(f"- Verificación/UAT: {_status_label(str(uat.get('status', '')).strip())}.")
+
+    if phase_rows:
+        lines.extend(["", "## Fases del flujo", ""])
+        for row in phase_rows:
+            summary = f"- `{row['name']}` -> `{row['status']}` · gate `{row['gate']}`"
+            if row["iterations"] > 0:
+                summary += f" · iteraciones {row['iterations']}"
+            if row["artifacts"]:
+                summary += f" · artefactos {len(row['artifacts'])}"
+            optional_summary = _format_optional_agent_summary(
+                row.get("parallel_optionals", []),
+                row.get("sequential_optionals", []),
+            )
+            if optional_summary:
+                summary += f" · opcionales {optional_summary}"
+            lines.append(summary)
+    return "\n".join(lines) + "\n"
+
+
+def render_session_traceability_markdown(
+    session: Dict[str, Any],
+    *,
+    uat: Optional[Dict[str, Any]] = None,
+    board: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+) -> str:
+    command = str(session.get("comando", "alfred")).strip() or "alfred"
+    description = " ".join((session.get("descripcion", "") or "").split()).strip() or "sin descripción"
+    phase = str(session.get("fase_actual", "desconocida")).strip() or "desconocida"
+    completed_entries = [
+        phase_entry
+        for phase_entry in (session.get("fases_completadas") or [])
+        if isinstance(phase_entry, dict)
+    ]
+    artifacts = _dedupe_artifact_paths(list(session.get("artefactos") or []))
+    phase_rows = _build_phase_doc_rows(session, board or {})
+    verify_task = _get_verify_task(session, board or {})
+    team_source = _session_team_source_label(session)
+    on_demand_optionals = _session_on_demand_optionals_for_flow(session)
+
+    if phase == "completado":
+        uat_status = str((uat or {}).get("status", "")).strip()
+        if uat_status == "approved":
+            main_risk = "Sin bloqueo principal: el flujo ya quedó verificado."
+        elif uat_status == "rejected":
+            main_risk = "UAT rechazada: hace falta retrabajo antes de darlo por bueno."
+        else:
+            main_risk = "Falta cerrar la verificación manual/UAT del flujo completado."
+        pending_gate = "sin gate pendiente"
+    else:
+        pending_gate = get_pending_gate(session)
+        main_risk = f"Aún falta superar la gate `{pending_gate}` en la fase `{phase}`."
+
+    lines = [
+        "# Traceability",
+        "",
+        f"- Flujo: `{command}`.",
+        f"- Objetivo trazado: {description}.",
+        *( [f"- Origen del equipo runtime: {team_source}."] if team_source else [] ),
+        f"- Gate pendiente: {pending_gate}.",
+        *(
+            [
+                "- Opcionales activos solo bajo demanda en este flujo: "
+                + ", ".join(f"`{agent}`" for agent in on_demand_optionals)
+                + "."
+            ]
+            if on_demand_optionals
+            else []
+        ),
+        (
+            f"- UAT actual: {_status_label(str(uat.get('status', '')).strip())}."
+            if uat
+            else "- UAT actual: pendiente."
+        ),
+        f"- Riesgo principal: {main_risk}",
+        "",
+        "## Fases registradas",
+        "",
+    ]
+
+    if completed_entries:
+        for phase_entry in completed_entries:
+            phase_name = str(phase_entry.get("nombre", "")).strip() or "desconocida"
+            result = str(phase_entry.get("resultado", "")).strip() or "aprobado"
+            phase_artifacts = _dedupe_artifact_paths(list(phase_entry.get("artefactos") or []))
+            summary = f"- `{phase_name}` -> `{result}`"
+            if phase_artifacts:
+                summary += f" · artefactos: {', '.join(f'`{item}`' for item in phase_artifacts[:3])}"
+            lines.append(summary)
+    else:
+        lines.append("- Todavía no hay fases completadas registradas.")
+
+    lines.extend(["", "## Criterios y evidencia por fase", ""])
+    if phase_rows:
+        for row in phase_rows:
+            lines.append(f"### `{row['name']}`")
+            lines.append(f"- Gate: `{row['gate']}`.")
+            lines.append(f"- Estado: `{row['status']}`.")
+            if row["agents"]:
+                lines.append(
+                    "- Equipo base: "
+                    + ", ".join(f"`{agent}`" for agent in row["agents"])
+                    + "."
+                )
+            if row.get("parallel_optionals"):
+                lines.append(
+                    "- Opcionales en paralelo: "
+                    + ", ".join(f"`{agent}`" for agent in row["parallel_optionals"])
+                    + "."
+                )
+            if row.get("sequential_optionals"):
+                lines.append(
+                    "- Opcionales secuenciales: "
+                    + ", ".join(f"`{agent}`" for agent in row["sequential_optionals"])
+                    + "."
+                )
+            if row["criteria"]:
+                lines.append("- Criterios visibles: " + ", ".join(f"`{item}`" for item in row["criteria"]) + ".")
+            elif row["criteria_hints"]:
+                lines.append("- Criterios visibles: " + "; ".join(row["criteria_hints"]) + ".")
+            else:
+                lines.append("- Criterios visibles: sin criterios explícitos todavía.")
+            if row["evidence"]:
+                lines.append(f"- Evidencia: {row['evidence']}.")
+            else:
+                lines.append("- Evidencia: sin evidencia explícita todavía.")
+            if row["artifacts"]:
+                lines.append(
+                    "- Artefactos de fase: "
+                    + ", ".join(f"`{item}`" for item in row["artifacts"])
+                    + "."
+                )
+            else:
+                lines.append("- Artefactos de fase: sin artefactos explícitos.")
+            lines.append("")
+    else:
+        lines.append("- Todavía no hay filas de fase para trazar.")
+        lines.append("")
+
+    lines.extend(["## Verificación manual", ""])
+    if verify_task:
+        verify_status = str(verify_task.get("status", "backlog")).strip() or "backlog"
+        verify_evidence = " ".join((verify_task.get("evidence", "") or "").split()).strip()
+        verify_criteria = verify_task.get("criteria") if isinstance(verify_task.get("criteria"), list) else []
+        lines.append(f"- Estado de verify: `{verify_status}`.")
+        if verify_criteria:
+            lines.append("- Criterios visibles: " + ", ".join(f"`{item}`" for item in verify_criteria) + ".")
+        else:
+            lines.append("- Criterios visibles: sin criterios explícitos todavía.")
+        if verify_evidence:
+            lines.append(f"- Evidencia: {verify_evidence}.")
+        else:
+            lines.append("- Evidencia: sin evidencia explícita todavía.")
+    elif uat:
+        uat_status = str(uat.get("status", "")).strip()
+        verify_status = "done" if uat_status == "approved" else "blocked" if uat_status == "rejected" else "backlog"
+        lines.append(f"- Estado de verify: `{verify_status}`.")
+        lines.append(f"- Criterios visibles: status UAT `{uat_status or 'pending'}`.")
+        notes = " ".join((uat.get("notes", "") or "").split()).strip()
+        updated_at = str(uat.get("updated_at", "")).strip()
+        evidence = []
+        if updated_at:
+            evidence.append(f"UAT registrada en {updated_at}")
+        if notes:
+            evidence.append(notes)
+        if evidence:
+            lines.append(f"- Evidencia: {' — '.join(evidence)}.")
+        else:
+            lines.append("- Evidencia: UAT registrada sin notas adicionales.")
+    else:
+        lines.append("- No hay tarea de verify sincronizada todavía.")
+
+    lines.extend(["", "## Artefactos registrados", ""])
+    if artifacts:
+        lines.extend(f"- `{item}`" for item in artifacts)
+    else:
+        lines.append("- Todavía no hay artefactos registrados.")
+
+    return "\n".join(lines) + "\n"
+
+
+def sync_session_state_to_operational_docs(
+    project_dir: str,
+    session: Dict[str, Any],
+) -> Dict[str, Any]:
+    if not isinstance(session, dict):
+        return session
+    if not session.get("comando") or not session.get("descripcion"):
+        return session
+
+    synced = _enrich_session_style_visual(project_dir, dict(session))
+    uat = _load_matching_session_uat(project_dir, synced)
+    board = load_kanban_board(project_dir)
+    os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
+
+    current_path = _project_path(project_dir, CURRENT_RELATIVE_PATH)
+    progress_path = _project_path(project_dir, PROGRESS_MD_RELATIVE_PATH)
+    traceability_path = _project_path(project_dir, TRACEABILITY_MD_RELATIVE_PATH)
+    synced["artefactos"] = _dedupe_artifact_paths(
+        list(synced.get("artefactos") or [])
+        + (
+            [UAT_MD_RELATIVE_PATH, UAT_JSON_RELATIVE_PATH]
+            if isinstance(uat, dict)
+            else []
+        )
+        + [CURRENT_RELATIVE_PATH, PROGRESS_MD_RELATIVE_PATH, TRACEABILITY_MD_RELATIVE_PATH]
+    )
+
+    with open(current_path, "w", encoding="utf-8") as fh:
+        fh.write(render_session_current_markdown(synced, uat=uat, board=board))
+    with open(progress_path, "w", encoding="utf-8") as fh:
+        fh.write(render_session_progress_markdown(synced, board=board, uat=uat))
+    with open(traceability_path, "w", encoding="utf-8") as fh:
+        fh.write(render_session_traceability_markdown(synced, uat=uat, board=board))
+
+    return synced
+
+
+def _summarize_tasks(
+    tasks: List[Dict[str, Any]],
+    limit: int = 3,
+    *,
+    newest_first: bool = False,
+) -> List[str]:
     lines: List[str] = []
-    for task in sorted(tasks, key=_task_sort_key)[:limit]:
+    ordered_tasks = sorted(tasks, key=_task_sort_key)
+    if newest_first:
+        ordered_tasks = list(reversed(ordered_tasks))
+
+    for task in ordered_tasks[:limit]:
         suffix: List[str] = []
         if task.get("agent"):
             suffix.append(task["agent"])
@@ -504,15 +2349,268 @@ def _summarize_tasks(tasks: List[Dict[str, Any]], limit: int = 3) -> List[str]:
     return lines
 
 
+def _task_is_skipped_phase(task: Dict[str, Any]) -> bool:
+    body = _normalize_free_text(task.get("body", ""))
+    notes = _normalize_free_text(task.get("notes", ""))
+    return (
+        "estado de fase: saltada" in body
+        or "fase saltada por condicion del flujo" in notes
+    )
+
+
+def _filter_kanban_board_tasks(
+    board: Dict[str, List[Dict[str, Any]]],
+    predicate: Any,
+) -> Dict[str, List[Dict[str, Any]]]:
+    return {
+        status: [task for task in board.get(status, []) if predicate(task)]
+        for status in _KANBAN_RELATIVE_BY_STATUS
+    }
+
+
+def _count_kanban_task_types(board: Dict[str, List[Dict[str, Any]]]) -> Dict[str, int]:
+    counts = {task_type: 0 for task_type in _KNOWN_KANBAN_TASK_TYPES}
+    for lane_tasks in board.values():
+        for task in lane_tasks:
+            counts[_effective_task_type(task)] += 1
+    counts["internal"] = counts["phase"] + counts["verify"]
+    counts["visible"] = counts["generic"] + counts["main"]
+    counts["total"] = counts["internal"] + counts["visible"]
+    return counts
+
+
+def _build_progress_overview_cards(
+    state: Optional[Dict[str, Any]],
+    handoff: Optional[Dict[str, Any]],
+    uat: Optional[Dict[str, Any]],
+    next_action: Dict[str, str],
+) -> List[Dict[str, Any]]:
+    """Construye tarjetas compactas y estables para overview/UI."""
+    cards: List[Dict[str, Any]] = []
+    has_active_state = bool(
+        state and state.get("fase_actual") != "completado" and not is_session_paused(state)
+    )
+    has_paused_state = bool(
+        state and state.get("fase_actual") != "completado" and is_session_paused(state)
+    )
+    has_handoff = bool(handoff and not handoff.get("resolved", False))
+
+    if has_active_state:
+        cards.append(
+            {
+                "label": "Flujo activo",
+                "title": (
+                    f"{state.get('comando', 'desconocido')} — "
+                    f"{state.get('descripcion', 'sin descripción')}"
+                ),
+                "body": f"Fase actual: {state.get('fase_actual', 'desconocida')}",
+                "chips": [state.get("fase_actual", "desconocida")],
+            }
+        )
+    elif has_handoff:
+        cards.append(
+            {
+                "label": "Handoff pendiente",
+                "title": handoff.get("command", "desconocido"),
+                "body": (
+                    f"Fase: {handoff.get('phase', 'desconocida')} · "
+                    f"Reanudar con {handoff.get('resume_command', '/alfred-dev:resume')}"
+                ),
+                "chips": ["pending"],
+            }
+        )
+    elif has_paused_state:
+        cards.append(
+            {
+                "label": "Sesión pausada",
+                "title": (
+                    f"{state.get('comando', 'desconocido')} — "
+                    f"{state.get('descripcion', 'sin descripción')}"
+                ),
+                "body": f"Fase pausada: {state.get('fase_actual', 'desconocida')}",
+                "chips": ["paused"],
+            }
+        )
+    elif state and state.get("fase_actual") == "completado":
+        cards.append(
+            {
+                "label": "Último flujo completado",
+                "title": (
+                    f"{state.get('comando', 'desconocido')} — "
+                    f"{state.get('descripcion', 'sin descripción')}"
+                ),
+                "body": (
+                    f"Estado final: completado"
+                    + (
+                        f" · UAT {_status_label(uat.get('status', ''))}"
+                        if uat
+                        else " · UAT pendiente"
+                    )
+                ),
+                "chips": ["completado"],
+            }
+        )
+
+    if uat:
+        target_label = uat.get("target_description") or uat.get("target_command") or uat.get("target_id") or "sin objetivo"
+        cards.append(
+            {
+                "label": "UAT",
+                "title": target_label,
+                "body": (
+                    f"Estado actual: {_status_label(uat.get('status', ''))}"
+                    + (
+                        f" · Actualizada en {uat.get('updated_at')}"
+                        if uat.get("updated_at")
+                        else ""
+                    )
+                ),
+                "chips": [uat.get("status", "pending")],
+            }
+        )
+
+    cards.append(
+        {
+            "label": "Siguiente paso recomendado",
+            "title": f"/alfred-dev:{next_action.get('command', 'alfred')}",
+            "body": next_action.get(
+                "directive",
+                next_action.get("reason", "Sin razón disponible."),
+            ),
+            "chips": [next_action.get("source", "")] if next_action.get("source") else [],
+        }
+    )
+    return cards
+
+
+def _build_project_signal_cards(
+    state: Optional[Dict[str, Any]],
+    current_signals: List[str],
+    progress_signals: List[str],
+    traceability_signals: List[str],
+    kanban: Dict[str, Any],
+    overview_cards: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
+    overview_labels = {card.get("label", "") for card in (overview_cards or [])}
+    filtered_current_signals = list(current_signals)
+    filtered_progress_signals = list(progress_signals)
+    filtered_traceability_signals = list(traceability_signals)
+
+    if overview_labels & {
+        "Flujo activo",
+        "Handoff pendiente",
+        "Sesión pausada",
+        "Último flujo completado",
+    }:
+        filtered_current_signals = [
+            item
+            for item in filtered_current_signals
+            if not item.startswith(
+                (
+                    "Flujo activo:",
+                    "Flujo:",
+                    "Handoff pendiente",
+                    "Sesión pausada:",
+                    "Objetivo actual:",
+                    "Estado:",
+                    "Estado final registrado:",
+                    "Última fase cerrada:",
+                    "Fase actual:",
+                )
+            )
+        ]
+        filtered_progress_signals = [
+            item
+            for item in filtered_progress_signals
+            if not item.startswith(
+                (
+                    "Flujo operativo:",
+                    "Trabajo en curso:",
+                    "Estado del flujo:",
+                )
+            )
+        ]
+        filtered_traceability_signals = [
+            item
+            for item in filtered_traceability_signals
+            if not item.startswith(
+                (
+                    "Flujo:",
+                    "Objetivo trazado:",
+                )
+            )
+        ]
+
+    if "Siguiente paso recomendado" in overview_labels:
+        filtered_current_signals = [
+            item
+            for item in filtered_current_signals
+            if not item.startswith("Siguiente paso sugerido:")
+        ]
+
+    if "UAT" in overview_labels:
+        filtered_traceability_signals = [
+            item
+            for item in filtered_traceability_signals
+            if not item.startswith("UAT actual:")
+        ]
+
+    cards: List[Dict[str, Any]] = []
+    team_items: List[str] = []
+    if state:
+        team_source = _session_team_source_label(state)
+        if team_source:
+            team_items.append(f"Origen runtime: {team_source}.")
+        on_demand_optionals = _session_on_demand_optionals_for_flow(state)
+        if on_demand_optionals:
+            team_items.append(
+                "Opcionales solo bajo demanda en este flujo: "
+                + ", ".join(f"`{agent}`" for agent in on_demand_optionals)
+                + "."
+            )
+
+    if team_items:
+        cards.append(
+            {
+                "title": "Equipo runtime",
+                "subtitle": "Cómo se compuso el equipo real de esta sesión y qué queda fuera del loop estándar.",
+                "items": team_items,
+            }
+        )
+
+    for title, items, subtitle in [
+        ("Current", filtered_current_signals, "Lo último que Alfred ha dejado listo para seguir."),
+        ("Bloqueos", kanban.get("blocked", []), "Lo que ahora mismo impide avanzar o cerrar trabajo."),
+        ("En curso", kanban.get("in_progress", []), "Trabajo en marcha ahora mismo."),
+        (
+            "Trazabilidad",
+            filtered_traceability_signals,
+            "Huecos o señales de criterios y cobertura.",
+        ),
+        ("Progreso", filtered_progress_signals, "Señales humanas del avance del proyecto."),
+        ("Backlog", kanban.get("backlog", []), "Pendiente por atacar."),
+    ]:
+        if not items:
+            continue
+        cards.append(
+            {
+                "title": title,
+                "subtitle": subtitle,
+                "items": list(items),
+            }
+        )
+    return cards
+
+
 def build_standup_snapshot(project_dir: str) -> Dict[str, Any]:
     snapshot = build_progress_snapshot(project_dir)
-    board = load_kanban_board(project_dir)
+    board = _filter_kanban_board_tasks(load_kanban_board(project_dir), _is_visible_kanban_task)
     snapshot["standup_date"] = _now_utc().date().isoformat()
     snapshot["board_tasks"] = board
     snapshot["focus"] = {
         "in_progress": _summarize_tasks(board.get("in-progress", [])),
         "blocked": _summarize_tasks(board.get("blocked", [])),
-        "done": _summarize_tasks(board.get("done", [])),
+        "done": _summarize_tasks(board.get("done", []), newest_first=True),
     }
     return snapshot
 
@@ -529,6 +2627,11 @@ def render_standup_markdown(snapshot: Dict[str, Any]) -> str:
         f"- Backlog: {len(kanban.get('backlog', []))}",
         f"- Blocked: {len(kanban.get('blocked', []))}",
     ]
+    if kanban.get("internal_total"):
+        lines.append(
+            f"- Internas: {kanban['internal_total']} "
+            f"(fase: {kanban.get('phase_total', 0)}, verify: {kanban.get('verify_total', 0)})"
+        )
     if kanban.get("progress_pct") is not None:
         lines.append(f"- Progreso estimado: {kanban['progress_pct']} %")
 
@@ -549,15 +2652,7 @@ def render_standup_markdown(snapshot: Dict[str, Any]) -> str:
         lines.extend(["", "### Señales", ""])
         lines.extend(f"- {item}" for item in progress_signals[:3])
 
-    lines.extend(
-        [
-            "",
-            "### Siguiente paso",
-            "",
-            f"- `/alfred-dev:{next_action.get('command', 'alfred')}`",
-            f"- {next_action.get('reason', 'Sin razón disponible.')}",
-        ]
-    )
+    _extend_next_action_section(lines, next_action, heading="### Siguiente paso")
     return "\n".join(lines).strip() + "\n"
 
 
@@ -598,20 +2693,16 @@ def render_lane_markdown(snapshot: Dict[str, Any]) -> str:
                 lines.append(f"- Evidencia: {task['evidence']}")
             lines.append(f"- Fuente: `{task.get('path', '-')}`")
             lines.append("")
-    lines.extend(
-        [
-            "### Siguiente paso recomendado",
-            "",
-            f"- `/alfred-dev:{next_action.get('command', 'alfred')}`",
-            f"- {next_action.get('reason', 'Sin razón disponible.')}",
-        ]
-    )
+    _extend_next_action_section(lines, next_action)
     return "\n".join(lines).strip() + "\n"
 
 
 def validate_operational_artifacts(project_dir: str) -> Dict[str, Any]:
     board = load_kanban_board(project_dir)
     tasks = [task for lane in board.values() for task in lane]
+    visible_tasks = [task for task in tasks if _is_visible_kanban_task(task)]
+    syncable_tasks = [task for task in tasks if _is_syncable_kanban_task(task)]
+    internal_count = len(tasks) - len(visible_tasks)
     errors: List[str] = []
     warnings: List[str] = []
     checks: List[str] = []
@@ -619,7 +2710,11 @@ def validate_operational_artifacts(project_dir: str) -> Dict[str, Any]:
     if not tasks:
         warnings.append("No hay tareas detectadas en docs/project/kanban/.")
     else:
-        checks.append(f"Se han detectado {len(tasks)} tareas en el kanban.")
+        checks.append(f"Se han detectado {len(visible_tasks)} tareas visibles en el kanban.")
+        if internal_count:
+            checks.append(
+                f"Hay {internal_count} tareas internas de coordinación (phase/verify)."
+            )
 
     seen_ids: Dict[str, str] = {}
     missing_ids = 0
@@ -634,13 +2729,26 @@ def validate_operational_artifacts(project_dir: str) -> Dict[str, Any]:
         else:
             seen_ids[task_id] = task["status"]
 
-        if task["status"] in {"in-progress", "blocked"} and not task.get("agent"):
+        if (
+            _is_visible_kanban_task(task)
+            and task["status"] in {"in-progress", "blocked"}
+            and not task.get("agent")
+        ):
             warnings.append(f"{_task_reference(task)} no tiene agente responsable visible.")
-        if task["status"] == "blocked" and not (task.get("dependencies") or task.get("notes")):
+        if (
+            _is_visible_kanban_task(task)
+            and task["status"] == "blocked"
+            and not (task.get("dependencies") or task.get("notes"))
+        ):
             warnings.append(
                 f"{_task_reference(task)} está bloqueada, pero no indica dependencia ni motivo."
             )
-        if task["status"] == "done" and not task.get("evidence"):
+        if (
+            _is_visible_kanban_task(task)
+            and task["status"] == "done"
+            and not task.get("evidence")
+            and not _task_is_skipped_phase(task)
+        ):
             warnings.append(f"{_task_reference(task)} está en done sin evidencia explícita.")
 
     if missing_ids:
@@ -662,7 +2770,7 @@ def validate_operational_artifacts(project_dir: str) -> Dict[str, Any]:
     traced_criteria = set(_extract_criteria_ids(traceability_md))
     referenced_criteria = {
         criterion
-        for task in tasks
+        for task in visible_tasks
         for criterion in (task.get("criteria") or [])
     }
     missing_traceability = sorted(referenced_criteria - traced_criteria)
@@ -674,20 +2782,41 @@ def validate_operational_artifacts(project_dir: str) -> Dict[str, Any]:
     elif referenced_criteria:
         checks.append("Los criterios visibles en tareas también aparecen en la trazabilidad.")
 
-    uat = load_uat(project_dir)
     verify_suggestion = suggest_verify_action(project_dir)
-    if uat:
+    uat = load_uat(project_dir)
+    if verify_suggestion is not None:
+        if uat:
+            warnings.append(
+                "Existe UAT registrada, pero no cubre el último flujo completado o sigue pendiente de cierre."
+            )
+        else:
+            warnings.append("La verificación/UAT del último flujo completado sigue pendiente.")
+    elif uat:
         checks.append(f"Existe UAT en estado '{_status_label(uat.get('status', ''))}'.")
-    elif verify_suggestion is not None:
-        warnings.append("La verificación/UAT del último flujo completado sigue pendiente.")
+
+    state = _load_active_session_state(project_dir) or load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
+    if isinstance(state, dict):
+        style_phase = _completed_style_visual_phase(state)
+        if style_phase is not None:
+            if os.path.isfile(_project_path(project_dir, STYLE_DIRECTION_RELATIVE_PATH)):
+                checks.append("Existe docs/style-direction.md para la fase estilo_visual.")
+            else:
+                warnings.append(
+                    "La fase estilo_visual figura como completada, pero falta docs/style-direction.md."
+                )
 
     sync_state = _read_json_file(_project_path(project_dir, GITHUB_SYNC_JSON_RELATIVE_PATH))
     if isinstance(sync_state, dict):
         task_map = sync_state.get("tasks")
         mapped = task_map if isinstance(task_map, dict) else {}
+        syncable_ids = {
+            task.get("id")
+            for task in syncable_tasks
+            if task.get("id")
+        }
         sync_missing = [
             task.get("id")
-            for task in tasks
+            for task in syncable_tasks
             if task.get("id") and task.get("id") not in mapped
         ]
         if sync_missing:
@@ -696,6 +2825,16 @@ def validate_operational_artifacts(project_dir: str) -> Dict[str, Any]:
             )
         else:
             checks.append("El mapa de sincronización con GitHub cubre todas las tareas con ID.")
+        stale_sync = sorted(
+            task_id
+            for task_id in mapped
+            if task_id not in syncable_ids
+        )
+        if stale_sync:
+            warnings.append(
+                "El mapa de GitHub conserva tareas que ya no existen en el kanban local: "
+                + ", ".join(stale_sync[:5])
+            )
 
     status = "ok"
     if errors:
@@ -720,10 +2859,18 @@ def render_validation_markdown(report: Dict[str, Any]) -> str:
         "error": "RECHAZADO",
     }.get(status, status.upper())
     next_action = report.get("next_action", {"command": "alfred", "reason": ""})
-    lines = [f"## Validación operativa — {verdict}", ""]
+    lines = [
+        f"## Validación operativa — {verdict}",
+        "",
+        "### Resumen",
+        "",
+        f"- Checks en verde: {len(report.get('checks') or [])}",
+        f"- Avisos: {len(report.get('warnings') or [])}",
+        f"- Errores: {len(report.get('errors') or [])}",
+    ]
 
     if report.get("checks"):
-        lines.extend(["### Checks", ""])
+        lines.extend(["", "### Checks", ""])
         lines.extend(f"- {item}" for item in report["checks"])
 
     if report.get("warnings"):
@@ -734,15 +2881,27 @@ def render_validation_markdown(report: Dict[str, Any]) -> str:
         lines.extend(["", "### Errores", ""])
         lines.extend(f"- {item}" for item in report["errors"])
 
-    lines.extend(
-        [
-            "",
-            "### Siguiente paso recomendado",
-            "",
-            f"- `/alfred-dev:{next_action.get('command', 'alfred')}`",
-            f"- {next_action.get('reason', 'Sin razón disponible.')}",
-        ]
-    )
+    _extend_next_action_section(lines, next_action)
+    return "\n".join(lines).strip() + "\n"
+
+
+def render_normalize_kanban_markdown(result: Dict[str, Any]) -> str:
+    lines = [
+        "## Normalización de kanban",
+        "",
+        f"- Tareas ajustadas: {result.get('count', 0)}",
+    ]
+    changed = result.get("changed", [])
+    if changed:
+        lines.extend(["", "### Tipos asignados", ""])
+        for item in changed:
+            task_id = item.get("id") or "sin-id"
+            title = item.get("title") or "sin título"
+            task_type = item.get("task_type") or "generic"
+            status = item.get("status") or "desconocido"
+            lines.append(f"- [{task_id}] {title} -> `{task_type}` ({status})")
+    else:
+        lines.append("- El tablero ya estaba normalizado.")
     return "\n".join(lines).strip() + "\n"
 
 
@@ -882,6 +3041,13 @@ def _clear_memory_ui_state(project_dir: str) -> None:
             continue
 
 
+def _normalize_local_path(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    return os.path.normcase(os.path.realpath(os.path.abspath(raw)))
+
+
 def _is_process_alive(pid: int) -> bool:
     if pid <= 0:
         return False
@@ -892,13 +3058,118 @@ def _is_process_alive(pid: int) -> bool:
     return True
 
 
-def _is_memory_ui_reachable(url: str, timeout: float = 0.35) -> bool:
+def _get_process_command_line(pid: int) -> str:
+    if pid <= 0:
+        return ""
+
+    try:
+        if os.name == "nt":
+            proc = subprocess.run(
+                [
+                    "wmic",
+                    "process",
+                    "where",
+                    f"processid={pid}",
+                    "get",
+                    "CommandLine",
+                    "/value",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                encoding="utf-8",
+            )
+            if proc.returncode != 0:
+                return ""
+            for line in (proc.stdout or "").splitlines():
+                if line.startswith("CommandLine="):
+                    return line.split("=", 1)[1].strip()
+            return ""
+
+        proc = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "command="],
+            capture_output=True,
+            text=True,
+            check=False,
+            encoding="utf-8",
+        )
+        if proc.returncode != 0:
+            return ""
+        return " ".join((proc.stdout or "").split()).strip()
+    except Exception:
+        return ""
+
+
+def _is_expected_memory_ui_process(
+    pid: int,
+    *,
+    url: str,
+    expected_project_dir: str,
+    expected_db_path: str,
+) -> bool:
+    if not _is_process_alive(pid):
+        return False
+
+    if url and _is_memory_ui_reachable(
+        url,
+        expected_project_dir=expected_project_dir,
+        expected_db_path=expected_db_path,
+    ):
+        return True
+
+    command_line = _get_process_command_line(pid)
+    if not command_line:
+        return False
+
+    try:
+        parts = shlex.split(command_line, posix=os.name != "nt")
+    except ValueError:
+        parts = command_line.split()
+
+    has_server_script = any(os.path.basename(part) == "memory_ui_server.py" for part in parts)
+    if not has_server_script:
+        return False
+
+    normalized_project_dir = _normalize_local_path(expected_project_dir)
+    normalized_db_path = _normalize_local_path(expected_db_path)
+    normalized_parts = {
+        _normalize_local_path(part)
+        for part in parts
+        if isinstance(part, str) and part.strip()
+    }
+
+    if normalized_project_dir and normalized_project_dir not in normalized_parts:
+        return False
+    if normalized_db_path and normalized_db_path not in normalized_parts:
+        return False
+    return True
+
+
+def _is_memory_ui_reachable(
+    url: str,
+    timeout: float = 0.35,
+    expected_project_dir: Optional[str] = None,
+    expected_db_path: Optional[str] = None,
+) -> bool:
     try:
         with urllib.request.urlopen(f"{url}/api/healthz", timeout=timeout) as response:
             if response.status != 200:
                 return False
             payload = json.loads(response.read().decode("utf-8"))
-            return bool(payload.get("ok"))
+            if not payload.get("ok"):
+                return False
+
+            if expected_project_dir is not None:
+                health_project_dir = _normalize_local_path(payload.get("project_dir"))
+                if health_project_dir != _normalize_local_path(expected_project_dir):
+                    return False
+
+            if expected_db_path is not None:
+                health_db_path = _normalize_local_path(payload.get("db_path"))
+                if health_db_path != _normalize_local_path(expected_db_path):
+                    return False
+
+            return True
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, json.JSONDecodeError):
         return False
 
@@ -947,7 +3218,15 @@ def launch_memory_ui(
     if current_state:
         url = str(current_state.get("url", "")).rstrip("/")
         pid = int(current_state.get("pid", 0) or 0)
-        if url and _is_process_alive(pid) and _is_memory_ui_reachable(url):
+        if (
+            url
+            and _is_process_alive(pid)
+            and _is_memory_ui_reachable(
+                url,
+                expected_project_dir=project_dir,
+                expected_db_path=db_path,
+            )
+        ):
             if open_browser_window:
                 _open_browser(url)
             return {
@@ -988,7 +3267,11 @@ def launch_memory_ui(
         if proc.poll() is not None:
             detail = _read_text_if_exists(project_dir, GUI_LOG_RELATIVE_PATH).strip()
             raise RuntimeError(detail or "La Memory UI terminó antes de quedar lista.")
-        if _is_memory_ui_reachable(url):
+        if _is_memory_ui_reachable(
+            url,
+            expected_project_dir=project_dir,
+            expected_db_path=db_path,
+        ):
             break
         import time
         time.sleep(0.15)
@@ -1029,11 +3312,27 @@ def stop_memory_ui(project_dir: str) -> Dict[str, Any]:
         return {"stopped": False, "reason": "not-running"}
 
     pid = int(state.get("pid", 0) or 0)
-    if _is_process_alive(pid):
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except OSError:
-            pass
+    url = str(state.get("url", "")).rstrip("/")
+    db_path = _project_path(project_dir, os.path.join(".claude", "alfred-memory.db"))
+
+    if not _is_expected_memory_ui_process(
+        pid,
+        url=url,
+        expected_project_dir=project_dir,
+        expected_db_path=db_path,
+    ):
+        _clear_memory_ui_state(project_dir)
+        return {
+            "stopped": False,
+            "reason": "stale-state",
+            "pid": pid,
+            "url": state.get("url"),
+        }
+
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        pass
 
     _clear_memory_ui_state(project_dir)
     return {
@@ -1237,6 +3536,46 @@ def _sync_issue_labels(repo: str, issue_number: int, desired_labels: List[str]) 
     _run_command(args)
 
 
+def _retire_missing_synced_issues(
+    repo: str,
+    previous_task_map: Dict[str, Any],
+    active_task_ids: List[str],
+) -> List[Dict[str, Any]]:
+    """Cierra issues Alfred previamente sincronizados y hoy ausentes localmente."""
+    active = {
+        str(task_id).strip()
+        for task_id in active_task_ids
+        if str(task_id).strip()
+    }
+    retired: List[Dict[str, Any]] = []
+
+    for task_id, payload in previous_task_map.items():
+        normalized_task_id = str(task_id).strip()
+        if not normalized_task_id or normalized_task_id in active:
+            continue
+        if not isinstance(payload, dict):
+            continue
+
+        issue_number = payload.get("number")
+        if not isinstance(issue_number, int):
+            continue
+
+        _set_issue_state(repo, issue_number, should_close=True)
+        _sync_issue_labels(repo, issue_number, ["alfred", "alfred:task"])
+        issue = _get_issue(repo, issue_number) or {}
+        retired.append(
+            {
+                "id": normalized_task_id,
+                "number": issue_number,
+                "url": (issue or {}).get("url", payload.get("url", "")),
+                "title": payload.get("title") or (issue or {}).get("title", ""),
+                "retired_at": _now_utc().isoformat(),
+            }
+        )
+
+    return retired
+
+
 def _set_issue_state(repo: str, issue_number: int, should_close: bool) -> None:
     issue = _get_issue(repo, issue_number)
     if not issue:
@@ -1286,10 +3625,27 @@ def _create_or_update_issue(
     existing_entry = task_map.get(task_id, {}) if isinstance(task_map.get(task_id), dict) else {}
     issue_number = existing_entry.get("number")
     issue = None
+    drift = None
     if isinstance(issue_number, int):
         issue = _get_issue(repo, issue_number)
+        if issue is None:
+            drift = {
+                "scope": "task",
+                "kind": "missing_remote_issue",
+                "task_id": task_id,
+                "title": desired_title,
+                "previous_number": issue_number,
+            }
     if issue is None:
         issue = _find_issue_by_title(repo, desired_title, "alfred:task")
+        if issue is not None and isinstance(issue_number, int):
+            drift = {
+                "scope": "task",
+                "kind": "relinked_by_title",
+                "task_id": task_id,
+                "title": desired_title,
+                "previous_number": issue_number,
+            }
 
     if issue is None:
         proc = _run_command(
@@ -1316,8 +3672,22 @@ def _create_or_update_issue(
         if not match:
             raise RuntimeError(f"No se pudo extraer el número del issue creado: {issue_url}")
         issue_number = int(match.group("number"))
+        if drift is not None:
+            drift = {
+                **drift,
+                "resolution": "recreated",
+                "number": issue_number,
+                "url": issue_url,
+            }
     else:
         issue_number = int(issue["number"])
+        if drift is not None:
+            drift = {
+                **drift,
+                "resolution": "relinked",
+                "number": issue_number,
+                "url": issue.get("url", ""),
+            }
         _run_command(
             [
                 "gh",
@@ -1343,6 +3713,7 @@ def _create_or_update_issue(
         "title": desired_title,
         "status": task["status"],
         "updated_at": _now_utc().isoformat(),
+        "drift": drift,
     }
 
 
@@ -1352,6 +3723,7 @@ def _board_issue_body(
     tasks: List[Dict[str, Any]],
     task_map: Dict[str, Dict[str, Any]],
     next_action: Dict[str, str],
+    internal_omitted: int = 0,
 ) -> str:
     grouped: Dict[str, List[str]] = {key: [] for key in _KANBAN_RELATIVE_BY_STATUS}
     for task in tasks:
@@ -1365,9 +3737,23 @@ def _board_issue_body(
         "",
         f"- Repositorio: `{repo}`",
         f"- Sincronizado en: {_now_utc().isoformat()}",
+        f"- Foco operativo actual: {next_action.get('focus', 'Siguiente paso recomendado')}",
+        (
+            f"- Fuente de la recomendación: {next_action.get('source_label', next_action.get('source', 'desconocida'))} "
+            f"(`{next_action.get('source', 'desconocida')}`)"
+        ),
         f"- Siguiente paso recomendado: `/alfred-dev:{next_action.get('command', 'alfred')}`",
+        (
+            "- Qué hacer ahora: "
+            + next_action.get(
+                "directive",
+                "Avanza con el siguiente comando recomendado.",
+            )
+        ),
         f"- Motivo: {next_action.get('reason', 'Sin razón disponible.')}",
     ]
+    if internal_omitted:
+        lines.append(f"- Tareas internas omitidas del sync: {internal_omitted}")
     for status in ("in-progress", "blocked", "backlog", "done"):
         items = grouped.get(status) or []
         lines.extend(["", f"### {_KANBAN_STATUS_LABELS[status].title()}", ""])
@@ -1394,10 +3780,32 @@ def _ensure_board_issue(
             board_issue_number = value
 
     issue = _get_issue(repo, board_issue_number) if board_issue_number else None
+    drift = None
+    if board_issue_number and issue is None:
+        drift = {
+            "scope": "board",
+            "kind": "missing_remote_issue",
+            "title": board_title,
+            "previous_number": board_issue_number,
+        }
     if issue is None:
         issue = _find_issue_by_title(repo, board_title, _GH_SYNC_LABEL)
+        if issue is not None and board_issue_number:
+            drift = {
+                **(drift or {"scope": "board", "kind": "relinked_by_title", "title": board_title}),
+                "resolution": "relinked",
+                "number": int(issue["number"]),
+                "url": issue.get("url", ""),
+            }
     if issue is None:
         issue = _find_issue_by_title(repo, legacy_board_title, _GH_LEGACY_BOARD_LABEL)
+        if issue is not None and board_issue_number:
+            drift = {
+                **(drift or {"scope": "board", "kind": "relinked_legacy_title", "title": board_title}),
+                "resolution": "relinked",
+                "number": int(issue["number"]),
+                "url": issue.get("url", ""),
+            }
 
     desired_labels = ["alfred", _GH_SYNC_LABEL]
     if issue is None:
@@ -1423,6 +3831,13 @@ def _ensure_board_issue(
         if not match:
             raise RuntimeError(f"No se pudo extraer el número del issue paraguas de SonIA Sync: {issue_url}")
         issue_number = int(match.group("number"))
+        if drift is not None:
+            drift = {
+                **drift,
+                "resolution": "recreated",
+                "number": issue_number,
+                "url": issue_url,
+            }
     else:
         issue_number = int(issue["number"])
         _run_command(
@@ -1448,20 +3863,49 @@ def _ensure_board_issue(
         "number": issue_number,
         "url": (final_issue or {}).get("url", ""),
         "title": board_title,
+        "drift": drift,
     }
 
 
 def render_github_sync_markdown(result: Dict[str, Any]) -> str:
+    next_action = result.get("next_action", {"command": "alfred", "reason": ""})
     lines = [
         "## SonIA Sync",
         "",
         f"- Repo: `{result.get('repo', '-')}`",
         f"- Issue paraguas: {result.get('board_issue', {}).get('url', 'pendiente')}",
         f"- Tareas sincronizadas: {len(result.get('tasks', []))}",
+        f"- Foco operativo actual: {next_action.get('focus', 'Siguiente paso recomendado')}",
+        (
+            f"- Fuente de la recomendación: {next_action.get('source_label', next_action.get('source', 'desconocida'))} "
+            f"(`{next_action.get('source', 'desconocida')}`)"
+        ),
     ]
     skipped = result.get("skipped", [])
+    internal_omitted = result.get("internal_omitted", [])
+    retired = result.get("retired", [])
+    remote_drift = result.get("remote_drift", [])
     if skipped:
         lines.append(f"- Tareas omitidas: {len(skipped)}")
+    if internal_omitted:
+        lines.append(f"- Tareas internas omitidas: {len(internal_omitted)}")
+    if retired:
+        lines.append(f"- Issues retiradas por drift local: {len(retired)}")
+    if remote_drift:
+        lines.append(f"- Drift remoto corregido: {len(remote_drift)}")
+    lines.extend(
+        [
+            f"- Siguiente paso recomendado: `/alfred-dev:{next_action.get('command', 'alfred')}`",
+            (
+                "- Qué hacer ahora: "
+                + next_action.get(
+                    "directive",
+                    "Avanza con el siguiente comando recomendado.",
+                )
+            ),
+            f"- Motivo: {next_action.get('reason', 'Sin razón disponible.')}",
+        ]
+    )
     lines.extend(["", "### Issues", ""])
     for item in result.get("tasks", []):
         lines.append(
@@ -1471,10 +3915,48 @@ def render_github_sync_markdown(result: Dict[str, Any]) -> str:
         lines.extend(["", "### Omitidas", ""])
         for task in skipped:
             lines.append(f"- {task.get('title', 'sin título')} — sin ID [T-XXX]")
+    if internal_omitted:
+        lines.extend(["", "### Internas omitidas", ""])
+        for task in internal_omitted:
+            lines.append(f"- {_task_reference(task)} — tipo `{_effective_task_type(task)}`")
+    if retired:
+        lines.extend(["", "### Retiradas del espejo GitHub", ""])
+        for item in retired:
+            issue_ref = f"#{item.get('number')}" if item.get("number") else "sin issue"
+            label = item.get("title") or item.get("id") or "sin título"
+            lines.append(f"- {label} — {issue_ref} cerrado por no existir ya en SonIA")
+    if remote_drift:
+        lines.extend(["", "### Drift remoto corregido", ""])
+        for item in remote_drift:
+            resolution = item.get("resolution", "")
+            new_issue_ref = f"#{item.get('number')}" if item.get("number") else "sin issue"
+            old_issue_ref = (
+                f"#{item.get('previous_number')}"
+                if item.get("previous_number")
+                else "sin issue previa"
+            )
+            if item.get("scope") == "board":
+                label = "Issue paraguas SonIA Sync"
+            else:
+                label = item.get("title") or item.get("task_id") or "sin título"
+
+            if resolution == "recreated":
+                lines.append(
+                    f"- {label} — {old_issue_ref} ya no existía en remoto; recreada como {new_issue_ref}."
+                )
+            elif resolution == "relinked":
+                lines.append(
+                    f"- {label} — {old_issue_ref} ya no cuadraba; religada a {new_issue_ref}."
+                )
+            else:
+                lines.append(
+                    f"- {label} — se detectó drift remoto y quedó resuelto en {new_issue_ref}."
+                )
     return "\n".join(lines).strip() + "\n"
 
 
 def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str, Any]:
+    normalize_kanban_task_types(project_dir)
     board = load_kanban_board(project_dir)
     tasks = [
         task
@@ -1483,6 +3965,27 @@ def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str,
     ]
     if not tasks:
         raise RuntimeError("No hay tareas en docs/project/kanban/ para sincronizar.")
+
+    validation = validate_operational_artifacts(project_dir)
+    if validation.get("errors"):
+        raise RuntimeError(
+            "El kanban no se puede sincronizar de forma fiable: "
+            + "; ".join(validation["errors"])
+        )
+
+    syncable_tasks = [
+        task for task in tasks
+        if _is_syncable_kanban_task(task) and task.get("id")
+    ]
+    skipped = [
+        task for task in tasks
+        if _is_syncable_kanban_task(task) and not task.get("id")
+    ]
+    internal_omitted = [task for task in tasks if not _is_syncable_kanban_task(task)]
+    if not syncable_tasks:
+        raise RuntimeError(
+            "No hay tareas con identificador [T-XXX] para sincronizar a GitHub Issues."
+        )
 
     _ensure_gh_ready()
     repo = _detect_github_repo(project_dir, raw_request=raw_request)
@@ -1493,22 +3996,36 @@ def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str,
     if not isinstance(sync_state, dict) or sync_state.get("repo") != repo:
         sync_state = {"version": 1, "repo": repo, "tasks": {}}
 
+    previous_task_map = sync_state.get("tasks", {}) if isinstance(sync_state.get("tasks"), dict) else {}
     task_map: Dict[str, Dict[str, Any]] = {}
     synced_tasks: List[Dict[str, Any]] = []
-    skipped: List[Dict[str, Any]] = []
-    for task in tasks:
-        if not task.get("id"):
-            skipped.append(task)
-            continue
+    remote_drift: List[Dict[str, Any]] = []
+    for task in syncable_tasks:
         issue_info = _create_or_update_issue(repo, task, sync_state)
         merged = {**task, **issue_info}
         task_map[task["id"]] = issue_info
         synced_tasks.append(merged)
+        if isinstance(issue_info.get("drift"), dict):
+            remote_drift.append(issue_info["drift"])
+    retired = _retire_missing_synced_issues(
+        repo,
+        previous_task_map,
+        [task.get("id", "") for task in syncable_tasks],
+    )
 
     project_name = _detect_project_name(project_dir, _load_package_json(project_dir))
     next_action = suggest_next_action(project_dir)
-    board_body = _board_issue_body(project_name, repo, tasks, task_map, next_action)
+    board_body = _board_issue_body(
+        project_name,
+        repo,
+        syncable_tasks,
+        task_map,
+        next_action,
+        internal_omitted=len(internal_omitted),
+    )
     board_issue = _ensure_board_issue(repo, project_name, board_body, sync_state)
+    if isinstance(board_issue.get("drift"), dict):
+        remote_drift.append(board_issue["drift"])
 
     sync_record = {
         "version": 1,
@@ -1517,6 +4034,9 @@ def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str,
         "board_issue": board_issue,
         "tasks": task_map,
         "skipped": [task.get("title", "") for task in skipped],
+        "internal_omitted": [_task_reference(task) for task in internal_omitted],
+        "retired": retired,
+        "remote_drift": remote_drift,
     }
     os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
     with open(sync_path, "w", encoding="utf-8") as fh:
@@ -1531,6 +4051,9 @@ def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str,
             "board_issue": board_issue,
             "tasks": synced_tasks,
             "skipped": skipped,
+            "internal_omitted": internal_omitted,
+            "retired": retired,
+            "remote_drift": remote_drift,
         }))
 
     state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
@@ -1543,6 +4066,9 @@ def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str,
         "board_issue": board_issue,
         "tasks": synced_tasks,
         "skipped": skipped,
+        "internal_omitted": internal_omitted,
+        "retired": retired,
+        "remote_drift": remote_drift,
         "sync_path": sync_path,
         "sync_md_path": sync_md_path,
         "bypass_path": bypass_path,
@@ -1554,15 +4080,38 @@ def _extract_recommended_alfred_command(markdown: str) -> Optional[str]:
     if not markdown:
         return None
 
-    match = re.search(
-        r"/alfred-dev:(feature|quick|fix|spike|audit|ship|discuss|map-codebase)",
-        markdown,
-        flags=re.IGNORECASE,
-    )
-    if not match:
-        return None
+    def _extract_commands(text: str) -> List[str]:
+        commands: List[str] = []
+        seen = set()
+        for match in re.finditer(
+            r"/alfred-dev:(?P<command>[a-z0-9-]+)\b",
+            text,
+            flags=re.IGNORECASE,
+        ):
+            command = match.group("command").lower()
+            if command not in _KNOWN_ALFRED_COMMANDS or command in seen:
+                continue
+            seen.add(command)
+            commands.append(command)
+        return commands
 
-    return match.group(1).lower()
+    lines = markdown.splitlines()
+    for index, raw_line in enumerate(lines):
+        normalized_line = _normalize_free_text(re.sub(r"[*_`#>-]+", " ", raw_line))
+        if (
+            "comando recomendado" not in normalized_line
+            and "siguiente comando recomendado" not in normalized_line
+        ):
+            continue
+        window = "\n".join(lines[index : index + 4])
+        commands = _extract_commands(window)
+        if commands:
+            return commands[0]
+
+    commands = _extract_commands(markdown)
+    if len(commands) == 1:
+        return commands[0]
+    return None
 
 
 def _read_json_file(path: str) -> Any:
@@ -1831,10 +4380,27 @@ def _append_helper_list_artifact(
     title: str,
     intro: str,
     items: List[str],
+    task_agent: str = "",
 ) -> str:
     path = _project_path(project_dir, relative_path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     existing_markdown = _read_text_if_exists(project_dir, relative_path)
+
+    if relative_path in _KANBAN_RELATIVE_PATHS:
+        status = next(
+            lane for lane, lane_path in _KANBAN_RELATIVE_BY_STATUS.items()
+            if lane_path == relative_path
+        )
+        for item in items:
+            create_kanban_task(
+                project_dir,
+                status,
+                title=item,
+                agent=task_agent,
+                notes=intro,
+            )
+        return path
+
     existing_items = _extract_markdown_list_items(existing_markdown)
     merged_items = _merge_unique_items(existing_items, items)
 
@@ -1858,6 +4424,7 @@ def _append_helper_list_artifact(
 def _seed_helper_operational_artifacts(
     project_dir: str,
     *,
+    helper_name: str = "alfred",
     progress_items: Optional[List[str]] = None,
     traceability_items: Optional[List[str]] = None,
     backlog_items: Optional[List[str]] = None,
@@ -1896,6 +4463,7 @@ def _seed_helper_operational_artifacts(
                 title="Backlog",
                 intro="Pendiente por atacar a continuación.",
                 items=backlog_items,
+                task_agent=f"alfred:{helper_name}",
             )
         )
 
@@ -1907,6 +4475,7 @@ def _seed_helper_operational_artifacts(
                 title="In progress",
                 intro="Trabajo activo visible para SonIA y la Memory UI.",
                 items=in_progress_items,
+                task_agent=f"alfred:{helper_name}",
             )
         )
 
@@ -1918,6 +4487,7 @@ def _seed_helper_operational_artifacts(
                 title="Blocked",
                 intro="Dependencias o riesgos que frenan el avance.",
                 items=blocked_items,
+                task_agent=f"alfred:{helper_name}",
             )
         )
 
@@ -2009,10 +4579,31 @@ def render_codebase_map_summary(result: Dict[str, Any]) -> str:
 
 def render_discovery_summary(result: Dict[str, Any]) -> str:
     """Resumen breve listo para devolver tras discuss helper-first."""
+    scope_items = result.get("scope_items") or []
+    open_questions = result.get("open_questions") or []
+    risks = result.get("risks") or []
+    scope_line = (
+        f"- Alcance inicial: {scope_items[0]}\n"
+        if isinstance(scope_items, list) and scope_items
+        else ""
+    )
+    question_line = (
+        f"- Pregunta abierta clave: {open_questions[0]}\n"
+        if isinstance(open_questions, list) and open_questions
+        else ""
+    )
+    risk_line = (
+        f"- Riesgo principal: {risks[0]}\n"
+        if isinstance(risks, list) and risks
+        else ""
+    )
     return (
         "## Refinado preparado\n\n"
         f"- Foco: `{result.get('description', 'siguiente trabajo')}`\n"
         f"- Actor principal: `{result.get('actor', 'por definir')}`\n"
+        f"{scope_line}"
+        f"{question_line}"
+        f"{risk_line}"
         f"- Artefactos: `{DISCOVERY_MD_RELATIVE_PATH}` y `{CURRENT_RELATIVE_PATH}`\n"
         f"- Siguiente comando recomendado: `/alfred-dev:{result.get('recommended_command', 'feature')}`\n"
     )
@@ -2123,6 +4714,7 @@ def write_codebase_map_files(project_dir: str, raw_request: str = "") -> Dict[st
     stack_summary = ", ".join(record["stack_details"])
     seeded_artifacts = _seed_helper_operational_artifacts(
         project_dir,
+        helper_name="map-codebase",
         progress_items=[
             "Mapa brownfield preparado y persistido para orientar el siguiente trabajo.",
             f"Stack detectado: {stack_summary}.",
@@ -2455,12 +5047,44 @@ def write_uat_files(project_dir: str, raw_request: str = "") -> Dict[str, Any]:
     with open(markdown_path, "w", encoding="utf-8") as fh:
         fh.write(render_uat_markdown(record))
 
+    kanban_sync = _sync_kanban_after_verify(project_dir, target, record)
+    if target.get("source") == "completed-session":
+        state_path = _project_path(project_dir, STATE_RELATIVE_PATH)
+        session = load_state(state_path)
+        if (
+            isinstance(session, dict)
+            and session.get("fase_actual") == "completado"
+            and record.get("target_id") == target.get("target_id")
+        ):
+            save_state(session, state_path)
+
     return {
         "json_path": json_path,
         "markdown_path": markdown_path,
         "status": record["status"],
         "target_id": record["target_id"],
         "next_command": record["next_command"],
+        **kanban_sync,
+    }
+
+
+def _build_next_action_payload(
+    command: str,
+    reason: str,
+    source: str,
+    *,
+    focus: str,
+    directive: str,
+    urgency: str = "media",
+) -> Dict[str, str]:
+    return {
+        "command": command,
+        "reason": reason,
+        "source": source,
+        "source_label": _NEXT_ACTION_SOURCE_LABELS.get(source, source or "desconocida"),
+        "focus": focus,
+        "directive": directive,
+        "urgency": urgency,
     }
 
 
@@ -2472,115 +5096,214 @@ def suggest_verify_action(project_dir: str) -> Optional[Dict[str, str]]:
 
     uat = load_uat(project_dir)
     if not uat or uat.get("target_id") != target["target_id"]:
-        return {
-            "command": "verify",
-            "reason": (
+        return _build_next_action_payload(
+            "verify",
+            (
                 "El último flujo completado todavía no tiene una verificación "
                 "manual/UAT registrada."
             ),
-            "source": "verify",
-        }
+            "verify",
+            focus="Cerrar la verificación pendiente",
+            directive=(
+                "Prepara o registra la UAT del último entregable antes de abrir "
+                "otro flujo nuevo."
+            ),
+            urgency="alta",
+        )
 
     if uat.get("status") == "pending":
-        return {
-            "command": "verify",
-            "reason": (
-                "La verificación manual/UAT del último flujo completado sigue pendiente."
+        return _build_next_action_payload(
+            "verify",
+            "La verificación manual/UAT del último flujo completado sigue pendiente.",
+            "verify",
+            focus="Cerrar la verificación pendiente",
+            directive=(
+                "Completa o actualiza la UAT pendiente antes de continuar con un "
+                "nuevo ciclo de trabajo."
             ),
-            "source": "verify",
-        }
+            urgency="alta",
+        )
 
     return None
 
 
 def suggest_next_action(project_dir: str) -> Dict[str, str]:
     """Sugiere el siguiente comando operativo con una prioridad estable."""
-    state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
-    if state and state.get("fase_actual") != "completado":
-        return {
-            "command": "resume",
-            "reason": (
-                f"Hay una sesión activa de '{state['comando']}' "
-                f"en la fase '{state['fase_actual']}'."
+    state = _load_active_session_state(project_dir)
+    if state is not None:
+        command = state.get("comando", "desconocido")
+        phase = state.get("fase_actual", "desconocida")
+        return _build_next_action_payload(
+            "resume",
+            f"Hay una sesión activa de '{command}' en la fase '{phase}'.",
+            "state",
+            focus="Retomar el flujo en curso",
+            directive=(
+                f"Reanuda `{command}` en `{phase}` y trabaja sobre la gate pendiente "
+                "sin abrir otro flujo."
             ),
-            "source": "state",
-        }
+            urgency="alta",
+        )
 
     handoff = load_handoff(project_dir)
     if handoff and not handoff.get("resolved", False):
-        return {
-            "command": "resume",
-            "reason": (
+        return _build_next_action_payload(
+            "resume",
+            (
                 f"Existe un handoff pendiente para '{handoff['command']}' "
                 f"en la fase '{handoff['phase']}'."
             ),
-            "source": "handoff",
-        }
+            "handoff",
+            focus="Recuperar el handoff pendiente",
+            directive=(
+                f"Retoma `{handoff['command']}` desde `{handoff['phase']}` con "
+                f"`{handoff.get('resume_command', '/alfred-dev:resume')}`."
+            ),
+            urgency="alta",
+        )
 
     verify_suggestion = suggest_verify_action(project_dir)
     if verify_suggestion is not None:
         return verify_suggestion
 
     if needs_codebase_map(project_dir):
-        return {
-            "command": "map-codebase",
-            "reason": (
+        return _build_next_action_payload(
+            "map-codebase",
+            (
                 "El proyecto ya tiene código, pero todavía no existe un mapa "
                 "persistente del codebase en docs/project/."
             ),
-            "source": "brownfield",
-        }
+            "brownfield",
+            focus="Mapear el codebase brownfield",
+            directive=(
+                "Genera el mapa brownfield antes de abrir un flujo nuevo para que "
+                "el contexto operativo quede persistido."
+            ),
+            urgency="alta",
+        )
 
     discovery_md = _read_text_if_exists(project_dir, DISCOVERY_MD_RELATIVE_PATH)
     discovery_command = _extract_recommended_alfred_command(discovery_md)
     if discovery_command is not None:
-        return {
-            "command": discovery_command,
-            "reason": (
+        return _build_next_action_payload(
+            discovery_command,
+            (
                 "Existe un refinado previo en docs/project/discovery.md "
                 f"que recomienda continuar con '{discovery_command}'."
             ),
-            "source": "discovery",
-        }
+            "discovery",
+            focus="Seguir la recomendación del discovery",
+            directive=(
+                f"Continúa con `/alfred-dev:{discovery_command}` usando el refinado "
+                "persistido como base operativa."
+            ),
+            urgency="media",
+        )
+
+    current_md = _read_text_if_exists(project_dir, CURRENT_RELATIVE_PATH)
+    current_command = _extract_recommended_alfred_command(current_md)
+    if current_command is not None:
+        return _build_next_action_payload(
+            current_command,
+            (
+                "Existe un estado operativo en docs/project/current.md "
+                f"que recomienda continuar con '{current_command}'."
+            ),
+            "current",
+            focus="Seguir el estado operativo persistido",
+            directive=(
+                f"Continúa con `/alfred-dev:{current_command}` apoyándote en "
+                "`docs/project/current.md` y los artefactos ya sembrados."
+            ),
+            urgency="media",
+        )
 
     if project_has_codebase(project_dir):
-        return {
-            "command": _GREENFIELD_COMMAND,
-            "reason": (
+        return _build_next_action_payload(
+            _GREENFIELD_COMMAND,
+            (
                 "No hay sesión activa. Alfred puede dirigir el siguiente flujo "
                 "usando el contexto ya existente del proyecto."
             ),
-            "source": "project",
-        }
+            "project",
+            focus="Elegir el siguiente flujo razonable",
+            directive=(
+                "Abre `/alfred-dev:alfred` para decidir el siguiente flujo sobre el "
+                "contexto ya existente del proyecto."
+            ),
+            urgency="media",
+        )
 
-    return {
-        "command": _GREENFIELD_COMMAND,
-        "reason": (
+    return _build_next_action_payload(
+        _GREENFIELD_COMMAND,
+        (
             "No hay trabajo en curso ni un codebase brownfield claro. "
             "Conviene empezar por el asistente contextual."
         ),
-        "source": "default",
-    }
+        "default",
+        focus="Arrancar el contexto de trabajo",
+        directive=(
+            "Empieza por `/alfred-dev:alfred` para elegir el flujo correcto y "
+            "sembrar el contexto inicial."
+        ),
+        urgency="media",
+    )
 
 
-def build_progress_snapshot(project_dir: str) -> Dict[str, Any]:
+def render_next_markdown(suggestion: Dict[str, str]) -> str:
+    lines = [
+        "## Siguiente paso operativo",
+        "",
+        f"- Foco: {suggestion.get('focus', 'Siguiente paso recomendado')}",
+        (
+            f"- Fuente: {suggestion.get('source_label', suggestion.get('source', 'desconocida'))} "
+            f"(`{suggestion.get('source', 'desconocida')}`)"
+        ),
+        f"- Comando: `/alfred-dev:{suggestion.get('command', 'alfred')}`",
+        (
+            "- Qué hacer ahora: "
+            + suggestion.get(
+                "directive",
+                "Avanza con el siguiente comando recomendado.",
+            )
+        ),
+        f"- Motivo: {suggestion.get('reason', 'Sin razón disponible.')}",
+    ]
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_progress_snapshot(
+    project_dir: str,
+    *,
+    arm_bypass: bool = False,
+    source_command: str = "/alfred-dev:progress",
+) -> Dict[str, Any]:
     """Construye un resumen operativo a partir de artefactos de SonIA y continuidad."""
     state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
     handoff = load_handoff(project_dir)
     uat = load_uat(project_dir)
+    has_active_state = bool(
+        state
+        and state.get("fase_actual") != "completado"
+        and not is_session_paused(state)
+    )
+    has_paused_state = bool(
+        state
+        and state.get("fase_actual") != "completado"
+        and is_session_paused(state)
+    )
 
     progress_md = _read_text_if_exists(project_dir, PROGRESS_MD_RELATIVE_PATH)
     traceability_md = _read_text_if_exists(project_dir, TRACEABILITY_MD_RELATIVE_PATH)
-    backlog_md = _read_text_if_exists(project_dir, KANBAN_BACKLOG_RELATIVE_PATH)
-    in_progress_md = _read_text_if_exists(project_dir, KANBAN_IN_PROGRESS_RELATIVE_PATH)
-    done_md = _read_text_if_exists(project_dir, KANBAN_DONE_RELATIVE_PATH)
-    blocked_md = _read_text_if_exists(project_dir, KANBAN_BLOCKED_RELATIVE_PATH)
     current_md = _read_text_if_exists(project_dir, CURRENT_RELATIVE_PATH)
+    board = load_kanban_board(project_dir)
+    visible_board = _filter_kanban_board_tasks(board, _is_visible_kanban_task)
+    type_counts = _count_kanban_task_types(board)
 
-    backlog_items = _extract_markdown_list_items(backlog_md)
-    in_progress_items = _extract_markdown_list_items(in_progress_md)
-    done_items = _extract_markdown_list_items(done_md)
-    blocked_items = _extract_markdown_list_items(blocked_md)
+    backlog_items = [_task_reference(task) for task in visible_board.get("backlog", [])]
+    in_progress_items = [_task_reference(task) for task in visible_board.get("in-progress", [])]
+    done_items = [_task_reference(task) for task in visible_board.get("done", [])]
+    blocked_items = [_task_reference(task) for task in visible_board.get("blocked", [])]
 
     total_items = (
         len(backlog_items)
@@ -2602,13 +5325,19 @@ def build_progress_snapshot(project_dir: str) -> Dict[str, Any]:
                 (
                     f"Flujo activo: `{state.get('comando', 'desconocido')}` en "
                     f"`{state.get('fase_actual', 'desconocida')}`."
-                    if state and state.get("fase_actual") != "completado"
+                    if has_active_state
                     else ""
                 ),
                 (
                     f"Handoff pendiente para `{handoff.get('command', 'desconocido')}` "
                     f"en `{handoff.get('phase', 'desconocida')}`."
                     if handoff and not handoff.get("resolved", False)
+                    else ""
+                ),
+                (
+                    f"Sesión pausada: `{state.get('comando', 'desconocido')}` en "
+                    f"`{state.get('fase_actual', 'desconocida')}`."
+                    if has_paused_state and not (handoff and not handoff.get("resolved", False))
                     else ""
                 ),
                 f"Siguiente paso sugerido: `/alfred-dev:{next_action.get('command', 'alfred')}`.",
@@ -2623,6 +5352,12 @@ def build_progress_snapshot(project_dir: str) -> Dict[str, Any]:
                 (
                     f"Kanban actual: {len(done_items)} done, {len(in_progress_items)} in progress, "
                     f"{len(backlog_items)} backlog, {len(blocked_items)} blocked."
+                ),
+                (
+                    f"Tareas internas de coordinación: {type_counts['internal']} "
+                    f"(fase: {type_counts['phase']}, verify: {type_counts['verify']})."
+                    if type_counts["internal"]
+                    else ""
                 ),
                 (
                     f"Progreso estimado: {progress_pct} %."
@@ -2652,27 +5387,227 @@ def build_progress_snapshot(project_dir: str) -> Dict[str, Any]:
         ]
 
     bypass_path = None
-    if state and state.get("fase_actual") != "completado":
-        bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:progress")
+    if arm_bypass and state and state.get("fase_actual") != "completado":
+        bypass_path = arm_stop_hook_bypass(project_dir, source_command)
+
+    kanban_payload = {
+        "backlog": backlog_items,
+        "in_progress": in_progress_items,
+        "done": done_items,
+        "blocked": blocked_items,
+        "total": total_items,
+        "progress_pct": progress_pct,
+        "internal_total": type_counts["internal"],
+        "phase_total": type_counts["phase"],
+        "verify_total": type_counts["verify"],
+    }
+    overview_cards = _build_progress_overview_cards(
+        state,
+        handoff,
+        uat,
+        next_action,
+    )
 
     return {
         "state": state,
         "handoff": handoff,
         "uat": uat,
+        "overview_cards": overview_cards,
         "progress_signals": progress_signals,
         "current_signals": current_signals,
         "traceability_signals": traceability_signals,
-        "kanban": {
-            "backlog": backlog_items,
-            "in_progress": in_progress_items,
-            "done": done_items,
-            "blocked": blocked_items,
-            "total": total_items,
-            "progress_pct": progress_pct,
-        },
+        "project_signal_cards": _build_project_signal_cards(
+            state,
+            current_signals,
+            progress_signals,
+            traceability_signals,
+            kanban_payload,
+            overview_cards=overview_cards,
+        ),
+        "kanban": kanban_payload,
         "next_action": next_action,
         "bypass_path": bypass_path,
     }
+
+
+def _extend_next_action_section(
+    lines: List[str],
+    next_action: Dict[str, str],
+    *,
+    heading: str = "### Siguiente paso recomendado",
+) -> None:
+    lines.extend(
+        [
+            "",
+            heading,
+            "",
+            f"- Foco: {next_action.get('focus', 'Siguiente paso recomendado')}",
+            (
+                f"- Fuente: {next_action.get('source_label', next_action.get('source', 'desconocida'))} "
+                f"(`{next_action.get('source', 'desconocida')}`)"
+            ),
+            f"- Comando: `/alfred-dev:{next_action.get('command', 'alfred')}`",
+            (
+                "- Qué hacer ahora: "
+                + next_action.get(
+                    "directive",
+                    "Avanza con el siguiente comando recomendado.",
+                )
+            ),
+            f"- Motivo: {next_action.get('reason', 'Sin razón disponible.')}",
+        ]
+    )
+
+
+def build_status_snapshot(
+    project_dir: str,
+    *,
+    arm_bypass: bool = False,
+    source_command: str = "/alfred-dev:status",
+) -> Dict[str, Any]:
+    snapshot = build_progress_snapshot(project_dir, arm_bypass=False)
+    state = snapshot.get("state")
+    board = load_kanban_board(project_dir)
+    uat = snapshot.get("uat")
+    phase_rows = _build_phase_doc_rows(state, board) if isinstance(state, dict) else []
+    artifacts = (
+        _dedupe_artifact_paths(list((state or {}).get("artefactos") or []))
+        if isinstance(state, dict)
+        else []
+    )
+    bypass_path = None
+    if (
+        arm_bypass
+        and isinstance(state, dict)
+        and state.get("fase_actual") != "completado"
+    ):
+        bypass_path = arm_stop_hook_bypass(project_dir, source_command)
+
+    return {
+        **snapshot,
+        "phase_rows": phase_rows,
+        "artifacts": artifacts,
+        "session_status_label": (
+            _session_status_label(state, uat)
+            if isinstance(state, dict)
+            else "sin sesión activa"
+        ),
+        "team_source": (
+            _session_team_source_label(state)
+            if isinstance(state, dict)
+            else ""
+        ),
+        "pending_gate": (
+            get_pending_gate(state)
+            if isinstance(state, dict) and state.get("fase_actual") != "completado"
+            else ""
+        ),
+        "bypass_path": bypass_path,
+    }
+
+
+def render_status_markdown(snapshot: Dict[str, Any]) -> str:
+    state = snapshot.get("state")
+    handoff = snapshot.get("handoff")
+    uat = snapshot.get("uat")
+    kanban = snapshot.get("kanban", {})
+    phase_rows = snapshot.get("phase_rows", [])
+    next_action = snapshot.get("next_action", {"command": "alfred", "reason": ""})
+    team_source = snapshot.get("team_source", "")
+    pending_gate = snapshot.get("pending_gate", "")
+    artifacts = snapshot.get("artifacts", [])
+
+    lines = ["## Estado operativo de Alfred Dev", ""]
+
+    if isinstance(state, dict):
+        lines.extend(
+            [
+                "### Sesión",
+                "",
+                f"- Flujo: `{state.get('comando', 'desconocido')}`",
+                f"- Descripción: {state.get('descripcion', 'Sin descripción')}",
+                f"- Estado: {snapshot.get('session_status_label', 'desconocido')}",
+            ]
+        )
+        if state.get("fase_actual") != "completado":
+            lines.append(f"- Fase actual: `{state.get('fase_actual', 'desconocida')}`")
+        if pending_gate:
+            lines.append(f"- Gate pendiente: `{pending_gate}`")
+        if team_source:
+            lines.append(f"- Origen del equipo runtime: {team_source}.")
+        if handoff and not handoff.get("resolved", False):
+            lines.append(
+                f"- Handoff pendiente: reanudar con `{handoff.get('resume_command', '/alfred-dev:resume')}` desde `{handoff.get('phase', 'desconocida')}`."
+            )
+        on_demand_optionals = _session_on_demand_optionals_for_flow(state)
+        if on_demand_optionals:
+            lines.append(
+                "- Opcionales solo bajo demanda: "
+                + ", ".join(f"`{agent}`" for agent in on_demand_optionals)
+                + "."
+            )
+    elif handoff and not handoff.get("resolved", False):
+        lines.extend(
+            [
+                "### Handoff",
+                "",
+                f"- Flujo pendiente: `{handoff.get('command', 'desconocido')}`",
+                f"- Fase: `{handoff.get('phase', 'desconocida')}`",
+                f"- Reanudar con: `{handoff.get('resume_command', '/alfred-dev:resume')}`",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "### Sesión",
+                "",
+                "No hay sesión activa ni handoff pendiente visible.",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "### Proyecto",
+            "",
+            f"- Kanban visible: {len(kanban.get('done', []))} done, {len(kanban.get('in_progress', []))} in progress, {len(kanban.get('backlog', []))} backlog, {len(kanban.get('blocked', []))} blocked.",
+        ]
+    )
+    if kanban.get("internal_total"):
+        lines.append(
+            f"- Tareas internas: {kanban['internal_total']} (fase: {kanban.get('phase_total', 0)}, verify: {kanban.get('verify_total', 0)})."
+        )
+    if kanban.get("progress_pct") is not None:
+        lines.append(f"- Progreso visible estimado: {kanban['progress_pct']} %.")
+    if artifacts:
+        lines.append(f"- Artefactos acumulados en la sesión: {len(artifacts)}.")
+    if uat:
+        lines.append(f"- UAT: {_status_label(uat.get('status', ''))}.")
+
+    if phase_rows:
+        lines.extend(["", "### Fases registradas", ""])
+        for row in phase_rows:
+            summary = f"- `{row['name']}` -> `{row['status']}` · gate `{row['gate']}`"
+            if row["iterations"] > 0:
+                summary += f" · iteraciones {row['iterations']}"
+            if row["artifacts"]:
+                summary += f" · artefactos {len(row['artifacts'])}"
+            lines.append(summary)
+
+    project_signal_cards = snapshot.get("project_signal_cards") or []
+    if project_signal_cards:
+        lines.extend(["", "### Señales operativas", ""])
+        for card in project_signal_cards[:3]:
+            lines.append(f"#### {card.get('title', 'Señal')}")
+            lines.append("")
+            if card.get("description"):
+                lines.append(f"- {card.get('description')}")
+            for item in (card.get("items") or [])[:2]:
+                lines.append(f"- {item}")
+            lines.append("")
+
+    _extend_next_action_section(lines, next_action)
+    return "\n".join(lines).strip() + "\n"
 
 
 def render_progress_markdown(snapshot: Dict[str, Any]) -> str:
@@ -2685,7 +5620,7 @@ def render_progress_markdown(snapshot: Dict[str, Any]) -> str:
 
     lines = ["## Resumen operativo del proyecto", ""]
 
-    if state and state.get("fase_actual") != "completado":
+    if state and state.get("fase_actual") != "completado" and not is_session_paused(state):
         lines.extend(
             [
                 "### Flujo activo",
@@ -2703,6 +5638,17 @@ def render_progress_markdown(snapshot: Dict[str, Any]) -> str:
                 f"- Flujo: `{handoff.get('command', 'desconocido')}`",
                 f"- Fase: `{handoff.get('phase', 'desconocida')}`",
                 f"- Siguiente paso: `{handoff.get('resume_command', '/alfred-dev:resume')}`",
+            ]
+        )
+    elif state and state.get("fase_actual") != "completado" and is_session_paused(state):
+        lines.extend(
+            [
+                "### Sesión pausada",
+                "",
+                f"- Flujo: `{state.get('comando', 'desconocido')}`",
+                f"- Descripción: {state.get('descripcion', 'Sin descripción')}",
+                f"- Fase pausada: `{state.get('fase_actual', 'desconocida')}`",
+                "- Falta un handoff visible; conviene regenerarlo con `/alfred-dev:pause` o retomar con `/alfred-dev:resume`.",
             ]
         )
     else:
@@ -2723,6 +5669,11 @@ def render_progress_markdown(snapshot: Dict[str, Any]) -> str:
             f"- Blocked: {len(kanban.get('blocked', []))}",
         ]
     )
+    if kanban.get("internal_total"):
+        lines.append(
+            f"- Internas: {kanban['internal_total']} "
+            f"(fase: {kanban.get('phase_total', 0)}, verify: {kanban.get('verify_total', 0)})"
+        )
     if kanban.get("progress_pct") is not None:
         lines.append(f"- Progreso estimado: {kanban['progress_pct']} %")
 
@@ -2748,15 +5699,7 @@ def render_progress_markdown(snapshot: Dict[str, Any]) -> str:
         if notes:
             lines.append(f"- Nota principal: {notes}")
 
-    lines.extend(
-        [
-            "",
-            "### Siguiente paso recomendado",
-            "",
-            f"- `/alfred-dev:{next_action.get('command', 'alfred')}`",
-            f"- {next_action.get('reason', 'Sin razón disponible.')}",
-        ]
-    )
+    _extend_next_action_section(lines, next_action)
 
     return "\n".join(lines).strip() + "\n"
 
@@ -2954,6 +5897,7 @@ def write_discovery_files(project_dir: str, raw_request: str = "") -> Dict[str, 
 
     seeded_artifacts = _seed_helper_operational_artifacts(
         project_dir,
+        helper_name="discuss",
         progress_items=[
             f"Refinado previo listo para abrir /alfred-dev:{recommended_command}.",
             f"Objetivo aterrizado: {description}.",
@@ -3008,6 +5952,9 @@ def write_discovery_files(project_dir: str, raw_request: str = "") -> Dict[str, 
         "recommended_command": recommended_command,
         "actor": actor,
         "description": description,
+        "scope_items": record["scope_items"],
+        "open_questions": record["open_questions"],
+        "risks": record["risks"],
     }
 
 
@@ -3046,12 +5993,11 @@ def start_quick_session(project_dir: str, raw_request: str = "") -> Dict[str, An
             "Todavía hay una verificación manual/UAT pendiente. Usa /alfred-dev:verify antes de abrir quick."
         )
 
-    session = create_session("quick", description)
+    session = run_flow("quick", description, project_dir=project_dir)
     session["modo_rapido"] = True
     session["origen"] = "/alfred-dev:quick"
     session["next_after_completion"] = "/alfred-dev:verify"
     os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
-    save_state(session, state_path)
     bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:quick")
     os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
 
@@ -3067,6 +6013,7 @@ def start_quick_session(project_dir: str, raw_request: str = "") -> Dict[str, An
 
     seeded_artifacts = _seed_helper_operational_artifacts(
         project_dir,
+        helper_name="quick",
         traceability_items=[
             "El cambio quick debe seguir siendo acotado y verificable manualmente.",
             (
@@ -3075,13 +6022,17 @@ def start_quick_session(project_dir: str, raw_request: str = "") -> Dict[str, An
                 else "Si aparecen dependencias nuevas, conviene promocionarlo a feature o fix."
             ),
         ],
-        backlog_items=[
-            f"Validar '{session['descripcion']}' con /alfred-dev:verify.",
-        ],
-        in_progress_items=[
-            session["descripcion"],
-        ],
     )
+
+    active_task = _ensure_session_execution_task(project_dir, session)
+    verify_task = _ensure_verification_task(
+        project_dir,
+        description=session["descripcion"],
+        command=session["comando"],
+    )
+    session["kanban_task_id"] = active_task.get("id", "")
+    session["kanban_verify_task_id"] = verify_task.get("id", "")
+    save_state(session, state_path)
 
     _capture_helper_memory(
         project_dir,
@@ -3108,6 +6059,8 @@ def start_quick_session(project_dir: str, raw_request: str = "") -> Dict[str, An
             "artifacts": [
                 CURRENT_RELATIVE_PATH,
                 PROGRESS_MD_RELATIVE_PATH,
+                os.path.relpath(_project_path(project_dir, KANBAN_IN_PROGRESS_RELATIVE_PATH), project_dir),
+                os.path.relpath(_project_path(project_dir, KANBAN_BACKLOG_RELATIVE_PATH), project_dir),
                 *[os.path.relpath(path, project_dir) for path in seeded_artifacts],
             ],
         },
@@ -3122,6 +6075,8 @@ def start_quick_session(project_dir: str, raw_request: str = "") -> Dict[str, An
         "next_command": session["next_after_completion"],
         "bypass_path": bypass_path,
         "seeded_artifacts": seeded_artifacts,
+        "kanban_task_id": session["kanban_task_id"],
+        "kanban_verify_task_id": session["kanban_verify_task_id"],
     }
 
 
@@ -3156,8 +6111,8 @@ def build_handoff(project_dir: str) -> Optional[Dict[str, Any]]:
 def mark_session_paused(project_dir: str) -> Optional[Dict[str, Any]]:
     """Marca la sesión activa como pausada sin cerrarla."""
     state_path = _project_path(project_dir, STATE_RELATIVE_PATH)
-    state = load_state(state_path)
-    if not state or state.get("fase_actual") == "completado":
+    state = _load_active_session_state(project_dir)
+    if state is None:
         return None
 
     state["paused_at"] = _now_utc().isoformat()
@@ -3169,8 +6124,8 @@ def mark_session_paused(project_dir: str) -> Optional[Dict[str, Any]]:
 def clear_session_paused(project_dir: str) -> Optional[Dict[str, Any]]:
     """Elimina la marca de pausa al retomar trabajo."""
     state_path = _project_path(project_dir, STATE_RELATIVE_PATH)
-    state = load_state(state_path)
-    if not state:
+    state = _load_active_session_state(project_dir)
+    if state is None:
         return None
 
     state.pop("paused_at", None)
@@ -3233,13 +6188,30 @@ def load_prefetch_result(project_dir: str) -> Optional[Dict[str, Any]]:
     except FileNotFoundError:
         return None
     except (OSError, json.JSONDecodeError):
+        clear_prefetch_result(project_dir)
         return None
 
     if not isinstance(data, dict):
+        clear_prefetch_result(project_dir)
         return None
 
     required = {"source_command", "prefetched_command", "response_text", "created_at", "expires_at"}
     if not required.issubset(data.keys()):
+        clear_prefetch_result(project_dir)
+        return None
+
+    expires_at_raw = data.get("expires_at")
+    try:
+        expires_at = datetime.fromisoformat(expires_at_raw)
+    except (TypeError, ValueError):
+        clear_prefetch_result(project_dir)
+        return None
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at <= _now_utc():
+        clear_prefetch_result(project_dir)
         return None
 
     return data
@@ -3356,6 +6328,34 @@ def save_prefetch_result(
     return prefetch_path
 
 
+def _prefetch_is_stale_for_current_context(
+    project_dir: str,
+    payload: Dict[str, Any],
+    expected_command: str,
+) -> bool:
+    """Detecta si un prefetch helper-first ha quedado obsoleto."""
+    expected = (expected_command or "").strip().lower()
+    if expected == "memory-ui":
+        return False
+
+    active_state = _load_active_session_state(project_dir)
+    handoff = load_handoff(project_dir)
+    has_unresolved_handoff = bool(handoff and not handoff.get("resolved", False))
+
+    if expected in {"map-codebase", "discuss"}:
+        return active_state is not None or has_unresolved_handoff
+
+    if expected == "alfred":
+        next_action = suggest_next_action(project_dir)
+        return str(next_action.get("source", "")).strip().lower() in {
+            "state",
+            "handoff",
+            "verify",
+        }
+
+    return False
+
+
 def consume_prefetch_result(project_dir: str, expected_command: str) -> Optional[Dict[str, Any]]:
     """Devuelve y consume un prefetch reciente si aplica al comando actual."""
     payload = load_prefetch_result(project_dir)
@@ -3381,6 +6381,10 @@ def consume_prefetch_result(project_dir: str, expected_command: str) -> Optional
     prefetched_command = str(payload.get("prefetched_command", "")).strip().lower()
 
     if expected and expected not in {source_command, prefetched_command}:
+        return None
+
+    if _prefetch_is_stale_for_current_context(project_dir, payload, expected):
+        clear_prefetch_result(project_dir)
         return None
 
     save_prefetch_consumed_marker(project_dir, payload)
@@ -3433,6 +6437,44 @@ def render_handoff_markdown(handoff: Dict[str, Any]) -> str:
     )
 
 
+def render_pause_markdown(result: Dict[str, Any]) -> str:
+    """Renderiza una pausa helper-first en formato humano."""
+    gate = result.get("pending_gate") or "sin gate pendiente detectada"
+    next_step = result.get("next_step") or "Retomar la sesión con `/alfred-dev:resume`."
+    return (
+        "## Sesión pausada\n\n"
+        f"- Flujo: `{result.get('command', '-')}`\n"
+        f"- Descripción: `{result.get('description', '-')}`\n"
+        f"- Fase actual: `{result.get('phase', '-')}`\n"
+        f"- Gate pendiente: {gate}\n"
+        f"- Handoff guardado en: `{HANDOFF_JSON_RELATIVE_PATH}` y `{HANDOFF_MD_RELATIVE_PATH}`\n"
+        f"- Estado actualizado en: `{STATE_RELATIVE_PATH}`\n"
+        f"- Comando de retorno: `/alfred-dev:resume`\n"
+        f"- Siguiente acción: {next_step}\n"
+    )
+
+
+def render_resume_markdown(result: Dict[str, Any]) -> str:
+    """Renderiza una reanudación helper-first en formato humano."""
+    gate = result.get("pending_gate") or "sin gate pendiente detectada"
+    next_step = result.get("next_step") or "Consulta `/alfred-dev:next` para seguir."
+    handoff_note = (
+        f"- Handoff resuelto: `{HANDOFF_JSON_RELATIVE_PATH}`\n"
+        if result.get("handoff_path")
+        else ""
+    )
+    return (
+        "## Sesión reanudada\n\n"
+        f"- Flujo: `{result.get('command', '-')}`\n"
+        f"- Descripción: `{result.get('description', '-')}`\n"
+        f"- Fase actual: `{result.get('phase', '-')}`\n"
+        f"- Gate pendiente: {gate}\n"
+        f"{handoff_note}"
+        f"- Estado activo: `{STATE_RELATIVE_PATH}`\n"
+        f"- Siguiente acción: {next_step}\n"
+    )
+
+
 def write_handoff_files(project_dir: str) -> Optional[Dict[str, str]]:
     """Escribe el handoff en JSON y Markdown. Devuelve sus rutas."""
     handoff = build_handoff(project_dir)
@@ -3464,28 +6506,72 @@ def pause_session(project_dir: str) -> Optional[Dict[str, str]]:
     if state is None:
         return None
 
+    handoff = load_handoff(project_dir) or {}
+
     return {
         **handoff_paths,
         "state_path": _project_path(project_dir, STATE_RELATIVE_PATH),
         "paused_at": state["paused_at"],
+        "command": handoff.get("command", state.get("comando", "")),
+        "description": handoff.get("description", state.get("descripcion", "")),
+        "phase": handoff.get("phase", state.get("fase_actual", "")),
+        "pending_gate": handoff.get("pending_gate", ""),
+        "next_step": handoff.get("next_step", ""),
     }
 
 
 def resume_session(project_dir: str) -> Optional[Dict[str, str]]:
     """Quita la marca de pausa y resuelve el handoff si existe."""
-    state = clear_session_paused(project_dir)
-    if state is None:
+    state_path = _project_path(project_dir, STATE_RELATIVE_PATH)
+    state = _load_active_session_state(project_dir)
+    handoff = load_handoff(project_dir)
+    active_handoff = handoff is not None and not handoff.get("resolved", False)
+
+    if state is None and not active_handoff:
         return None
 
-    handoff = resolve_handoff(project_dir)
-    bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:resume")
-    result = {
-        "state_path": _project_path(project_dir, STATE_RELATIVE_PATH),
-        "resumed_at": state["resumed_at"],
-        "bypass_path": bypass_path,
+    resumed_at = _now_utc().isoformat()
+    result: Dict[str, str] = {
+        "resumed_at": resumed_at,
     }
-    if handoff is not None:
+
+    if state is not None:
+        result["command"] = state.get("comando", "")
+        result["description"] = state.get("descripcion", "")
+        result["phase"] = state.get("fase_actual", "")
+        result["pending_gate"] = get_pending_gate(state)
+        result["next_step"] = (
+            f"Retomar '{state.get('comando', 'flujo')}' desde la fase "
+            f"'{state.get('fase_actual', 'desconocida')}'."
+        )
+    elif active_handoff and handoff is not None:
+        result["command"] = handoff.get("command", "")
+        result["description"] = handoff.get("description", "")
+        result["phase"] = handoff.get("phase", "")
+        result["pending_gate"] = handoff.get("pending_gate", "")
+        result["next_step"] = handoff.get(
+            "next_step",
+            f"Retomar con {handoff.get('resume_command', '/alfred-dev:resume')}.",
+        )
+
+    if state is not None:
+        state.pop("paused_at", None)
+        state.pop("paused_via", None)
+        state["resumed_at"] = resumed_at
+        if state.get("kanban_task_id") or state.get("comando") == "quick":
+            synced_task = _ensure_session_execution_task(project_dir, state)
+            state["kanban_task_id"] = synced_task.get("id", "")
+        save_state(state, state_path)
+        result["state_path"] = state_path
+
+    if active_handoff:
+        handoff["resolved"] = True
+        handoff["resolved_at"] = resumed_at
+        save_handoff(project_dir, handoff)
         result["handoff_path"] = _project_path(project_dir, HANDOFF_JSON_RELATIVE_PATH)
+
+    bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:resume")
+    result["bypass_path"] = bypass_path
     return result
 
 
@@ -3502,15 +6588,18 @@ def _build_parser() -> argparse.ArgumentParser:
 
     pause_parser = subparsers.add_parser("pause", help="Genera el handoff y marca la sesión como pausada")
     pause_parser.add_argument("project_dir", nargs="?", default=".")
+    pause_parser.add_argument("--json", action="store_true", dest="as_json")
 
     resume_parser = subparsers.add_parser("resume", help="Quita la marca de pausa y resuelve el handoff")
     resume_parser.add_argument("project_dir", nargs="?", default=".")
+    resume_parser.add_argument("--json", action="store_true", dest="as_json")
 
     verify_parser = subparsers.add_parser(
         "verify",
         help="Crea o actualiza la verificación manual/UAT",
     )
     verify_parser.add_argument("project_dir", nargs="?", default=".")
+    verify_parser.add_argument("--json", action="store_true", dest="as_json")
     verify_parser.add_argument(
         "--raw",
         default="",
@@ -3524,6 +6613,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     progress_parser.add_argument("project_dir", nargs="?", default=".")
     progress_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    status_parser = subparsers.add_parser(
+        "status",
+        help="Resume el estado operativo de la sesión y del proyecto",
+    )
+    status_parser.add_argument("project_dir", nargs="?", default=".")
+    status_parser.add_argument("--json", action="store_true", dest="as_json")
 
     standup_parser = subparsers.add_parser(
         "standup",
@@ -3548,6 +6644,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Valida la integridad operativa de SonIA y continuidad",
     )
     validate_parser.add_argument("project_dir", nargs="?", default=".")
+
+    normalize_parser = subparsers.add_parser(
+        "normalize-kanban",
+        help="Normaliza tipos de tareas en tableros heredados de SonIA",
+    )
+    normalize_parser.add_argument("project_dir", nargs="?", default=".")
+    normalize_parser.add_argument("--json", action="store_true", dest="as_json")
 
     search_parser = subparsers.add_parser(
         "search",
@@ -3600,6 +6703,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Prepara un refinado ligero para /alfred-dev:discuss",
     )
     discuss_parser.add_argument("project_dir", nargs="?", default=".")
+    discuss_parser.add_argument("--json", action="store_true", dest="as_json")
     discuss_parser.add_argument(
         "--raw",
         default="",
@@ -3656,8 +6760,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.as_json:
             print(json.dumps(suggestion, ensure_ascii=False))
         else:
-            print(f"/alfred-dev:{suggestion['command']}")
-            print(suggestion["reason"])
+            print(render_next_markdown(suggestion))
         return 0
 
     if args.command == "write-handoff":
@@ -3673,7 +6776,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if result is None:
             print("No hay sesión activa para pausar.", file=sys.stderr)
             return 1
-        print(json.dumps(result, ensure_ascii=False))
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_pause_markdown(result))
         return 0
 
     if args.command == "resume":
@@ -3681,7 +6787,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if result is None:
             print("No hay sesión pausada o activa para reanudar.", file=sys.stderr)
             return 1
-        print(json.dumps(result, ensure_ascii=False))
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_resume_markdown(result))
         return 0
 
     if args.command == "verify":
@@ -3690,15 +6799,38 @@ def main(argv: Optional[List[str]] = None) -> int:
         except RuntimeError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print(json.dumps(result, ensure_ascii=False))
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            uat = load_uat(project_dir)
+            if uat is None:
+                print(json.dumps(result, ensure_ascii=False))
+            else:
+                print(render_uat_markdown(uat))
         return 0
 
     if args.command == "progress":
-        snapshot = build_progress_snapshot(project_dir)
+        snapshot = build_progress_snapshot(
+            project_dir,
+            arm_bypass=True,
+            source_command="/alfred-dev:progress",
+        )
         if args.as_json:
             print(json.dumps(snapshot, ensure_ascii=False))
         else:
             print(render_progress_markdown(snapshot))
+        return 0
+
+    if args.command == "status":
+        snapshot = build_status_snapshot(
+            project_dir,
+            arm_bypass=True,
+            source_command="/alfred-dev:status",
+        )
+        if args.as_json:
+            print(json.dumps(snapshot, ensure_ascii=False))
+        else:
+            print(render_status_markdown(snapshot))
         return 0
 
     if args.command == "standup":
@@ -3715,6 +6847,14 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "validate":
         print(render_validation_markdown(validate_operational_artifacts(project_dir)))
+        return 0
+
+    if args.command == "normalize-kanban":
+        result = normalize_kanban_task_types(project_dir)
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_normalize_kanban_markdown(result))
         return 0
 
     if args.command == "search":
@@ -3781,7 +6921,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         except RuntimeError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print(json.dumps(result, ensure_ascii=False))
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_discovery_summary(result))
         return 0
 
     if args.command == "quick":

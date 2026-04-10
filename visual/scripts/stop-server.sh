@@ -33,6 +33,7 @@ fi
 
 PID_FILE="${SESSION_DIR}/state/server.pid"
 LOG_FILE="${SESSION_DIR}/state/server.log"
+SERVER_INFO_FILE="${SESSION_DIR}/state/server-info"
 
 # ---------------------------------------------------------------------------
 # Comprobar si hay un PID registrado
@@ -51,13 +52,67 @@ if [[ -z "$SERVER_PID" ]]; then
   exit 0
 fi
 
+REAL_SESSION_DIR="$(cd "$SESSION_DIR" 2>/dev/null && pwd -P || echo "$SESSION_DIR")"
+
+get_process_command() {
+  local pid="$1"
+  ps eww -p "$pid" -o command= 2>/dev/null || ps -p "$pid" -o command= 2>/dev/null || true
+}
+
+is_expected_visual_process() {
+  local pid="$1"
+  local command_line
+  local server_info_pid=""
+  local server_info_session=""
+  command_line="$(get_process_command "$pid")"
+  [[ -n "$command_line" ]] || return 1
+  [[ "$command_line" == *"server.cjs"* ]] || return 1
+
+  if [[ "$command_line" == *"ALFRED_VISUAL_DIR=$REAL_SESSION_DIR"* ]]; then
+    return 0
+  fi
+
+  if [[ -f "$SERVER_INFO_FILE" ]]; then
+    server_info_pid="$(python3 - <<'PY' "$SERVER_INFO_FILE"
+import json, sys
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+except Exception:
+    print("")
+else:
+    print(data.get("server_pid", ""))
+PY
+)"
+    server_info_session="$(python3 - <<'PY' "$SERVER_INFO_FILE"
+import json, os, sys
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+except Exception:
+    print("")
+else:
+    value = data.get("session_dir", "")
+    if value:
+        print(os.path.realpath(value))
+    else:
+        print("")
+PY
+)"
+  fi
+
+  [[ "$server_info_pid" == "$pid" ]] || return 1
+  [[ "$server_info_session" == "$REAL_SESSION_DIR" ]] || return 1
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Verificar si el proceso esta vivo
 # ---------------------------------------------------------------------------
 
-if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+if ! kill -0 "$SERVER_PID" 2>/dev/null || ! is_expected_visual_process "$SERVER_PID"; then
   # El proceso ya no existe; limpiar residuos
-  rm -f "$PID_FILE" "$LOG_FILE"
+  rm -f "$PID_FILE" "$LOG_FILE" "$SERVER_INFO_FILE"
   printf '{"status":"not_running"}\n'
   exit 0
 fi
@@ -108,7 +163,6 @@ rm -f "$PID_FILE" "$LOG_FILE"
 # ---------------------------------------------------------------------------
 
 # Normalizar la ruta real para comparar con /tmp de forma segura
-REAL_SESSION_DIR="$(cd "$SESSION_DIR" 2>/dev/null && pwd -P || echo "$SESSION_DIR")"
 REAL_TMP="$(cd /tmp 2>/dev/null && pwd -P || echo "/tmp")"
 
 if [[ "$REAL_SESSION_DIR" == "${REAL_TMP}/"* ]]; then

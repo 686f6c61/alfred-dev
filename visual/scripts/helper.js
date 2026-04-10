@@ -22,8 +22,43 @@
   /** @type {string|null} Ultima eleccion del usuario. */
   let selectedChoice = null;
 
+  /** Cola de mensajes emitidos antes de que el socket este listo. */
+  const pendingMessages = [];
+
+  /** Identificador del temporizador de reconexion. */
+  let reconnectTimer = null;
+
   /** Intervalo de reintento en milisegundos. */
   const RECONNECT_MS = 1000;
+
+  /**
+   * Actualiza el indicador visual de conexion si existe en la pagina.
+   * @param {string} color
+   */
+  function setConnectionDot(color) {
+    var dot = document.getElementById('alfred-connection-dot');
+    if (dot) dot.style.background = color;
+  }
+
+  /**
+   * Programa un unico intento de reconexion.
+   */
+  function scheduleReconnect() {
+    if (reconnectTimer !== null) return;
+    reconnectTimer = setTimeout(function () {
+      reconnectTimer = null;
+      connect();
+    }, RECONNECT_MS);
+  }
+
+  /**
+   * Vuelca los mensajes pendientes cuando el socket ya esta abierto.
+   */
+  function flushPendingMessages() {
+    while (pendingMessages.length > 0 && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(pendingMessages.shift()));
+    }
+  }
 
   // -- Conexion WebSocket ---------------------------------------------------
 
@@ -33,13 +68,17 @@
    * para reflejar el contenido actualizado.
    */
   function connect() {
-    const url = 'ws://' + window.location.host;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const url = protocol + window.location.host;
     ws = new WebSocket(url);
 
     ws.onopen = function () {
-      // Actualizar indicador de conexion si existe
-      var dot = document.getElementById('alfred-connection-dot');
-      if (dot) dot.style.background = '#27ae60';
+      setConnectionDot('#27ae60');
+      flushPendingMessages();
     };
 
     ws.onmessage = function (event) {
@@ -54,9 +93,9 @@
     };
 
     ws.onclose = function () {
-      var dot = document.getElementById('alfred-connection-dot');
-      if (dot) dot.style.background = '#e74c3c';
-      setTimeout(connect, RECONNECT_MS);
+      ws = null;
+      setConnectionDot('#e74c3c');
+      scheduleReconnect();
     };
 
     ws.onerror = function () {
@@ -73,7 +112,10 @@
   function send(obj) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(obj));
+      return;
     }
+
+    pendingMessages.push(obj);
   }
 
   /**
@@ -91,7 +133,7 @@
   /**
    * Selecciona un elemento de opcion y deselecciona sus hermanos.
    * Busca el atributo data-choice para identificar la eleccion y
-   * un h3 dentro del elemento para obtener la etiqueta legible.
+   * el primer heading dentro del elemento para obtener la etiqueta legible.
    * @param {HTMLElement} el — Elemento con atributo data-choice.
    */
   function toggleSelect(el) {
@@ -108,7 +150,7 @@
     el.classList.add('selected');
 
     var id = el.getAttribute('data-choice');
-    var heading = el.querySelector('h3');
+    var heading = el.querySelector('h1, h2, h3, h4, h5, h6');
     // Se usa textContent, nunca innerHTML, para evitar XSS si el contenido
     // del encabezado contuviera HTML no confiable.
     var label = heading ? heading.textContent : id;

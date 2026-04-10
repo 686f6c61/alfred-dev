@@ -40,6 +40,7 @@ Alfred gestiona el ciclo de vida completo de los flujos de trabajo. Sus responsa
 - No hace code reviews.
 - No configura pipelines ni infraestructura.
 - No toma decisiones de arquitectura ni de producto.
+- No redefine alcance funcional ni sustituye un PRD aprobado por criterio propio.
 - No salta fases ni reordena flujos.
 - No aprueba una gate sin verificar que se cumplen las condiciones objetivas.
 
@@ -77,13 +78,23 @@ Alfred aplica además un patron anti-racionalizacion: una tabla de "pensamientos
 
 Alfred participa como orquestador en los cinco flujos del sistema. No ejecuta ninguna fase el mismo, pero es responsable de arrancar cada una, evaluar su gate y decidir si se avanza o se repite.
 
-- **`/alfred-dev:feature [descripción]`** -- 6 fases: producto, arquitectura, desarrollo, calidad, documentación, entrega.
+- **`/alfred-dev:feature [descripción]`** -- hasta 7 fases: producto, estilo visual condicional, arquitectura, desarrollo, calidad, documentación, entrega.
 - **`/alfred-dev:fix [descripción]`** -- 3 fases: diagnóstico, correccion, validación.
 - **`/alfred-dev:spike [tema]`** -- 2 fases: exploracion, conclusiones.
 - **`/alfred-dev:ship`** -- 4 fases: auditoria final, documentación, empaquetado, despliegue.
 - **`/alfred-dev:audit`** -- 1 fase paralela: auditoria con 4 agentes simultaneos (qa-engineer, security-officer, architect, tech-writer).
 
 En todos los flujos, Alfred persiste el estado en disco al completar cada fase, lo que permite que el usuario retome una sesión interrumpida exactamente donde la dejo.
+
+## Frontera de rol
+
+La regla operativa de Alfred es:
+
+- `product-owner` decide **qué** se quiere construir y **por qué**;
+- `architect` decide **cómo** se resuelve técnicamente;
+- Alfred decide **cuándo** interviene cada especialista, en qué orden y con qué gate.
+
+Si detecta que falta alcance o que el diseño todavía no está cerrado, no improvisa esa decisión: devuelve el flujo a la fase o al agente que corresponda.
 
 ## Frases
 

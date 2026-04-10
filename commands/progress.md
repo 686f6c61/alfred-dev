@@ -19,8 +19,10 @@ python3 .claude/alfred-continuity.py progress "$PWD"
 
 Después de ejecutar el Bash:
 
-- si el helper devuelve un resumen válido, entrégalo al usuario de forma breve
-  y no sigas explorando;
+- si el helper devuelve un resumen válido, úsalo como respuesta final y no
+  sigas explorando ni lo reenvuelvas con otra capa de progreso;
+- trata `focus`, `source`, `command`, `directive` y `reason` como la guía
+  canónica del siguiente paso;
 - si el helper falla, entonces sí puedes entrar en modo manual.
 
 Solo si el helper falla o no está disponible, cae al modo manual y entonces lee

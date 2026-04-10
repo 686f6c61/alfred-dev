@@ -126,6 +126,10 @@ mkdir -p "${SESSION_DIR}/content" "${SESSION_DIR}/state"
 PID_FILE="${SESSION_DIR}/state/server.pid"
 LOG_FILE="${SESSION_DIR}/state/server.log"
 
+cleanup_failed_start() {
+  rm -f "$PID_FILE"
+}
+
 # ---------------------------------------------------------------------------
 # Matar servidor anterior si existe un PID file de una sesion anterior.
 # Esto solo aplica cuando reutilizamos un directorio de sesion fijo; en este
@@ -192,7 +196,9 @@ while [[ $_iter -lt $MAX_WAIT ]]; do
   # Comprobar que el proceso sigue vivo
   if ! kill -0 "$SERVER_PID" 2>/dev/null; then
     ERROR_LOG="$(cat "$LOG_FILE" 2>/dev/null || echo "")"
-    printf '{"type":"error","message":"El proceso del servidor termino inesperadamente","log":%s}\n' \
+    cleanup_failed_start
+    printf '{"type":"error","message":"El proceso del servidor termino inesperadamente","session_dir":"%s","log":%s}\n' \
+      "$SESSION_DIR" \
       "$(printf '%s' "$ERROR_LOG" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>process.stdout.write(JSON.stringify(d)))' 2>/dev/null || printf '""')"
     exit 1
   fi
@@ -210,6 +216,7 @@ done
 if [[ -z "$SERVER_STARTED_LINE" ]]; then
   # Matar el proceso huerfano si aun vive
   kill "$SERVER_PID" 2>/dev/null || true
+  cleanup_failed_start
   printf '{"type":"error","message":"El servidor no arranco en 5 segundos","session_dir":"%s"}\n' "$SESSION_DIR"
   exit 1
 fi

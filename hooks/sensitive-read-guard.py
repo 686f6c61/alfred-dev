@@ -20,6 +20,49 @@ import os
 import sys
 
 
+def _is_env_file(base_name, _ext):
+    return base_name == ".env" or base_name.startswith(".env.")
+
+
+def _is_private_key(_base_name, ext):
+    return ext in (".pem", ".key", ".p12", ".pfx")
+
+
+def _is_ssh_private_key(base_name, _ext):
+    return base_name in ("id_rsa", "id_ed25519", "id_ecdsa", "id_dsa")
+
+
+def _is_service_credentials_file(base_name, ext):
+    lowered = base_name.lower()
+
+    if lowered in {
+        "credentials.json",
+        "service-account.json",
+        "gcloud-credentials.json",
+        ".npmrc",
+        ".pypirc",
+        "terraform.tfstate",
+    }:
+        return True
+
+    if ext != ".json":
+        return False
+
+    return (
+        lowered.startswith("service-account")
+        or lowered.startswith("firebase-adminsdk")
+        or lowered.endswith("-service-account.json")
+    )
+
+
+def _is_htpasswd(base_name, _ext):
+    return base_name == ".htpasswd"
+
+
+def _is_java_keystore(_base_name, ext):
+    return ext in (".jks", ".keystore")
+
+
 # --- Patrones de ficheros sensibles ----------------------------------------
 # Cada tupla contiene (condicion_lambda, descripcion).
 # Las condiciones se evaluan sobre el nombre base del fichero o la ruta
@@ -27,28 +70,28 @@ import sys
 
 _SENSITIVE_PATTERNS = [
     # Variables de entorno
-    (lambda base, _ext: base == ".env" or base.startswith(".env."), "Fichero de variables de entorno"),
+    (_is_env_file, "Fichero de variables de entorno"),
     # Claves privadas
-    (lambda _base, ext: ext in (".pem", ".key", ".p12", ".pfx"), "Clave privada o certificado"),
+    (_is_private_key, "Clave privada o certificado"),
     # SSH keys
-    (lambda base, _ext: base in ("id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"), "Clave SSH privada"),
+    (_is_ssh_private_key, "Clave SSH privada"),
     # Credenciales de servicios
-    (lambda base, _ext: base in (
-        "credentials.json", "service-account.json", "gcloud-credentials.json",
-        ".npmrc", ".pypirc", ".docker/config.json",
-    ), "Credenciales de servicio"),
+    (_is_service_credentials_file, "Credenciales de servicio"),
     # htpasswd
-    (lambda base, _ext: base == ".htpasswd", "Fichero de contrasenas Apache"),
+    (_is_htpasswd, "Fichero de contrasenas Apache"),
     # Nota: credenciales AWS se detectan por ruta en _PATH_PATTERNS,
     # no por nombre base, porque "credentials" y "config" son demasiado genericos.
     # Keystore
-    (lambda _base, ext: ext in (".jks", ".keystore"), "Almacen de claves Java"),
+    (_is_java_keystore, "Almacen de claves Java"),
 ]
 
 # Patrones evaluados sobre la ruta completa (no solo el nombre base)
 _PATH_PATTERNS = [
     (".aws/credentials", "Credenciales AWS"),
     (".aws/config", "Configuracion AWS con posibles credenciales"),
+    ("/.docker/config.json", "Credenciales Docker"),
+    ("/.kube/config", "Configuracion de Kubernetes"),
+    ("/.terraform/terraform.tfstate", "Estado Terraform con posibles secretos"),
     (".ssh/", "Directorio SSH (posibles claves privadas)"),
     (".gnupg/", "Directorio GPG (posibles claves privadas)"),
 ]
@@ -72,8 +115,10 @@ def main():
     if not file_path:
         sys.exit(0)
 
+    normalized_path = file_path.replace("\\", "/")
+
     # Obtener nombre base y extension para las comparaciones
-    base_name = os.path.basename(file_path)
+    base_name = os.path.basename(normalized_path)
     _, ext = os.path.splitext(base_name)
 
     # Comprobar patrones por nombre base
@@ -94,7 +139,7 @@ def main():
     # Comprobar patrones por ruta completa
     if warning is None:
         for pattern, description in _PATH_PATTERNS:
-            if pattern in file_path:
+            if pattern in normalized_path:
                 warning = description
                 break
 

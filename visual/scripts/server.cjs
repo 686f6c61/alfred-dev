@@ -7,7 +7,7 @@
  * via WebSocket cuando el contenido cambia.
  *
  * Configuracion mediante variables de entorno:
- *   ALFRED_VISUAL_PORT     — Puerto (por defecto aleatorio 49152-65535)
+ *   ALFRED_VISUAL_PORT     — Puerto (por defecto 0 = libre elegido por el SO)
  *   ALFRED_VISUAL_HOST     — Direccion de escucha (por defecto 127.0.0.1)
  *   ALFRED_VISUAL_URL_HOST — Host para URLs (por defecto localhost)
  *   ALFRED_VISUAL_DIR      — Directorio de sesion (por defecto /tmp/alfred-visual)
@@ -163,8 +163,13 @@ function getNewestHtml() {
     .filter((f) => f.endsWith('.html'))
     .map((f) => {
       const full = path.join(CONTENT_DIR, f);
-      return { name: f, mtime: fs.statSync(full).mtimeMs, path: full };
+      try {
+        return { name: f, mtime: fs.statSync(full).mtimeMs, path: full };
+      } catch {
+        return null;
+      }
     })
+    .filter(Boolean)
     .sort((a, b) => b.mtime - a.mtime);
 
   return htmlFiles.length > 0 ? htmlFiles[0].path : null;
@@ -276,6 +281,66 @@ function emit(msg) {
   process.stdout.write(JSON.stringify(msg) + '\n');
 }
 
+/**
+ * Limpia el registro de eventos de la pantalla visual actual.
+ * Se usa cuando cambia la pantalla para evitar reutilizar clics
+ * pertenecientes a una version anterior del HTML.
+ */
+function clearEventLog() {
+  try {
+    fs.writeFileSync(path.join(STATE_DIR, 'events'), '');
+  } catch {
+    // No pasa nada si falla
+  }
+}
+
+/**
+ * Normaliza un clic del usuario al formato canónico del contrato visual.
+ * Mantiene campos legacy por compatibilidad con integraciones existentes.
+ * @param {object} event
+ * @returns {object}
+ */
+function buildChoiceEvent(event) {
+  const ts = new Date().toISOString();
+  return {
+    source: 'user-event',
+    type: 'click',
+    choice: event.choice,
+    label: event.label,
+    element: event.element || '.style-option',
+    ts,
+    timestamp: ts,
+  };
+}
+
+/**
+ * Devuelve el conjunto de origins permitidos para conexiones WebSocket locales.
+ * Acepta aliases de loopback para evitar que localhost y 127.0.0.1 diverjan.
+ * @returns {Set<string>}
+ */
+function getAllowedOrigins() {
+  const port = _httpServer && _httpServer.address() && typeof _httpServer.address() === 'object'
+    ? _httpServer.address().port
+    : '';
+  const hosts = new Set([URL_HOST, HOST]);
+
+  if (hosts.has('127.0.0.1') || hosts.has('localhost')) {
+    hosts.add('127.0.0.1');
+    hosts.add('localhost');
+  }
+
+  if (hosts.has('::1')) {
+    hosts.add('[::1]');
+  }
+
+  const origins = new Set();
+  for (const host of hosts) {
+    if (!host) continue;
+    origins.add(`http://${host}:${port}`);
+  }
+  return origins;
+}
+
 // ---------------------------------------------------------------------------
 // Manejador HTTP
 // ---------------------------------------------------------------------------
@@ -287,7 +352,14 @@ function emit(msg) {
  * @param {http.ServerResponse} res
  */
 function serveStaticFile(req, res) {
-  const relPath = decodeURIComponent(req.url.slice('/files/'.length));
+  let relPath;
+  try {
+    relPath = decodeURIComponent(req.url.slice('/files/'.length));
+  } catch {
+    res.writeHead(400, SECURITY_HEADERS);
+    res.end('Ruta invalida');
+    return;
+  }
   const filePath = path.join(CONTENT_DIR, relPath);
 
   // Proteccion contra path traversal: resolver ruta real para detectar symlinks
@@ -308,8 +380,8 @@ function serveStaticFile(req, res) {
   }
 
   try {
-    const data = fs.readFileSync(filePath);
-    const ext = path.extname(filePath).toLowerCase();
+    const data = fs.readFileSync(resolvedPath);
+    const ext = path.extname(resolvedPath).toLowerCase();
     const mime = MIME_TYPES[ext] || 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': mime, ...SECURITY_HEADERS });
     res.end(data);
@@ -334,9 +406,13 @@ function handleRequest(req, res) {
     if (!newest) {
       body = waitingPage();
     } else {
-      const raw = fs.readFileSync(newest, 'utf8');
-      // textContent se usa en helper.js (no innerHTML) para evitar XSS
-      body = isFullDocument(raw) ? injectHelper(raw) : wrapInFrame(raw);
+      try {
+        const raw = fs.readFileSync(newest, 'utf8');
+        // textContent se usa en helper.js (no innerHTML) para evitar XSS
+        body = isFullDocument(raw) ? injectHelper(raw) : wrapInFrame(raw);
+      } catch {
+        body = waitingPage();
+      }
     }
 
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...SECURITY_HEADERS });
@@ -381,8 +457,8 @@ function handleUpgrade(req, socket) {
   // Verificar origen del WebSocket para prevenir conexiones desde dominios ajenos
   const origin = req.headers['origin'];
   if (origin) {
-    const expectedOrigin = 'http://' + URL_HOST + ':' + (_httpServer ? _httpServer.address().port : '');
-    if (origin !== expectedOrigin) {
+    const allowedOrigins = getAllowedOrigins();
+    if (!allowedOrigins.has(origin)) {
       socket.destroy();
       return;
     }
@@ -426,13 +502,10 @@ function handleUpgrade(req, socket) {
             const event = JSON.parse(text);
             // Si el evento contiene una eleccion, registrarla
             if (event.choice !== undefined) {
-              const eventLine = JSON.stringify({
-                source: 'user-event',
-                ...event,
-                timestamp: new Date().toISOString(),
-              });
+              const choiceEvent = buildChoiceEvent(event);
+              const eventLine = JSON.stringify(choiceEvent);
               fs.appendFileSync(path.join(STATE_DIR, 'events'), eventLine + '\n');
-              emit({ source: 'user-event', ...event });
+              emit(choiceEvent);
             }
           } catch {
             // Mensaje no JSON, ignorar
@@ -486,13 +559,10 @@ function startWatcher() {
         if (isNew) {
           // Fichero nuevo: limpiar eventos y notificar
           knownFiles.add(filename);
-          try {
-            fs.writeFileSync(path.join(STATE_DIR, 'events'), '');
-          } catch {
-            // No pasa nada si falla
-          }
+          clearEventLog();
           emit({ type: 'screen-added', file: filename });
         } else {
+          clearEventLog();
           emit({ type: 'screen-updated', file: filename });
         }
 
@@ -573,23 +643,36 @@ function main() {
   fs.mkdirSync(CONTENT_DIR, { recursive: true });
   fs.mkdirSync(STATE_DIR, { recursive: true });
 
-  // Elegir puerto: variable de entorno o aleatorio en rango efimero
-  const port = process.env.ALFRED_VISUAL_PORT
-    ? Number.parseInt(process.env.ALFRED_VISUAL_PORT, 10)
-    : 49152 + Math.floor(Math.random() * (65535 - 49152));
+  // Elegir puerto: variable de entorno valida o un puerto libre asignado por el SO.
+  const rawPort = process.env.ALFRED_VISUAL_PORT;
+  const requestedPort = rawPort === undefined || rawPort === ''
+    ? 0
+    : Number.parseInt(rawPort, 10);
+  if (!Number.isInteger(requestedPort) || requestedPort < 0 || requestedPort > 65535) {
+    process.stderr.write(`Puerto invalido para ALFRED_VISUAL_PORT: ${rawPort}\n`);
+    process.exit(1);
+  }
 
   const server = http.createServer(handleRequest);
   _httpServer = server;
   server.on('upgrade', handleUpgrade);
+  server.on('error', (error) => {
+    process.stderr.write(`Error al arrancar el servidor visual: ${error.message}\n`);
+    process.exit(1);
+  });
 
-  server.listen(port, HOST, () => {
-    const url = `http://${URL_HOST}:${port}`;
+  server.listen(requestedPort, HOST, () => {
+    const address = server.address();
+    const actualPort = address && typeof address === 'object' ? address.port : requestedPort;
+    const url = `http://${URL_HOST}:${actualPort}`;
     const info = {
       type: 'server-started',
-      port,
+      port: actualPort,
       host: HOST,
       url_host: URL_HOST,
       url,
+      session_dir: SESSION_DIR,
+      server_pid: process.pid,
       screen_dir: CONTENT_DIR,
       state_dir: STATE_DIR,
     };

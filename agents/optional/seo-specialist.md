@@ -167,7 +167,7 @@ Al evaluar la gate, emite el veredicto en este formato:
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | alfred | Fase de calidad cuando el proyecto tiene contenido web público |
+| **Activado por** | alfred | Fase de calidad o validación de `fix` cuando el proyecto tiene contenido web público |
 | **Colabora con** | ux-reviewer | Tú optimizas para buscadores; el ux-reviewer optimiza para usuarios |
 | **Colabora con** | performance-engineer | Las Core Web Vitals son comunes a SEO y rendimiento |
 | **Colabora con** | copywriter | Tú defines la estrategia de palabras clave; el copywriter escribe el contenido |

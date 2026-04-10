@@ -1,13 +1,14 @@
 # Guía del servidor visual de Selina
 
-Servidor local en navegador para mostrar opciones de estilo visual durante la fase
-de dirección de estilo. Funciona como un visual companion con layout específico
-a tres columnas.
+Servidor local en navegador para mostrar sistemas de diseño y opciones visuales
+durante la fase de dirección de estilo. Funciona como un visual companion para
+enseñar el catálogo base de Selina y cerrar una ronda final de tres columnas.
 
 ## Cuándo usar el servidor visual
 
 Siempre que Selina genere opciones de estilo. El servidor es la herramienta principal
-de Selina — no es opcional dentro de su fase.
+de Selina: sirve tanto para enseñar la galería de 10 sistemas de diseño base como
+para la ronda final de 3 propuestas comparables.
 
 ## Arrancar sesión
 
@@ -39,23 +40,64 @@ Indica al usuario que abra la URL en el navegador.
 ## El ciclo
 
 1. Comprueba que el servidor sigue activo leyendo `STATE_DIR/server-info`.
-2. Escribe el HTML de opciones en `screen_dir/style-options.html` usando la clase `.style-grid`.
-3. Informa al usuario: recuerda la URL, resume qué se muestra, pide que elija una opción.
-4. En el siguiente turno: lee `STATE_DIR/events` (líneas JSON con los clics registrados).
-5. Genera `docs/style-direction.md` con la opción elegida y sus detalles.
-6. Escribe `waiting.html` en `screen_dir` para limpiar el navegador hasta la próxima acción.
+2. Si aporta contexto, genera primero la galería del catálogo con `python3 visual/scripts/write-style-demo-gallery.py --visual-path "$STATE_DIR"`.
+3. Para la ronda final, genera `screen_dir/style-options.html` con `python3 visual/scripts/write-style-options.py --visual-path "$STATE_DIR"`. Si necesitas escribirlo a mano, usa la clase `.style-grid`.
+4. Escribe también `screen_dir/style-options.json` con las tres propuestas en JSON para poder generar luego el artefacto final sin reinterpretar la pantalla.
+5. Informa al usuario: recuerda la URL, resume qué se muestra, pide que elija una opción.
+6. En el siguiente turno: lee la elección con `python3 visual/scripts/read-choice.py "$STATE_DIR"` o, si lo prefieres, inspecciona `STATE_DIR/events` directamente.
+7. Genera `docs/style-direction.md` con `python3 visual/scripts/write-style-direction.py --project-dir "$PWD" --visual-path "$STATE_DIR"` o, si necesitas control manual, escribe el artefacto tú misma usando el sidecar JSON.
+8. Escribe `waiting.html` en `screen_dir` para limpiar el navegador hasta la próxima acción.
+
+## Sidecar JSON recomendado
+
+Para que el artefacto final salga con buen nivel, intenta que cada propuesta incluya al
+menos:
+
+- `choice`
+- `name`
+- `concept` o `description`
+- `palette`
+- `typography`
+- `spacing_density` o `layout_density`
+- `tone` o `mood`
+- `sample_component` o `component_example`
+- `rationale` o `why`
+- `not_this_direction` o `anti_patterns`
+- `context_signals`, `audience` o `constraints`
+
+El writer canónico tolera sidecars incompletos y alias razonables, pero cuanto más
+específica sea la propuesta, menos genérica será la dirección final.
+
+## Writer canónico de opciones
+
+El helper recomendado es:
+
+```bash
+python3 visual/scripts/write-style-options.py --visual-path "$STATE_DIR"
+```
+
+Este script:
+
+- autodetecta `style-options.json`
+- normaliza aliases comunes del sidecar
+- escribe un fragmento HTML compatible con el servidor real
+- evita depender de assets externos que no existen en el repo
+
+Si necesitas personalizar el copy de cabecera, acepta `--title` y `--subtitle`.
 
 ## Estructura HTML de las opciones
 
+El servidor ya envuelve fragmentos HTML en su frame propio e inyecta `helper.js`, así
+que no hace falta escribir un documento completo ni enlazar assets extra. Este es el
+formato recomendado:
+
 ```html
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Opciones de estilo</title>
-  <link rel="stylesheet" href="/assets/style-viewer.css" />
-</head>
-<body>
+<section class="style-screen">
+  <div class="style-screen-header">
+    <p class="style-screen-kicker">Selina propone</p>
+    <h1>Selecciona una dirección visual</h1>
+    <p class="style-screen-subtitle">Elige la propuesta que mejor encaja con el producto.</p>
+  </div>
   <div class="style-grid">
 
     <div class="style-option" data-choice="A">
@@ -104,9 +146,7 @@ Indica al usuario que abra la URL en el navegador.
     </div>
 
   </div>
-  <script src="/assets/style-viewer.js"></script>
-</body>
-</html>
+</section>
 ```
 
 Cada `.style-option` debe incluir obligatoriamente `data-choice` con un identificador
@@ -115,7 +155,15 @@ al hacer clic.
 
 ## Formato de eventos
 
-El archivo `STATE_DIR/events` contiene una línea JSON por evento, en orden cronológico:
+El archivo `STATE_DIR/events` contiene una línea JSON por evento, en orden cronológico.
+La forma canónica actual es:
+
+```jsonl
+{"source":"user-event","type":"click","choice":"A","label":"Oscuro espacial","element":".style-option","ts":"2026-03-31T10:14:02Z","timestamp":"2026-03-31T10:14:02Z"}
+{"source":"user-event","type":"click","choice":"A","label":"Oscuro espacial","element":".style-option","ts":"2026-03-31T10:14:05Z","timestamp":"2026-03-31T10:14:05Z"}
+```
+
+El lector canónico `visual/scripts/read-choice.py` también acepta el formato legacy anterior:
 
 ```jsonl
 {"ts":"2026-03-31T10:14:02Z","type":"click","choice":"A","element":".style-option"}

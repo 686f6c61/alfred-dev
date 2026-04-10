@@ -33,6 +33,8 @@ class TestDiscussCommandContract(unittest.TestCase):
     def test_discuss_uses_product_owner_and_recommends_next_flow(self):
         self.assertIn("product-owner", self.command)
         self.assertIn("pregunta corta", self.command)
+        self.assertIn("menú seleccionable real", self.command)
+        self.assertIn("AskUserQuestion", self.command)
         self.assertIn("tú mismo por defecto", self.command)
         self.assertIn("NO lances subagentes por inercia", self.command)
         self.assertIn("`Bash` fue denegado", self.command)

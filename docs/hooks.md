@@ -122,7 +122,7 @@ Si no hay sesión activa, la sesión esta completada o el estado es incoherente,
 
 Este es el único hook que bloquea operaciones de forma activa. Se ejecuta **antes** de que Claude escriba o edite un fichero, analiza el contenido que pretende escribir y, si detecta un patron de secreto, impide la operación con exit code 2.
 
-La politica de seguridad es **fail-closed**: si el script no puede parsear la entrada de stdin, bloquea por precaucion. Esta decisión es deliberada: es preferible un falso positivo que obliga a reintentar a un falso negativo que deja un secreto expuesto en el repositorio.
+La politica de seguridad es **fail-closed**: si el script no puede parsear la entrada de stdin o no puede cargar la fuente canónica de patrones (`core/secrets.py`), bloquea por precaucion. Esta decisión es deliberada: es preferible un falso positivo que obliga a reintentar a un falso negativo que deja un secreto expuesto en el repositorio.
 
 El script detecta 12 familias de patrones de secretos, mas un patron genérico de asignación de credenciales:
 
@@ -142,7 +142,7 @@ El script detecta 12 familias de patrones de secretos, mas un patron genérico d
 | `discord.com/api/webhooks/...` | Discord Webhook URL |
 | Asignación directa (`password = "..."`, etc.) | Credencial hardcodeada en código |
 
-Los ficheros `.env` se excluyen del análisis porque son el lugar legitimo para guardar secretos. La exclusion cubre `.env`, `.env.*` y cualquier fichero cuyo nombre base empiece por `.env`.
+Los ficheros de entorno reales se excluyen del análisis porque son el lugar legitimo para guardar secretos. La exclusion cubre `.env`, `.env.local`, `local.env` y variantes reales de `.env.*`, pero **no** plantillas como `.env.example`, `.env.sample`, `.env.template` o `.env.dist`, que se suelen versionar y por tanto no deben contener secretos reales.
 
 Cuando el hook bloquea, emite un mensaje en la voz de "El Paranoico" que explica que patron se detecto, por que no se debe hardcodear secretos y donde deberian ir (fichero `.env`, variables de entorno, gestor de secretos).
 
@@ -157,7 +157,7 @@ deterministas locales de Alfred (`python3 .claude/alfred-continuity.py ...`)
 para que los comandos helper-first puedan arrancar en headless sin pedir
 permiso manual en su primer uso.
 
-A diferencia de `secret-guard.sh`, la politica de este hook es **fail-open**: si no puede parsear la entrada, permite la operación y emite un aviso por stderr. La razon es que la protección contra comandos destructivos es una capa adicional, no el único mecanismo de seguridad del sistema.
+A diferencia de los hooks informativos, la politica de este hook es **fail-closed**: si no puede parsear la entrada, bloquea por precaucion. La razon es la misma que en `secret-guard.sh`: un guard de seguridad que falla en abierto deja la puerta abierta justo en el peor momento.
 
 El hook vigila 10 familias de patrones peligrosos:
 
@@ -184,9 +184,9 @@ Este hook emite un aviso informativo cuando Claude intenta leer un fichero que p
 
 El hook reconoce dos tipos de patrones:
 
-**Por nombre base del fichero:** variables de entorno (`.env`, `.env.*`), claves privadas (`.pem`, `.key`, `.p12`, `.pfx`), claves SSH (`id_rsa`, `id_ed25519`, `id_ecdsa`), credenciales de servicios (`credentials.json`, `service-account.json`, `.npmrc`, `.pypirc`), ficheros de contrasenas (`.htpasswd`) y almacenes de claves Java (`.jks`, `.keystore`).
+**Por nombre base del fichero:** variables de entorno (`.env`, `.env.*`), claves privadas (`.pem`, `.key`, `.p12`, `.pfx`), claves SSH (`id_rsa`, `id_ed25519`, `id_ecdsa`), credenciales de servicios (`credentials.json`, `service-account.json`, `service-account.*.json`, `firebase-adminsdk*.json`, `.npmrc`, `.pypirc`, `terraform.tfstate`), ficheros de contrasenas (`.htpasswd`) y almacenes de claves Java (`.jks`, `.keystore`).
 
-**Por ruta completa:** credenciales AWS (`.aws/credentials`, `.aws/config`), directorio SSH (`.ssh/`) y directorio GPG (`.gnupg/`).
+**Por ruta completa:** credenciales AWS (`.aws/credentials`, `.aws/config`), Docker (`.docker/config.json`), Kubernetes (`.kube/config`), estado local de Terraform (`.terraform/terraform.tfstate`), directorio SSH (`.ssh/`) y directorio GPG (`.gnupg/`).
 
 La politica es estrictamente informativa: siempre sale con exit 0. Si no puede parsear la entrada, sale silenciosamente sin avisar.
 
@@ -220,17 +220,17 @@ El hook opera en dos fases. Primero determina si el comando ejecutado correspond
 
 Los runners de una sola palabra (`pytest`, `jest`, `vitest`, `mocha`, etc.) usan un ancla de posición de comando (`(?:^|[;&|])\s*`) que exige que el runner aparezca al inicio de la cadena o tras un operador shell, lo que evita falsos positivos como `cat pytest.ini` o `grep jest config.js`. Los runners de varias palabras (`cargo test`, `npm test`, etc.) usan limites de palabra (`\b`) porque su prefijo los ancla de forma natural.
 
-Si el comando es un runner de tests, la segunda fase analiza tanto stdout como stderr del resultado buscando 12 patrones de fallo: `FAIL`, `FAILED`, `ERROR`, `failures`, `failing`, `Tests failed`, `ERRORS:`, `AssertionError`, `test result: FAILED`, `Build FAILED`, `N failed` y `not ok`.
+Si el comando es un runner de tests, la segunda fase analiza stdout y stderr buscando patrones de fallo. Si la salida no permite decidir pero el runner devolvio `exit_code != 0`, tambien se considera fallo. El hook tolera tanto el payload historico `tool_output` como el payload actual `tool_result`, para no depender de una sola variante del runtime.
 
 ### dependency-watch.py
 
 **Evento:** `PostToolUse` -- **Matcher:** `Write|Edit` -- **Timeout:** 10 s
 
-Cada nueva dependencia es una superficie de ataque que el proyecto acepta de forma implícita. Este hook existe para hacer explícita esa decisión: cuando Claude modifica un fichero de dependencias, emite un aviso en la voz de "El Paranoico" que invita a reflexionar sobre la necesidad, el mantenimiento y las implicaciones de seguridad de la dependencia anadida.
+Cada nueva dependencia es una superficie de ataque que el proyecto acepta de forma implícita. Este hook existe para hacer explícita esa decisión: cuando Claude modifica un manifiesto o lockfile de dependencias, emite un aviso en la voz de "El Paranoico" que invita a reflexionar sobre la necesidad, el mantenimiento y las implicaciones de seguridad de la dependencia anadida.
 
-El hook reconoce manifiestos de dependencias de 11 ecosistemas: Node.js (`package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `bun.lock`), Python (`pyproject.toml`, `requirements.txt` y variantes, `setup.py`, `setup.cfg`, `Pipfile`, `Pipfile.lock`, `poetry.lock`, `uv.lock`), Rust (`Cargo.toml`, `Cargo.lock`), Go (`go.mod`, `go.sum`), Ruby (`Gemfile`, `Gemfile.lock`), Elixir (`mix.exs`, `mix.lock`), PHP (`composer.json`, `composer.lock`), Java/Kotlin/Scala (`pom.xml`, `build.gradle`, `build.gradle.kts`), .NET (`packages.config`, `.csproj`, `.fsproj`) y Swift (`Package.swift`, `Package.resolved`).
+El hook reconoce manifiestos de dependencias de 11 ecosistemas: Node.js (`package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `bun.lock`, `pnpm-workspace.yaml`), Python (`pyproject.toml`, `requirements.txt` y variantes, `requirements.in`, `constraints.txt` y variantes, `setup.py`, `setup.cfg`, `Pipfile`, `Pipfile.lock`, `poetry.lock`, `uv.lock`), Rust (`Cargo.toml`, `Cargo.lock`), Go (`go.mod`, `go.sum`), Ruby (`Gemfile`, `Gemfile.lock`), Elixir (`mix.exs`, `mix.lock`), PHP (`composer.json`, `composer.lock`), Java/Kotlin/Scala (`pom.xml`, `build.gradle`, `build.gradle.kts`), .NET (`packages.config`, `packages.lock.json`, `Directory.Packages.props`, `.csproj`, `.fsproj`, `.vbproj`) y Swift (`Package.swift`, `Package.resolved`).
 
-La detección se basa en el nombre base del fichero (sin ruta), lo que la hace independiente de la estructura de directorios del proyecto.
+La detección se basa en el nombre base del fichero (sin ruta), lo que la hace independiente de la estructura de directorios del proyecto. En manifests mixtos como `package.json` o `pyproject.toml`, el hook intenta reducir ruido: si una edición solo toca metadata lateral (`scripts`, `version`, etc.) y no una sección de dependencias, permanece en silencio.
 
 ### spelling-guard.py
 
@@ -255,6 +255,8 @@ Los patrones se compilan en una única expresión regular con limites de palabra
 
 El hook solo inspecciona ficheros con extensiones de texto donde es probable encontrar castellano: `.md`, `.txt`, `.html`, `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.vue`, `.svelte`, `.astro`, `.sh`, `.bash`, `.zsh`, `.css`, `.scss`, `.xml`, `.svg`, `.rst`, `.adoc` y `.toml`. Ignora rutas dentro de `node_modules`, `.git`, `dist`, `build`, `__pycache__`, `.next`, `.nuxt`, `.venv`, `venv` y `env`.
 
+Para reducir ruido, no revisa el contenido tal cual: en Markdown ignora bloques y spans de código, en HTML/XML/SVG elimina tags y se queda con texto visible y atributos de interfaz (`aria-label`, `title`, `placeholder`, `alt`), en CSS/SCSS revisa solo comentarios, en TOML ignora claves técnicas y mira comentarios/valores, y de forma global descarta URLs, rutas, flags largos (`--version`) y tokens tipo path. Eso evita avisos molestos por ejemplos de CLI, selectores CSS o rutas como `/api/version/publico`.
+
 ### activity-capture.py
 
 **Evento:** `PostToolUse` -- **Matcher:** `Write|Edit|Bash|Read|Glob|Grep|Agent|WebFetch|WebSearch|NotebookEdit` + `UserPromptSubmit` + `PreCompact` + `Stop` -- **Timeout:** 10 s
@@ -267,7 +269,7 @@ El hook registra cada evento en la base de datos SQLite de memoria persistente (
 |-------|-----------|
 | `summary` | Texto legible en castellano (una linea), pensado para listados rapidos. |
 | `payload` | JSON estructurado con los campos clave del evento, pensado para filtrado programático. |
-| `content` | Texto completo sin truncar (contenido de ficheros, stdout/stderr, prompts), pensado para consulta bajo demanda. |
+| `content` | Texto completo cuando aporta valor directo; en herramientas de alto volumen (`Glob`, `Grep`, `WebFetch`, `WebSearch`) se guarda un preview recortado con metadatos de truncado para evitar ruido excesivo. |
 
 La tabla de dispatchers mapea cada tipo de evento a su función de procesamiento:
 
@@ -277,11 +279,11 @@ La tabla de dispatchers mapea cada tipo de evento a su función de procesamiento
 | `Edit` | PostToolUse | Fichero editado: diff old/new con conteo de lineas. |
 | `Bash` | PostToolUse | Comando ejecutado: comando, exit code, stdout y stderr completos. Si detecta un `git commit` exitoso, captura además los metadatos del commit (SHA, mensaje, autor, ficheros). |
 | `Read` | PostToolUse | Fichero leido: ruta y rango de lineas solicitado (sin contenido duplicado). |
-| `Glob` | PostToolUse | Busqueda por patron: patron, directorio y número de resultados. |
-| `Grep` | PostToolUse | Busqueda de contenido: patron regex, directorio, modo y coincidencias. |
+| `Glob` | PostToolUse | Busqueda por patron: patron, directorio y número de resultados. Si la lista es enorme, guarda solo un preview con marca de recorte. |
+| `Grep` | PostToolUse | Busqueda de contenido: patron regex, directorio, modo y coincidencias. Si la salida es masiva, guarda preview + metadatos de truncado. |
 | `Agent` | PostToolUse | Subagente lanzado: tipo, descripción, prompt y resultado completo. |
-| `WebFetch` | PostToolUse | Peticion HTTP: URL y respuesta. |
-| `WebSearch` | PostToolUse | Busqueda web: query y resultados. |
+| `WebFetch` | PostToolUse | Peticion HTTP: URL y respuesta. Las respuestas muy grandes se recortan con metadatos de volumen. |
+| `WebSearch` | PostToolUse | Busqueda web: query y resultados. Los resultados muy grandes se guardan como preview. |
 | `NotebookEdit` | PostToolUse | Edicion de notebook Jupyter: ruta y comando. |
 | `UserPromptSubmit` | Evento propio | Prompt del usuario: texto completo. Si es un slash command helper-first de Alfred, prepara antes los artefactos de continuidad y registra `alfred_prefetched`. |
 | `PreCompact` | Evento propio | Marcador de compactación de contexto. |
@@ -484,7 +486,7 @@ Hay varias restricciones de diseño que conviene respetar para mantener la coher
 
 - **No modificar el contenido del evento.** Los hooks pueden leer y analizar la información del evento, pero no deben intentar modificarla. Un hook de `PreToolUse` puede bloquear una escritura, pero no puede alterar el contenido que Claude quiere escribir.
 
-- **Fallo seguro.** Si el hook no puede leer su entrada, no puede acceder a un fichero necesario o sufre cualquier error interno, la decisión por defecto debe ser no bloquear (exit 0). La única excepcion son los hooks de seguridad como `secret-guard.sh`, donde la politica fail-closed (bloquear ante la duda) tiene mas sentido que fail-open.
+- **Fallo seguro.** Si el hook no puede leer su entrada, no puede acceder a un fichero necesario o sufre cualquier error interno, la decisión por defecto debe ser no bloquear (exit 0). Las excepciones son los hooks de seguridad que protegen escrituras o comandos destructivos, como `secret-guard.sh` y `dangerous-command-guard.py`, donde la politica fail-closed (bloquear ante la duda) tiene mas sentido que fail-open.
 
 - **Una responsabilidad por hook.** Cada hook debe hacer una cosa y hacerla bien. Si necesitas vigilar dos aspectos diferentes, crea dos hooks. Esto facilita la depuración, el testing y la posibilidad de desactivar un hook concreto sin afectar a los demas.
 

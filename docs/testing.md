@@ -34,7 +34,7 @@ La suite cubre tanto la definición estática de los flujos (número de fases, f
 
 | Clase | Métodos de test | Que verifica |
 |-------|----------------|--------------|
-| `TestFlows` | `test_feature_flow_has_6_phases`, `test_fix_flow_has_3_phases`, `test_all_flows_defined` | Definición correcta de los flujos: número de fases y presencia de todos los tipos (`feature`, `fix`, `spike`, `ship`, `audit`). |
+| `TestFlows` | `test_feature_flow_has_7_phases`, `test_fix_flow_has_3_phases`, `test_all_flows_defined` | Definición correcta de los flujos: número de fases y presencia de todos los tipos (`feature`, `fix`, `spike`, `ship`, `audit`, `quick`). |
 | `TestSession` | `test_create_session`, `test_save_and_load_state` | Creación de sesiones con estado inicial correcto y persistencia a disco (JSON) con carga posterior. |
 | `TestGates` | `test_gate_passes_with_correct_result`, `test_gate_fails_with_incorrect_result`, `test_automatic_gate_fails_when_tests_fail`, `test_automatic_gate_passes_when_tests_ok`, `test_security_gate_fails_when_security_fails`, `test_advance_phase_propagates_tests_ok` | Lógica de gates: aprobacion, rechazo, bloqueo automático por tests fallidos, bloqueo por seguridad y propagacion de `tests_ok` al avanzar fase. |
 | `TestAdvancePhase` | `test_advance_moves_to_next_phase`, `test_cannot_advance_past_last_phase` | Transiciones correctas entre fases y protección contra avance mas alla de la última fase (estado `completado`). |
@@ -157,9 +157,9 @@ De este modo, ningun patron completo aparece como literal en el código fuente, 
 
 ## Que no esta cubierto
 
-### Hooks bash (session-start.sh, secret-guard.sh)
+### Hooks bash complejos (session-start.sh y similares)
 
-Los hooks bash son scripts que reciben eventos de Claude Code por stdin en formato JSON y escriben respuestas por stdout/stderr. Su funcionamiento depende del protocolo de hooks de Claude Code, que incluye variables de entorno específicas, una estructura de datos concreta para los eventos y un flujo de ejecución gestionado por el runtime del plugin. Probarlos con tests unitarios requeriria simular todo ese protocolo ---entorno, stdin, formato de eventos, ciclo de vida--- lo que equivaldria a construir un mock completo de Claude Code. El coste de mantenimiento de esos mocks superaria al beneficio, así que se validan en uso real.
+Los hooks bash mas complejos, como `session-start.sh`, reciben eventos de Claude Code por stdin en formato JSON y escriben respuestas por stdout/stderr. Su funcionamiento depende del protocolo de hooks de Claude Code, que incluye variables de entorno específicas, una estructura de datos concreta para los eventos y un flujo de ejecución gestionado por el runtime del plugin. Algunos hooks pequeños si se cubren ya con subprocess end-to-end (`secret-guard.sh`), pero para los hooks de sesión largos construir un mock completo del runtime seguiria costando mas de lo que aporta. Esos se validan principalmente en uso real.
 
 ### Servidor MCP (memory_server.py)
 

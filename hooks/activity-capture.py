@@ -34,6 +34,7 @@ con codigo 0.
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from typing import Optional
@@ -84,6 +85,9 @@ _ALFRED_PREFETCH_COMMANDS = frozenset({
 
 # Prefijo para los mensajes de aviso en stderr.
 _LOG_PREFIX = "[activity-capture]"
+
+_HIGH_VOLUME_CONTENT_MAX_LINES = 80
+_HIGH_VOLUME_CONTENT_MAX_CHARS = 4000
 
 
 def _ensure_plugin_root_on_path() -> str:
@@ -186,11 +190,12 @@ def _is_excluded_path(file_path: str) -> bool:
     Returns:
         True si el fichero debe excluirse.
     """
-    project_dir = os.getcwd()
+    project_dir = _normalize_local_path(os.getcwd())
+    normalized_path = _normalize_local_path(file_path)
     try:
-        rel_path = os.path.relpath(file_path, project_dir)
+        rel_path = os.path.relpath(normalized_path, project_dir)
     except ValueError:
-        rel_path = file_path
+        rel_path = normalized_path
 
     rel_path = rel_path.replace(os.sep, "/")
 
@@ -198,6 +203,48 @@ def _is_excluded_path(file_path: str) -> bool:
         if rel_path.startswith(prefix) or f"/{prefix}" in rel_path:
             return True
     return False
+
+
+def _normalize_local_path(file_path: str) -> str:
+    """Normaliza una ruta local para comparaciones estables."""
+    return os.path.normcase(os.path.realpath(os.path.abspath(file_path)))
+
+
+def _shell_segments(command: str) -> list[list[str]]:
+    """Divide un comando shell en segmentos separados por &&, || o ;."""
+    cleaned = command.strip()
+    if not cleaned:
+        return []
+
+    try:
+        lexer = shlex.shlex(cleaned, posix=True, punctuation_chars=";&|")
+        lexer.whitespace_split = True
+        tokens = list(lexer)
+    except ValueError:
+        tokens = cleaned.split()
+
+    segments = []
+    current = []
+    for token in tokens:
+        if token in {"&&", "||", ";"}:
+            if current:
+                segments.append(current)
+                current = []
+            continue
+        current.append(token)
+
+    if current:
+        segments.append(current)
+    return segments
+
+
+def _segment_command_name(tokens: list[str]) -> str:
+    """Extrae el ejecutable principal de un segmento shell."""
+    for token in tokens:
+        if re.match(r"^\w+=\S*$", token):
+            continue
+        return os.path.basename(token)
+    return ""
 
 
 def _is_trivial_command(command: str) -> bool:
@@ -212,10 +259,15 @@ def _is_trivial_command(command: str) -> bool:
     Returns:
         True si el comando es trivial.
     """
-    cleaned = re.sub(r"^\s*(?:\w+=\S*\s+)*", "", command.strip())
-    first_token = cleaned.split()[0] if cleaned.split() else ""
-    base_command = os.path.basename(first_token)
-    return base_command in _TRIVIAL_COMMANDS
+    segments = _shell_segments(command)
+    if not segments:
+        return False
+
+    command_names = [_segment_command_name(segment) for segment in segments]
+    if not all(command_names):
+        return False
+
+    return all(command_name in _TRIVIAL_COMMANDS for command_name in command_names)
 
 
 def is_git_commit_command(command: str) -> bool:
@@ -276,10 +328,15 @@ def _relative_path(file_path: str, project_dir: str) -> str:
     Returns:
         Ruta relativa. Si la conversion falla, devuelve la ruta original.
     """
+    normalized_file = _normalize_local_path(file_path)
+    normalized_project = _normalize_local_path(project_dir)
     try:
-        return os.path.relpath(file_path, project_dir)
+        rel_path = os.path.relpath(normalized_file, normalized_project)
     except ValueError:
-        return file_path
+        return normalized_file
+    if rel_path == ".." or rel_path.startswith(f"..{os.sep}"):
+        return normalized_file
+    return rel_path
 
 
 def _read_file_safe(file_path: str) -> Optional[str]:
@@ -315,6 +372,58 @@ def _first_meaningful_line(text: str) -> str:
         if stripped:
             return stripped[:120]
     return ""
+
+
+def _prepare_high_volume_content(text: str) -> tuple[Optional[str], dict]:
+    """Recorta salidas masivas y devuelve metadatos de captura.
+
+    Algunos eventos de exploracion (`Glob`, `Grep`, `WebFetch`, `WebSearch`)
+    pueden generar miles de lineas o blobs HTML muy grandes. Guardarlos
+    completos aporta poca señal y mucho ruido. En esos casos almacenamos una
+    vista previa con metadatos para que la memoria sepa que se recorto.
+    """
+    if not text:
+        return None, {}
+
+    lines = text.splitlines()
+    total_lines = len(lines)
+    total_chars = len(text)
+    preview = text
+    truncated = False
+
+    if total_lines > _HIGH_VOLUME_CONTENT_MAX_LINES:
+        preview = "\n".join(lines[:_HIGH_VOLUME_CONTENT_MAX_LINES])
+        if text.endswith("\n"):
+            preview += "\n"
+        truncated = True
+
+    if len(preview) > _HIGH_VOLUME_CONTENT_MAX_CHARS:
+        preview = preview[:_HIGH_VOLUME_CONTENT_MAX_CHARS].rstrip()
+        truncated = True
+
+    metadata = {
+        "content_lines": total_lines,
+        "content_chars": total_chars,
+    }
+
+    if not truncated:
+        metadata["content_truncated"] = False
+        return preview, metadata
+
+    preview_lines = len(preview.splitlines())
+    omitted_lines = max(total_lines - preview_lines, 0)
+    omitted_chars = max(total_chars - len(preview), 0)
+    marker = (
+        "\n"
+        f"--- contenido recortado: {omitted_lines} lineas y "
+        f"{omitted_chars} caracteres omitidos ---"
+    )
+    preview = f"{preview.rstrip()}{marker}"
+
+    metadata["content_truncated"] = True
+    metadata["omitted_lines"] = omitted_lines
+    metadata["omitted_chars"] = omitted_chars
+    return preview, metadata
 
 
 def _try_sync(db, action: str, **kwargs) -> None:
@@ -431,6 +540,7 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
             needs_codebase_map,
             save_prefetch_result,
             start_quick_session,
+            suggest_verify_action,
             write_codebase_map_files,
             write_discovery_files,
         )
@@ -449,6 +559,8 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
     action = None
 
     if source_command == "alfred":
+        if suggest_verify_action(project_dir) is not None:
+            return None
         if not needs_codebase_map(project_dir):
             return None
         target_command = "map-codebase"
@@ -570,6 +682,22 @@ def _process_state(db, file_path: str) -> None:
         )
         _try_sync(db, "iteration")
         active = db.get_active_iteration()
+    else:
+        active_command = str(active.get("command") or "")
+        active_description = str(active.get("description") or "")
+        if active_command == "session" and comando and comando != "session":
+            db.complete_iteration(int(active["id"]), status="abandoned")
+            iteration_id = db.start_iteration(
+                command=comando,
+                description=descripcion or active_description,
+            )
+            db.log_event(
+                event_type="iteration_started",
+                payload={"comando": comando, "descripcion": descripcion},
+                iteration_id=iteration_id,
+            )
+            _try_sync(db, "iteration")
+            active = db.get_active_iteration()
 
     if active is None:
         return
@@ -577,19 +705,27 @@ def _process_state(db, file_path: str) -> None:
     iteration_id = active["id"]
 
     # --- Detectar fases nuevas completadas ---
-    existing_events = db.get_timeline(iteration_id)
+    phase_event_count = db.count_events(
+        iteration_id=iteration_id,
+        event_type="phase_completed",
+    )
+    existing_events = db.get_events(
+        iteration_id=iteration_id,
+        event_type="phase_completed",
+        ascending=True,
+        limit=max(phase_event_count, 1),
+    )
     existing_phases = set()
     for event in existing_events:
-        if event.get("event_type") == "phase_completed":
-            payload_raw = event.get("payload")
-            if payload_raw:
-                try:
-                    payload = json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
-                    phase_name = payload.get("fase", "")
-                    if phase_name:
-                        existing_phases.add(phase_name)
-                except (json.JSONDecodeError, AttributeError):
-                    pass
+        payload_raw = event.get("payload")
+        if payload_raw:
+            try:
+                payload = json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
+                phase_name = payload.get("fase", "") or event.get("phase", "")
+                if phase_name:
+                    existing_phases.add(phase_name)
+            except (json.JSONDecodeError, AttributeError):
+                pass
 
     for fase in fases_completadas:
         nombre_fase = fase.get("nombre", "") if isinstance(fase, dict) else str(fase)
@@ -665,11 +801,13 @@ def _capture_git_commit(db) -> None:
     sha = parts[0]
     message = parts[1] if len(parts) > 1 else ""
     author = parts[2] if len(parts) > 2 else ""
+    committed_at = parts[3] if len(parts) > 3 else ""
     files = [line.strip() for line in lines[1:] if line.strip()]
 
     db.log_commit(
         sha=sha, message=message, author=author,
         files=files, files_changed=len(files),
+        committed_at=committed_at,
     )
     _try_sync(db, "commits")
 
@@ -692,7 +830,14 @@ def _dispatch_write(db, data: dict) -> None:
     tool_input = data.get("tool_input", {})
     file_path = tool_input.get("file_path", "") or tool_input.get("path", "")
 
-    if not file_path or _is_excluded_path(file_path):
+    if not file_path:
+        return
+
+    is_state_file = os.path.basename(file_path) == "alfred-dev-state.json"
+    if is_state_file:
+        _process_state(db, file_path)
+
+    if _is_excluded_path(file_path):
         return
 
     project_dir = os.getcwd()
@@ -702,7 +847,7 @@ def _dispatch_write(db, data: dict) -> None:
 
     # Leer el contenido completo del fichero
     file_content = _read_file_safe(file_path)
-    line_count = file_content.count("\n") if file_content else 0
+    line_count = len(file_content.splitlines()) if file_content else 0
 
     summary = f"Escrito {rel_path} ({line_count} lineas, {ext_clean or 'sin extension'})"
 
@@ -712,10 +857,6 @@ def _dispatch_write(db, data: dict) -> None:
         payload={"file": rel_path, "extension": ext_clean, "lines": line_count},
         content=file_content,
     )
-
-    # Logica especifica de state.json
-    if file_path.endswith("alfred-dev-state.json"):
-        _process_state(db, file_path)
 
 
 def _dispatch_edit(db, data: dict) -> None:
@@ -825,19 +966,19 @@ def _dispatch_read(db, data: dict) -> None:
     limit = tool_input.get("limit")
 
     range_str = ""
-    if offset and limit:
+    if offset is not None and limit is not None:
         range_str = f" (lineas {offset}-{offset + limit})"
-    elif offset:
+    elif offset is not None:
         range_str = f" (desde linea {offset})"
-    elif limit:
+    elif limit is not None:
         range_str = f" (primeras {limit} lineas)"
 
     summary = f"Leido {rel_path}{range_str}"
 
     payload = {"file": rel_path}
-    if offset:
+    if offset is not None:
         payload["offset"] = offset
-    if limit:
+    if limit is not None:
         payload["limit"] = limit
 
     db.log_event(
@@ -876,11 +1017,15 @@ def _dispatch_glob(db, data: dict) -> None:
 
     summary = f"Glob: {pattern} en {search_path} ({match_count} resultados)"
 
+    content, content_meta = _prepare_high_volume_content(result_text)
+    payload = {"pattern": pattern, "path": search_path, "results": match_count}
+    payload.update(content_meta)
+
     db.log_event(
         event_type="glob_search",
         summary=summary,
-        payload={"pattern": pattern, "path": search_path, "results": match_count},
-        content=result_text if result_text else None,
+        payload=payload,
+        content=content,
     )
 
 
@@ -921,17 +1066,19 @@ def _dispatch_grep(db, data: dict) -> None:
 
     summary = f"Grep: '{pattern}' en {search_path}{filter_str} ({match_count} coincidencias)"
 
+    content, content_meta = _prepare_high_volume_content(result_text)
     payload = {"pattern": pattern, "path": search_path, "mode": output_mode, "results": match_count}
     if file_type:
         payload["type"] = file_type
     if glob_filter:
         payload["glob"] = glob_filter
+    payload.update(content_meta)
 
     db.log_event(
         event_type="grep_search",
         summary=summary,
         payload=payload,
-        content=result_text if result_text else None,
+        content=content,
     )
 
 
@@ -996,11 +1143,15 @@ def _dispatch_web_fetch(db, data: dict) -> None:
 
     summary = f"Web fetch: {url[:100]}"
 
+    content, content_meta = _prepare_high_volume_content(result_text)
+    payload = {"url": url}
+    payload.update(content_meta)
+
     db.log_event(
         event_type="web_fetched",
         summary=summary,
-        payload={"url": url},
-        content=result_text if result_text else None,
+        payload=payload,
+        content=content,
     )
 
 
@@ -1026,11 +1177,15 @@ def _dispatch_web_search(db, data: dict) -> None:
 
     summary = f"Web search: {query[:100]}"
 
+    content, content_meta = _prepare_high_volume_content(result_text)
+    payload = {"query": query}
+    payload.update(content_meta)
+
     db.log_event(
         event_type="web_searched",
         summary=summary,
-        payload={"query": query},
-        content=result_text if result_text else None,
+        payload=payload,
+        content=content,
     )
 
 
@@ -1075,12 +1230,15 @@ def _dispatch_prompt(db, data: dict) -> None:
 
     _ensure_plugin_root_on_path()
     try:
-        from core.continuity import clear_prefetch_consumed_marker
+        from core.continuity import clear_prefetch_consumed_marker, clear_prefetch_result
     except ImportError:
         clear_prefetch_consumed_marker = None
+        clear_prefetch_result = None
 
     if clear_prefetch_consumed_marker is not None:
         clear_prefetch_consumed_marker(os.getcwd())
+    if clear_prefetch_result is not None:
+        clear_prefetch_result(os.getcwd())
 
     prefetched = _prefetch_alfred_continuity(prompt_text)
     if prefetched:
