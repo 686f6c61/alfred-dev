@@ -83,7 +83,6 @@ const {
 
 const assetVersion = sitePackage.version;
 const iconHref = `/favicon.ico?v=${assetVersion}`;
-const iconPngHref = `/favicon.png?v=${assetVersion}`;
 const icon32Href = `/favicon-32.png?v=${assetVersion}`;
 const icon16Href = `/favicon-16.png?v=${assetVersion}`;
 const appleTouchIconHref = `/apple-touch-icon.png?v=${assetVersion}`;
@@ -130,7 +129,6 @@ const appleTouchIconHref = `/apple-touch-icon.png?v=${assetVersion}`;
 
   <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href={iconHref}>
-  <link rel="icon" type="image/png" href={iconPngHref}>
   <link rel="icon" type="image/png" sizes="32x32" href={icon32Href}>
   <link rel="icon" type="image/png" sizes="16x16" href={icon16Href}>
   <link rel="shortcut icon" href={iconHref}>
@@ -143,14 +141,34 @@ const appleTouchIconHref = `/apple-touch-icon.png?v=${assetVersion}`;
   <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 
-  <!-- Google Analytics (gtag.js) -->
-  <link rel="preconnect" href="https://www.googletagmanager.com">
-  <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-5V5Q7NJ4PC"></script>
+  <!-- Google Analytics (carga diferida tras el primer paint o la primera interacción) -->
   <script is:inline>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-5V5Q7NJ4PC');
+    window.gtag = window.gtag || function gtag(){window.dataLayer.push(arguments);};
+    window.gtag('js', new Date());
+
+    const analyticsId = 'G-5V5Q7NJ4PC';
+    const loadAnalytics = () => {
+      if (window.__alfredAnalyticsLoaded) return;
+      window.__alfredAnalyticsLoaded = true;
+
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${analyticsId}`;
+      document.head.appendChild(script);
+
+      window.gtag('config', analyticsId);
+    };
+
+    const scheduleAnalytics = () => {
+      window.setTimeout(loadAnalytics, 8000);
+    };
+
+    window.addEventListener('load', scheduleAnalytics, { once: true });
+
+    ['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
+      window.addEventListener(eventName, loadAnalytics, { once: true, passive: true });
+    });
   </script>
 
   <!-- Seguridad -->

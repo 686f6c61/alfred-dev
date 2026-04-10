@@ -599,6 +599,20 @@ const agentCatalog = agentMeta.map((meta) => {
 const coreAgents = agentCatalog.filter((agent) => agent.group === 'core');
 const optionalAgents = agentCatalog.filter((agent) => agent.group === 'optional');
 const allOptionalAgentIds = optionalAgents.map((agent) => agent.id);
+const agentCatalogClient = agentCatalog.map((agent) => ({
+  i: agent.id,
+  l: agent.label,
+  g: agent.group,
+  c: agent.cardSummary,
+  v: agent.voice,
+  t: agent.type,
+  m: agent.model,
+  o: agent.tools,
+  r: agent.role,
+  d: agent.does,
+  n: agent.doesnt,
+  f: agent.flowItems,
+}));
 
 const commandGroups = [
   {
@@ -1345,6 +1359,20 @@ const commandCatalog = commandGroups.flatMap((group) =>
     };
   }),
 );
+const commandCatalogClient = commandCatalog.map((command) => ({
+  i: command.id,
+  l: command.label,
+  g: command.group,
+  s: command.subtitle,
+  t: command.tone,
+  d: command.description,
+  x: command.detail,
+  m: command.mode,
+  n: command.notes,
+  c: command.coreAgents,
+  o: command.optionalAgents,
+  y: command.layerIds,
+}));
 
 const skillDomainMeta: Record<string, { label: string; summary: string }> = {
   arquitectura: { label: tr('Arquitectura', 'Architecture'), summary: tr('Stack, ADRs, dependencias y diseño de sistema.', 'Stack, ADRs, dependencies, and system design.') },
@@ -1512,6 +1540,12 @@ const auxiliaryLayers = [
     ],
   },
 ];
+const auxiliaryLayersClient = auxiliaryLayers.map((layer) => ({
+  i: layer.id,
+  t: layer.title,
+  d: layer.detail,
+  p: layer.points,
+}));
 
 const technicalVision = {
   kicker: 'Python 3.10+ · Node.js · SQLite local · MCP + Hooks',
@@ -1946,9 +1980,9 @@ const organizationLd = JSON.stringify({
   <script slot="head" is:inline type="application/ld+json" set:html={faqPageLd} />
   <script slot="head" is:inline type="application/ld+json" set:html={websiteLd} />
   <script slot="head" is:inline type="application/ld+json" set:html={organizationLd} />
-  <script slot="head" is:inline id="agent-catalog" type="application/json" set:html={JSON.stringify(agentCatalog)} />
-  <script slot="head" is:inline id="command-catalog" type="application/json" set:html={JSON.stringify(commandCatalog)} />
-  <script slot="head" is:inline id="layer-catalog" type="application/json" set:html={JSON.stringify(auxiliaryLayers)} />
+  <script slot="head" is:inline id="agent-catalog" type="application/json" set:html={JSON.stringify(agentCatalogClient)} />
+  <script slot="head" is:inline id="command-catalog" type="application/json" set:html={JSON.stringify(commandCatalogClient)} />
+  <script slot="head" is:inline id="layer-catalog" type="application/json" set:html={JSON.stringify(auxiliaryLayersClient)} />
   <script slot="head" is:inline id="landing-ui-copy" type="application/json" set:html={JSON.stringify(uiText)} />
   <script slot="head" is:inline id="collaboration-egg" type="application/json" set:html={JSON.stringify(collaborationEgg)} />
 
@@ -2809,11 +2843,66 @@ const organizationLd = JSON.stringify({
     const commandCatalogNode = document.getElementById('command-catalog');
     const layerCatalogNode = document.getElementById('layer-catalog');
     const collaborationEggNode = document.getElementById('collaboration-egg');
-    const uiCopy = uiCopyNode ? JSON.parse(uiCopyNode.textContent || '{}') : {};
-    const agentCatalog = agentCatalogNode ? JSON.parse(agentCatalogNode.textContent || '[]') : [];
-    const commandCatalog = commandCatalogNode ? JSON.parse(commandCatalogNode.textContent || '[]') : [];
-    const layerCatalog = layerCatalogNode ? JSON.parse(layerCatalogNode.textContent || '[]') : [];
-    const collaborationEgg = collaborationEggNode ? JSON.parse(collaborationEggNode.textContent || '{}') : null;
+    let uiCopyCache;
+    let agentCatalogCache;
+    let commandCatalogCache;
+    let layerCatalogCache;
+    let collaborationEggCache;
+    const readJsonScript = (node, fallback) => {
+      if (!node?.textContent) return fallback;
+
+      try {
+        return JSON.parse(node.textContent);
+      } catch {
+        return fallback;
+      }
+    };
+    const getUiCopy = () => (uiCopyCache ??= readJsonScript(uiCopyNode, {}));
+    const normalizeAgentCatalog = (entries) =>
+      entries.map((entry) => ({
+        id: entry.i,
+        label: entry.l,
+        group: entry.g,
+        cardSummary: entry.c,
+        voice: entry.v,
+        type: entry.t,
+        model: entry.m,
+        tools: entry.o,
+        role: entry.r,
+        does: entry.d,
+        doesnt: entry.n,
+        flowItems: entry.f,
+      }));
+    const normalizeCommandCatalog = (entries) =>
+      entries.map((entry) => ({
+        id: entry.i,
+        label: entry.l,
+        group: entry.g,
+        subtitle: entry.s,
+        tone: entry.t,
+        description: entry.d,
+        detail: entry.x,
+        mode: entry.m,
+        notes: entry.n,
+        coreAgents: entry.c,
+        optionalAgents: entry.o,
+        layerIds: entry.y,
+      }));
+    const normalizeLayerCatalog = (entries) =>
+      entries.map((entry) => ({
+        id: entry.i,
+        title: entry.t,
+        detail: entry.d,
+        points: entry.p,
+      }));
+    const getAgentCatalog = () => (agentCatalogCache ??= normalizeAgentCatalog(readJsonScript(agentCatalogNode, [])));
+    const getCommandCatalog = () => (commandCatalogCache ??= normalizeCommandCatalog(readJsonScript(commandCatalogNode, [])));
+    const getLayerCatalog = () => (layerCatalogCache ??= normalizeLayerCatalog(readJsonScript(layerCatalogNode, [])));
+    const getCollaborationEgg = () => {
+      if (collaborationEggCache !== undefined) return collaborationEggCache;
+      collaborationEggCache = readJsonScript(collaborationEggNode, null);
+      return collaborationEggCache;
+    };
     const commandTitle = document.getElementById('command-modal-title');
     const commandChip = document.getElementById('command-modal-chip');
     const commandGroup = document.getElementById('command-modal-group');
@@ -2850,6 +2939,7 @@ const organizationLd = JSON.stringify({
     };
 
     const copyText = async (text, button) => {
+      const uiCopy = getUiCopy();
       try {
         await navigator.clipboard.writeText(text);
         const original = button.textContent;
@@ -2864,6 +2954,7 @@ const organizationLd = JSON.stringify({
 
     document.querySelectorAll('[data-install-trigger]').forEach((button) => {
       button.addEventListener('click', async () => {
+        const uiCopy = getUiCopy();
         const platform = button.dataset.platform || uiCopy.installModalTitle || 'Installation';
         const command = button.dataset.command || '';
 
@@ -2975,6 +3066,8 @@ const organizationLd = JSON.stringify({
     };
 
     const openAgent = (agentId) => {
+      const agentCatalog = getAgentCatalog();
+      const uiCopy = getUiCopy();
       const agent = agentCatalog.find((entry) => entry.id === agentId);
       if (!agent || !agentDialog) return;
 
@@ -3004,6 +3097,8 @@ const organizationLd = JSON.stringify({
     };
 
     const openLayer = (layerId) => {
+      const layerCatalog = getLayerCatalog();
+      const uiCopy = getUiCopy();
       const layer = layerCatalog.find((entry) => entry.id === layerId);
       if (!layer || !layerDialog) return;
 
@@ -3021,6 +3116,10 @@ const organizationLd = JSON.stringify({
     };
 
     const openCommand = (commandId) => {
+      const commandCatalog = getCommandCatalog();
+      const agentCatalog = getAgentCatalog();
+      const layerCatalog = getLayerCatalog();
+      const uiCopy = getUiCopy();
       const command = commandCatalog.find((entry) => entry.id === commandId);
       if (!command || !commandDialog) return;
 
@@ -3083,6 +3182,7 @@ const organizationLd = JSON.stringify({
     });
 
     // Easter egg para quien abra DevTools y quiera empujar el proyecto.
+    const collaborationEgg = getCollaborationEgg();
     if (collaborationEgg?.url) {
       console.groupCollapsed(
         `%c${collaborationEgg.label || 'ALFRED DEV / COLLABORATION'}`,
@@ -4043,7 +4143,7 @@ const organizationLd = JSON.stringify({
       font-family: 'JetBrains Mono', monospace;
       font-size: 30px;
       font-weight: 900;
-      color: #d7743e;
+      color: #9d3f0d;
       line-height: 1;
     }
 
