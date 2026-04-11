@@ -91,6 +91,24 @@ class TestSelinaVisual(unittest.TestCase):
         self.assertEqual(payload["label"], "Minimalismo vibrante")
         self.assertEqual(payload["timestamp"], "2026-04-07T10:00:02Z")
 
+    def test_read_choice_cli_includes_parsed_guided_choice_when_present(self):
+        with open(self.events_path, "w", encoding="utf-8") as fh:
+            fh.write('{"type":"click","choice":"brief::neo-brutalism::brutal-readable::solid","label":"Brutal legible · Solidos","ts":"2026-04-07T10:00:02Z"}\n')
+
+        result = subprocess.run(
+            ["python3", READ_CHOICE_SCRIPT, self.state_dir],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["parsed_choice"]["stage"], "style-brief")
+        self.assertEqual(payload["parsed_choice"]["style_id"], "neo-brutalism")
+        self.assertEqual(payload["parsed_choice"]["font_pairing_id"], "brutal-readable")
+        self.assertEqual(payload["parsed_choice"]["palette_mode"], "solid")
+
 
 if __name__ == "__main__":
     unittest.main()

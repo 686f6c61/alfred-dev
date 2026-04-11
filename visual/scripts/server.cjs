@@ -43,6 +43,13 @@ const WATCH_DEBOUNCE_MS = 100;
 
 const CONTENT_DIR = path.join(SESSION_DIR, 'content');
 const STATE_DIR = path.join(SESSION_DIR, 'state');
+const DEBUG_WS = process.env.ALFRED_VISUAL_DEBUG_WS === '1';
+
+function debugWs(message, details) {
+  if (!DEBUG_WS) return;
+  const payload = details === undefined ? '' : ` ${JSON.stringify(details)}`;
+  process.stderr.write(`[visual-ws] ${message}${payload}\n`);
+}
 
 // ---------------------------------------------------------------------------
 // WebSocket RFC 6455 — implementacion minima
@@ -67,6 +74,21 @@ function computeAcceptKey(key) {
     .createHash('sha1')
     .update(key + MAGIC)
     .digest('base64');
+}
+
+/**
+ * Normaliza cabeceras que deberian contener un unico valor.
+ * Algunos clientes/proxies pueden entregarlas como array o
+ * concatenadas por comas; para el handshake WebSocket usamos
+ * solo el primer token significativo.
+ * @param {string|string[]|undefined} value
+ * @returns {string}
+ */
+function normalizeSingleHeader(value) {
+  if (Array.isArray(value)) {
+    return String(value[0] || '').trim();
+  }
+  return String(value || '').split(',')[0].trim();
 }
 
 /**
@@ -210,13 +232,35 @@ function injectHelper(html) {
 }
 
 /**
+ * Extrae bloques de estilos que conviene mover al <head> del frame.
+ * Ahora mismo se usa para imports tipográficos generados por Selina.
+ * @param {string} fragment
+ * @returns {{ fragment: string, headHtml: string }}
+ */
+function extractHeadMarkup(fragment) {
+  const matches = [];
+  const cleaned = fragment.replace(/<style class="style-font-imports">[\s\S]*?<\/style>/g, (match) => {
+    matches.push(match);
+    return '';
+  });
+  return {
+    fragment: cleaned.trim(),
+    headHtml: matches.join('\n'),
+  };
+}
+
+/**
  * Envuelve un fragmento HTML en el frame-template e inyecta helper.js.
  * @param {string} fragment — Fragmento HTML sin DOCTYPE.
  * @returns {string}
  */
 function wrapInFrame(fragment) {
   const template = loadFrameTemplate();
-  const wrapped = template.replace('<!-- CONTENT -->', fragment);
+  const { fragment: bodyFragment, headHtml } = extractHeadMarkup(fragment);
+  let wrapped = template.replace('<!-- CONTENT -->', bodyFragment);
+  if (headHtml && wrapped.includes('</head>')) {
+    wrapped = wrapped.replace('</head>', `${headHtml}\n</head>`);
+  }
   return injectHelper(wrapped);
 }
 
@@ -314,6 +358,19 @@ function buildChoiceEvent(event) {
 }
 
 /**
+ * Registra una eleccion canónica en el log de eventos y la emite por stdout.
+ * @param {object} event
+ * @returns {object}
+ */
+function recordChoiceEvent(event) {
+  const choiceEvent = buildChoiceEvent(event);
+  const eventLine = JSON.stringify(choiceEvent);
+  fs.appendFileSync(path.join(STATE_DIR, 'events'), eventLine + '\n');
+  emit(choiceEvent);
+  return choiceEvent;
+}
+
+/**
  * Devuelve el conjunto de origins permitidos para conexiones WebSocket locales.
  * Acepta aliases de loopback para evitar que localhost y 127.0.0.1 diverjan.
  * @returns {Set<string>}
@@ -399,6 +456,29 @@ function serveStaticFile(req, res) {
 function handleRequest(req, res) {
   lastActivity = Date.now();
 
+  if (req.method === 'POST' && req.url === '/events') {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      try {
+        const body = Buffer.concat(chunks).toString('utf8');
+        const event = JSON.parse(body || '{}');
+        if (event.choice === undefined) {
+          res.writeHead(400, SECURITY_HEADERS);
+          res.end('Evento invalido');
+          return;
+        }
+        recordChoiceEvent(event);
+        res.writeHead(202, SECURITY_HEADERS);
+        res.end('accepted');
+      } catch {
+        res.writeHead(400, SECURITY_HEADERS);
+        res.end('JSON invalido');
+      }
+    });
+    return;
+  }
+
   if (req.url === '/' || req.url === '/index.html') {
     const newest = getNewestHtml();
     let body;
@@ -453,24 +533,33 @@ function broadcast(message) {
  * @param {http.IncomingMessage} req
  * @param {net.Socket} socket
  */
-function handleUpgrade(req, socket) {
+function handleUpgrade(req, socket, head) {
   // Verificar origen del WebSocket para prevenir conexiones desde dominios ajenos
-  const origin = req.headers['origin'];
+  const origin = normalizeSingleHeader(req.headers['origin']);
+  debugWs('upgrade-request', {
+    origin,
+    key: normalizeSingleHeader(req.headers['sec-websocket-key']),
+    headers: req.headers,
+    headLength: head ? head.length : 0,
+  });
   if (origin) {
     const allowedOrigins = getAllowedOrigins();
     if (!allowedOrigins.has(origin)) {
+      debugWs('upgrade-rejected-origin', { origin, allowedOrigins: Array.from(allowedOrigins) });
       socket.destroy();
       return;
     }
   }
 
-  const key = req.headers['sec-websocket-key'];
+  const key = normalizeSingleHeader(req.headers['sec-websocket-key']);
   if (!key) {
+    debugWs('upgrade-rejected-missing-key');
     socket.destroy();
     return;
   }
 
   const accept = computeAcceptKey(key);
+  debugWs('upgrade-accepted', { accept });
   const headers = [
     'HTTP/1.1 101 Switching Protocols',
     'Upgrade: websocket',
@@ -485,9 +574,10 @@ function handleUpgrade(req, socket) {
   lastActivity = Date.now();
 
   let buffer = Buffer.alloc(0);
+  socket.setNoDelay(true);
 
-  socket.on('data', (chunk) => {
-    lastActivity = Date.now();
+  function processChunk(chunk) {
+    if (!chunk || chunk.length === 0) return;
     buffer = Buffer.concat([buffer, chunk]);
 
     // Procesar todos los frames completos del buffer
@@ -502,10 +592,7 @@ function handleUpgrade(req, socket) {
             const event = JSON.parse(text);
             // Si el evento contiene una eleccion, registrarla
             if (event.choice !== undefined) {
-              const choiceEvent = buildChoiceEvent(event);
-              const eventLine = JSON.stringify(choiceEvent);
-              fs.appendFileSync(path.join(STATE_DIR, 'events'), eventLine + '\n');
-              emit(choiceEvent);
+              recordChoiceEvent(event);
             }
           } catch {
             // Mensaje no JSON, ignorar
@@ -522,6 +609,15 @@ function handleUpgrade(req, socket) {
           break;
       }
     }
+  }
+
+  if (head && head.length > 0) {
+    processChunk(head);
+  }
+
+  socket.on('data', (chunk) => {
+    lastActivity = Date.now();
+    processChunk(chunk);
   });
 
   socket.on('close', () => wsClients.delete(socket));

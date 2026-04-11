@@ -1,6 +1,7 @@
 ---
 name: sonarqube
 description: "Levantar SonarQube con Docker, analizar el código y proponer mejoras. También: análisis estático, deuda técnica, code smells, cobertura, calidad automatizada."
+disable-model-invocation: true
 ---
 
 # Análisis de calidad con SonarQube

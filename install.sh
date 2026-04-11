@@ -21,7 +21,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.5.1"
+VERSION="0.5.2"
 
 # -- Colores ----------------------------------------------------------------
 

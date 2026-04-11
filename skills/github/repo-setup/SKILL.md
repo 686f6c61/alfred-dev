@@ -1,6 +1,7 @@
 ---
 name: repo-setup
 description: "Configurar un repositorio GitHub con branch protection, templates y labels"
+disable-model-invocation: true
 ---
 
 # Configurar repositorio GitHub

@@ -1,6 +1,7 @@
 ---
 name: release
 description: "Crear releases con versionado semantico, notas y artefactos"
+disable-model-invocation: true
 ---
 
 # Crear releases con versionado semantico

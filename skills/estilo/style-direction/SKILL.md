@@ -1,14 +1,21 @@
+---
+name: style-direction
+description: "Abrir y operar el companion visual de Selina para elegir una direccion de estilo en proyectos con interfaz. Skill manual: levanta un servidor local y escribe artefactos visuales."
+disable-model-invocation: true
+---
+
 # Guía del servidor visual de Selina
 
 Servidor local en navegador para mostrar sistemas de diseño y opciones visuales
 durante la fase de dirección de estilo. Funciona como un visual companion para
-enseñar el catálogo base de Selina y cerrar una ronda final de tres columnas.
+enseñar el catálogo base de Selina, dejar que el usuario fije familia +
+tipografía + gama de color y cerrar después una ronda final de tres columnas.
 
 ## Cuándo usar el servidor visual
 
 Siempre que Selina genere opciones de estilo. El servidor es la herramienta principal
 de Selina: sirve tanto para enseñar la galería de 10 sistemas de diseño base como
-para la ronda final de 3 propuestas comparables.
+para el nuevo flujo guiado de selección y la ronda final de 3 propuestas comparables.
 
 ## Arrancar sesión
 
@@ -41,12 +48,18 @@ Indica al usuario que abra la URL en el navegador.
 
 1. Comprueba que el servidor sigue activo leyendo `STATE_DIR/server-info`.
 2. Si aporta contexto, genera primero la galería del catálogo con `python3 visual/scripts/write-style-demo-gallery.py --visual-path "$STATE_DIR"`.
-3. Para la ronda final, genera `screen_dir/style-options.html` con `python3 visual/scripts/write-style-options.py --visual-path "$STATE_DIR"`. Si necesitas escribirlo a mano, usa la clase `.style-grid`.
-4. Escribe también `screen_dir/style-options.json` con las tres propuestas en JSON para poder generar luego el artefacto final sin reinterpretar la pantalla.
-5. Informa al usuario: recuerda la URL, resume qué se muestra, pide que elija una opción.
-6. En el siguiente turno: lee la elección con `python3 visual/scripts/read-choice.py "$STATE_DIR"` o, si lo prefieres, inspecciona `STATE_DIR/events` directamente.
-7. Genera `docs/style-direction.md` con `python3 visual/scripts/write-style-direction.py --project-dir "$PWD" --visual-path "$STATE_DIR"` o, si necesitas control manual, escribe el artefacto tú misma usando el sidecar JSON.
-8. Escribe `waiting.html` en `screen_dir` para limpiar el navegador hasta la próxima acción.
+3. Flujo guiado recomendado:
+   - `python3 visual/scripts/write-style-selector.py --visual-path "$STATE_DIR"` para elegir el sistema base.
+   - lee la elección con `python3 visual/scripts/read-choice.py "$STATE_DIR"`.
+   - `python3 visual/scripts/write-style-selector.py --visual-path "$STATE_DIR" --style-id "<style_id>"` para que el usuario elija tipografía + paleta.
+   - vuelve a leer la elección con `python3 visual/scripts/read-choice.py "$STATE_DIR"`.
+   - `python3 visual/scripts/write-guided-style-options.py --visual-path "$STATE_DIR"` para generar automáticamente la ronda final de 3 variantes a partir de esa selección.
+4. Flujo directo alternativo: si ya tienes las tres propuestas decididas, genera `screen_dir/style-options.html` con `python3 visual/scripts/write-style-options.py --visual-path "$STATE_DIR"`. Si necesitas escribirlo a mano, usa la clase `.style-grid`.
+5. El sidecar JSON final debe vivir en `screen_dir/style-options.json` para poder generar luego el artefacto final sin reinterpretar la pantalla.
+6. Informa al usuario: recuerda la URL, resume qué se muestra, pide que elija una opción.
+7. En el siguiente turno: lee la elección final con `python3 visual/scripts/read-choice.py "$STATE_DIR"` o, si lo prefieres, inspecciona `STATE_DIR/events` directamente.
+8. Genera `docs/style-direction.md` con `python3 visual/scripts/write-style-direction.py --project-dir "$PWD" --visual-path "$STATE_DIR"` o, si necesitas control manual, escribe el artefacto tú misma usando el sidecar JSON.
+9. Escribe `waiting.html` en `screen_dir` para limpiar el navegador hasta la próxima acción.
 
 ## Sidecar JSON recomendado
 
@@ -61,12 +74,34 @@ menos:
 - `spacing_density` o `layout_density`
 - `tone` o `mood`
 - `sample_component` o `component_example`
+- `visual_principles` o `design_principles`
+- `layout_grammar` o `composition_grammar`
+- `surface_treatment` o `materiality`
+- `shape_language`
+- `motion_language`
+- `signature_elements` o `visual_motifs`
+- `implementation_guardrails` o `guardrails`
+- `prompt_seed` o `design_prompt`
 - `rationale` o `why`
 - `not_this_direction` o `anti_patterns`
 - `context_signals`, `audience` o `constraints`
 
 El writer canónico tolera sidecars incompletos y alias razonables, pero cuanto más
 específica sea la propuesta, menos genérica será la dirección final.
+
+### Regla crítica del flujo guiado
+
+Si el usuario ya ha fijado **familia + tipografía + paleta**, las tres variantes finales
+deben seguir perteneciendo a ese mismo sistema. Lo que puede cambiar entre `A / B / C`
+es la composición, la jerarquía o el grado de expresividad, pero no la gramática base
+del sistema elegido.
+
+Cuando generes sidecars manuales:
+
+- reutiliza la `prompt_seed` del sistema como semilla principal
+- arrastra siempre `visual_principles`, `layout_grammar` y `signature_elements`
+- usa `implementation_guardrails` para evitar que la variante se desvíe hacia otra familia
+- no mezcles referencias de una tendencia distinta solo para “hacerla más bonita”
 
 ## Writer canónico de opciones
 
@@ -84,6 +119,18 @@ Este script:
 - evita depender de assets externos que no existen en el repo
 
 Si necesitas personalizar el copy de cabecera, acepta `--title` y `--subtitle`.
+
+## Selector guiado de sistema + tipografía + paleta
+
+Selina ya puede trabajar en tres pasos naturales:
+
+1. **Sistema base** — `python3 visual/scripts/write-style-selector.py --visual-path "$STATE_DIR"`
+2. **Tipografía + paleta** — `python3 visual/scripts/write-style-selector.py --visual-path "$STATE_DIR" --style-id "<style_id>"`
+3. **Tres variantes finales** — `python3 visual/scripts/write-guided-style-options.py --visual-path "$STATE_DIR"`
+
+`read-choice.py` sigue siendo el lector canónico entre pasos. Si la elección
+pertenece al flujo guiado, devolverá además `parsed_choice` con `stage`,
+`style_id`, `font_pairing_id` y `palette_mode`.
 
 ## Estructura HTML de las opciones
 

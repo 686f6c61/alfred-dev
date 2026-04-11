@@ -11,6 +11,7 @@ import sys
 if __package__ in {None, ""}:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from core.selina_style_selector import parse_guided_choice
 from core.selina_visual import read_latest_style_choice, resolve_state_dir
 
 
@@ -34,11 +35,14 @@ def main(argv: list[str] | None = None) -> int:
             "message": "No hay ninguna elección válida registrada todavía.",
         }
     else:
+        parsed_choice = parse_guided_choice(choice.get("choice"))
         payload = {
             "status": "ok",
             "state_dir": state_dir,
             **choice,
         }
+        if parsed_choice:
+            payload["parsed_choice"] = parsed_choice
 
     sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
     return 0

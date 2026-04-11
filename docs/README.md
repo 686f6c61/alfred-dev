@@ -29,7 +29,7 @@ mindmap
       9 agentes opcionales
       Motor de personalidad
     Capacidades
-      Catalogo interno de 61 skills en 14 dominios
+      Catalogo publicado de 61 skills en 14 dominios
       13 hooks del ciclo de vida
       Memoria persistente SQLite
     Operaciones
@@ -49,7 +49,7 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseño fundamentales |
 | [flows.md](flows.md) | Los 6 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
 | [agents/README.md](agents/README.md) | Vision general del equipo de 19 agentes, modelo de colaboración, distribución de modelos |
-| [skills.md](skills.md) | Catalogo interno de 61 skills organizados en 14 dominios y nota sobre su diferencia frente a las skills publicadas en Claude Code |
+| [skills.md](skills.md) | Catalogo de 61 skills organizados en 14 dominios, junto con las reglas de publicación y activación manual de los skills más delicados |
 | [hooks.md](hooks.md) | Los 13 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
 | [configuration.md](configuration.md) | Detección de stack, fichero .local.md, niveles de autonomía, agentes opcionales, composicion dinámica de equipo |

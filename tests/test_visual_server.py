@@ -109,6 +109,17 @@ class TestServerLifecycle(unittest.TestCase):
         conn.close()
         return status, body
 
+    def _post_json(self, path, payload):
+        """Realiza una peticion POST JSON y devuelve (status, body)."""
+        conn = http.client.HTTPConnection('127.0.0.1', self.port, timeout=5)
+        body = json.dumps(payload)
+        conn.request('POST', path, body=body, headers={'Content-Type': 'application/json'})
+        resp = conn.getresponse()
+        data = resp.read().decode('utf-8')
+        status = resp.status
+        conn.close()
+        return status, data
+
     def _open_websocket(self):
         """Abre una conexion WebSocket minima contra el servidor visual."""
         return self._open_websocket_with_origin(None)
@@ -235,6 +246,25 @@ class TestServerLifecycle(unittest.TestCase):
         self.assertIn('Selina', body)
         self.assertIn('Fragmento de prueba', body)
 
+    def test_server_moves_font_imports_from_fragment_to_head(self):
+        """Los imports de tipografia de Selina deben acabar en el <head> del frame."""
+        self._start_server()
+
+        fragment = (
+            '<style class="style-font-imports">@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap");</style>'
+            '<div class="style-grid"><p>Preview con tipografia</p></div>'
+        )
+        with open(os.path.join(self.content_dir, 'fonts.html'), 'w', encoding='utf-8') as f:
+            f.write(fragment)
+
+        time.sleep(0.5)
+
+        status, body = self._get('/')
+        self.assertEqual(status, 200)
+        self.assertIn('@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap");', body)
+        self.assertLess(body.index('style-font-imports'), body.index('</head>'))
+        self.assertGreater(body.index('Preview con tipografia'), body.index('<body>'))
+
     def test_server_serves_full_documents_as_is(self):
         """Un documento completo con DOCTYPE se sirve sin envolver en el frame."""
         self._start_server()
@@ -301,6 +331,22 @@ class TestServerLifecycle(unittest.TestCase):
         self.assertEqual(event['source'], 'user-event')
         self.assertIn('ts', event)
         self.assertIn('timestamp', event)
+
+    def test_server_records_http_click_events_for_browser_fallback(self):
+        """El fallback HTTP debe registrar la elección humana cuando WS no entra."""
+        self._start_server()
+        status, _ = self._post_json('/events', {'choice': 'C', 'label': 'Modern SaaS clean'})
+        self.assertEqual(status, 202)
+
+        events_path = os.path.join(self.state_dir, 'events')
+        with open(events_path, 'r', encoding='utf-8') as fh:
+            lines = [line.strip() for line in fh if line.strip()]
+
+        self.assertEqual(len(lines), 1)
+        event = json.loads(lines[0])
+        self.assertEqual(event['choice'], 'C')
+        self.assertEqual(event['label'], 'Modern SaaS clean')
+        self.assertEqual(event['type'], 'click')
 
     def test_server_accepts_loopback_origin_alias_for_websocket(self):
         """Abrir la URL como 127.0.0.1 no debe romper WS si el servidor anunció localhost."""

@@ -97,6 +97,211 @@ def _palette(
     }
 
 
+def _style_cues(
+    *,
+    visual_principles: List[str],
+    layout_grammar: str,
+    surface_treatment: str,
+    shape_language: str,
+    motion_language: str,
+    signature_elements: List[str],
+    implementation_guardrails: List[str],
+    prompt_seed: str,
+) -> Dict[str, Any]:
+    return {
+        "visual_principles": list(visual_principles),
+        "layout_grammar": layout_grammar,
+        "surface_treatment": surface_treatment,
+        "shape_language": shape_language,
+        "motion_language": motion_language,
+        "signature_elements": list(signature_elements),
+        "implementation_guardrails": list(implementation_guardrails),
+        "prompt_seed": prompt_seed,
+    }
+
+
+STYLE_SYSTEM_CUES: Dict[str, Dict[str, Any]] = {
+    "free-default": _style_cues(
+        visual_principles=[
+            "Neutralidad intencional: la identidad nace del producto, no de una tendencia impuesta.",
+            "Jerarquia clara, bloques limpios y un lenguaje visual facil de extender.",
+            "La expresividad se introduce solo donde el producto la justifica.",
+        ],
+        layout_grammar="Grid ordenado, ritmo estable y modulos faciles de sistematizar.",
+        surface_treatment="Fondos claros, contraste sereno y elevacion contenida.",
+        shape_language="Rectangulos limpios, capsulas discretas y radios medios.",
+        motion_language="Microinteracciones suaves y funcionales, sin protagonismo visual excesivo.",
+        signature_elements=["hero claro", "CTA dominante", "prueba social legible"],
+        implementation_guardrails=[
+            "No forzar una estetica de tendencia si el producto todavia no la pide.",
+            "Evitar ornamento gratuito o capas visuales que compliquen el sistema base.",
+        ],
+        prompt_seed="Usa una direccion contextual y ejecutable: claridad primero, personalidad solo donde aporte al producto.",
+    ),
+    "maximalism-neo-retro": _style_cues(
+        visual_principles=[
+            "Capas visibles, collage y energia editorial con caos controlado.",
+            "El color y la composicion deben sentirse culturales, no corporativos.",
+            "La interfaz debe parecer hecha con criterio grafico, no con plantillas SaaS.",
+        ],
+        layout_grammar="Poster + sticker + pieza secundaria inclinada, con ritmo de collage y jerarquia asimetrica.",
+        surface_treatment="Campos saturados, degradados calidos y piezas impresas o pegadas visualmente.",
+        shape_language="Posters redondeados, tickets inclinados y barras coloristas muy visibles.",
+        motion_language="Deslizamientos juguetones, superposiciones y rebotes cortos con sabor editorial.",
+        signature_elements=["stickers visibles", "collage inclinado", "barra cromatica protagonista"],
+        implementation_guardrails=[
+            "No convertirlo en pop infantil sin criterio editorial.",
+            "No limpiar tanto la composicion que pierda sabor retro y tension grafica.",
+        ],
+        prompt_seed="Usa maximalismo neo-retro real: collage editorial, color saturado y piezas con tension grafica; evita la neutralidad corporativa.",
+    ),
+    "kinetic-typography": _style_cues(
+        visual_principles=[
+            "La tipografia manda: el titular es estructura, no decoracion.",
+            "El contraste entre escalas tiene que sentirse performativo.",
+            "La composicion debe respirar al servicio del texto, no competir con el.",
+        ],
+        layout_grammar="Titulares gigantes, eco tipografico, bandas de lectura y railes secundarios como soporte.",
+        surface_treatment="Superficies limpias para dejar que el texto y las bandas hagan el trabajo visual.",
+        shape_language="Bandas, subrayados, railes y masas tipograficas en primer plano.",
+        motion_language="Desplazamientos tipograficos, reveals por lineas y ecos de texto, no blur ornamental.",
+        signature_elements=["titular gigante", "eco tipografico", "bandas tensas"],
+        implementation_guardrails=[
+            "No esconder la personalidad tipografica detras de cards genericas.",
+            "No meter demasiados widgets secundarios que resten protagonismo al texto.",
+        ],
+        prompt_seed="Usa tipografia cinetica real: texto protagonista, escalas dramaticas y ritmo visual construido con palabras y bandas.",
+    ),
+    "interactive-3d-webgl": _style_cues(
+        visual_principles=[
+            "Profundidad y objeto primero: el producto debe sentirse espacial.",
+            "La pieza heroica tiene que parecer un objeto o escena, no una card plana.",
+            "El resto del layout acompana como panel de control o exploracion.",
+        ],
+        layout_grammar="Escena principal + panel lateral o bloques de apoyo que orbitan alrededor del objeto.",
+        surface_treatment="Gradientes frios, brillos suaves y campos con profundidad contenida.",
+        shape_language="Objetos volumetricos, planos flotantes y paneles con aire tecnico.",
+        motion_language="Parallax, rotacion sutil y desplazamiento espacial controlado.",
+        signature_elements=["objeto hero 3D", "escena con profundidad", "panel lateral de apoyo"],
+        implementation_guardrails=[
+            "No convertirlo en glass genrico sin sensacion de objeto.",
+            "No llenar la escena de ornamento si el objeto principal ya comunica.",
+        ],
+        prompt_seed="Usa 3D interactivo real: objeto protagonista, profundidad espacial y paneles de apoyo; evita cards planas maquilladas.",
+    ),
+    "glassmorphism-2": _style_cues(
+        visual_principles=[
+            "Capas translucidas maduras, no cristal decorativo sin jerarquia.",
+            "La profundidad tiene que sentirse ligera y tecnologica.",
+            "El blur existe para separar capas, no para lavar el contenido.",
+        ],
+        layout_grammar="Panel principal flotante + orb o panel secundario que refuerza profundidad y capas.",
+        surface_treatment="Paneles translucidios, brillos internos y luces frias controladas.",
+        shape_language="Capsulas suaves, paneles redondeados y orb ovolar como acento de profundidad.",
+        motion_language="Desplazamientos suaves, blur controlado y feedback liquido, nunca brusco.",
+        signature_elements=["panel glass hero", "orb luminosa", "chips translucidos"],
+        implementation_guardrails=[
+            "No caer en sombra gris generica con blur indiscriminado.",
+            "No perder legibilidad por exceso de transparencia o luz lavada.",
+        ],
+        prompt_seed="Usa glassmorphism 2.0 real: paneles translucidios con profundidad elegante, luz controlada y legibilidad alta.",
+    ),
+    "dopamine-colors": _style_cues(
+        visual_principles=[
+            "Respuesta emocional inmediata mediante color y contraste energico.",
+            "La composicion tiene que sentirse rapida, visible y divertida.",
+            "El sistema debe seguir siendo producto, no convertirse en cartel sin uso.",
+        ],
+        layout_grammar="Masas de color, burbujas, strips y puntos de acento con lectura directa.",
+        surface_treatment="Campos vibrantes, gradientes electricos y luces saturadas con alto contraste.",
+        shape_language="Burbujas redondeadas, pills, strips cromaticos y puntos de color muy marcados.",
+        motion_language="Pulsos, deslizamientos rapidos y reacciones cortas con energia alta.",
+        signature_elements=["burbujas cromaticas", "strip electrico", "puntos dopamina"],
+        implementation_guardrails=[
+            "No reciclar la composicion retro; esto debe sentirse mas digital e inmediato.",
+            "No bajar tanto la saturacion que se vuelva simplemente agradable.",
+        ],
+        prompt_seed="Usa colores dopamina reales: energia cromatica inmediata, formas digitales redondeadas y contrastes vivos; evita la estetica SaaS tibia.",
+    ),
+    "nature-distilled": _style_cues(
+        visual_principles=[
+            "Calidez organica y autenticidad sin caer en rusticidad naive.",
+            "La interfaz debe respirar y sentirse tactil, pausada y curada.",
+            "Las curvas y texturas suaves tienen que dominar sobre el grid duro.",
+        ],
+        layout_grammar="Pieza organica principal + bloque editorial o estadistico sereno, con mucho aire entre elementos.",
+        surface_treatment="Campos crema, manchas suaves y degradados organicos muy contenidos.",
+        shape_language="Curvas irregulares suaves, tarjetas tactiles y capsulas calmadas.",
+        motion_language="Transiciones suaves, orgánicas y con sensacion de respiracion.",
+        signature_elements=["media organica", "chip tierra", "bloques curvos calmados"],
+        implementation_guardrails=[
+            "No convertirlo en beige generico de marca wellness.",
+            "No endurecer tanto la reticula que desaparezca la sensacion organica.",
+        ],
+        prompt_seed="Usa nature distilled real: curvas suaves, calma editorial y tactilidad organica; evita grids duros y brillo tecnologico frio.",
+    ),
+    "neo-brutalism": _style_cues(
+        visual_principles=[
+            "Bloques duros, bordes negros y sombras desplazadas con frontalidad total.",
+            "La composicion debe tener imperfeccion controlada y tension visible.",
+            "Nada de glass, blur ni suavidad corporativa: esto debe sentirse fisico.",
+        ],
+        layout_grammar="Cajas desplazadas, stickers, top lines secas y jerarquia frontal sin vergüenza.",
+        surface_treatment="Fondos crema o solidos, rellenos mates y contornos negros muy visibles.",
+        shape_language="Rectangulos tensos, capsulas contundentes y stat cards con sombra brutal.",
+        motion_language="Feedback seco, empuje corto y desplazamiento rotundo, no difuso.",
+        signature_elements=["caja desplazada", "sticker duro", "CTA con sombra brutal"],
+        implementation_guardrails=[
+            "No redondear de mas ni suavizar sombras hasta parecer friendly SaaS.",
+            "No meter glow etereo o translucidez que contradiga la materialidad brutalista.",
+        ],
+        prompt_seed="Usa neo-brutalismo real: bordes negros, sombras duras, bloques desplazados y cero suavidad glass.",
+    ),
+    "ai-hyperminimalism": _style_cues(
+        visual_principles=[
+            "Silencio visual, precision y tecnologia elegante sin ruido.",
+            "Todo debe sentirse deliberado, espacioso y muy afinado.",
+            "La sofisticacion nace de la contencion, no del decorado.",
+        ],
+        layout_grammar="Grandes vacios, una o dos masas protagonistas y lineas de apoyo muy finas.",
+        surface_treatment="Blancos o grises frios limpios, gradientes muy sutiles y elevacion casi invisible.",
+        shape_language="Tarjetas sobrias, barras finas, bloques blandos y minima ornamentacion.",
+        motion_language="Microtransiciones casi imperceptibles, muy pulidas y sin ruido.",
+        signature_elements=["vacio protagonista", "barra sutil", "panel limpio"],
+        implementation_guardrails=[
+            "No introducir gadgets extra que rompan el silencio visual.",
+            "No volverlo tan vacio que pierda informacion esencial o jerarquia.",
+        ],
+        prompt_seed="Usa hyperminimalismo real: aire, precision y tecnologia silenciosa; evita cualquier gesto grafico que robe protagonismo.",
+    ),
+    "narrative-scroll-gamification": _style_cues(
+        visual_principles=[
+            "La pagina se entiende como una secuencia, no como un tablero estatico.",
+            "Progreso, etapas y checkpoints deben ser visibles dentro del layout.",
+            "La narrativa tiene que guiar la accion sin perder claridad de producto.",
+        ],
+        layout_grammar="Rail de progreso + card de etapa + checkpoints o micro-estados repartidos en secuencia.",
+        surface_treatment="Planos limpios con degradados suaves que sugieren avance y direccion.",
+        shape_language="Rails, pasos, checkpoints, paneles por fase y top lines secuenciales.",
+        motion_language="Avance por etapas, reveals encadenados y feedback de progreso.",
+        signature_elements=["rail de progreso", "checkpoint visible", "card de etapa"],
+        implementation_guardrails=[
+            "No dejarlo en cards planas sin sensacion de secuencia.",
+            "No exagerar la gamificacion hasta volverlo juguete cuando el producto pide confianza.",
+        ],
+        prompt_seed="Usa scroll narrativo real: secuencia, rails, checkpoints y ritmo por etapas; evita un layout estatico con tres cajas normales.",
+    ),
+}
+
+
+def _with_style_cues(style: Dict[str, Any]) -> Dict[str, Any]:
+    enriched = deepcopy(style)
+    cues = STYLE_SYSTEM_CUES.get(enriched["id"], {})
+    for key, value in cues.items():
+        enriched[key] = deepcopy(value)
+    return enriched
+
+
 STYLE_CATALOG: Tuple[Dict[str, Any], ...] = (
     {
         "id": DEFAULT_STYLE_ID,
@@ -569,7 +774,7 @@ PALETTE_MODE_BY_ID: Dict[str, Dict[str, str]] = {
 
 def get_style_catalog() -> List[Dict[str, Any]]:
     """Devuelve el catalogo completo de familias visuales."""
-    return [deepcopy(entry) for entry in STYLE_CATALOG]
+    return [_with_style_cues(entry) for entry in STYLE_CATALOG]
 
 
 def get_style_trend(style_id: str) -> Dict[str, Any]:
@@ -577,12 +782,21 @@ def get_style_trend(style_id: str) -> Dict[str, Any]:
     normalized_id = str(style_id or "").strip()
     if normalized_id not in STYLE_CATALOG_BY_ID:
         raise KeyError(f"Estilo de Selina desconocido: {normalized_id}")
-    return deepcopy(STYLE_CATALOG_BY_ID[normalized_id])
+    return _with_style_cues(STYLE_CATALOG_BY_ID[normalized_id])
 
 
 def get_palette_modes() -> List[Dict[str, str]]:
     """Lista canonica de modos de paleta."""
     return [deepcopy(entry) for entry in PALETTE_MODE_CATALOG]
+
+
+def resolve_palette_mode_meta(palette_mode: Optional[str]) -> Dict[str, str]:
+    """Devuelve el metadato canónico de un modo de paleta."""
+    normalized_id = str(palette_mode or "").strip() or "recommended"
+    meta = PALETTE_MODE_BY_ID.get(normalized_id)
+    if meta is None:
+        meta = PALETTE_MODE_BY_ID["recommended"]
+    return deepcopy(meta)
 
 
 def resolve_palette(style_id: str, palette_mode: Optional[str] = None) -> Tuple[Dict[str, str], str]:
@@ -667,6 +881,7 @@ def build_style_catalog_proposal(
     """Construye una propuesta de Selina a partir del catalogo."""
     style = get_style_trend(style_id)
     palette, resolved_palette_mode = resolve_palette(style_id, palette_mode)
+    palette_mode_meta = resolve_palette_mode_meta(resolved_palette_mode)
     font_pairing = resolve_font_pairing(
         style_id,
         pairing_id=font_pairing_id,
@@ -682,8 +897,11 @@ def build_style_catalog_proposal(
         "style_family": style["id"],
         "style_family_label": style["name"],
         "palette_mode": resolved_palette_mode,
+        "palette_mode_label": palette_mode_meta["label"],
         "palette": _palette_to_roles(palette),
         "typography": {
+            "pairing_id": font_pairing["id"],
+            "pairing_label": font_pairing["label"],
             "headings": font_pairing["headings"],
             "body": font_pairing["body"],
             "scale": "14 / 18 / 24 / 40 / 72",
@@ -697,6 +915,14 @@ def build_style_catalog_proposal(
         "spacing_density": style["suggested_density"],
         "tone": style["suggested_tone"],
         "sample_component": style["suggested_component"],
+        "visual_principles": list(style.get("visual_principles", [])),
+        "layout_grammar": style.get("layout_grammar", ""),
+        "surface_treatment": style.get("surface_treatment", ""),
+        "shape_language": style.get("shape_language", ""),
+        "motion_language": style.get("motion_language", ""),
+        "signature_elements": list(style.get("signature_elements", [])),
+        "implementation_guardrails": list(style.get("implementation_guardrails", [])),
+        "prompt_seed": style.get("prompt_seed", ""),
         "rationale": style["when_to_use"],
         "not_this_direction": list(style["anti_patterns"]),
         "context_signals": list(style["context_signals"]),

@@ -1,6 +1,7 @@
 ---
 name: incident-response
 description: "Protocolo de respuesta ante incidentes en produccion: triaje, mitigacion, causa raiz y postmortem. Usar ante caidas, errores criticos, incidentes de seguridad o degradacion de servicio."
+disable-model-invocation: true
 ---
 
 # Respuesta ante incidentes

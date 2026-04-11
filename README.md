@@ -2,7 +2,7 @@
 
 **Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-19 agentes especializados con personalidad propia (10 de nucleo + 9 opcionales), catalogo interno de 61 skills en 14 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+19 agentes especializados con personalidad propia (10 de nucleo + 9 opcionales), catalogo publicado de 61 skills en 14 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
 [Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
@@ -82,9 +82,23 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 Alfred activara el flujo de hasta 7 fases (producto, estilo visual*, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. La fase de estilo visual se activa solo en proyectos con interfaz de usuario. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.5.1
+## Novedades en v0.5.2
 
 Las secciones de novedades que siguen son **historico por version**. Los contadores y claims de cada bloque describen ese snapshot concreto, no necesariamente el estado actual del plugin fuera de su propia version.
+
+La v0.5.2 cierra dos deudas importantes del plugin. Por un lado, Alfred deja de publicar una muestra parcial de skills y pasa a exponer el catalogo completo por dominios en Claude Code, manteniendo manuales los workflows más pesados o con side effects claros. Por otro, Selina deja de “pintar tres variantes” sobre la misma maqueta: ahora guía al usuario por sistema base, tipografía y paleta antes de generar tres propuestas finales que de verdad siguen esa familia visual.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Catalogo completo de skills publicado** | `plugin.json` pasa de enumerar 5 skills sueltos a publicar los 14 dominios completos de `skills/`, alineando la superficie pública con las 61 capacidades reales del repo. |
+| **Selina con flujo guiado real** | La fase visual ya no salta directamente a tres pantallas abstractas: primero fija sistema base, luego pairing tipográfico y gama cromática, y solo después genera las 3 finales. |
+| **Propuestas finales fieles al sistema elegido** | Las variantes de Selina mantienen la familia visual seleccionada y arrastran su gramática, superficies, tipografía, color y guardrails en la ronda final. |
+| **Skills delicados marcados como manuales** | `style-direction`, SonarQube, incident response y varios workflows de release/GitHub quedan expuestos pero con `disable-model-invocation: true` para evitar activaciones automáticas inesperadas. |
+| **Ayuda concentrada por valor** | `/alfred-dev:help` y el README separan ahora comandos core, operativos avanzados y vistas/aliases para reducir ruido sin romper compatibilidad. |
+| **Contratos de superficie más estrictos** | La suite valida que el manifiesto publique exactamente el catálogo esperado, que no falten frontmatters y que no haya colisiones entre skills publicadas y slash commands. |
+| **Versionado coherente a 0.5.2** | Plugin, marketplace, instaladores, paquetes, README, changelog, docs y landing quedan alineados a la misma release. |
+
+## Novedades en v0.5.1
 
 La v0.5.1 afina la capa visual de **Selina** y endurece la consistencia de release del plugin. Selina ya no parte de “tres estilos” abstractos: trabaja con **10 sistemas de diseño base** (incluyendo el modo libre/contextual) y, desde ese catálogo, baja a **3 propuestas comparables** para que el usuario cierre una dirección visual ejecutable antes de tocar frontend. Además, el versionado y las superficies de instalación/estado quedan alineados a una sola fuente de verdad para evitar drift en updates, metadata y documentación.
 
@@ -185,34 +199,46 @@ La v0.4.0 incorporo cinco capacidades orientadas a fiabilidad, autonomia control
 
 Toda la interfaz se controla desde la línea de comandos de Claude Code con el prefijo `/alfred-dev:`:
 
+### Core
+
 | Comando | Descripcion |
 |---------|-------------|
 | `/alfred-dev:alfred` | Entrada contextual: decide si toca mapear, discutir, continuar, verificar o abrir un flujo multiagente. |
-| `/alfred-dev:map-codebase` | Analiza un repo existente y deja `codebase-map.md` y `current.md` antes de implementar. |
+| `/alfred-dev:feature <desc>` | Ciclo completo de hasta 7 fases o parcial. Alfred pregunta desde que fase arrancar. |
+| `/alfred-dev:quick <desc>` | Flujo ligero para cambios pequenos con menos ceremonia que `feature`. |
+| `/alfred-dev:fix <desc>` | Correccion de bugs con flujo de 3 fases: diagnostico, correccion TDD, validacion. |
+| `/alfred-dev:spike <tema>` | Investigacion tecnica sin compromiso: prototipos, benchmarks, documento de hallazgos. |
 | `/alfred-dev:discuss <desc>` | Refina una idea o fase concreta y deja discovery persistente antes de abrir `feature`. |
-| `/alfred-dev:next` | Dice que toca ahora segun el estado del proyecto y la sesion activa. |
-| `/alfred-dev:pause` | Pausa el trabajo en curso y genera handoff persistente. |
-| `/alfred-dev:resume` | Retoma una sesion pausada usando el handoff y el estado guardado. |
+| `/alfred-dev:map-codebase` | Analiza un repo existente y deja `codebase-map.md` y `current.md` antes de implementar. |
 | `/alfred-dev:progress` | Resume kanban, bloqueos, trazabilidad, UAT y estado operativo del proyecto. |
+| `/alfred-dev:verify` | Crea o cierra la validacion humana/UAT separada de los tests automaticos. |
+| `/alfred-dev:audit` | Auditoria completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentacion. |
+| `/alfred-dev:ship` | Release: auditoria final paralela, changelog, versionado semantico, despliegue. |
 | `/alfred-dev:memory-ui` | Abre una UI local en navegador para explorar la memoria SQLite con timeline, decisiones, grafo, commits y búsqueda. |
+| `/alfred-dev:config` | Configurar autonomia, stack, compliance, personalidad, agentes opcionales y memoria persistente. |
+| `/alfred-dev:help` | Referencia completa de comandos, agentes y flujos. |
+
+### Operativos avanzados
+
+| Comando | Descripcion |
+|---------|-------------|
+| `/alfred-dev:resume` | Retoma una sesion pausada usando el handoff y el estado guardado. |
+| `/alfred-dev:pause` | Pausa el trabajo en curso y genera handoff persistente. |
+| `/alfred-dev:search <texto>` | Busca en artefactos de SonIA y en la memoria SQLite del proyecto. |
+| `/alfred-dev:sync-github [owner/repo]` | Ejecuta SonIA Sync: refleja el tablero local en GitHub Issues usando `gh`. |
+| `/alfred-dev:validate` | Valida la integridad operativa de kanban, trazabilidad, UAT y sync local. |
+| `/alfred-dev:lucius [dir] [--scope X]` | Segunda opinión técnica vía Codex CLI. Audita el proyecto con GPT-5.4 y devuelve diagnóstico + prescripción. Requiere suscripción OpenAI. |
+| `/alfred-dev:update` | Comprobar si hay version nueva y actualizar el plugin. |
+
+### Vistas y aliases
+
+| Comando | Descripcion |
+|---------|-------------|
+| `/alfred-dev:next` | Dice que toca ahora segun el estado del proyecto y la sesion activa. |
+| `/alfred-dev:status` | Fase actual, fases completadas con duracion, gate pendiente y agente activo. |
 | `/alfred-dev:standup` | Standup breve y accionable desde SonIA: en curso, bloqueos, progreso y siguiente paso. |
 | `/alfred-dev:blocked` | Lista solo las tareas bloqueadas con su dependencia o motivo visible. |
 | `/alfred-dev:in-progress` | Lista solo las tareas que están en curso. |
-| `/alfred-dev:verify` | Crea o cierra la validacion humana/UAT separada de los tests automaticos. |
-| `/alfred-dev:validate` | Valida la integridad operativa de kanban, trazabilidad, UAT y sync local. |
-| `/alfred-dev:search <texto>` | Busca en artefactos de SonIA y en la memoria SQLite del proyecto. |
-| `/alfred-dev:sync-github [owner/repo]` | Ejecuta SonIA Sync: refleja el tablero local en GitHub Issues usando `gh`. |
-| `/alfred-dev:quick <desc>` | Flujo ligero para cambios pequenos con menos ceremonia que `feature`. |
-| `/alfred-dev:feature <desc>` | Ciclo completo de hasta 7 fases o parcial. Alfred pregunta desde que fase arrancar. |
-| `/alfred-dev:fix <desc>` | Correccion de bugs con flujo de 3 fases: diagnostico, correccion TDD, validacion. |
-| `/alfred-dev:spike <tema>` | Investigacion tecnica sin compromiso: prototipos, benchmarks, documento de hallazgos. |
-| `/alfred-dev:ship` | Release: auditoria final paralela, changelog, versionado semantico, despliegue. |
-| `/alfred-dev:audit` | Auditoria completa con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentacion. |
-| `/alfred-dev:config` | Configurar autonomia, stack, compliance, personalidad, agentes opcionales y memoria persistente. |
-| `/alfred-dev:status` | Fase actual, fases completadas con duracion, gate pendiente y agente activo. |
-| `/alfred-dev:lucius [dir] [--scope X]` | Segunda opinión técnica vía Codex CLI. Audita el proyecto con GPT-5.4 y devuelve diagnóstico + prescripción. Requiere suscripción OpenAI. |
-| `/alfred-dev:update` | Comprobar si hay version nueva y actualizar el plugin. |
-| `/alfred-dev:help` | Referencia completa de comandos, agentes y flujos. |
 
 ### Ejemplo de uso
 
