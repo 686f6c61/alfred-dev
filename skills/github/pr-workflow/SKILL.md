@@ -1,6 +1,7 @@
 ---
 name: pr-workflow
 description: "Crear pull requests completas con descripcion, labels y reviewers"
+disable-model-invocation: true
 ---
 
 # Crear pull requests completas

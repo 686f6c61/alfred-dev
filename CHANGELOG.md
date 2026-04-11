@@ -7,6 +7,28 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.5.2] - 2026-04-11
+
+### Added
+
+- **Catalogo completo de skills publicado en Claude Code**: `plugin.json` deja de enumerar solo 5 skills y pasa a exponer los 14 dominios completos de `skills/`, alineando la superficie pública con las 61 capacidades reales del repositorio.
+- **Contratos de superficie para skills publicadas**: la suite valida ahora que el manifiesto publique exactamente las 61 skills esperadas, que cada skill publicada tenga `name` y `description`, y que no existan colisiones de nombres con los slash commands del plugin.
+- **Flujo guiado real para Selina**: la fase visual puede arrancar ahora por sistema de diseño base, fijar pairing tipográfico + gama cromática y solo después generar tres propuestas finales comparables dentro de esa misma familia.
+
+### Changed
+
+- **Skills delicados siguen siendo manuales**: `style-direction`, `incident-response`, `sonarqube`, `release-planning`, `pr-workflow`, `release` y `repo-setup` quedan expuestos pero marcados con `disable-model-invocation: true` para evitar activaciones automáticas inesperadas.
+- **Ayuda y README concentrados por valor**: la superficie de comandos se reagrupa en core, operativos avanzados y vistas/aliases para reducir ruido sin romper compatibilidad ni eliminar entrypoints.
+- **Selina deja de mezclar sistemas visuales**: las tres propuestas finales conservan la familia elegida por el usuario y arrastran principios, gramática, superficies, motion, elementos firma y guardrails del sistema base.
+- **Companion visual más fiel al sistema elegido**: `neo-brutalism`, `glassmorphism-2`, `interactive-3d-webgl`, `ai-hyperminimalism` y `kinetic-typography` ya no caen en la misma card genérica; usan renderers y composición propios.
+- **Versionado coherente a 0.5.2**: plugin, marketplace, instaladores, paquetes, changelog, docs y landing quedan alineados.
+
+### Fixed
+
+- **`style-direction` deja de ser una excepción silenciosa**: el skill de Selina ya incluye frontmatter canónico y puede convivir dentro del catálogo publicado sin depender de tratamiento especial fuera del manifiesto.
+- **La ronda final deja de colapsar estilos distintos**: color, tipografía y composición ya se corresponden con el sistema visual elegido en lugar de recolorear el mismo layout una y otra vez.
+- **Captura de elección humana más robusta**: el companion visual registra clics por WebSocket y también por fallback HTTP cuando el navegador no completa el handshake local.
+
 ## [0.5.1] - 2026-04-10
 
 ### Added

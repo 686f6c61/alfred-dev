@@ -4,9 +4,9 @@ Los skills son las capacidades concretas que los agentes de Alfred pueden ejecut
 
 La razon de separar los skills de los agentes es la misma por la que una empresa separa los procedimientos de los roles: un procedimiento (skill) puede ser ejecutado por diferentes personas (agentes) segun el contexto, y un mismo rol puede dominar multiples procedimientos. Esta separación permite que el sistema crezca sin acoplar capacidades a identidades.
 
-El repositorio mantiene un **catalogo interno de 61 skills** organizados en 14 dominios temáticos que cubren todo el ciclo de vida del software, desde la definición de producto hasta la optimizacion SEO y la dirección de estilo visual. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegación y la asignación a agentes especializados.
+El repositorio mantiene un **catalogo de 61 skills** organizados en 14 dominios temáticos que cubren todo el ciclo de vida del software, desde la definición de producto hasta la optimizacion SEO y la dirección de estilo visual. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegación y la asignación a agentes especializados.
 
-Es importante distinguir este catalogo interno de la superficie publicada en Claude Code: hoy `plugin.json` registra 5 skills de primer nivel para integraciones concretas, mientras que el resto del catalogo funciona como playbooks internos reutilizados por agentes, documentación y flujos del plugin.
+Desde la v0.5.2, `plugin.json` publica el catalogo completo por dominios en Claude Code en lugar de exponer solo una muestra parcial. Los skills más pesados o con side effects evidentes (por ejemplo SonarQube, releases o el companion visual de Selina) siguen expuestos, pero marcados con `disable-model-invocation: true` para que su activación continúe siendo manual y explícita.
 
 ## Mapa de dominios y skills
 

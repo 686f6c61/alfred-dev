@@ -30,6 +30,7 @@ class TestVisualHelper(unittest.TestCase):
             const connectionDot = { style: {} };
             const indicator = { textContent: '', style: {} };
             const clickHandlers = {};
+            const fetchCalls = [];
 
             class FakeWebSocket {
               constructor(url) {
@@ -75,6 +76,10 @@ class TestVisualHelper(unittest.TestCase):
             global.window = window;
             global.document = document;
             global.WebSocket = FakeWebSocket;
+            global.fetch = function(url, options) {
+              fetchCalls.push({ url, options });
+              return Promise.resolve({ ok: true });
+            };
             global.setTimeout = setTimeout;
             global.clearTimeout = clearTimeout;
 
@@ -112,7 +117,7 @@ class TestVisualHelper(unittest.TestCase):
             }
 
             if (scenario === 'queued-choice') {
-              window.alfred.choice('A', 'Alpha');
+              window.alfred.send({ choice: 'A', label: 'Alpha' });
               const beforeOpen = socket.sent.length;
               socket.emitOpen();
               console.log(JSON.stringify({
@@ -120,24 +125,38 @@ class TestVisualHelper(unittest.TestCase):
                 beforeOpen,
                 afterOpen: socket.sent.length,
                 firstMessage: socket.sent[0],
+                fetchCalls,
                 connectionColor: connectionDot.style.background,
               }));
               process.exit(0);
-            }
-
-            if (scenario === 'heading-label') {
+            } else if (scenario === 'choice-fallback') {
+              const element = buildChoiceElement('A', 'Alpha', 'h2');
+              window.toggleSelect(element);
+              setTimeout(() => {
+                console.log(JSON.stringify({
+                  selectedChoice: window.selectedChoice,
+                  fetchCalls,
+                  sentMessages: socket.sent,
+                  indicator: indicator.textContent,
+                }));
+                process.exit(0);
+              }, 0);
+            } else if (scenario === 'heading-label') {
               socket.emitOpen();
               const element = buildChoiceElement('B', 'Editorial cálido', 'h2');
               window.toggleSelect(element);
+              setTimeout(() => {
               console.log(JSON.stringify({
                 selectedChoice: window.selectedChoice,
                 message: socket.sent[0],
+                fetchCalls,
                 indicator: indicator.textContent,
               }));
               process.exit(0);
+              }, 0);
+            } else {
+              process.exit(2);
             }
-
-            process.exit(2);
             """
         )
 
@@ -157,13 +176,23 @@ class TestVisualHelper(unittest.TestCase):
         self.assertEqual(payload["afterOpen"], 1)
         self.assertEqual(payload["firstMessage"]["choice"], "A")
         self.assertEqual(payload["firstMessage"]["label"], "Alpha")
+        self.assertEqual(payload["fetchCalls"], [])
         self.assertEqual(payload["connectionColor"], "#27ae60")
+
+    def test_choice_falls_back_to_http_when_websocket_is_not_ready(self):
+        payload = self._run_helper_script("choice-fallback")
+        self.assertEqual(payload["selectedChoice"], "A")
+        self.assertEqual(payload["sentMessages"], [])
+        self.assertEqual(len(payload["fetchCalls"]), 1)
+        self.assertEqual(payload["fetchCalls"][0]["url"], "/events")
+        self.assertIn("Alpha", payload["indicator"])
 
     def test_toggle_select_uses_heading_label_beyond_h3(self):
         payload = self._run_helper_script("heading-label")
         self.assertEqual(payload["selectedChoice"], "B")
         self.assertEqual(payload["message"]["choice"], "B")
         self.assertEqual(payload["message"]["label"], "Editorial cálido")
+        self.assertEqual(payload["fetchCalls"], [])
         self.assertIn("Editorial cálido", payload["indicator"])
 
 

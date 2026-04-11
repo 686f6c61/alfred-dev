@@ -198,10 +198,18 @@ const uiText = {
   technicalVision: tr('Visión técnica', 'Technical vision'),
   latestRelease: tr('Última release', 'Latest release'),
   expand: tr('ampliar', 'expand'),
-  manifestoLead: tr('La experiencia principal vive en Claude Code.', 'The main experience lives in Claude Code.'),
-  manifestoBody: tr(
-    'La web solo aparece cuando añade una capa útil al flujo: sistema de diseño con Selina, Memory UI, changelog y comandos de instalación listos para usar.',
-    'The browser only appears when it adds something useful to the flow: Selina design-system direction, Memory UI, changelog, and installation commands ready to copy.',
+  manifestoLeadPrefix: tr('Un plugin de', 'A plugin for'),
+  manifestoLeadTag: 'CLAUDE CODE',
+  manifestoLeadSuffix: tr('para trabajar con método', 'for working with rigor'),
+  manifestoHighlights: [
+    { label: tr('19 agentes', '19 agents'), className: 'mini-tag mini-tag--peach' },
+    { label: tr('26 comandos', '26 commands'), className: 'mini-tag mini-tag--sky' },
+    { label: tr('memoria local', 'local memory'), className: 'mini-tag mini-tag--butter' },
+    { label: 'quality gates', className: 'mini-tag mini-tag--pink' },
+  ],
+  manifestoBodySuffix: tr(
+    'que convierten una sesión aislada en un proceso gobernado.',
+    'that turn an isolated session into a governed process.',
   ),
   whatAlfredDoes: tr('Lo que hace Alfred', 'What Alfred actually does'),
   teamTitle: tr('Equipo', 'Team'),
@@ -239,8 +247,8 @@ const uiText = {
   ),
   publicSkills: tr('Skills públicas hoy', 'Public skills today'),
   skillsFooter: tr(
-    'Procedimientos versionados dentro del plugin, no prompts sueltos.',
-    'Versioned procedures inside the plugin, not loose prompts.',
+    'Procedimientos reutilizables y versionados dentro del plugin, no prompts ad hoc.',
+    'Reusable, versioned procedures inside the plugin, not ad-hoc prompts.',
   ),
   auxiliaryLayers: tr('Capas auxiliares', 'Auxiliary layers'),
   auxiliaryLayersBadge: tr('6 activas', '6 active'),
@@ -2084,8 +2092,19 @@ const organizationLd = JSON.stringify({
     </section>
 
     <section class="manifesto-strip panel panel-butter">
-      <strong>{uiText.manifestoLead}</strong>
-      <span>{uiText.manifestoBody}</span>
+      <strong class="manifesto-strip__lead">
+        <span>{uiText.manifestoLeadPrefix}</span>
+        <span class="mini-tag mini-tag--black">{uiText.manifestoLeadTag}</span>
+        <span>{uiText.manifestoLeadSuffix}</span>
+      </strong>
+      <div class="manifesto-strip__body">
+        <div class="manifesto-strip__chips">
+          {uiText.manifestoHighlights.map((item) => (
+            <span class={item.className}>{item.label}</span>
+          ))}
+        </div>
+        <p class="manifesto-strip__summary">{uiText.manifestoBodySuffix}</p>
+      </div>
     </section>
 
     <section class="beta-section">
@@ -3692,14 +3711,38 @@ const organizationLd = JSON.stringify({
       align-items: center;
     }
 
-    .manifesto-strip strong {
+    .manifesto-strip__lead {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
       font-size: 15px;
       font-weight: 900;
     }
 
-    .manifesto-strip span {
+    .manifesto-strip__lead .mini-tag {
+      transform: rotate(-1.4deg);
+    }
+
+    .manifesto-strip__body {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 12px;
+      margin: 0;
+    }
+
+    .manifesto-strip__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .manifesto-strip__summary {
       font-size: 14px;
       font-weight: 700;
+      margin: 0;
     }
 
     .beta-section {

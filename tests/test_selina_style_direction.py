@@ -67,6 +67,19 @@ class TestSelinaStyleDirection(unittest.TestCase):
                     "spacing_density": "Aireada, con bloques respirables y ritmo editorial.",
                     "tone": "Editorial cálido",
                     "sample_component": "Tarjeta de resumen con titular serif, métricas cortas y CTA sobrio.",
+                    "visual_principles": [
+                        "Calma editorial con jerarquía visible.",
+                        "Mucho aire y ritmo de lectura curado.",
+                    ],
+                    "layout_grammar": "Titular protagonista + bloque de apoyo + CTA sobrio.",
+                    "surface_treatment": "Campos crema con contraste suave y elevación mínima.",
+                    "shape_language": "Tarjetas serenas y cápsulas discretas.",
+                    "motion_language": "Transiciones suaves y sobrias.",
+                    "signature_elements": ["Titular serif", "Bloque editorial", "CTA sobrio"],
+                    "implementation_guardrails": [
+                        "No convertir la dirección en dashboard técnico denso."
+                    ],
+                    "prompt_seed": "Mantén una dirección editorial cálida y curada.",
                     "rationale": "Encaja con un producto que necesita transmitir criterio y confianza.",
                     "not_this_direction": [
                         "No es una UI dashboard densa ni hiper-técnica.",
@@ -109,6 +122,10 @@ class TestSelinaStyleDirection(unittest.TestCase):
         self.assertIn("Fraunces", content)
         self.assertIn("No es una UI dashboard densa ni hiper-técnica.", content)
         self.assertIn("color.bg.canvas", content)
+        self.assertIn("## Principios ejecutables del sistema", content)
+        self.assertIn("### Gramática de composición", content)
+        self.assertIn("### Guardrails de implementación", content)
+        self.assertIn("## Semilla de dirección", content)
         self.assertIn("Propuestas fuente: `content/style-options.json`", content)
 
     def test_render_style_direction_markdown_has_required_sections(self):
@@ -127,6 +144,14 @@ class TestSelinaStyleDirection(unittest.TestCase):
                 "spacing_density": "Aireada",
                 "tone": "Moderno y ligero",
                 "sample_component": "Dashboard de cards con foco en highlights.",
+                "visual_principles": ["Claridad inmediata", "Contraste energético"],
+                "layout_grammar": "Hero limpio con support de cards ligeras.",
+                "surface_treatment": "Fondos limpios con un único acento vibrante.",
+                "shape_language": "Tarjetas suaves y geometría contenida.",
+                "motion_language": "Microtransiciones limpias y cortas.",
+                "signature_elements": ["Acento vibrante", "Mucho aire"],
+                "implementation_guardrails": ["No saturar la pantalla con demasiadas capas."],
+                "prompt_seed": "Mantén una dirección mínima y muy enfocada.",
                 "rationale": "Conviene a un producto claro y visual.",
                 "not_this_direction": ["No es sobrio corporativo."],
                 "tokens": [{"name": "color.brand.primary", "value": "#0d7377"}],
@@ -138,6 +163,8 @@ class TestSelinaStyleDirection(unittest.TestCase):
         self.assertIn("## Por qué gana esta opción", content)
         self.assertIn("## Qué NO es este sistema", content)
         self.assertIn("## Tokens iniciales sugeridos", content)
+        self.assertIn("## Principios ejecutables del sistema", content)
+        self.assertIn("## Semilla de dirección", content)
         self.assertIn("Producto orientado a descubrimiento visual.", content)
 
     def test_render_style_direction_markdown_uses_basename_when_project_context_missing(self):
@@ -166,6 +193,45 @@ class TestSelinaStyleDirection(unittest.TestCase):
         content = render_style_direction_markdown(record)
         self.assertIn("Propuestas fuente: `style-options.json`", content)
         self.assertNotIn("../../", content)
+
+    def test_render_style_direction_markdown_shows_variant_and_pairing_metadata(self):
+        record = {
+            "generated_at": "2026-04-07T10:00:02Z",
+            "choice": "B",
+            "selected_label": "Producto operativo",
+            "selected_at": "2026-04-07T10:00:02Z",
+            "proposals_file": "/tmp/style-options.json",
+            "proposal": {
+                "choice": "B",
+                "name": "Anti-diseno / Neo-brutalismo — Producto operativo",
+                "concept": "Direccion brutalista aterrizada a producto real.",
+                "style_family": "neo-brutalism",
+                "style_family_label": "Anti-diseno / Neo-brutalismo",
+                "palette_mode": "solid",
+                "palette_mode_label": "Solidos",
+                "variant_label": "Producto operativo",
+                "palette": [{"role": "surface", "value": "#fff0b3"}],
+                "typography": {
+                    "pairing_id": "brutal-readable",
+                    "pairing_label": "Brutal legible",
+                    "headings": "Archivo Black",
+                    "body": "Space Grotesk",
+                },
+                "spacing_density": "Media",
+                "tone": "Directo y claro",
+                "sample_component": "Resumen operativo con bloques duros.",
+                "rationale": "Conviene para uso continuo de producto.",
+                "not_this_direction": ["No es la variante más editorial."],
+                "tokens": [],
+                "context_signals": [],
+            },
+        }
+
+        content = render_style_direction_markdown(record)
+        self.assertIn("Variante final: **Producto operativo**", content)
+        self.assertIn("Modo de paleta: **Solidos**", content)
+        self.assertIn("Pairing: Brutal legible", content)
+        self.assertIn("Id pairing: `brutal-readable`", content)
 
     def test_sparse_proposal_gets_semantic_defaults(self):
         with open(self.events_path, "w", encoding="utf-8") as fh:
@@ -199,6 +265,8 @@ class TestSelinaStyleDirection(unittest.TestCase):
         self.assertIn("Lenguaje editorial con jerarquía clara", content)
         self.assertIn("Funciona bien cuando el producto necesita transmitir criterio", content)
         self.assertIn("Hero editorial con titular protagonista", content)
+        self.assertIn("## Principios ejecutables del sistema", content)
+        self.assertIn("## Semilla de dirección", content)
         self.assertIn("No es una UI de dashboard densa", content)
         self.assertIn("Necesidad de transmitir criterio, calma y sensación de cuidado.", content)
 

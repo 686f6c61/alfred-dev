@@ -1,6 +1,7 @@
 ---
 name: release-planning
 description: "Planificar y ejecutar releases: inventario de cambios, versionado semantico, changelog, notas de release y publicacion. Usar antes de cada version nueva."
+disable-model-invocation: true
 ---
 
 # Planificacion de releases

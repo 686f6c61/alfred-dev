@@ -34,10 +34,13 @@
   /**
    * Actualiza el indicador visual de conexion si existe en la pagina.
    * @param {string} color
+   * @param {string=} label
    */
-  function setConnectionDot(color) {
+  function setConnectionState(color, label) {
     var dot = document.getElementById('alfred-connection-dot');
+    var text = document.getElementById('alfred-connection-label');
     if (dot) dot.style.background = color;
+    if (text && label) text.textContent = label;
   }
 
   /**
@@ -77,7 +80,7 @@
     ws = new WebSocket(url);
 
     ws.onopen = function () {
-      setConnectionDot('#27ae60');
+      setConnectionState('#27ae60', 'Conectado');
       flushPendingMessages();
     };
 
@@ -94,13 +97,31 @@
 
     ws.onclose = function () {
       ws = null;
-      setConnectionDot('#e74c3c');
+      setConnectionState('#d97706', 'Modo local');
       scheduleReconnect();
     };
 
     ws.onerror = function () {
       // El evento close se dispara despues, ahi se reintenta
     };
+  }
+
+  /**
+   * Envia un evento de usuario por HTTP como fallback del WebSocket.
+   * @param {object} obj
+   */
+  function postEvent(obj) {
+    if (typeof fetch !== 'function') return Promise.resolve(false);
+    return fetch('/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj),
+      keepalive: true,
+    }).then(function (response) {
+      return response.ok;
+    }).catch(function () {
+      return false;
+    });
   }
 
   // -- Envio de datos al servidor -------------------------------------------
@@ -125,7 +146,11 @@
    */
   function choice(id, label) {
     selectedChoice = id;
-    send({ choice: id, label: label });
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      send({ choice: id, label: label });
+      return;
+    }
+    postEvent({ choice: id, label: label });
   }
 
   // -- Seleccion visual de opciones ----------------------------------------
@@ -150,10 +175,11 @@
     el.classList.add('selected');
 
     var id = el.getAttribute('data-choice');
+    var explicitLabel = el.getAttribute('data-label');
     var heading = el.querySelector('h1, h2, h3, h4, h5, h6');
     // Se usa textContent, nunca innerHTML, para evitar XSS si el contenido
     // del encabezado contuviera HTML no confiable.
-    var label = heading ? heading.textContent : id;
+    var label = explicitLabel || (heading ? heading.textContent : id);
 
     choice(id, label);
 

@@ -1,3 +1,7 @@
+---
+description: "Protocolo interno compartido para la composición dinámica del equipo de Alfred según tarea, stack y señales runtime."
+---
+
 # Protocolo de composición dinámica de equipo
 
 Este fichero define el protocolo compartido para componer el equipo de cada sesión.

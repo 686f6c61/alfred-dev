@@ -73,13 +73,35 @@ def _normalize_palette(value: Any) -> List[Dict[str, str]]:
         ]
     if isinstance(value, list):
         items: List[Dict[str, str]] = []
+        raw_colors: List[str] = []
         for entry in value:
             if isinstance(entry, dict):
                 role = _coerce_string(entry.get("role") or entry.get("name"))
                 color = _coerce_string(entry.get("value") or entry.get("color"))
                 if role and color:
                     items.append({"role": role, "value": color})
-        return items
+                    continue
+            color = _coerce_string(entry)
+            if color:
+                raw_colors.append(color)
+        if items:
+            return items
+        if raw_colors:
+            default_roles = [
+                "surface",
+                "surface_alt",
+                "accent",
+                "accent_alt",
+                "ink",
+                "muted",
+            ]
+            return [
+                {
+                    "role": default_roles[idx] if idx < len(default_roles) else f"color_{idx + 1}",
+                    "value": color,
+                }
+                for idx, color in enumerate(raw_colors)
+            ]
     return []
 
 
@@ -103,10 +125,30 @@ def _normalize_tokens(value: Any) -> List[Dict[str, str]]:
 
 
 def _normalize_typography(value: Any) -> Dict[str, str]:
+    if isinstance(value, str):
+        text = _coerce_string(value)
+        if not text:
+            return {}
+        normalized: Dict[str, str] = {}
+        families, separator, notes = text.partition("—")
+        families = _coerce_string(families)
+        notes = _coerce_string(notes if separator else "")
+        parts = [part.strip() for part in families.split("/") if _coerce_string(part)]
+        if parts:
+            normalized["headings"] = parts[0]
+        if len(parts) > 1:
+            normalized["body"] = parts[1]
+        if notes:
+            normalized["notes"] = notes
+        elif families:
+            normalized["notes"] = families
+        return normalized
     if not isinstance(value, dict):
         return {}
     normalized: Dict[str, str] = {}
     for key in (
+        "pairing_id",
+        "pairing_label",
         "headings",
         "body",
         "scale",
@@ -152,6 +194,14 @@ def _semantic_source_text(proposal: Dict[str, Any]) -> str:
             proposal.get("tone", ""),
             proposal.get("rationale", ""),
             " ".join(proposal.get("context_signals", [])),
+            " ".join(proposal.get("visual_principles", [])),
+            proposal.get("layout_grammar", ""),
+            proposal.get("surface_treatment", ""),
+            proposal.get("shape_language", ""),
+            proposal.get("motion_language", ""),
+            " ".join(proposal.get("signature_elements", [])),
+            " ".join(proposal.get("implementation_guardrails", [])),
+            proposal.get("prompt_seed", ""),
             " ".join(item.get("role", "") for item in proposal.get("palette", [])),
         ]
         if part
@@ -166,6 +216,11 @@ def _infer_direction_flavor(proposal: Dict[str, Any]) -> str:
     text = _semantic_source_text(proposal)
     if _matches_any(
         text,
+        ["grafana", "datadog", "monitorizacion", "monitorización", "dark", "oscuro", "tiempo real", "24/7"],
+    ):
+        return "technical"
+    if _matches_any(
+        text,
         ["editorial", "premium", "lujo", "magazine", "revista", "serif", "cálid", "calid"],
     ):
         return "editorial"
@@ -176,7 +231,7 @@ def _infer_direction_flavor(proposal: Dict[str, Any]) -> str:
         return "operational"
     if _matches_any(
         text,
-        ["minimal", "limpio", "clean", "airead", "sobrio", "negativo", "claridad"],
+        ["minimal", "limpio", "clean", "airead", "sobrio", "negativo", "claridad", "linear", "notion", "attio", "saas moderno", "whitespace"],
     ):
         return "minimal"
     if _matches_any(
@@ -208,6 +263,7 @@ def _lower_first(text: str) -> str:
 def _infer_tone(flavor: str) -> str:
     return {
         "editorial": "Cálido, curado y con sensación premium.",
+        "technical": "Técnico, preciso y orientado a monitorización continua.",
         "operational": "Preciso, claro y orientado a decisión.",
         "minimal": "Sobrio, ligero y muy enfocado.",
         "expressive": "Vibrante, seguro y memorable.",
@@ -218,6 +274,7 @@ def _infer_tone(flavor: str) -> str:
 def _infer_concept(flavor: str) -> str:
     return {
         "editorial": "Lenguaje editorial con jerarquía clara, ritmo pausado y sensación cuidada.",
+        "technical": "Interfaz técnica de contraste alto, señales semánticas claras y lectura inmediata del estado.",
         "operational": "Interfaz orientada a escaneo rápido, comparación y priorización de información.",
         "minimal": "Sistema limpio y enfocado, con mucho aire y una jerarquía simple.",
         "expressive": "Dirección con acento expresivo, contraste claro y personalidad reconocible.",
@@ -228,6 +285,7 @@ def _infer_concept(flavor: str) -> str:
 def _infer_spacing_density(flavor: str) -> str:
     return {
         "editorial": "Aireada, con bloques respirables y jerarquía pausada.",
+        "technical": "Alta, con bloques compactos, lectura de estado y jerarquía de monitorización.",
         "operational": "Media-alta, pensada para escaneo rápido y densidad controlada.",
         "minimal": "Aireada, con mucho espacio negativo y pocos cambios de ritmo.",
         "expressive": "Media, con ritmo dinámico y contraste claro entre bloques.",
@@ -238,6 +296,7 @@ def _infer_spacing_density(flavor: str) -> str:
 def _infer_sample_component(flavor: str) -> str:
     return {
         "editorial": "Hero editorial con titular protagonista, sumario breve y CTA sobrio.",
+        "technical": "Panel técnico con estados, series temporales y alertas semánticas de alto contraste.",
         "operational": "Panel de resumen con métricas clave, estado visible y CTA contextual.",
         "minimal": "Hero de producto con beneficio principal, prueba social y CTA dominante.",
         "expressive": "Tarjeta o hero protagonista con visual dominante, titular corto y CTA muy claro.",
@@ -248,6 +307,7 @@ def _infer_sample_component(flavor: str) -> str:
 def _infer_context_signals(flavor: str) -> List[str]:
     return {
         "editorial": ["Necesidad de transmitir criterio, calma y sensación de cuidado."],
+        "technical": ["Necesidad de monitorización continua, contraste alto y lectura rápida del estado."],
         "operational": ["Necesidad de lectura rápida, foco operativo y baja ambigüedad visual."],
         "minimal": ["Necesidad de claridad inmediata y reducción de ruido visual."],
         "expressive": ["Necesidad de identidad fuerte y recordación sin perder legibilidad."],
@@ -281,6 +341,7 @@ def _infer_rationale(proposal: Dict[str, Any], flavor: str) -> str:
 
     return {
         "editorial": "Funciona bien cuando el producto necesita transmitir criterio, calma y sensación de cuidado.",
+        "technical": "Funciona bien cuando el producto necesita monitorización continua, alto contraste y señales semánticas inequívocas.",
         "operational": "Funciona bien cuando el producto necesita confianza operativa, lectura rápida y foco en la tarea.",
         "minimal": "Funciona bien cuando el producto necesita claridad inmediata, foco y una primera impresión limpia.",
         "expressive": "Funciona bien cuando el producto necesita identidad visible y energía controlada sin perder legibilidad.",
@@ -293,6 +354,10 @@ def _infer_not_this_direction(flavor: str) -> List[str]:
         "editorial": [
             "No es una UI de dashboard densa ni orientada a monitorización.",
             "No busca agresividad cromática ni sensación de producto técnico frío.",
+        ],
+        "technical": [
+            "No es una propuesta lifestyle ni de marketing aspiracional.",
+            "No prioriza calidez editorial ni respiración generosa sobre lectura de estado.",
         ],
         "operational": [
             "No es una propuesta lifestyle o de revista.",
@@ -331,6 +396,27 @@ def _enrich_proposal_semantics(proposal: Dict[str, Any]) -> Dict[str, Any]:
         enriched["rationale"] = _infer_rationale(enriched, flavor)
     if not enriched.get("not_this_direction"):
         enriched["not_this_direction"] = _infer_not_this_direction(flavor)
+    if not enriched.get("visual_principles"):
+        enriched["visual_principles"] = [
+            _infer_concept(flavor),
+            _infer_spacing_density(flavor),
+        ]
+    if not enriched.get("layout_grammar"):
+        enriched["layout_grammar"] = _infer_sample_component(flavor)
+    if not enriched.get("surface_treatment"):
+        enriched["surface_treatment"] = _infer_tone(flavor)
+    if not enriched.get("shape_language"):
+        enriched["shape_language"] = _infer_concept(flavor)
+    if not enriched.get("motion_language"):
+        enriched["motion_language"] = "Interacciones sobrias y coherentes con la jerarquia principal."
+    if not enriched.get("signature_elements"):
+        enriched["signature_elements"] = [enriched["sample_component"]]
+    if not enriched.get("implementation_guardrails"):
+        enriched["implementation_guardrails"] = list(enriched["not_this_direction"])
+    if not enriched.get("prompt_seed"):
+        enriched["prompt_seed"] = (
+            f"Manten una direccion {flavor} coherente con el producto y evita mezclarla con sistemas visuales ajenos."
+        )
 
     return enriched
 
@@ -370,6 +456,20 @@ def _normalize_single_proposal(choice: str, proposal: Dict[str, Any]) -> Dict[st
             or proposal.get("color_mode")
             or proposal.get("palette_variant")
         ),
+        "palette_mode_label": _coerce_string(
+            proposal.get("palette_mode_label")
+            or proposal.get("color_mode_label")
+            or proposal.get("palette_variant_label")
+        ),
+        "variant_id": _coerce_string(
+            proposal.get("variant_id")
+            or proposal.get("variant")
+        ),
+        "variant_label": _coerce_string(
+            proposal.get("variant_label")
+            or proposal.get("variant_name")
+        ),
+        "preview_flavor": _coerce_string(proposal.get("preview_flavor")),
         "palette": _normalize_palette(proposal.get("palette")),
         "typography": _normalize_typography(proposal.get("typography")),
         "reference_urls": _normalize_reference_urls(
@@ -399,6 +499,46 @@ def _normalize_single_proposal(choice: str, proposal: Dict[str, Any]) -> Dict[st
             or proposal.get("component_example")
             or proposal.get("example_component")
             or proposal.get("hero_example")
+        ),
+        "visual_principles": _merge_unique_texts(
+            proposal.get("visual_principles")
+            or proposal.get("design_principles")
+            or proposal.get("principles")
+        ),
+        "layout_grammar": _coerce_string(
+            proposal.get("layout_grammar")
+            or proposal.get("layout_principles")
+            or proposal.get("composition_grammar")
+        ),
+        "surface_treatment": _coerce_string(
+            proposal.get("surface_treatment")
+            or proposal.get("surface_language")
+            or proposal.get("materiality")
+        ),
+        "shape_language": _coerce_string(
+            proposal.get("shape_language")
+            or proposal.get("form_language")
+            or proposal.get("shape_system")
+        ),
+        "motion_language": _coerce_string(
+            proposal.get("motion_language")
+            or proposal.get("motion_character")
+            or proposal.get("interaction_motion")
+        ),
+        "signature_elements": _merge_unique_texts(
+            proposal.get("signature_elements")
+            or proposal.get("signature_motifs")
+            or proposal.get("visual_motifs")
+        ),
+        "implementation_guardrails": _merge_unique_texts(
+            proposal.get("implementation_guardrails")
+            or proposal.get("guardrails")
+            or proposal.get("execution_guardrails")
+        ),
+        "prompt_seed": _coerce_string(
+            proposal.get("prompt_seed")
+            or proposal.get("design_prompt")
+            or proposal.get("prompt_injection")
         ),
         "rationale": _coerce_string(
             proposal.get("rationale")
@@ -542,7 +682,10 @@ def _proposal_source_label(record: Dict[str, Any]) -> str:
 
 def render_style_direction_markdown(record: Dict[str, Any]) -> str:
     """Genera el Markdown final de docs/style-direction.md."""
-    proposal = record["proposal"]
+    proposal = _normalize_single_proposal(
+        _coerce_string(record.get("choice") or (record.get("proposal") or {}).get("choice") or "A"),
+        dict(record["proposal"]),
+    )
     decision_summary = _ensure_sentence(
         proposal["concept"] or proposal["tone"] or proposal["rationale"]
     ) or "Selina deja la dirección elegida registrada, pero todavía falta enriquecer la intención visual."
@@ -589,7 +732,12 @@ def render_style_direction_markdown(record: Dict[str, Any]) -> str:
         if proposal.get("style_family"):
             lines.append(f"- Id canónico: `{proposal['style_family']}`")
         if proposal.get("palette_mode"):
-            lines.append(f"- Modo de paleta: **{proposal['palette_mode']}**")
+            palette_mode_label = proposal.get("palette_mode_label") or proposal["palette_mode"]
+            lines.append(f"- Modo de paleta: **{palette_mode_label}**")
+            if palette_mode_label != proposal["palette_mode"]:
+                lines.append(f"- Id de paleta: `{proposal['palette_mode']}`")
+        if proposal.get("variant_label"):
+            lines.append(f"- Variante final: **{proposal['variant_label']}**")
         lines.append("")
 
     lines.extend(["### Paleta", ""])
@@ -606,6 +754,10 @@ def render_style_direction_markdown(record: Dict[str, Any]) -> str:
     lines.extend(["", "### Tipografía", ""])
     typography = proposal["typography"]
     if typography:
+        if typography.get("pairing_label"):
+            lines.append(f"- Pairing: {typography['pairing_label']}")
+        if typography.get("pairing_id"):
+            lines.append(f"- Id pairing: `{typography['pairing_id']}`")
         if typography.get("headings"):
             lines.append(f"- Encabezados: {typography['headings']}")
         if typography.get("body"):
@@ -639,6 +791,54 @@ def render_style_direction_markdown(record: Dict[str, Any]) -> str:
             "### Componente de muestra",
             "",
             _fallback_text(proposal["sample_component"]),
+        ]
+    )
+    lines.extend(["", "## Principios ejecutables del sistema", ""])
+    if proposal["visual_principles"]:
+        lines.extend(f"- {item}" for item in proposal["visual_principles"])
+    else:
+        lines.append("- Sin documentar todavía.")
+
+    lines.extend(
+        [
+            "",
+            "### Gramática de composición",
+            "",
+            _fallback_text(proposal["layout_grammar"]),
+            "",
+            "### Tratamiento de superficies",
+            "",
+            _fallback_text(proposal["surface_treatment"]),
+            "",
+            "### Lenguaje de forma",
+            "",
+            _fallback_text(proposal["shape_language"]),
+            "",
+            "### Lenguaje de movimiento",
+            "",
+            _fallback_text(proposal["motion_language"]),
+            "",
+            "### Elementos firma",
+            "",
+        ]
+    )
+    if proposal["signature_elements"]:
+        lines.extend(f"- {item}" for item in proposal["signature_elements"])
+    else:
+        lines.append("- Sin documentar todavía.")
+
+    lines.extend(["", "### Guardrails de implementación", ""])
+    if proposal["implementation_guardrails"]:
+        lines.extend(f"- {item}" for item in proposal["implementation_guardrails"])
+    else:
+        lines.append("- Sin documentar todavía.")
+
+    lines.extend(
+        [
+            "",
+            "## Semilla de dirección",
+            "",
+            _fallback_text(proposal["prompt_seed"]),
             "",
             "## Por qué gana esta opción",
             "",

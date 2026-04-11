@@ -1,5 +1,8 @@
 # Sesiones del servidor visual de Selina
 .alfred-dev/visual/
+.claude/
+.tmp/
+site/test-results/
 
 # Artefactos locales de Python y testing
 __pycache__/

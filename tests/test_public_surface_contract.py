@@ -9,6 +9,7 @@ que se publican al usuario.
 
 import json
 import os
+import re
 import unicodedata
 import unittest
 
@@ -56,27 +57,124 @@ def _count_skill_domains() -> int:
     return len(domains)
 
 
+def _iter_manifest_skill_files():
+    plugin = _read_json(".claude-plugin/plugin.json")
+    skill_files = []
+
+    for relative_path in plugin["skills"]:
+        absolute = os.path.join(ROOT, relative_path.lstrip("./"))
+        if os.path.isdir(absolute):
+            for dirpath, _dirnames, filenames in os.walk(absolute):
+                if "SKILL.md" in filenames:
+                    skill_files.append(os.path.join(dirpath, "SKILL.md"))
+            continue
+
+        if os.path.isfile(absolute) and os.path.basename(absolute) == "SKILL.md":
+            skill_files.append(absolute)
+
+    return sorted(skill_files)
+
+
+def _parse_frontmatter_fields(path: str):
+    if not os.path.isabs(path):
+        path = os.path.normpath(os.path.join(ROOT, path))
+
+    with open(path, "r", encoding="utf-8") as fh:
+        text = fh.read()
+
+    if not text.startswith("---\n"):
+        return {}
+
+    fields = {}
+    for line in text.splitlines()[1:]:
+        if line.strip() == "---":
+            break
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        fields[key.strip()] = value.strip().strip('"').strip("'")
+    return fields
+
+
+def _extract_site_skill_names(relative_path: str):
+    text = _read(relative_path)
+    start = text.index("skills: {")
+    end = text.index("\n\n  // ----------------------------------------------------------------\n  // Infra", start)
+    section = text[start:end]
+    return set(re.findall(r"\{ name: '([^']+)'", section))
+
+
 class TestRuntimeSurfaceCounts(unittest.TestCase):
     def test_manifest_and_filesystem_reflect_current_counts(self):
         plugin = _read_json(".claude-plugin/plugin.json")
+        published_skill_files = _iter_manifest_skill_files()
 
         self.assertEqual(len(plugin["commands"]), 26)
         self.assertEqual(len(plugin["agents"]), 19)
         self.assertEqual(_count_skill_files(), 61)
         self.assertEqual(_count_skill_domains(), 14)
+        self.assertEqual(len(published_skill_files), 61)
+        self.assertEqual(len(set(published_skill_files)), 61)
 
-        for relative_path in plugin["commands"] + plugin["agents"]:
+        for relative_path in plugin["commands"] + plugin["agents"] + plugin["skills"]:
             absolute = os.path.join(ROOT, relative_path.lstrip("./"))
             self.assertTrue(
                 os.path.exists(absolute),
                 f"No existe el recurso declarado en plugin.json: {relative_path}",
             )
 
+    def test_published_skills_have_canonical_frontmatter(self):
+        for skill_path in _iter_manifest_skill_files():
+            frontmatter = _parse_frontmatter_fields(skill_path)
+            self.assertTrue(
+                frontmatter.get("name"),
+                f"Falta `name` en el frontmatter de {skill_path}",
+            )
+            self.assertTrue(
+                frontmatter.get("description"),
+                f"Falta `description` en el frontmatter de {skill_path}",
+            )
+
+    def test_manual_only_skills_keep_explicit_disable_model_invocation(self):
+        manual_only = [
+            "skills/estilo/style-direction/SKILL.md",
+            "skills/calidad/incident-response/SKILL.md",
+            "skills/calidad/sonarqube/SKILL.md",
+            "skills/devops/release-planning/SKILL.md",
+            "skills/github/pr-workflow/SKILL.md",
+            "skills/github/release/SKILL.md",
+            "skills/github/repo-setup/SKILL.md",
+        ]
+
+        for relative_path in manual_only:
+            frontmatter = _parse_frontmatter_fields(relative_path)
+            self.assertEqual(
+                frontmatter.get("disable-model-invocation"),
+                "true",
+                f"El skill manual {relative_path} debe mantener disable-model-invocation: true",
+            )
+
+    def test_published_skill_names_do_not_shadow_commands(self):
+        plugin = _read_json(".claude-plugin/plugin.json")
+        command_names = {
+            os.path.splitext(os.path.basename(relative_path))[0]
+            for relative_path in plugin["commands"]
+        }
+        skill_names = {
+            _parse_frontmatter_fields(skill_path).get("name")
+            for skill_path in _iter_manifest_skill_files()
+        }
+        collisions = sorted(name for name in (skill_names & command_names) if name)
+        self.assertFalse(
+            collisions,
+            f"Las skills publicadas no deben sombrear comandos existentes: {collisions}",
+        )
+
 
 class TestReadmeAndDocsSurface(unittest.TestCase):
     def test_readme_matches_current_public_claims(self):
         readme = _read("README.md")
-        self.assertIn("catalogo interno de 61 skills en 14 dominios", _normalize(readme))
+        self.assertIn("catalogo publicado de 61 skills en 14 dominios", _normalize(readme))
         self.assertIn("Ciclo completo de hasta 7 fases", readme)
         self.assertIn("Python 3.10+ (para hooks, core y MCP en macOS, Linux y Windows).", readme)
         self.assertIn("historico por version", _normalize(readme))
@@ -87,7 +185,7 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         agents_readme = _read("docs/agents/README.md")
 
         self.assertIn("feature -- hasta 7 fases", docs_readme)
-        self.assertIn("Catalogo interno de 61 skills en 14 dominios", docs_readme)
+        self.assertIn("Catalogo publicado de 61 skills en 14 dominios", docs_readme)
         self.assertIn("26 comandos registrados en `plugin.json`", architecture)
         self.assertIn("Por que los agentes de nucleo tambien aparecen en `plugin.json`", architecture)
         self.assertIn("Agentes opcionales** (9)", architecture)
@@ -96,7 +194,7 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         self.assertNotIn("TASK_KEYWORDS", architecture)
         self.assertIn("hasta siete fases", agents_readme)
         self.assertIn("estilo visual", agents_readme)
-        self.assertIn("registra 5 skills de primer nivel", _read("docs/skills.md"))
+        self.assertIn("publica el catalogo completo por dominios", _normalize(_read("docs/skills.md")))
 
     def test_every_manifest_agent_has_public_docs_page(self):
         plugin = _read_json(".claude-plugin/plugin.json")
@@ -396,12 +494,26 @@ class TestInstallSurfaceContracts(unittest.TestCase):
         self.assertNotIn("git, Python 3.10+", en_site)
         self.assertNotIn("No necesita Python", es_site)
         self.assertNotIn("Python not required", en_site)
-        self.assertIn("catalogo interno de 61 skills", _normalize(es_site))
-        self.assertIn("internal catalog of 61 skills", en_site)
-        self.assertIn("5 skills de primer nivel", es_site)
-        self.assertIn("5 top-level skills", en_site)
+        self.assertIn("catalogo publicado de 61 skills", _normalize(es_site))
+        self.assertIn("published catalog of 61 skills", en_site)
+        self.assertIn("publica el catalogo completo", _normalize(es_site))
+        self.assertIn("publishes the full catalog", en_site)
         self.assertIn("changelogHistoryNote", site_ui)
         self.assertIn("historyNote", changelog_modal)
+
+    def test_site_skill_names_match_repository_catalog(self):
+        repository_skill_names = {
+            _parse_frontmatter_fields(skill_path)["name"]
+            for skill_path in _iter_manifest_skill_files()
+        }
+        self.assertEqual(
+            _extract_site_skill_names("site/src/i18n/data.es.ts"),
+            repository_skill_names,
+        )
+        self.assertEqual(
+            _extract_site_skill_names("site/src/i18n/data.en.ts"),
+            repository_skill_names,
+        )
 
     def test_uninstall_surface_is_also_cli_first(self):
         uninstall_sh = _read("uninstall.sh")
@@ -528,20 +640,20 @@ class TestOptionalAgentsContracts(unittest.TestCase):
 class TestLandingSurfaceContracts(unittest.TestCase):
     def test_spanish_landing_uses_current_counts(self):
         es = _read("site/src/i18n/data.es.ts")
-        self.assertIn("catalogo interno de 61 skills", _normalize(es))
+        self.assertIn("catalogo publicado de 61 skills", _normalize(es))
         self.assertIn("61 skills en 14 dominios", es)
         self.assertIn("{ number: 61, label: 'Skills' }", es)
         self.assertIn("Son 9 agentes especializados", es)
-        self.assertIn("19 agentes. catalogo interno de 61 skills. 13 hooks. 26 comandos.", _normalize(es))
+        self.assertIn("19 agentes. catalogo publicado de 61 skills. 13 hooks. 26 comandos.", _normalize(es))
         self.assertIn("Lucius", es)
 
     def test_english_landing_uses_current_counts(self):
         en = _read("site/src/i18n/data.en.ts")
-        self.assertIn("internal catalog of 61 skills", en)
+        self.assertIn("published catalog of 61 skills", en)
         self.assertIn("61 skills across 14 domains", en)
         self.assertIn("{ number: 61, label: 'Skills' }", en)
         self.assertIn("They are 9 specialised agents", en)
-        self.assertIn("19 agents. Internal catalog of 61 skills. 13 hooks. 26 commands.", en)
+        self.assertIn("19 agents. Published catalog of 61 skills. 13 hooks. 26 commands.", en)
         self.assertIn("Lucius", en)
 
 

@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev",
   "description": "Plugin de ingeniería de software completa: 10 agentes de núcleo y 9 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "author": {
     "name": "686f6c61"
   },
@@ -59,10 +59,19 @@
     "./agents/optional/lucius.md"
   ],
   "skills": [
-    "./skills/calidad/incident-response/SKILL.md",
-    "./skills/calidad/sonarqube/SKILL.md",
-    "./skills/devops/release-planning/SKILL.md",
-    "./skills/seguridad/dependency-strategy/SKILL.md",
-    "./skills/estilo/style-direction/SKILL.md"
+    "./skills/arquitectura/",
+    "./skills/calidad/",
+    "./skills/datos/",
+    "./skills/desarrollo/",
+    "./skills/devops/",
+    "./skills/documentacion/",
+    "./skills/estilo/",
+    "./skills/github/",
+    "./skills/marketing/",
+    "./skills/producto/",
+    "./skills/rendimiento/",
+    "./skills/seguridad/",
+    "./skills/seo/",
+    "./skills/ux/"
   ]
 }

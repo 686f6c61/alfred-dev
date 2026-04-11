@@ -18,7 +18,7 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - Claude Code plugin for development teams',
-    description: 'Claude Code plugin with 19 specialised agents, an internal catalog of 61 skills and per-project persistent memory. Strict TDD, transversal security and automatic quality gates at every phase.',
+    description: 'Claude Code plugin with 19 specialised agents, a published catalog of 61 skills and per-project persistent memory. Strict TDD, transversal security and automatic quality gates at every phase.',
     canonical: 'https://alfred-dev.com/en/',
     locale: 'en_US',
     og: {
@@ -118,7 +118,7 @@ const data: PageData = {
       },
     ],
     features: {
-      label: 'New in v0.5.1',
+      label: 'Highlighted capabilities',
       items: [
         {
           title: 'Lucius — external technical second opinion',
@@ -127,8 +127,8 @@ const data: PageData = {
           tag: { text: 'New', href: '#uso' },
         },
         {
-          title: 'Selina — 10 base design systems',
-          description: 'Before a single line of CSS is written, Selina walks through 10 base design systems and narrows them down to three comparable browser proposals. The user chooses; the team implements with clear design intent from the first component.',
+          title: 'Selina — guided visual direction flow',
+          description: 'Selina now lets the user lock a base design system, typography pairing, and colour range before it narrows down to three comparable final proposals. Frontend work starts from an explicit visual family, not loose intuition.',
           svgContent: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>',
           tag: { text: 'New', href: '#uso' },
         },
@@ -504,7 +504,7 @@ const data: PageData = {
     header: {
       label: 'Capabilities',
       title: '61 skills across 14 domains',
-      description: 'Internal repository catalog: each skill is a specific ability that agents execute. The original 7 domains are expanded with 6 new ones for optional agents plus a dedicated design-system domain for Selina. The public Claude Code manifest currently registers 5 top-level skills; the rest are consumed as internal plugin playbooks.',
+      description: 'Published plugin catalog: each skill is a specific capability that agents can invoke. The original 7 domains are expanded with 6 new ones for optional agents plus a dedicated design-system domain for Selina. Since v0.5.2, the public Claude Code manifest exposes all 14 domains; heavier skills or those with clear side effects remain available, but are marked as manual-only.',
     },
     domains: [
       {
@@ -539,6 +539,7 @@ const data: PageData = {
         skills: [
           { name: 'threat-model', description: 'STRIDE modelling' },
           { name: 'dependency-audit', description: 'CVEs, licences, versions' },
+          { name: 'dependency-strategy', description: 'Medium-term dependency strategy' },
           { name: 'security-review', description: 'OWASP Top 10' },
           { name: 'compliance-check', description: 'GDPR, NIS2, CRA' },
           { name: 'sbom-generate', description: 'Software Bill of Materials' },
@@ -550,7 +551,9 @@ const data: PageData = {
         skills: [
           { name: 'test-plan', description: 'Risk-based test plans' },
           { name: 'code-review', description: 'Quality review' },
-          { name: 'exploratory-test', description: 'Exploratory testing' },
+          { name: 'e2e-testing', description: 'End-to-end coverage for critical journeys' },
+          { name: 'exploratory-testing', description: 'Exploratory testing' },
+          { name: 'incident-response', description: 'Triage, mitigation, and postmortem' },
           { name: 'regression-check', description: 'Regression analysis' },
           { name: 'sonarqube', description: 'SonarQube + Docker analysis' },
           { name: 'spelling-check', description: 'Spelling verification (accents)' },
@@ -563,6 +566,7 @@ const data: PageData = {
           { name: 'ci-cd-pipeline', description: 'GitHub Actions, GitLab CI' },
           { name: 'deploy-config', description: 'Vercel, Railway, Fly, AWS, K8s' },
           { name: 'monitoring-setup', description: 'Logging, alerts, tracking' },
+          { name: 'release-planning', description: 'Versioning, changelog, and release notes' },
         ],
       },
       {
@@ -577,6 +581,12 @@ const data: PageData = {
           { name: 'readme-review', description: 'README audit' },
           { name: 'onboarding-guide', description: 'New developer guide' },
           { name: 'migration-guide', description: 'Version migration' },
+        ],
+      },
+      {
+        name: 'Style',
+        skills: [
+          { name: 'style-direction', description: 'Visual companion and style-direction closeout' },
         ],
       },
       {
@@ -1449,7 +1459,7 @@ personalidad:
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         question: 'How many skills does it have in total?',
-        answerHtml: 'The repository maintains an internal catalog of 61 skills distributed across 14 domains. The original 7 domains (product, architecture, development, security, quality, DevOps, documentation) cover the standard lifecycle. The 6 optional-agent domains (data, UX, performance, GitHub, SEO, marketing) broaden the plugin scope, and Selina adds a dedicated design-system domain. The public Claude Code manifest currently registers 5 top-level skills; the rest are reused as internal plugin playbooks.',
+        answerHtml: 'Alfred maintains 61 skills distributed across 14 domains. The original 7 domains (product, architecture, development, security, quality, DevOps, documentation) cover the standard lifecycle. The 6 optional-agent domains (data, UX, performance, GitHub, SEO, marketing) broaden the plugin scope, and Selina adds a dedicated design-system domain. Since v0.5.2, the public Claude Code manifest publishes the full catalog by domain; the most delicate skills stay visible, but require explicit manual activation.',
       },
       {
         svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
@@ -1504,6 +1514,26 @@ personalidad:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.5.2',
+      date: '2026-04-11',
+      added: [
+        '<strong>Full skills catalog published</strong>: <code>plugin.json</code> stops enumerating a partial sample and now exposes all 14 domains under <code>skills/</code>.',
+        '<strong>Stricter public surface contracts</strong>: the suite now validates the published catalog, canonical frontmatter, manual-only skills, and the absence of collisions with commands.',
+        '<strong>Selina gets a real guided flow</strong>: base system first, then typography and palette, and only then three comparable final proposals inside that family.',
+      ],
+      changed: [
+        'Heavier skills or those with clear side effects remain published, but are forced to manual activation with <code>disable-model-invocation: true</code>.',
+        'Help and public docs now group commands by actual value: core, advanced operations, and views/aliases.',
+        'Selina’s final proposals now respect the selected visual system instead of recolouring the same generic layout shell.',
+        'Version alignment to 0.5.2 across plugin, marketplace, installers, packages, docs, changelog, and landing.',
+      ],
+      fixed: [
+        '<code>style-direction</code> now declares canonical frontmatter instead of relying on implicit inference.',
+        'The public skill surface no longer depends on partial lists that drift from the real repository.',
+        'Selina’s visual companion still records the user choice when the local WebSocket handshake fails and the HTTP fallback has to take over.',
+      ],
+    },
     {
       version: '0.5.1',
       date: '2026-04-10',
@@ -1909,11 +1939,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.5.1',
+    version: 'v0.5.2',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Claude Code plugin. 19 agents. Internal catalog of 61 skills. 13 hooks. 26 commands. 10 design systems with Selina. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
+    tagline: 'Claude Code plugin. 19 agents. Published catalog of 61 skills. 13 hooks. 26 commands. 10 design systems with Selina. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
     slogan: 'Automated software engineering for Claude Code.',
     disclaimer: {
       linkText: 'Disclaimer',

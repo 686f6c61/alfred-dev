@@ -39,10 +39,18 @@ class TestSelinaStyleCatalog(unittest.TestCase):
 
         self.assertEqual(proposal["style_family"], "neo-brutalism")
         self.assertEqual(proposal["palette_mode"], "pastel")
+        self.assertEqual(proposal["palette_mode_label"], "Pastel")
         self.assertGreaterEqual(len(proposal["reference_urls"]), 1)
+        self.assertEqual(proposal["typography"]["pairing_id"], "brutal-core")
+        self.assertEqual(proposal["typography"]["pairing_label"], "Brutal Core")
         self.assertEqual(proposal["typography"]["source"], "google-fonts")
         self.assertIn("https://fonts.google.com/specimen/", proposal["typography"]["headings_url"])
         self.assertIn("https://fonts.googleapis.com/css2?", proposal["typography"]["css_url"])
+        self.assertGreaterEqual(len(proposal["visual_principles"]), 2)
+        self.assertIn("bordes negros", proposal["prompt_seed"].lower())
+        self.assertIn("cajas desplazadas", proposal["layout_grammar"].lower())
+        self.assertIn("CTA con sombra brutal", proposal["signature_elements"])
+        self.assertGreaterEqual(len(proposal["implementation_guardrails"]), 1)
 
     def test_custom_google_fonts_url_overrides_default_pairing(self):
         pairing = resolve_font_pairing(
@@ -55,7 +63,18 @@ class TestSelinaStyleCatalog(unittest.TestCase):
         self.assertEqual(pairing["headings"], "IBM Plex Mono")
         self.assertIn("fonts.googleapis.com", pairing["css_url"])
 
+    def test_catalog_entries_expose_structured_style_cues_for_each_family(self):
+        for entry in get_style_catalog():
+            self.assertIn("visual_principles", entry)
+            self.assertGreaterEqual(len(entry["visual_principles"]), 2)
+            self.assertTrue(entry["layout_grammar"])
+            self.assertTrue(entry["surface_treatment"])
+            self.assertTrue(entry["shape_language"])
+            self.assertTrue(entry["motion_language"])
+            self.assertGreaterEqual(len(entry["signature_elements"]), 1)
+            self.assertGreaterEqual(len(entry["implementation_guardrails"]), 1)
+            self.assertTrue(entry["prompt_seed"])
+
 
 if __name__ == "__main__":
     unittest.main()
-
