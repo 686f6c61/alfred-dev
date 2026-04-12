@@ -1526,6 +1526,7 @@ personalidad:
         'Heavier skills or those with clear side effects remain published, but are forced to manual activation with <code>disable-model-invocation: true</code>.',
         'Help and public docs now group commands by actual value: core, advanced operations, and views/aliases.',
         'Selina’s final proposals now respect the selected visual system instead of recolouring the same generic layout shell.',
+        'The landing no longer frames the catalog as an internal/partial sample and now reflects the 61 published skills in the release.',
         'Version alignment to 0.5.2 across plugin, marketplace, installers, packages, docs, changelog, and landing.',
       ],
       fixed: [

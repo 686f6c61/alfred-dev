@@ -9,9 +9,9 @@
     "check": "astro check"
   },
   "devDependencies": {
-    "astro": "^6.1.5",
-    "@astrojs/sitemap": "^3.7.2",
     "@astrojs/check": "^0.9.8",
-    "typescript": "^5.7.0"
+    "@astrojs/sitemap": "^3.7.2",
+    "astro": "^6.1.5",
+    "typescript": "^5.9.3"
   }
 }

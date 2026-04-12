@@ -1529,6 +1529,7 @@ personalidad:
         'Los skills más pesados o con side effects claros quedan publicados, pero forzados a activación manual con <code>disable-model-invocation: true</code>.',
         'La ayuda y la documentación pública agrupan ahora los comandos por valor real: core, operativos avanzados y vistas/aliases.',
         'Las propuestas finales de Selina ya respetan el sistema visual elegido y dejan de recolorear la misma maqueta genérica.',
+        'La landing deja de presentar el catálogo como una muestra interna/parcial y refleja ya las 61 skills publicadas de la release.',
         'Versionado coherente a 0.5.2 en plugin, marketplace, instaladores, paquetes, docs, changelog y landing.',
       ],
       fixed: [
