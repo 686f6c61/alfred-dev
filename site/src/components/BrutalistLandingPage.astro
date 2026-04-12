@@ -238,14 +238,14 @@ const uiText = {
   ),
   openCommandAriaPrefix: tr('Abrir ficha de', 'Open profile for'),
   skillsTitle: tr('Skills y playbooks', 'Skills and playbooks'),
-  skillsBadge: tr('61 internos / 5 públicas', '61 internal / 5 public'),
-  internalPlaybooks: tr('playbooks internos', 'internal playbooks'),
+  skillsBadge: tr('61 publicadas / 14 dominios', '61 published / 14 domains'),
+  publishedSkillsLabel: tr('skills publicadas', 'published skills'),
   domainsCovered: tr('14 dominios cubiertos', '14 domains covered'),
   skillsBody: tr(
-    'El catálogo interno encapsula decisiones repetibles para incidentes, releases, dependencias, estilo, QA, seguridad y entrega.',
-    'The internal catalog encapsulates repeatable decisions for incidents, releases, dependencies, style, QA, security, and delivery.',
+    'El catálogo publicado encapsula decisiones repetibles para incidentes, releases, dependencias, estilo, QA, seguridad y entrega.',
+    'The published catalog encapsulates repeatable decisions for incidents, releases, dependencies, style, QA, security, and delivery.',
   ),
-  publicSkills: tr('Skills públicas hoy', 'Public skills today'),
+  publicSkills: tr('Ejemplos destacados', 'Featured examples'),
   skillsFooter: tr(
     'Procedimientos reutilizables y versionados dentro del plugin, no prompts ad hoc.',
     'Reusable, versioned procedures inside the plugin, not ad-hoc prompts.',
@@ -2030,8 +2030,8 @@ const organizationLd = JSON.stringify({
         <h1>{tr('UN SISTEMA DE TRABAJO PARA CLAUDE CODE', 'A WORK SYSTEM FOR CLAUDE CODE')}</h1>
         <p class="hero-copy__body">
           {tr(
-            '19 agentes reales, 26 comandos, 61 playbooks internos, memoria SQLite por proyecto y PM operativo. Alfred convierte Claude Code en un flujo con continuidad, contexto y gates de calidad.',
-            '19 real agents, 26 commands, 61 internal playbooks, per-project SQLite memory, and operational PM. Alfred turns Claude Code into a flow with continuity, context, and quality gates.',
+            '19 agentes reales, 26 comandos, 61 skills publicadas, memoria SQLite por proyecto y PM operativo. Alfred convierte Claude Code en un flujo con continuidad, contexto y gates de calidad.',
+            '19 real agents, 26 commands, 61 published skills, per-project SQLite memory, and operational PM. Alfred turns Claude Code into a flow with continuity, context, and quality gates.',
           )}
         </p>
 
@@ -2243,7 +2243,7 @@ const organizationLd = JSON.stringify({
           <div class="skills-card__body">
             <div class="skills-card__meter">
               <strong>61</strong>
-              <span>{uiText.internalPlaybooks}</span>
+              <span>{uiText.publishedSkillsLabel}</span>
               <small>{uiText.domainsCovered}</small>
             </div>
 
