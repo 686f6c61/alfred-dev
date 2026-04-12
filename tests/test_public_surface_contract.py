@@ -96,14 +96,6 @@ def _parse_frontmatter_fields(path: str):
     return fields
 
 
-def _extract_site_skill_names(relative_path: str):
-    text = _read(relative_path)
-    start = text.index("skills: {")
-    end = text.index("\n\n  // ----------------------------------------------------------------\n  // Infra", start)
-    section = text[start:end]
-    return set(re.findall(r"\{ name: '([^']+)'", section))
-
-
 class TestRuntimeSurfaceCounts(unittest.TestCase):
     def test_manifest_and_filesystem_reflect_current_counts(self):
         plugin = _read_json(".claude-plugin/plugin.json")
@@ -475,46 +467,6 @@ class TestInstallSurfaceContracts(unittest.TestCase):
         self.assertNotIn("os.replace", install_doc)
         self.assertNotIn("actualizan `installed_plugins.json` con el nuevo sha y version", _normalize(install_doc))
 
-    def test_site_install_and_metadata_match_current_release_contract(self):
-        plugin = _read_json(".claude-plugin/plugin.json")
-        es_site = _read("site/src/i18n/data.es.ts")
-        en_site = _read("site/src/i18n/data.en.ts")
-        landing_component = _read("site/src/components/BrutalistLandingPage.astro")
-        site_ui = _read("site/src/i18n/ui.ts")
-        changelog_modal = _read("site/src/components/ChangelogModal.astro")
-
-        expected_version = plugin["version"]
-        self.assertIn("softwareVersion: data.footer.version.replace(/^v/i, '')", landing_component)
-        self.assertIn(f"version: 'v{expected_version}'", es_site)
-        self.assertIn(f"version: 'v{expected_version}'", en_site)
-
-        self.assertIn("Python 3.10+", es_site)
-        self.assertIn("Python 3.10+", en_site)
-        self.assertNotIn("git, Python 3.10+", es_site)
-        self.assertNotIn("git, Python 3.10+", en_site)
-        self.assertNotIn("No necesita Python", es_site)
-        self.assertNotIn("Python not required", en_site)
-        self.assertIn("catalogo publicado de 61 skills", _normalize(es_site))
-        self.assertIn("published catalog of 61 skills", en_site)
-        self.assertIn("publica el catalogo completo", _normalize(es_site))
-        self.assertIn("publishes the full catalog", en_site)
-        self.assertIn("changelogHistoryNote", site_ui)
-        self.assertIn("historyNote", changelog_modal)
-
-    def test_site_skill_names_match_repository_catalog(self):
-        repository_skill_names = {
-            _parse_frontmatter_fields(skill_path)["name"]
-            for skill_path in _iter_manifest_skill_files()
-        }
-        self.assertEqual(
-            _extract_site_skill_names("site/src/i18n/data.es.ts"),
-            repository_skill_names,
-        )
-        self.assertEqual(
-            _extract_site_skill_names("site/src/i18n/data.en.ts"),
-            repository_skill_names,
-        )
-
     def test_uninstall_surface_is_also_cli_first(self):
         uninstall_sh = _read("uninstall.sh")
         uninstall_ps1 = _read("uninstall.ps1")
@@ -530,14 +482,6 @@ class TestInstallSurfaceContracts(unittest.TestCase):
         self.assertIn("claude plugin uninstall alfred-dev@alfred-dev", _normalize(install_doc))
         self.assertIn("claude plugin marketplace remove alfred-dev", _normalize(install_doc))
         self.assertIn("cli nativa de claude code", _normalize(readme))
-
-    def test_site_job_is_validated_in_ci(self):
-        workflow = _read(".github/workflows/test.yml")
-        self.assertIn("site:", workflow)
-        self.assertIn("working-directory: site", workflow)
-        self.assertIn("npm run check", workflow)
-        self.assertIn("npm run build", workflow)
-
 
 class TestOptionalAgentsContracts(unittest.TestCase):
     def test_config_and_composition_include_nine_optional_agents(self):
@@ -635,27 +579,6 @@ class TestOptionalAgentsContracts(unittest.TestCase):
         self.assertIn("`product-owner` decide **qué** se quiere construir y **por qué**", alfred)
         self.assertIn("`architect` decide **cómo** se resuelve técnicamente", alfred)
         self.assertIn("`alfred`** decide **cuándo** interviene cada uno", agents_readme)
-
-
-class TestLandingSurfaceContracts(unittest.TestCase):
-    def test_spanish_landing_uses_current_counts(self):
-        es = _read("site/src/i18n/data.es.ts")
-        self.assertIn("catalogo publicado de 61 skills", _normalize(es))
-        self.assertIn("61 skills en 14 dominios", es)
-        self.assertIn("{ number: 61, label: 'Skills' }", es)
-        self.assertIn("Son 9 agentes especializados", es)
-        self.assertIn("19 agentes. catalogo publicado de 61 skills. 13 hooks. 26 comandos.", _normalize(es))
-        self.assertIn("Lucius", es)
-
-    def test_english_landing_uses_current_counts(self):
-        en = _read("site/src/i18n/data.en.ts")
-        self.assertIn("published catalog of 61 skills", en)
-        self.assertIn("61 skills across 14 domains", en)
-        self.assertIn("{ number: 61, label: 'Skills' }", en)
-        self.assertIn("They are 9 specialised agents", en)
-        self.assertIn("19 agents. Published catalog of 61 skills. 13 hooks. 26 commands.", en)
-        self.assertIn("Lucius", en)
-
 
 if __name__ == "__main__":
     unittest.main()

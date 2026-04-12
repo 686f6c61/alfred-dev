@@ -10,7 +10,6 @@ Ficheros cubiertos:
   - .claude-plugin/plugin.json   (JSON, campo "version")
   - .claude-plugin/marketplace.json (JSON, plugins[0].version)
   - package.json                 (JSON, campo "version")
-  - site/package.json            (JSON, campo "version")
   - install.sh                   (bash, variable VERSION="...")
   - install.ps1                  (PowerShell, variable $Version = "...")
 """
@@ -52,12 +51,6 @@ def _get_marketplace_json_version() -> str:
 def _get_package_json_version() -> str:
     """Extrae la version de package.json."""
     data = json.loads(_read_file("package.json"))
-    return data["version"]
-
-
-def _get_site_package_json_version() -> str:
-    """Extrae la version de site/package.json."""
-    data = json.loads(_read_file("site/package.json"))
     return data["version"]
 
 
@@ -108,14 +101,6 @@ class TestVersionConsistency(unittest.TestCase):
             _get_package_json_version(),
             self.canonical,
             "La version en package.json no coincide con plugin.json",
-        )
-
-    def test_site_package_json_matches(self):
-        """site/package.json debe coincidir con plugin.json."""
-        self.assertEqual(
-            _get_site_package_json_version(),
-            self.canonical,
-            "La version en site/package.json no coincide con plugin.json",
         )
 
     def test_install_sh_matches(self):

@@ -4,7 +4,7 @@
 
 19 agentes especializados con personalidad propia (10 de nucleo + 9 opcionales), catalogo publicado de 61 skills en 14 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
-[Documentación completa](https://686f6c61.github.io/alfred-dev/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
+[Documentación completa](https://alfred-dev.com/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
 ---
 
@@ -440,8 +440,9 @@ alfred-dev/
   mcp/                    # Servidor MCP stdio (memoria persistente)
   templates/              # 7 plantillas de artefactos
   tests/                  # Tests unitarios (pytest)
-  site/                   # Landing page para GitHub Pages
 ```
+
+La landing publica se mantiene en la rama `Alfred-Astro` y se despliega desde Coolify sobre el VPS. La rama `main` contiene solo el plugin, su runtime y sus tests.
 
 ## Configuracion
 
@@ -503,4 +504,4 @@ MIT
 
 ---
 
-[Documentación completa](https://686f6c61.github.io/alfred-dev/) | [Código fuente](https://github.com/686f6c61/alfred-dev)
+[Documentación completa](https://alfred-dev.com/) | [Código fuente](https://github.com/686f6c61/alfred-dev)
