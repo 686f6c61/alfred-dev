@@ -1,6 +1,8 @@
 # Documentación técnica de Alfred Dev
 
-Esta documentación esta pensada para desarrolladores que necesitan entender como funciona el plugin Alfred Dev por dentro: su arquitectura, sus decisiones de diseño, como se integra en Claude Code y como contribuir. No es documentación de usuario (eso esta en el [README del proyecto](../README.md) y en la [landing page](https://686f6c61.github.io/alfred-dev/)); es documentación de ingenieria interna.
+Esta documentación esta pensada para desarrolladores que necesitan entender como funciona el plugin Alfred Dev por dentro: su arquitectura, sus decisiones de diseño, como se integra en Claude Code y como contribuir. No es documentación de usuario (eso esta en el [README del proyecto](../README.md) y en la [landing page](https://alfred-dev.com/)); es documentación de ingenieria interna.
+
+En la rama `Alfred-Astro`, este repositorio conserva también `site/` para construir y desplegar la landing pública desde Coolify. La rama `main` sigue siendo la rama canónica del plugin y su runtime.
 
 Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 19 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
 

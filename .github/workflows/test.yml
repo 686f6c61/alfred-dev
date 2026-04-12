@@ -1,8 +1,9 @@
 # Pipeline de tests automaticos para Alfred Dev.
 #
-# Se ejecuta en cada push y pull request sobre main. Cubre Python 3.10-3.13
-# en Ubuntu (entorno mas cercano a produccion). No necesita dependencias
-# externas porque el proyecto usa exclusivamente la stdlib de Python.
+# Se ejecuta en cada push y pull request sobre main y Alfred-Astro. Cubre
+# Python 3.10-3.13 en Ubuntu (entorno mas cercano a produccion). No necesita
+# dependencias externas porque el proyecto usa exclusivamente la stdlib de
+# Python y, en Alfred-Astro, valida tambien la landing Astro.
 #
 # Seguridad: no se usa ningun input dinamico de usuario (issue titles,
 # PR bodies, commit messages) en bloques run:. Todos los comandos son
@@ -12,9 +13,9 @@ name: Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, Alfred-Astro]
   pull_request:
-    branches: [main]
+    branches: [main, Alfred-Astro]
 
 permissions:
   contents: read
