@@ -2,6 +2,7 @@
 .alfred-dev/visual/
 .claude/
 .tmp/
+internal/
 site/test-results/
 
 # Artefactos locales de Python y testing
