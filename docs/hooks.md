@@ -12,7 +12,7 @@ El mecanismo de hooks de Claude Code sigue un modelo sencillo de registro, invoc
 
 ### Registro
 
-Los hooks se declaran en el fichero `hooks.json` dentro del directorio `.claude-plugin` o en la raiz del plugin. Cada entrada asocia un evento del ciclo de vida con uno o mas scripts a ejecutar. La estructura básica es:
+Los hooks se declaran en el fichero `hooks/hooks.json` del repositorio. Cada entrada asocia un evento del ciclo de vida con uno o mas scripts a ejecutar. La estructura básica es:
 
 ```json
 {

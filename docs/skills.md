@@ -22,7 +22,9 @@ mindmap
       write-adr
     calidad
       code-review
+      e2e-testing
       exploratory-testing
+      incident-response
       regression-check
       sonarqube
       spelling-check
@@ -41,6 +43,7 @@ mindmap
       deploy-config
       dockerize
       monitoring-setup
+      release-planning
     documentación
       api-docs
       architecture-docs
@@ -51,6 +54,8 @@ mindmap
       project-docs
       readme-review
       user-guide
+    estilo
+      style-direction
     github
       issue-templates
       pr-workflow
@@ -72,6 +77,7 @@ mindmap
     seguridad
       compliance-check
       dependency-audit
+      dependency-strategy
       dependency-update
       sbom-generate
       security-review
@@ -108,7 +114,9 @@ El dominio de calidad cubre todo lo relacionado con la verificación del softwar
 | Skill | Descripción | Agente |
 |-------|-------------|--------|
 | `code-review` | Revisa código con foco en legibilidad, errores logicos, manejo de errores y complejidad | qa-engineer |
+| `e2e-testing` | Diseña y ejecuta pruebas end-to-end sobre flujos críticos con cobertura de escenarios felices, errores y regresión visible | qa-engineer |
 | `exploratory-testing` | Ejecuta sesiones de testing exploratorio estructurado con heuristicas, documentación en tiempo real y clasificacion de hallazgos | qa-engineer |
+| `incident-response` | Guía la respuesta a incidentes reales: contención, impacto, rollback, comunicación y siguientes acciones con criterio operativo | security-officer |
 | `regression-check` | Verifica que los cambios nuevos no rompen funcionalidad existente mediante análisis de impacto y ejecución de tests | qa-engineer |
 | `sonarqube` | Levanta SonarQube con Docker, ejecuta análisis estático del código y traduce los resultados en mejoras accionables | security-officer |
 | `spelling-check` | Verifica ortografia en castellano (tildes, concordancia, puntuación) en código, documentación e interfaz | qa-engineer |
@@ -151,6 +159,17 @@ El dominio de DevOps agrupa las capacidades de entrega y operación: conteneriza
 | `deploy-config` | Genera la configuración de despliegue segun el proveedor de hosting, con estrategia de deploy, rollback y health checks | devops-engineer |
 | `dockerize` | Genera un Dockerfile optimizado con multi-stage build, usuario no-root, capas cacheables y health check | devops-engineer |
 | `monitoring-setup` | Configura las tres patas de la observabilidad: logging estructurado, error tracking y metricas con alertas accionables | devops-engineer |
+| `release-planning` | Orquesta la preparación de una release: checklist, riesgos, dependencias, ventana de despliegue y rollback | devops-engineer |
+
+---
+
+## Estilo
+
+El dominio de estilo contiene la capacidad más singular del plugin: definir una dirección visual ejecutable antes de tocar frontend. No es un skill ornamental ni una fase de “decoración”, sino una herramienta de decisión temprana para que la capa visual quede cerrada antes de que arquitectura y desarrollo construyan componentes sobre arena movediza. El agente responsable es **selina**.
+
+| Skill | Descripción | Agente |
+|-------|-------------|--------|
+| `style-direction` | Recorre sistemas visuales base, fija familia tipográfica y cromática, y deja cerrada la dirección visual ejecutable del producto | selina |
 
 ---
 
@@ -230,6 +249,7 @@ El dominio de seguridad agrupa las capacidades de protección del software: revi
 |-------|-------------|--------|
 | `compliance-check` | Verifica el cumplimiento del proyecto contra RGPD, NIS2 y CRA con checklists detallados y acciones priorizadas | security-officer |
 | `dependency-audit` | Audita dependencias contra CVEs, versiones desactualizadas, licencias incompatibles y paquetes abandonados | security-officer |
+| `dependency-strategy` | Evalúa la estrategia global de dependencias del proyecto: criterio de adopción, riesgo de lock-in, mantenimiento y deuda acumulada | security-officer |
 | `dependency-update` | Revisa dependencias desactualizadas o con CVEs y propone un plan de actualización seguro, una dependencia a la vez | security-officer |
 | `sbom-generate` | Genera un Software Bill of Materials (SBOM) en formato CycloneDX o SPDX con todas las dependencias directas y transitivas | security-officer |
 | `security-review` | Revisa el código del proyecto contra las 10 categorías de vulnerabilidades OWASP Top 10 | security-officer |

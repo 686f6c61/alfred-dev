@@ -53,7 +53,7 @@ Los agentes son system prompts especializados que Claude Code ejecuta como subag
 
 La distinción clave en esta capa es la separación entre agentes de nucleo y agentes opcionales. Los 10 agentes de nucleo participan en todos los flujos y son invocados programaticamente desde los commands: cuando `feature.md` dice «activa el agente product-owner», Claude Code crea un subagente Task cuyo system prompt es el contenido de `agents/product-owner.md`. Los 9 agentes opcionales amplían el equipo segun el tipo de proyecto y pueden activarse desde la configuración local.
 
-**Agentes de nucleo** (9):
+**Agentes de nucleo** (10):
 
 | Agente | Alias | Rol |
 |--------|-------|-----|
@@ -65,6 +65,7 @@ La distinción clave en esta capa es la separación entre agentes de nucleo y ag
 | `devops-engineer` | El Fontanero | DevOps |
 | `tech-writer` | El Traductor | Tech Writer |
 | `project-manager` | SonIA | PM operativo y trazabilidad |
+| `selina` | La Estilista | Dirección de estilo visual |
 | `alfred` | Alfred | Jefe de operaciones / Orquestador |
 
 **Agentes opcionales** (9):
@@ -85,7 +86,7 @@ La distinción clave en esta capa es la separación entre agentes de nucleo y ag
 
 La capa core contiene la lógica de negocio pura del plugin, escrita en Python. Estos modulos no tienen dependencia directa de Claude Code: son funciones y clases que reciben datos, los procesan y devuelven resultados. Se ejecutan via `python3 -c` desde los hooks o como imports desde el servidor MCP.
 
-La capa se compone de cinco modulos principales:
+La capa core no es un único módulo grande, sino una familia de módulos especializados. Los más importantes hoy son:
 
 - **`orchestrator.py`** -- Maquina de estados que define 6 flujos de trabajo (feature, fix, spike, ship, audit, quick), cada uno con sus fases secuenciales y quality gates. El orquestador gestiona la creación de sesiones, la evaluación de gates y el avance entre fases. El estado se persiste en un fichero JSON plano (`.claude/alfred-dev-state.json`). Desde v0.3.6, `run_flow()` puede inyectar un equipo efimero (`equipo_sesion`) generado por la composicion dinámica y, si no se le pasa uno explícito, deriva automáticamente el equipo persistido del proyecto desde `.claude/alfred-dev.local.md` para que runtime y configuración no diverjan (ver [configuration.md](configuration.md#composicion-dinámica-de-equipo)).
 
@@ -93,10 +94,11 @@ La capa se compone de cinco modulos principales:
 - **`optional_agents.py`** -- Catálogo canónico de los 9 opcionales. Centraliza grupos, orden, labels visibles, especialidad base, integraciones por fase y los builders de menús (`build_optional_agent_group_menu()` / `build_optional_agent_group_menus()`) para que `config` y la composición dinámica no dependan de listas escritas a mano.
 
 - **`continuity.py`** -- Capa determinista de continuidad operativa y PM ligero. Implementa `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `standup`, `blocked`, `in-progress`, `verify`, `validate`, `search`, `sync-github` y los artefactos persistentes asociados (`current.md`, `handoff.md`, `uat.md`, `github-sync.md`). Como helper de mantenimiento interno, tambien expone `normalize-kanban` para normalizar tipos de tarea en tableros heredados de SonIA.
-
+- **`memory.py`, `memory_sync.py`, `memory_ui_server.py`** -- Subsistema de memoria persistente: SQLite, búsqueda, sanitización, sync a memorias nativas y UI local.
 - **`memory_config.py`** -- Parser ligero de la seccion `memoria` del frontmatter local. Permite que hooks, sync y servidor MCP apliquen la misma configuracion efectiva sin duplicar logica.
-
 - **`personality.py`** -- Motor de personalidad que define la identidad, voz y frases caracteristicas de cada agente. El tono se adapta a un nivel de sarcasmo configurable (1 = profesional, 5 = acido). Con niveles altos se añaden frases mordaces al repertorio de cada agente.
+- **`session_report.py`** -- Generación de informes de sesión en `docs/alfred-reports/` al cierre o interrupción de flujos.
+- **`selina_*`** -- Runtime visual de Selina: catálogo de estilos, selector guiado, dirección final, variantes y soporte de renderizado.
 
 ### Capa de integración (`hooks/`, `mcp/`)
 
@@ -124,7 +126,7 @@ Los hooks son scripts que Claude Code ejecuta automáticamente cuando ocurren ev
 
 **Servidor MCP** (1 fichero):
 
-El fichero `mcp/memory_server.py` implementa un servidor MCP (Model Context Protocol) sobre stdio que expone la memoria persistente del proyecto. Claude Code lanza este proceso al inicio de sesión y lo mantiene vivo. El servidor habla JSON-RPC 2.0 con encabezados Content-Length (identico a LSP) y expone 6 herramientas:
+El fichero `mcp/memory_server.py` implementa un servidor MCP (Model Context Protocol) sobre stdio que expone la memoria persistente del proyecto. Claude Code lanza este proceso al inicio de sesión y lo mantiene vivo. El servidor habla JSON-RPC 2.0 con encabezados Content-Length (identico a LSP) y hoy expone 15 herramientas:
 
 | Herramienta MCP | Propósito |
 |-----------------|-----------|
@@ -134,6 +136,15 @@ El fichero `mcp/memory_server.py` implementa un servidor MCP (Model Context Prot
 | `memory_get_iteration` | Obtiene datos de una iteracion (o la activa) |
 | `memory_get_timeline` | Cronología de eventos de una iteracion |
 | `memory_stats` | Estadisticas generales de la memoria |
+| `memory_manage_iteration` | Inicia o completa iteraciones desde MCP |
+| `memory_log_event` | Registra eventos arbitrarios de cronología |
+| `memory_get_decisions` | Lista decisiones con filtros por iteración, tags o estado |
+| `memory_purge` | Purga eventos antiguos según retención |
+| `memory_update_decision` | Actualiza estado o etiquetas de una decisión |
+| `memory_link_decisions` | Crea relaciones entre decisiones |
+| `memory_health` | Valida integridad y salud de la memoria |
+| `memory_export` | Exporta decisiones a Markdown tipo ADR |
+| `memory_import` | Importa historial desde Git o ADRs |
 
 ---
 
@@ -167,7 +178,8 @@ C4Context
     Rel(commands, core, "Leen/escriben estado via python3")
     Rel(hooks, core, "Ejecutan lógica de negocio")
     Rel(mcp, sqlite, "Lee/escribe memoria persistente")
-    Rel(hooks, mcp, "Capturan eventos hacia la memoria")
+    Rel(core, sqlite, "Gestiona memoria, sync e informes")
+    Rel(hooks, core, "Capturan eventos y consultan estado/configuración")
     Rel(core, github, "Consulta releases para actualización")
 
     UpdateRelStyle(user, claude, $offsetY="-20")
@@ -375,7 +387,7 @@ stateDiagram-v2
 
     producto --> estilo_visual: gate_producto [usuario + frontend]
     producto --> arquitectura: gate_producto [sin frontend]
-    estilo_visual --> arquitectura: gate_estilo_visual [usuario]
+    estilo_visual --> arquitectura: gate_estilo [usuario]
     arquitectura --> desarrollo: gate_arquitectura [usuario+seguridad]
     desarrollo --> calidad: gate_desarrollo [automático]
     calidad --> documentación: gate_calidad [automático+seguridad]

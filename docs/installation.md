@@ -3,8 +3,8 @@
 Alfred Dev ya no instala el plugin copiando repositorios ni editando a mano los
 JSON internos de Claude Code. El flujo actual delega la instalación en la CLI
 nativa de Claude Code y solo añade una capa de verificación y parcheo donde el
-plugin lo necesita de verdad: detección de Python 3.10+ y ajuste de `hooks.json`
-y `mcp.json` cuando `python3` del sistema no es compatible.
+plugin lo necesita de verdad: detección de Python 3.10+ y ajuste de
+`hooks/hooks.json` y `mcp.json` cuando `python3` del sistema no es compatible.
 
 Esto importa porque la cadena de carga sigue existiendo, pero el responsable de
 materializarla ya no es un script artesanal del plugin, sino `claude plugin
@@ -89,7 +89,7 @@ sequenceDiagram
     C-->>P: Registrar fuente global en known_marketplaces.json
     S->>C: claude plugin install alfred-dev@alfred-dev
     C-->>P: Refrescar cache + installed_plugins + enabledPlugins
-    S->>P: Parchar hooks.json / mcp.json si python3 no sirve
+    S->>P: Parchar hooks/hooks.json / mcp.json si python3 no sirve
     S-->>U: Reinicia Claude Code
 ```
 
@@ -187,8 +187,8 @@ real y el script añade detección robusta de Python y parcheo de runtime.
 
 En Windows, Python 3.10+ sigue siendo obligatorio porque hooks, core y MCP se
 ejecutan también allí sobre Python. El instalador prueba primero el launcher
-`py` y después `python3` o `python`, y actualiza `hooks.json` y `mcp.json`
-para usar la ruta exacta del intérprete encontrado.
+`py` y después `python3` o `python`, y actualiza `hooks/hooks.json` y
+`mcp.json` para usar la ruta exacta del intérprete encontrado.
 
 ---
 

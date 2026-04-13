@@ -38,7 +38,7 @@ timeline
     arquitectura
         : architect + security-officer
         : Diseño técnico y threat model
-        : Gate - aprobacion del usuario
+        : Gate - usuario + seguridad
     desarrollo
         : senior-dev
         : Implementacion TDD
@@ -161,7 +161,7 @@ Aunque hoy tambien aparecen registrados en `plugin.json`, los agentes de nucleo 
 
 **Control de herramientas.** Cada llamada a Task puede restringir las herramientas disponibles para el subagente. Un tech-writer no necesita acceso a la terminal; un qa-engineer no necesita escribir ficheros de produccion. Limitar las herramientas reduce la superficie de errores accidentales y fuerza a cada agente a trabajar dentro de su ámbito.
 
-**Paralelismo.** La herramienta Task permite lanzar dos o mas subagentes en paralelo. En el flujo feature, las fases de arquitectura (architect + security-officer), calidad (qa-engineer + security-officer) y entrega (devops-engineer + security-officer) aprovechan esta capacidad para ejecutar trabajo simultaneo cuando los agentes de una fase son independientes entre si.
+**Paralelismo.** La herramienta Task permite lanzar dos o mas subagentes en paralelo. En el runtime actual, el paralelismo se usa sobre todo en arquitectura y calidad del flujo `feature`, en la validación de `fix`, en la exploración de `spike` y en las auditorías de `ship` y `audit`. La fase `entrega` de `feature` mantiene dos agentes, pero no se modela como paralela en `core/orchestrator.py`.
 
 ---
 

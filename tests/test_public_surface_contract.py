@@ -188,6 +188,15 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         self.assertIn("estilo visual", agents_readme)
         self.assertIn("publica el catalogo completo por dominios", _normalize(_read("docs/skills.md")))
 
+    def test_skills_docs_cover_manual_and_special_domains_in_catalog(self):
+        skills_doc = _read("docs/skills.md")
+        self.assertIn("e2e-testing", skills_doc)
+        self.assertIn("incident-response", skills_doc)
+        self.assertIn("release-planning", skills_doc)
+        self.assertIn("style-direction", skills_doc)
+        self.assertIn("dependency-strategy", skills_doc)
+        self.assertIn("## Estilo", skills_doc)
+
     def test_every_manifest_agent_has_public_docs_page(self):
         plugin = _read_json(".claude-plugin/plugin.json")
         docs_readme = _read("docs/README.md")
@@ -230,7 +239,7 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         tech_writer = _read("docs/agents/tech-writer.md")
 
         self.assertIn("Fase 1b: estilo visual", flows)
-        self.assertIn("gate_estilo_visual", flows)
+        self.assertIn("gate_estilo", flows)
         self.assertIn("| `feature` | Nueva funcionalidad, desde la idea hasta la entrega | 7", flows)
         self.assertIn("gate_arquitectura [usuario+seguridad]", flows)
         self.assertIn("gate_empaquetado [automático+seguridad]", flows)
@@ -323,6 +332,15 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         hooks_doc_norm = _normalize(_read("docs/hooks.md"))
         self.assertIn("la politica de este hook es **fail-closed**", hooks_doc_norm)
         self.assertIn("dangerous-command-guard.py", hooks_doc_norm)
+
+    def test_internal_audit_does_not_leak_into_public_docs_navigation(self):
+        docs_readme = _read("docs/README.md")
+        self.assertNotIn("[audit.md](audit.md)", docs_readme)
+        self.assertIn("internal/", docs_readme)
+        self.assertTrue(
+            os.path.exists(os.path.join(ROOT, "internal", "docs-audit.md")),
+            "La auditoría interna de documentación debe vivir fuera de docs/.",
+        )
 
     def test_configuration_surface_uses_canonical_phase_schema(self):
         readme = _read("README.md")
@@ -427,10 +445,11 @@ class TestInstallSurfaceContracts(unittest.TestCase):
         self.assertIn("Get-CompatiblePython", install_ps1)
         self.assertIn("Get-InstalledPluginRoot", install_ps1)
         self.assertIn('Write-Ok "hooks.json parcheado', install_ps1)
+        self.assertIn('Join-Path $PluginRoot "hooks/hooks.json"', install_ps1)
         self.assertIn('Write-Ok "mcp.json parcheado', install_ps1)
         self.assertIn("Python 3.10+", install_doc)
         self.assertIn("hooks, core y MCP", install_doc)
-        self.assertIn("actualiza `hooks.json` y `mcp.json`", install_doc)
+        self.assertIn("`hooks/hooks.json` y `mcp.json`", install_doc)
 
     def test_linux_installation_patches_hooks_and_mcp(self):
         install_sh = _read("install.sh")

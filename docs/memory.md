@@ -4,7 +4,7 @@ Las conversaciones de Claude Code son efímeras por naturaleza: cuando una sesi�
 
 La memoria persistente resuelve este problema almacenando decisiones, iteraciones, commits y eventos del flujo de trabajo en una base de datos SQLite local. Cada proyecto tiene su propia base de datos en `.claude/alfred-memory.db`, aislada del resto. Gracias a esta capa, Alfred puede responder preguntas como "por que decidimos no usar un ORM" o "que se implemento en la iteracion 3" con evidencia verificable, no con inferencias. La trazabilidad que proporciona es completa: desde el problema que se resolvia hasta el commit que lo implemento, pasando por las alternativas que se descartaron y la justificacion de cada eleccion.
 
-La memoria es una **capa lateral opcional**. Si no se activa, el flujo del plugin sigue funcionando exactamente igual que siempre. No hay penalización por no usarla; simplemente, las sesiones futuras no tendran acceso al histórico.
+La memoria es una **capa lateral configurable**. `load_config()` parte de `enabled: false`, pero el bootstrap del proyecto siembra `.claude/alfred-dev.local.md` con memoria activa en la primera sesión si el fichero local no existía. A partir de ahí, el usuario puede desactivarla explícitamente. Si la memoria no está activa, el flujo del plugin sigue funcionando; simplemente, las sesiones futuras no tendran acceso al histórico.
 
 
 ## Esquema de la base de datos
@@ -132,20 +132,21 @@ Cuando FTS5 esta disponible, `MemoryDB` crea la tabla virtual `memory_fts` con t
 
 | Columna | Tipo | Contenido |
 |---------|------|-----------|
-| `source_type` | TEXT | Tipo de registro: `decisión` o `commit` |
+| `source_type` | TEXT | Tipo de registro: `decision`, `commit` o `event` |
 | `source_id` | TEXT | ID del registro original (cast a texto) |
 | `content` | TEXT | Texto indexado (concatenacion de campos relevantes) |
 
-Para las decisiones, el campo `content` concatena `title`, `context`, `chosen`, `rationale` y `alternatives` (desde v2). Para los commits, contiene unicamente el `message`.
+Para las decisiones, el campo `content` concatena `title`, `context`, `chosen`, `rationale` y `alternatives`. Para los commits, combina `message` y `files`. Para los eventos, el contenido indexable se compone a partir de `summary` y `content`.
 
 ### Triggers de sincronizacion
 
-El índice FTS5 se mantiene sincronizado con las tablas origen mediante dos triggers `AFTER INSERT`:
+El índice FTS5 mezcla dos mecanismos de sincronización:
 
 - **`fts_insert_decision`**: se dispara al insertar una nueva decisión. Concatena los campos de texto con `COALESCE` para manejar valores nulos y los inserta en `memory_fts`.
-- **`fts_insert_commit`**: se dispara al insertar un nuevo commit. Inserta el mensaje del commit en `memory_fts`.
+- **`fts_insert_commit`**: se dispara al insertar un nuevo commit. Inserta el mensaje y los ficheros afectados.
+- **Eventos con contenido**: no usan trigger SQL dedicado; se indexan desde la propia lógica de `MemoryDB.log_event()` y, si hace falta, el índice completo se reconstruye con `_rebuild_fts_index()`.
 
-Los triggers garantizan que el índice FTS5 refleja siempre el estado actual de las tablas sin que el código de aplicación tenga que preocuparse de mantener la coherencia.
+Esta combinación permite mantener el índice alineado sin obligar a modelar toda la semántica de eventos como SQL declarativo.
 
 ### Detección en runtime y fallback a LIKE
 

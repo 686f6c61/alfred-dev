@@ -1,8 +1,8 @@
 # Tests
 
-Alfred Dev tiene una arquitectura deliberadamente dividida en dos capas con estrategias de testing muy distintas. La capa core esta escrita en Python puro (orchestrator, config_loader, personality, memory) y se puede testear con pytest de forma convencional, sin dependencias externas ni simulacion de entornos complejos. La segunda capa ---hooks bash, servidor MCP y commands Markdown--- son integraciones directas con Claude Code que solo se pueden verificar en contexto real, ejecutando el plugin dentro de una sesión activa. Esta separación no es casual: se diseño así para que el nucleo de lógica sea testeable de forma aislada, mientras que la capa de integración se valida mediante uso.
+Alfred Dev tiene una arquitectura deliberadamente dividida en dos capas con estrategias de testing distintas. La capa core esta escrita en Python puro (orchestrator, config_loader, personality, memory) y se puede testear con pytest de forma convencional, sin dependencias externas ni simulacion de entornos complejos. La capa de integración ---hooks, servidor MCP, helpers visuales, commands y superficie pública del plugin--- también tiene cobertura automatizada, pero de otro tipo: tests de contratos, subprocess end-to-end, validaciones de manifiesto y comprobaciones de consistencia de versión. La validación en uso real sigue siendo importante, pero ya no es correcto describir esta segunda capa como “solo verificable en sesión real”.
 
-Todos los tests usan `unittest` como framework y siguen el patron de clases de test agrupadas por responsabilidad. Cada fichero de test cubre un modulo del core y es independiente del resto, lo que permite ejecutarlos de forma aislada o en conjunto.
+La suite se ejecuta con `pytest`, pero la mayoría de los ficheros siguen el estilo de clases `unittest.TestCase`. Cada fichero de test cubre un modulo o contrato concreto y se puede ejecutar de forma aislada o en conjunto.
 
 
 ## Como ejecutar los tests
@@ -161,17 +161,22 @@ De este modo, ningun patron completo aparece como literal en el código fuente, 
 
 Los hooks bash mas complejos, como `session-start.sh`, reciben eventos de Claude Code por stdin en formato JSON y escriben respuestas por stdout/stderr. Su funcionamiento depende del protocolo de hooks de Claude Code, que incluye variables de entorno específicas, una estructura de datos concreta para los eventos y un flujo de ejecución gestionado por el runtime del plugin. Algunos hooks pequeños si se cubren ya con subprocess end-to-end (`secret-guard.sh`), pero para los hooks de sesión largos construir un mock completo del runtime seguiria costando mas de lo que aporta. Esos se validan principalmente en uso real.
 
-### Servidor MCP (memory_server.py)
+### Lo que sigue dependiendo de validación en uso real
 
-El servidor MCP expone las operaciones de memoria como herramientas JSON-RPC sobre stdio. Probarlo requiere simular la comunicación bidireccional del protocolo MCP (peticion JSON-RPC por stdin, respuesta por stdout, gestion del ciclo de vida). Los tests de `test_memory.py` ya cubren exhaustivamente la capa de datos subyacente (`MemoryDB`), que es donde reside la lógica de negocio. El servidor MCP es esencialmente un adaptador de protocolo, y su correcta integración se verifica ejecutando el plugin dentro de Claude Code.
+Aunque la cobertura automatizada ya es amplia, todavía hay zonas donde la validación manual dentro de Claude Code sigue siendo importante:
+
+- la experiencia completa de los slash commands en conversación real;
+- la ergonomía de los agentes como prompts largos;
+- el encadenado completo de hooks con eventos reales del runtime;
+- la UX final del companion visual de Selina.
 
 ### Commands (*.md)
 
-Los commands son ficheros Markdown que Claude Code interpreta como system prompts. No contienen lógica ejecutable: son instrucciones en lenguaje natural que guian el comportamiento del modelo. No existe una forma significativa de testearlos con assertions automáticas; su calidad se valida observando que Claude sigue las instrucciones correctamente durante el uso real del plugin.
+Los commands son prompts, no código imperativo, pero eso no significa que queden fuera de la suite. El repo ya incluye tests de contratos para continuidad, PM ops, ayuda, auditoría y superficie pública (`test_progress_contract.py`, `test_pm_contract.py`, `test_discuss_contract.py`, `test_audit_prompt_contract.py`, `test_public_surface_contract.py`, entre otros). Lo que no se puede automatizar por completo es la calidad conversacional final del comando dentro de Claude Code.
 
 ### Agentes (*.md)
 
-Los agentes siguen la misma lógica que los commands: son ficheros Markdown que definen la personalidad y las instrucciones de cada agente especializado. El motor de personalidad (`core/personality.py`) esta cubierto por tests, pero el contenido de las instrucciones Markdown es texto para el modelo, no código ejecutable. La validación es empirica, no automatizable.
+Los agentes siguen la misma lógica que los commands: son ficheros Markdown que definen la personalidad y las instrucciones de cada agente especializado. El motor de personalidad (`core/personality.py`) y parte de la composición del equipo sí están cubiertos por tests, pero la calidad final del prompt de cada agente sigue requiriendo validación empírica.
 
 
 ## Como añadir un nuevo test

@@ -28,9 +28,9 @@ El orquestador define 5 tipos de gate como constantes en `orchestrator.py`:
 ```python
 GATE_LIBRE = "libre"
 GATE_USUARIO = "usuario"
-GATE_AUTOMATICO = "automático"
+GATE_AUTOMATICO = "automatico"
 GATE_USUARIO_SEGURIDAD = "usuario+seguridad"
-GATE_AUTOMATICO_SEGURIDAD = "automático+seguridad"
+GATE_AUTOMATICO_SEGURIDAD = "automatico+seguridad"
 ```
 
 ### Gate `libre`
@@ -111,7 +111,7 @@ La gate sigue siendo de tipo `usuario`: no hay criterio automático válido para
 |-----------|-------|
 | Agentes | `selina` |
 | Ejecución | Secuencial |
-| Gate | `gate_estilo_visual` |
+| Gate | `gate_estilo` |
 | Tipo de gate | `usuario` |
 | Artefacto | Dirección de estilo visual |
 
@@ -205,7 +205,7 @@ stateDiagram-v2
 
     producto --> estilo_visual: gate_producto [usuario + frontend]
     producto --> arquitectura: gate_producto [sin frontend]
-    estilo_visual --> arquitectura: gate_estilo_visual [usuario]
+    estilo_visual --> arquitectura: gate_estilo [usuario]
     arquitectura --> desarrollo: gate_arquitectura [usuario+seguridad]
     desarrollo --> calidad: gate_desarrollo [automático]
     calidad --> documentación: gate_calidad [automático+seguridad]
