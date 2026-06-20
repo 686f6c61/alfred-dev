@@ -2611,6 +2611,17 @@ def check_packaging_contracts() -> list[str]:
         "mcp/memory_server.py",
         "core/continuity.py",
         "scripts/release_audit.py",
+        "visual/scripts/frame-template.html",
+        "visual/scripts/helper.js",
+        "visual/scripts/read-choice.py",
+        "visual/scripts/server.cjs",
+        "visual/scripts/start-server.sh",
+        "visual/scripts/stop-server.sh",
+        "visual/scripts/write-guided-style-options.py",
+        "visual/scripts/write-style-demo-gallery.py",
+        "visual/scripts/write-style-direction.py",
+        "visual/scripts/write-style-options.py",
+        "visual/scripts/write-style-selector.py",
     }
     required_paths.update(TEMPLATE_PATHS)
     missing_required = sorted(required_paths - packed_paths)
@@ -2686,6 +2697,7 @@ def check_packaging_contracts() -> list[str]:
         "paquete sin symlinks publicables fuera del plugin",
         "paquete contiene 25 comandos namespaced, /alfred como skill personal global fuente sin shim de comando duplicado, 19 agentes y 62 skills",
         "paquete contiene 7 templates de artefactos",
+        "paquete contiene runtime visual de Selina",
     ]
 
 

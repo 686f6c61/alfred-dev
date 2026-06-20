@@ -1501,6 +1501,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         self.assertIn("paquete sin symlinks publicables fuera del plugin", result)
         self.assertIn("paquete contiene 25 comandos namespaced, /alfred como skill personal global fuente sin shim de comando duplicado, 19 agentes y 62 skills", result)
         self.assertIn("paquete contiene 7 templates de artefactos", result)
+        self.assertIn("paquete contiene runtime visual de Selina", result)
 
     def test_packaging_contracts_reject_publishable_symlink_problem(self):
         """El gate de empaquetado debe fallar si el escaneo de symlinks detecta problemas."""
@@ -1600,6 +1601,27 @@ class TestReleaseAuditScript(unittest.TestCase):
             release_audit._npm_pack_dry_run_package = original_pack
 
         self.assertIn("templates/prd.md", str(context.exception))
+
+    def test_packaging_contracts_reject_missing_selina_visual_runtime(self):
+        """El companion visual de Selina debe viajar en el paquete instalable."""
+        release_audit = _load_release_audit_module()
+        original_pack = release_audit._npm_pack_dry_run_package
+        base_package = original_pack()
+        missing_visual = dict(base_package)
+        missing_visual["files"] = [
+            entry
+            for entry in base_package["files"]
+            if entry.get("path") != "visual/scripts/start-server.sh"
+        ]
+
+        release_audit._npm_pack_dry_run_package = lambda: missing_visual
+        try:
+            with self.assertRaises(release_audit.AuditError) as context:
+                release_audit.check_packaging_contracts()
+        finally:
+            release_audit._npm_pack_dry_run_package = original_pack
+
+        self.assertIn("visual/scripts/start-server.sh", str(context.exception))
 
     def test_published_package_secret_scan_uses_canonical_patterns(self):
         """El artefacto publicable no debe contener patrones reales de secretos."""

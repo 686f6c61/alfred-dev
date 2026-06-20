@@ -55,6 +55,7 @@
     "mcp/",
     "scripts/",
     "templates/",
+    "visual/",
     "!**/__pycache__/",
     "!**/*.py[cod]",
     "!.pytest_cache/",

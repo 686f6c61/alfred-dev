@@ -90,7 +90,7 @@ declaran sin gate, pruebas y documentacion dedicadas.
 Superficie actual del plugin tras refrescar el README público con la sección
 del equipo y mantener `/alfred` como skill personal global sin shim de comando
 duplicado:
-`plugin_surface.sha256=6c392fdbd1c60babb56db62c0b4c29be2c1138a4b1383b5ff30f3a0cfbf8cca6`.
+`plugin_surface.sha256=08a5887dfabdc24efc523bbf4c809e062461f3f8f1d8be418c959aaf785355c2`.
 La autenticacion de `claude -p` se recupero el 2026-06-20 con relogin
 interactivo. Tras el ajuste documental del README, las matrices worktree,
 instalada y el smoke critico de `/alfred` deben regenerarse contra esta
