@@ -24,6 +24,22 @@ def _load_manual_smoke_module():
     return module
 
 
+@contextlib.contextmanager
+def _mock_claude_cli_available(manual_smoke):
+    original_which = manual_smoke.shutil.which
+
+    def fake_which(name):
+        if name == "claude":
+            return "/usr/local/bin/claude"
+        return original_which(name)
+
+    try:
+        manual_smoke.shutil.which = fake_which
+        yield
+    finally:
+        manual_smoke.shutil.which = original_which
+
+
 class TestManualSmokeRunner(unittest.TestCase):
     def test_manual_matrix_cases_are_unique_and_cover_release_doc_prompts(self):
         manual_smoke = _load_manual_smoke_module()
@@ -419,7 +435,7 @@ class TestManualSmokeRunner(unittest.TestCase):
         output = io.StringIO()
         try:
             manual_smoke._run_case = fake_run_case
-            with contextlib.redirect_stdout(output):
+            with _mock_claude_cli_available(manual_smoke), contextlib.redirect_stdout(output):
                 result = manual_smoke.main(["--case", "help"])
         finally:
             manual_smoke._run_case = original_run_case
@@ -444,7 +460,11 @@ class TestManualSmokeRunner(unittest.TestCase):
             manual_smoke._run_case = fake_run_case
             with tempfile.TemporaryDirectory() as tmpdir:
                 evidence = Path(tmpdir) / "manual-smoke.json"
-                with contextlib.redirect_stdout(output), contextlib.redirect_stderr(stderr):
+                with (
+                    _mock_claude_cli_available(manual_smoke),
+                    contextlib.redirect_stdout(output),
+                    contextlib.redirect_stderr(stderr),
+                ):
                     result = manual_smoke.main(["--case", "help", "--output", str(evidence)])
                 payload = json.loads(evidence.read_text(encoding="utf-8"))
         finally:
@@ -546,7 +566,7 @@ class TestManualSmokeRunner(unittest.TestCase):
         try:
             manual_smoke._auth_preflight = fake_preflight
             manual_smoke._run_case = fake_run_case
-            with contextlib.redirect_stdout(output):
+            with _mock_claude_cli_available(manual_smoke), contextlib.redirect_stdout(output):
                 result = manual_smoke.main(["--auth-preflight", "--allow-auth-failure", "--case", "help"])
         finally:
             manual_smoke._auth_preflight = original_preflight
@@ -581,7 +601,7 @@ class TestManualSmokeRunner(unittest.TestCase):
         try:
             manual_smoke._auth_preflight = fake_preflight
             manual_smoke._run_case = fake_run_case
-            with contextlib.redirect_stdout(output):
+            with _mock_claude_cli_available(manual_smoke), contextlib.redirect_stdout(output):
                 result = manual_smoke.main(["--auth-preflight", "--preflight-only", "--case", "help"])
         finally:
             manual_smoke._auth_preflight = original_preflight
@@ -619,7 +639,7 @@ class TestManualSmokeRunner(unittest.TestCase):
             try:
                 manual_smoke._auth_preflight = fake_preflight
                 manual_smoke._run_case = fake_run_case
-                with contextlib.redirect_stdout(output):
+                with _mock_claude_cli_available(manual_smoke), contextlib.redirect_stdout(output):
                     result = manual_smoke.main([
                         "--auth-preflight",
                         "--allow-auth-failure",
