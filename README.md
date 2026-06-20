@@ -1,10 +1,10 @@
 # Alfred Dev
 
-**Plugin de ingeniería de software automatizada para [Claude Code](https://code.claude.com/docs/en/overview).**
+**Plugin de ingeniería de software automatizada para [Claude Code](https://docs.anthropic.com/en/docs/claude-code).**
 
-19 agentes especializados con personalidad propia (10 de nucleo + 9 opcionales), catalogo publicado de 62 skills en 15 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates verificables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
+19 agentes especializados con personalidad propia (10 de nucleo + 9 opcionales), catalogo publicado de 61 skills en 14 dominios, memoria persistente de decisiones por proyecto, 6 flujos de trabajo con quality gates infranqueables, fase de estilo visual condicional, verificacion de evidencia automatica, modo autopilot y compliance europeo (RGPD, NIS2, CRA) integrado desde el diseno.
 
-[Documentación completa](https://alfred-dev.com/) -- [Instalar](#instalación) -- [Equipo](#el-equipo) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
+[Documentación completa](https://alfred-dev.com/) -- [Instalar](#instalación) -- [Comandos](#comandos) -- [Arquitectura](#arquitectura)
 
 ---
 
@@ -14,77 +14,13 @@ Alfred Dev es un plugin que orquesta el ciclo completo de desarrollo de software
 
 El plugin detecta automáticamente el stack tecnológico del proyecto (Node.js, Python, Rust, Go, Ruby, Elixir, Java/Kotlin, PHP, C#/.NET, Swift) y adapta los artefactos generados al ecosistema real: frameworks, gestores de paquetes, convenciones de testing y estructura de directorios.
 
-## El equipo
-
-Alfred Dev no es un agente monolítico que intenta saberlo todo y hacerlo todo. Es un equipo de **19 especialistas**, cada uno con un rol delimitado, herramientas restringidas, personalidad propia y quality gates verificables con evidencia. Esta decisión de diseño responde a un principio fundamental: un modelo de IA generalista rinde mejor cuando se le asigna un rol concreto con instrucciones focalizadas que cuando se le pide que sea todo a la vez.
-
-Cada agente se invoca como un subproceso de Claude Code mediante la herramienta **Agent**. Esto garantiza aislamiento de contexto: el agente arranca con su propio system prompt, sin heredar sesgos ni ruido de conversaciones anteriores. El resultado no se promete determinista, pero sí más controlable: el mismo rol, con las mismas instrucciones y artefactos, reduce variabilidad y facilita revisar si el agente cumplió su contrato.
-
-La filosofía detrás de esta arquitectura se resume en tres principios:
-
-- **Responsabilidad única.** Cada agente tiene un ámbito de actuación claro. El Artesano escribe código; El Paranoico audita seguridad. Ninguno invade el territorio del otro.
-- **Herramientas restringidas.** No todos los agentes necesitan acceso al sistema de ficheros o a la terminal. Limitar las herramientas por agente reduce la superficie de error y fuerza la especialización.
-- **Quality gates entre fases.** Ningún artefacto pasa de una fase a la siguiente sin superar un punto de control. Estos gates pueden ser automáticos (tests verdes), manuales (aprobación del usuario) o combinados (automático + seguridad).
-
-Hay una frontera especialmente importante en el núcleo:
-
-- **`product-owner`** decide **qué** problema se resuelve y **por qué**.
-- **`architect`** decide **cómo** se implementa técnicamente.
-- **`alfred`** decide **cuándo** interviene cada uno, en qué orden y con qué gate.
-
-Si esas tres responsabilidades se mezclan, el flujo deja de ser previsible. Por eso Alfred coordina, pero no redefine alcance ni diseño por su cuenta.
-
-### Flujo feature: cronología de fases
-
-El flujo `feature` es el más completo del sistema y el que mejor ilustra cómo colaboran los agentes. Cada feature nueva atraviesa hasta siete fases secuenciales: la fase visual `estilo_visual` solo aparece cuando el proyecto tiene frontend. El `security-officer` aparece en tres fases distintas porque la seguridad no es un paso final, sino una preocupación transversal que acompaña al desarrollo desde el diseño hasta la entrega.
-
-```mermaid
-timeline
-    title Flujo feature - fases y agentes
-    producto
-        : product-owner
-        : Análisis de requisitos
-        : Gate - aprobación del usuario
-    estilo visual
-        : selina
-        : Dirección de estilo visual (solo con frontend)
-        : Gate - elección del usuario
-    arquitectura
-        : architect + security-officer
-        : Diseño técnico y threat model
-        : Gate - aprobación del usuario
-    desarrollo
-        : senior-dev
-        : Implementación TDD
-        : Gate - tests verdes (automático)
-    calidad
-        : qa-engineer + security-officer
-        : Tests y auditoría de seguridad
-        : Gate - automático + seguridad
-    documentación
-        : tech-writer
-        : Documentación técnica y de usuario
-        : Gate - libre (sin bloqueo)
-    entrega
-        : devops-engineer + security-officer
-        : Changelog y validación final
-        : Gate - usuario + seguridad
-```
-
-El diagrama muestra algo importante: la seguridad no se comprueba al final, sino que interviene en la arquitectura (para validar el threat model), en la calidad (para auditar el código) y en la entrega (para dar el visto bueno final). Esta presencia transversal del `security-officer` es una decisión deliberada para que los problemas de seguridad se detecten lo antes posible, cuando corregirlos es barato.
-
 ## Instalación
 
 Una sola línea. El script verifica el entorno, registra en Claude Code una
-fuente GitHub global para Alfred Dev, instala el plugin, crea el alias personal
-global invocable `~/.claude/skills/alfred/SKILL.md` y elimina el shim personal
-obsoleto `~/.claude/commands/alfred.md` si existe, para que `/alfred` salga una
-sola vez en cualquier proyecto,
-y parchea hooks/MCP si el `python3` por defecto no es compatible. La
-instalación soportada es siempre global de usuario: si existían rastros
-`local` o `project` del propio Alfred Dev, el instalador los normaliza antes de
-reinstalar con `--scope user`. No usa un marketplace oficial de Anthropic: usa
-la CLI nativa de Claude Code para registrar una fuente propia no oficial:
+fuente GitHub global para Alfred Dev, instala el plugin y parchea hooks/MCP si
+el `python3` por defecto no es compatible. No usa un marketplace oficial de
+Anthropic: usa la CLI nativa de Claude Code para registrar una fuente propia no
+oficial:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash
@@ -96,12 +32,10 @@ Si ya tienes este repo clonado localmente, tambien puedes invocarlo asi:
 bash ./install.sh
 ```
 
-Después de instalar, en una sesión abierta ejecuta `/reload-plugins` para cargar
-Alfred Dev sin reiniciar. Si Claude Code avisa por coste/caché de MCP o el
-plugin no aparece, reinicia Claude Code. Verifica con:
+Reinicia Claude Code después de instalar y verifica con:
 
 ```bash
-/alfred
+/alfred-dev:help
 ```
 
 En Windows (PowerShell):
@@ -111,7 +45,7 @@ irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex
 ```
 
 Requisitos:
-- [Claude Code](https://code.claude.com/docs/en/overview) instalado, configurado y actualizado. Alfred Dev 0.6.0 se audita contra Claude Code 2.1.183 y requiere una CLI con sistema de plugins, skills, hooks y MCP.
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) instalado y configurado.
 - Python 3.10+ (para hooks, core y MCP en macOS, Linux y Windows).
 
 Para desinstalar:
@@ -137,7 +71,7 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 
 ```bash
 # 1. Verificar que el plugin esta cargado
-/alfred
+/alfred-dev:help
 
 # 2. Configurar el proyecto (detecta el stack automaticamente)
 /alfred-dev:config
@@ -146,33 +80,130 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 /alfred-dev:feature sistema de login con email y password
 ```
 
-Alfred activara el flujo de hasta 7 fases (producto, estilo visual*, arquitectura, desarrollo, calidad, documentacion, entrega) y respetara el modo configurado en `/alfred-dev:config`: en modo interactivo pedira confirmacion en las gates de usuario; en autopilot autoaprueba solo esas gates, sin saltarse tests, seguridad ni evidencia. El despliegue a produccion sigue requiriendo confirmacion humana explicita incluso en autopilot. La fase de estilo visual se activa solo en proyectos con interfaz de usuario. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
+Alfred activara el flujo de hasta 7 fases (producto, estilo visual*, arquitectura, desarrollo, calidad, documentacion, entrega) y pedira confirmacion en cada quality gate antes de avanzar. La fase de estilo visual se activa solo en proyectos con interfaz de usuario. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
 
-## Novedades en v0.6.0
+## Novedades en v0.5.2
 
-La v0.6.0 es la release de estabilización previa a publicar. Moderniza la superficie de Claude Code, fija una version menor única para seguir mejorando sin parchear cada iteración y abre una auditoría completa de claims: cada promesa del plugin debe tener evidencia en terminal, documentación o prueba de comportamiento.
+Las secciones de novedades que siguen son **historico por version**. Los contadores y claims de cada bloque describen ese snapshot concreto, no necesariamente el estado actual del plugin fuera de su propia version.
+
+La v0.5.2 cierra dos deudas importantes del plugin. Por un lado, Alfred deja de publicar una muestra parcial de skills y pasa a exponer el catalogo completo por dominios en Claude Code, manteniendo manuales los workflows más pesados o con side effects claros. Por otro, Selina deja de “pintar tres variantes” sobre la misma maqueta: ahora guía al usuario por sistema base, tipografía y paleta antes de generar tres propuestas finales que de verdad siguen esa familia visual.
 
 | Novedad | Descripcion |
 |---------|-------------|
-| **19 agentes visibles en Claude Code** | Los 9 agentes opcionales pasan a la raíz de `agents/`, junto a los 10 de núcleo, para que la CLI los descubra correctamente. |
-| **MCP compatible con la CLI actual** | `alfred-memory` se declara mediante `.mcp.json` con lanzador portable: usa `CLAUDE_PLUGIN_ROOT` instalado y `cwd` en desarrollo local. |
-| **Herramienta Agent actualizada** | Las referencias operativas a `Task` pasan a `Agent`, alineando comandos, agentes y documentación con la nomenclatura actual de Claude Code. |
-| **Comandos tratados como skills planas** | Los 25 slash commands namespaced siguen en `commands/` para preservar la UX `/alfred-dev:*`; `/alfred` se instala como skill personal global invocable en `~/.claude/skills/alfred/SKILL.md`, elimina el shim personal de commands para evitar duplicados y reutiliza `commands/alfred.md` como contrato interno. |
-| **Skills delicados marcados como manuales** | Workflows con side effects claros, como SonarQube, incident response, releases, GitHub o dirección visual asistida, siguen publicados pero usan `disable-model-invocation: true` para exigir invocación explícita. |
-| **Nombre humano en la UI** | `plugin.json` y `marketplace.json` declaran `displayName: "Alfred Dev"` sin cambiar el namespace técnico `alfred-dev`. |
-| **MCP stdio moderno** | El servidor de memoria responde a JSONL MCP actual y conserva lectura de `Content-Length` para probes antiguos. |
-| **Auditoría humano-funcional** | [docs/release-audit-0.6.0.md](docs/release-audit-0.6.0.md) concentra la matriz de verificación para probar que Alfred hace lo que promete antes de publicar. |
-| **Versionado coherente a 0.6.0** | `plugin.json` queda como fuente canonica de version; instaladores, paquetes, sitio, memoria MCP y session report se alinean con el mismo valor, y el marketplace no duplica `version`. |
+| **Catalogo completo de skills publicado** | `plugin.json` pasa de enumerar 5 skills sueltos a publicar los 14 dominios completos de `skills/`, alineando la superficie pública con las 61 capacidades reales del repo. |
+| **Selina con flujo guiado real** | La fase visual ya no salta directamente a tres pantallas abstractas: primero fija sistema base, luego pairing tipográfico y gama cromática, y solo después genera las 3 finales. |
+| **Propuestas finales fieles al sistema elegido** | Las variantes de Selina mantienen la familia visual seleccionada y arrastran su gramática, superficies, tipografía, color y guardrails en la ronda final. |
+| **Skills delicados marcados como manuales** | `style-direction`, SonarQube, incident response y varios workflows de release/GitHub quedan expuestos pero con `disable-model-invocation: true` para evitar activaciones automáticas inesperadas. |
+| **Ayuda concentrada por valor** | `/alfred-dev:help` y el README separan ahora comandos core, operativos avanzados y vistas/aliases para reducir ruido sin romper compatibilidad. |
+| **Contratos de superficie más estrictos** | La suite valida que el manifiesto publique exactamente el catálogo esperado, que no falten frontmatters y que no haya colisiones entre skills publicadas y slash commands. |
+| **Versionado coherente a 0.5.2** | Plugin, marketplace, instaladores, paquetes, README, changelog, docs y landing quedan alineados a la misma release. |
+
+## Novedades en v0.5.1
+
+La v0.5.1 afina la capa visual de **Selina** y endurece la consistencia de release del plugin. Selina ya no parte de “tres estilos” abstractos: trabaja con **10 sistemas de diseño base** (incluyendo el modo libre/contextual) y, desde ese catálogo, baja a **3 propuestas comparables** para que el usuario cierre una dirección visual ejecutable antes de tocar frontend. Además, el versionado y las superficies de instalación/estado quedan alineados a una sola fuente de verdad para evitar drift en updates, metadata y documentación.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Selina con 10 sistemas de diseño** | Catálogo base en `core/selina_style_catalog.py`: modo libre/contextual + 9 familias visuales con referencias, paletas y tipografías. |
+| **3 propuestas con más criterio** | Selina usa ese catálogo para cerrar solo 3 opciones comparables y ejecutables, no 3 variantes improvisadas del mismo moodboard. |
+| **Galería de demos visuales** | `visual/scripts/write-style-demo-gallery.py` y `core/selina_style_demo.py` enseñan una muestra navegable del catálogo antes de pasar a la ronda final. |
+| **Tipografías y paletas trazables** | Cada sistema enlaza referencias y specimen URLs para justificar por qué una dirección encaja con el producto. |
+| **Surface de release endurecida** | Instaladores, metadata, Memory MCP, reportes de sesión, docs y landing quedan alineados a una sola versión pública. |
+| **19 agentes, 26 comandos** | Plugin, marketplace, instaladores, paquetes, README, changelog, docs y landing alineados a v0.5.1. |
+
+### Novedades de v0.4.7
+
+La v0.4.7 corrige un error intermitente en el hook `SessionStart` que provocaba el mensaje `SessionStart:startup hook error` al arrancar sesiones.
+
+| Cambio | Descripcion |
+|--------|-------------|
+| **Hook SessionStart robusto** | La emisión JSON ya no se trunca con contenidos largos o caracteres especiales. |
+| **Emisión por stdin** | Nueva función `emit_hook_json()` que recibe el contexto por stdin y genera JSON válido con `json.dumps`. |
+
+### Novedades de v0.4.6
+
+La v0.4.6 introduce una **Memory UI** local pensada para uso real: abre la SQLite del proyecto en el navegador, mezcla memoria persistente con señales operativas de SonIA y evita que la vista nazca vacía gracias a siembra helper-first e import de commits Git cuando hace falta.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Memory UI local** | Nuevo `/alfred-dev:memory-ui` para abrir timeline, decisiones, commits, búsqueda y salud de memoria en el navegador sobre la SQLite real del proyecto. |
+| **Poblado natural de memoria** | `map-codebase`, `discuss` y `quick` ya dejan decisiones, progreso, trazabilidad y kanban útiles para que la UI tenga contexto desde el primer uso real. |
+| **Commits visibles sin fricción** | La UI importa historial Git reciente cuando la memoria todavia no tenia commits enlazados, evitando paneles muertos en repos reales. |
+| **Superficie pública actualizada** | Alfred pasa a reflejar `25` comandos visibles y la web/documentación explican la nueva capa visual de memoria. |
+| **Hardening de release** | Se limpian docs internas de planificación del repo publicado y se alinea homepage/versionado/metadata para la release nueva. |
+
+### Novedades de v0.4.5
+
+La v0.4.5 extiende a SonIA con una capa PM mas operativa y colaborativa: ahora Alfred puede dar standup, listar bloqueos y trabajo en curso, validar la salud del tablero, buscar en artefactos + memoria y ejecutar **SonIA Sync** para reflejar el kanban local en GitHub sin perder la fuente de verdad en `docs/project/`.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Operaciones PM deterministas** | Llegan `/alfred-dev:standup`, `blocked`, `in-progress`, `validate` y `search` para explotar SonIA como backlog operativo real en CLI, sin abrir siempre un flujo multiagente. |
+| **SonIA Sync para GitHub** | Nuevo `/alfred-dev:sync-github` para reflejar el tablero de SonIA en GitHub con `gh`, manteniendo la verdad local en `docs/project/` y `.claude/`. |
+| **Búsqueda unificada de proyecto** | `/alfred-dev:search` cruza artefactos de SonIA y memoria SQLite en una sola consulta determinista. |
+| **Validación operativa** | `/alfred-dev:validate` detecta tareas duplicadas, huecos de trazabilidad, evidencia ausente en `done`, UAT pendiente y desalineaciones del sync local. |
+| **Standup y visibilidad fina** | `standup`, `blocked` e `in-progress` convierten el estado local de SonIA en vistas rápidas y accionables, al estilo PM operacional. |
+| **End-to-end con GitHub real** | El bloque queda preparado para smoke tests con repo privado y `gh`, además de la suite automatizada. |
+
+Como helper de mantenimiento interno, `python3 .claude/alfred-continuity.py normalize-kanban "$PWD"` normaliza tipos de tarea (`main`, `phase`, `verify`) en tableros heredados sin ampliar la superficie pública de comandos.
+
+### Novedades de v0.4.4
+
+La v0.4.4 convirtió Alfred en un sistema mucho mas usable en Claude Code CLI: ya orienta continuidad y brownfield por si solo, funciona mejor en `claude -p` con comandos helper-first y cierra la memoria persistente para uso real.
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Continuidad operativa** | Llegan `/alfred-dev:map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify` y `quick` para orientar el trabajo sin abrir siempre un flujo completo. |
+| **Helper-first real en CLI** | `map-codebase` y el caso brownfield de `/alfred-dev:alfred` ya se preparan y consumen de forma determinista, sin rehacer el trabajo a mano en `claude -p`. |
+| **FTS de eventos corregido** | Los eventos con `content` ya aparecen en `memory_search` y `memory_health` no los trata como corrupcion. |
+| **Purga completa** | `purge_old_events()` elimina tambien las filas del indice FTS, evitando huerfanos y falsos positivos tras la retencion. |
+| **Config de memoria cableada** | `capture_decisions`, `capture_commits`, `retention_days` y `sync_commits_limit` pasan a aplicarse realmente en hooks, MCP y sync nativa. |
+| **Tamano real en WAL** | La salud de la memoria ya contabiliza `.db`, `-wal` y `-shm`, reflejando el consumo real en disco. |
+| **Import Git robusto** | Los mensajes de commit con `|` dejan de corromperse al importar historial o capturar `git commit`. |
+
+### Novedades de v0.4.2
+
+La v0.4.2 fue un parche de robustez tras una auditoria exhaustiva del evidence guard, autopilot, loop iterativo e informes de sesion:
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Falso positivo "0 failures" corregido** | El patron de deteccion de fallos ya no considera "0 failures" como un fallo. |
+| **Gate de arquitectura corregida** | La fase de arquitectura ahora evalua seguridad correctamente (gate `usuario+seguridad`). |
+| **Patrones unificados** | `quality-gate.py` importa de `evidence_guard_lib.py` en lugar de mantener patrones propios que divergian. |
+| **Informes de sesiones parciales** | El stop-hook genera informe cuando una sesion se interrumpe, no solo cuando se completa. |
+| **Informes enriquecidos** | Los informes muestran modo (autopilot/interactivo), iteraciones por fase y version dinamica. |
+| **Evidencia en gates documentada** | Los comandos instruyen a Claude para verificar `alfred-evidence.json` antes de aprobar gates automaticas. |
+| **Loop iterativo documentado** | Los comandos `feature`, `fix` y `ship` incluyen instrucciones explicitas de reintento (max 5 por fase). |
+
+### Novedades de v0.4.1
+
+La v0.4.1 mejoro la experiencia de primer uso y corrigio la conexion entre el modo autopilot y los comandos:
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Configuracion inicial automatica** | Al usar Alfred por primera vez en un proyecto, pregunta si se quiere modo interactivo o autopilot. Sin pasos manuales, sin reinicios. |
+| **Autopilot conectado a los comandos** | Los comandos `feature`, `fix` y `ship` ahora comprueban el estado de autopilot y saltan las gates de usuario cuando esta activo. |
+
+### Novedades de v0.4.0
+
+La v0.4.0 incorporo cinco capacidades orientadas a fiabilidad, autonomia controlada y trazabilidad de resultados:
+
+| Novedad | Descripcion |
+|---------|-------------|
+| **Verificacion de evidencia** | El hook `evidence-guard.py` intercepta cada ejecucion de tests y registra si hubo exitos o fallos reales. Cuando un agente afirma que «los tests pasan», el orquestador verifica la evidencia registrada antes de aprobar la gate. Sin salida real de tests, no hay aprobacion. |
+| **Loop iterativo en fases** | Si una fase no supera su quality gate, el orquestador puede reintentar hasta 5 veces (`should_retry_phase`) antes de escalar al usuario. Cada reintento incluye el feedback del fallo anterior para que el agente corrija su enfoque. |
+| **Modo autopilot** | `run_flow_autopilot()` permite ejecutar flujos completos con aprobacion automatica de las gates de usuario, manteniendo las gates de seguridad y calidad intactas. El nivel de autonomia se configura por fase en `/alfred-dev:config`. |
+| **Informes de sesion** | Al finalizar cada sesion, `session_report.py` genera un informe Markdown en `docs/alfred-reports/` con las fases completadas, duraciones, equipo de agentes, evidencia recopilada y artefactos producidos. |
 
 ## Comandos
 
-Toda la interfaz se controla desde la línea de comandos de Claude Code. La entrada principal es `/alfred`; el resto de comandos usan el prefijo `/alfred-dev:`:
+Toda la interfaz se controla desde la línea de comandos de Claude Code con el prefijo `/alfred-dev:`:
 
 ### Core
 
 | Comando | Descripcion |
 |---------|-------------|
-| `/alfred` | Entrada contextual global: decide si toca mapear, discutir, continuar, verificar o abrir un flujo multiagente. |
+| `/alfred-dev:alfred` | Entrada contextual: decide si toca mapear, discutir, continuar, verificar o abrir un flujo multiagente. |
 | `/alfred-dev:feature <desc>` | Ciclo completo de hasta 7 fases o parcial. Alfred pregunta desde que fase arrancar. |
 | `/alfred-dev:quick <desc>` | Flujo ligero para cambios pequenos con menos ceremonia que `feature`. |
 | `/alfred-dev:fix <desc>` | Correccion de bugs con flujo de 3 fases: diagnostico, correccion TDD, validacion. |
@@ -196,7 +227,7 @@ Toda la interfaz se controla desde la línea de comandos de Claude Code. La entr
 | `/alfred-dev:search <texto>` | Busca en artefactos de SonIA y en la memoria SQLite del proyecto. |
 | `/alfred-dev:sync-github [owner/repo]` | Ejecuta SonIA Sync: refleja el tablero local en GitHub Issues usando `gh`. |
 | `/alfred-dev:validate` | Valida la integridad operativa de kanban, trazabilidad, UAT y sync local. |
-| `/alfred-dev:lucius [dir] [--scope X]` | Segunda opinión técnica vía Codex CLI. Audita el proyecto con el modelo configurado por Codex y devuelve diagnóstico + prescripción. Requiere acceso activo a Codex CLI. |
+| `/alfred-dev:lucius [dir] [--scope X]` | Segunda opinión técnica vía Codex CLI. Audita el proyecto con GPT-5.4 y devuelve diagnóstico + prescripción. Requiere suscripción OpenAI. |
 | `/alfred-dev:update` | Comprobar si hay version nueva y actualizar el plugin. |
 
 ### Vistas y aliases
@@ -230,7 +261,7 @@ Cada transición entre fases requiere superar la quality gate correspondiente.
 
 ### Agentes de nucleo (10)
 
-El plugin implementa 10 agentes de nucleo disponibles por defecto. La configuración del proyecto no los desactiva, pero Alfred no los invoca todos a la vez: cada flujo activa el rol que corresponde a la fase, las señales del proyecto y las gates pendientes.
+El plugin implementa 10 agentes de nucleo, siempre activos, cada uno con un system prompt especializado, un conjunto de herramientas definido y un modelo asignado segun la complejidad de su tarea:
 
 | Agente | Rol | Modelo | Responsabilidad |
 |--------|-----|--------|-----------------|
@@ -243,7 +274,7 @@ El plugin implementa 10 agentes de nucleo disponibles por defecto. La configurac
 | **El paranoico** | Security Officer | opus | OWASP Top 10, threat modeling STRIDE, SBOM, compliance RGPD/NIS2/CRA |
 | **El rompe-cosas** | QA Engineer | sonnet | Test plans, code review, testing exploratorio, integracion, E2E, regresion |
 | **El fontanero** | DevOps Engineer | sonnet | Docker multi-stage, CI/CD, deploy, monitoring, observabilidad |
-| **El traductor** | Tech Writer | sonnet | Fase 3b: cabeceras, docstrings, comentarios inline. Fase 5: API docs, arquitectura, guias, changelogs |
+| **El escriba** | Tech Writer | sonnet | Fase 3b: cabeceras, docstrings, comentarios inline. Fase 5: API docs, arquitectura, guias, changelogs |
 
 Los agentes con modelo `opus` realizan tareas que requieren razonamiento complejo. Selina ocupa la fase 1b entre producto y arquitectura: define la dirección visual antes de que el architect diseñe componentes. Solo se activa si el proyecto tiene interfaz de usuario.
 
@@ -251,7 +282,7 @@ Los agentes con modelo `sonnet` cubren tareas estructuradas con patrones mas pre
 
 ### Agentes opcionales (9)
 
-Agentes predefinidos que el usuario activa segun las necesidades de su proyecto con `/alfred-dev:config`. Se sugieren automaticamente en funcion del stack detectado. Alfred tambien puede proponer agentes opcionales de forma dinamica al arrancar cada flujo, combinando las senales reales del proyecto con razonamiento semantico sobre la tarea. La seleccion dinamica es efimera (solo para esa sesion) y no modifica la configuracion persistente. Mas detalles en la [documentacion de configuracion](docs/configuration.md#composicion-dinamica-de-equipo).
+Agentes predefinidos que el usuario activa segun las necesidades de su proyecto con `/alfred-dev:config`. Se sugieren automaticamente en funcion del stack detectado. Desde v0.3.6, Alfred tambien propone agentes opcionales de forma dinamica al arrancar cada flujo, analizando la descripcion de la tarea con keywords contextuales y combinandolas con las senales del proyecto. La seleccion dinamica es efimera (solo para esa sesion) y no modifica la configuracion persistente. Mas detalles en la [documentacion de configuracion](docs/configuration.md#composicion-dinamica-de-equipo).
 
 | Agente | Rol | Cuando es util |
 |--------|-----|----------------|
@@ -263,16 +294,14 @@ Agentes predefinidos que el usuario activa segun las necesidades de su proyecto 
 | **Copywriter** | Copywriter | Proyectos con textos publicos: landing, emails, onboarding |
 | **El Bibliotecario** | Consultas historicas | Proyectos con memoria persistente activa |
 | **La Interprete** | Especialista i18n | Proyectos multilingues: claves, formatos, cadenas hardcodeadas |
-| **Lucius** | Director técnico externo | Segunda opinión vía Codex CLI. Requiere acceso activo a Codex CLI |
+| **Lucius** | Director técnico externo | Segunda opinión vía Codex CLI. Requiere suscripción OpenAI activa |
 
-### Skills (62)
+### Skills (60)
 
-Cada skill es una habilidad concreta que un agente ejecuta. Estan organizados
-en 15 dominios publicados:
+Cada skill es una habilidad concreta que un agente ejecuta. Estan organizados por dominio:
 
 ```
 skills/
-  alfred/           -- alfred (entrada global /alfred)
   producto/          -- write-prd, user-stories, acceptance-criteria, competitive-analysis
   arquitectura/      -- write-adr, choose-stack, design-system, evaluate-dependencies
   desarrollo/        -- tdd-cycle, explore-codebase, refactor, code-review-response
@@ -280,16 +309,9 @@ skills/
   calidad/           -- test-plan, code-review, exploratory-testing, regression-check
   devops/            -- dockerize, ci-cd-pipeline, deploy-config, monitoring-setup
   documentación/     -- api-docs, architecture-docs, user-guide, changelog
-  datos/              -- schema-design, query-optimization
-  ux/                 -- accessibility-audit, flow-review, usability-heuristics
-  rendimiento/        -- benchmark, profiling, bundle-size
-  github/             -- pr-workflow, issue-templates
-  seo/                -- meta-tags, structured-data, lighthouse-audit
-  marketing/          -- copy-review, cta-writing, tone-guide
-  estilo/             -- style-direction
 ```
 
-### Hooks (13)
+### Hooks (12)
 
 Los hooks interceptan eventos del ciclo de vida de Claude Code para aplicar validaciones automaticas:
 
@@ -301,7 +323,6 @@ Los hooks interceptan eventos del ciclo de vida de Claude Code para aplicar vali
 | `secret-guard.sh` | `PreToolUse` (Write/Edit) | Bloquea escritura de secretos (API keys, tokens, passwords) |
 | `dangerous-command-guard.py` | `PreToolUse` (Bash) | Bloquea comandos destructivos (rm -rf /, force push, DROP DATABASE, etc.) |
 | `sensitive-read-guard.py` | `PreToolUse` (Read) | Avisa al leer ficheros sensibles (claves privadas, .env, credenciales) |
-| `prefetch-finish-guard.py` | `PreToolUse` (Read/Write/Edit/Glob/Grep) | Evita exploración redundante después de un prefetch helper-first exitoso |
 | `quality-gate.py` | `PostToolUse` (Bash) | Avisa cuando un runner de tests falla, usando salida y exit code |
 | `evidence-guard.py` | `PostToolUse` (Bash) | Registra evidencia de ejecucion de tests para verificacion de gates |
 | `dependency-watch.py` | `PostToolUse` (Write/Edit) | Vigila manifiestos y lockfiles de dependencias, reduciendo ruido en ediciones laterales |
@@ -321,21 +342,18 @@ Plantillas estandarizadas que los agentes usan para generar artefactos con estru
 - `changelog-entry.md` -- Entrada de changelog (Keep a Changelog)
 - `release-notes.md` -- Notas de release con resumen ejecutivo
 
-### Core Python
+### Core (6 modulos)
 
-El nucleo del plugin esta implementado en Python con tests unitarios. Los
-modulos se agrupan por responsabilidad para evitar prometer un contador fijo
-que quede obsoleto cuando crece el runtime:
+El nucleo del plugin esta implementado en Python con tests unitarios:
 
-| Familia | Modulos principales | Funcion |
-|---------|---------------------|---------|
-| Orquestacion | `orchestrator.py` | Maquina de estados de flujos, gestion de sesiones, evaluacion de gates, modo autopilot, loop iterativo |
-| Personalidad | `personality.py` | Frases, tono, anuncios y formato de veredicto |
-| Configuracion | `config_loader.py`, `optional_agents.py` | Carga de configuracion, deteccion de stack, preferencias de proyecto y agentes opcionales |
-| Continuidad | `continuity.py`, `session_report.py` | Helper-first CLI, pausa/reanudacion, verificacion, informes de sesion y artefactos |
-| Memoria | `memory.py`, `memory_config.py`, `memory_sync.py`, `memory_ui_server.py` | SQLite local, configuracion, sincronizacion Markdown y UI local |
-| Seguridad | `secrets.py` | Sanitizacion y deteccion de secretos reutilizada por memoria, empaquetado y guards |
-| Selina visual | `selina_visual.py`, `selina_style_*.py` | Direccion visual condicional, catalogo, opciones, seleccion y variantes de estilo |
+| Modulo | Funcion |
+|--------|---------|
+| `orchestrator.py` | Maquina de estados de flujos, gestion de sesiones, evaluacion de gates, modo autopilot, loop iterativo |
+| `personality.py` | Motor de personalidad: frases, tono, anuncios, formato de veredicto |
+| `config_loader.py` | Carga de configuracion, deteccion de stack, preferencias de proyecto |
+| `continuity.py` | Helper-first para continuidad CLI: map-codebase, discuss, next, pause, resume, progress, verify y quick |
+| `memory.py` | Base de datos SQLite de memoria persistente: decisiones, commits, iteraciones, eventos |
+| `session_report.py` | Generacion de informes de sesion en Markdown con fases, evidencia y artefactos |
 
 ```bash
 # Ejecutar tests
@@ -344,7 +362,7 @@ python3 -m pytest tests/ -v
 
 ## Quality gates
 
-Las quality gates son puntos de control verificables entre fases. Si las condiciones de una gate no se cumplen, el flujo se detiene o queda pendiente con una siguiente acción clara. Autopilot solo resuelve gates de usuario configuradas; no salta tests, seguridad, evidencia ni confirmación humana de despliegue:
+Las quality gates son puntos de control infranqueables entre fases. Si una gate no se supera, el flujo se detiene. No hay excepciones, no hay modo de saltárselas:
 
 | Gate | Condición |
 |------|-----------|
@@ -354,7 +372,7 @@ Las quality gates son puntos de control verificables entre fases. Si las condici
 | Evidencia verificada | Las afirmaciones de tests deben estar respaldadas por salida real registrada por `evidence-guard.py` |
 | Loop iterativo | Si una gate falla, se reintenta hasta 5 veces con feedback antes de escalar al usuario |
 | QA + seguridad | El QA engineer y el security officer aprueban en paralelo |
-| Documentación completa | Todos los artefactos están documentados con checklist/evidencia revisable |
+| Documentación completa | Todos los artefactos están documentados |
 | Pipeline verde | CI/CD verde, sin usuario root en contenedor, sin secretos en imagen |
 
 Cada gate produce un veredicto formal: **APROBADO**, **APROBADO CON CONDICIONES** o **RECHAZADO**, con hallazgos bloqueantes y próxima acción recomendada.
@@ -388,9 +406,9 @@ El hook `session-start.sh` analiza el directorio de trabajo al iniciar sesión y
 
 ## Memoria persistente
 
-Alfred Dev puede recordar decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local (`.claude/alfred-memory.db`) dentro de cada proyecto, sin dependencias externas ni servicios remotos. Incluye etiquetas, estado y relaciones entre decisiones, auto-captura de commits, filtros avanzados de busqueda y exportacion/importacion.
+A partir de v0.2.0, Alfred Dev puede recordar decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local (`.claude/alfred-memory.db`) dentro de cada proyecto, sin dependencias externas ni servicios remotos. La v0.2.3 anade etiquetas, estado y relaciones entre decisiones, auto-captura de commits, filtros avanzados de busqueda y exportacion/importacion.
 
-La activacion es opcional y se gestiona con `/alfred-dev:config`. Una vez activa, el hook `activity-capture.py` captura eventos automaticamente en multiples puntos del ciclo de vida: iteraciones, fases, commits (SHA, autor, ficheros afectados) y actividad general de la sesion. En `UserPromptSubmit` y `UserPromptExpansion`, si detecta comandos helper-first de continuidad (`/alfred-dev:map-codebase`, `discuss`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit`, `lucius` o el caso brownfield de `/alfred`), deja preparados los artefactos operativos antes del razonamiento principal. Las decisiones arquitectonicas se registran a traves del agente **El Bibliotecario** o del servidor MCP integrado.
+La activacion es opcional y se gestiona con `/alfred-dev:config`. Una vez activa, el hook `activity-capture.py` captura eventos automaticamente en multiples puntos del ciclo de vida: iteraciones, fases, commits (SHA, autor, ficheros afectados) y actividad general de la sesion. En `UserPromptSubmit`, si detecta comandos helper-first de continuidad (`/alfred-dev:map-codebase`, `discuss`, `quick` o el caso brownfield de `/alfred-dev:alfred`), deja preparados los artefactos operativos antes del razonamiento principal. Las decisiones arquitectonicas se registran a traves del agente **El Bibliotecario** o del servidor MCP integrado.
 
 Funcionalidades principales:
 
@@ -408,23 +426,23 @@ Funcionalidades principales:
 
 ```
 alfred-dev/
-  mcp/                   # Servidor MCP de memoria persistente
   .claude-plugin/
     plugin.json           # Manifiesto del plugin
     marketplace.json      # Metadatos para el marketplace
-  agents/                 # 19 agentes (10 de nucleo + 9 opcionales)
-  commands/               # 25 comandos /alfred-dev + contrato interno de /alfred
-  skills/                 # Catalogo interno de 62 skills en 15 dominios
+    mcp.json              # Servidor MCP de memoria persistente
+  agents/                 # 10 agentes de nucleo
+  agents/optional/        # 9 agentes opcionales
+  commands/               # 26 comandos /alfred-dev
+  skills/                 # Catalogo interno de 61 skills en 14 dominios
   hooks/                  # Hooks del ciclo de vida
     hooks.json            # Configuracion de eventos
   core/                   # Motor de orquestacion, memoria e informes (Python)
   mcp/                    # Servidor MCP stdio (memoria persistente)
   templates/              # 7 plantillas de artefactos
-  tests/                  # Tests y contratos de release (pytest)
-  site/                   # Landing Astro desplegada por Coolify desde Alfred-Astro
+  tests/                  # Tests unitarios (pytest)
 ```
 
-La rama `Alfred-Astro` conserva `site/` y es la fuente que Coolify despliega para la landing publica. La rama `main` sigue siendo la rama canónica del plugin y su runtime.
+La landing publica se mantiene en la rama `Alfred-Astro` y se despliega desde Coolify sobre el VPS. La rama `main` contiene solo el plugin, su runtime y sus tests.
 
 ## Configuracion
 

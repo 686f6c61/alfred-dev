@@ -78,10 +78,10 @@ El Fontanero (DevOps), El Escriba (documentación) y SonIA (project management).
 
 ### Reglas de operación
 
-- Las quality gates son verificables: si los tests no pasan, no se avanza hasta corregir, cambiar alcance o dejar el bloqueo explícito.
+- Las quality gates son infranqueables: si los tests no pasan, no se avanza.
 - La seguridad se audita en cada fase que lo requiera.
 - Se sigue TDD estricto en las fases de desarrollo.
-- En comandos helper-first (map-codebase, discuss, quick, feature, fix, spike, ship, audit, lucius y el caso brownfield de alfred), si existe .claude/alfred-prefetch.json, consúmelo con python3 .claude/alfred-continuity.py consume-prefetch <project_dir> --expected <comando> antes de explorar el repo.
+- En comandos helper-first (map-codebase, discuss, quick y el caso brownfield de alfred), si existe .claude/alfred-prefetch.json, consúmelo con python3 .claude/alfred-continuity.py consume-prefetch <project_dir> --expected <comando> antes de explorar el repo.
 - El agente El Paranoico vigila secretos en cada escritura de fichero."
 
 # --- Configuración del proyecto ---
@@ -423,62 +423,9 @@ wrapper_path = sys.argv[1]
 plugin_root = sys.argv[2]
 
 content = f"""#!/usr/bin/env python3
-import os
 import sys
-from pathlib import Path
 
-EMBEDDED_PLUGIN_ROOT = {plugin_root!r}
-PLUGIN_NAME = "alfred-dev"
-
-
-def _valid_root(path):
-    if not path:
-        return None
-    root = Path(path).expanduser()
-    try:
-        root = root.resolve()
-    except OSError:
-        root = root.absolute()
-    if (root / "core" / "continuity.py").is_file():
-        return str(root)
-    return None
-
-
-def _cache_candidates():
-    cache_dir = Path.home() / ".claude" / "plugins" / "cache" / PLUGIN_NAME
-    if not cache_dir.is_dir():
-        return []
-    candidates = []
-    for marker in cache_dir.rglob("core/continuity.py"):
-        root = marker.parents[1]
-        plugin_json = root / ".claude-plugin" / "plugin.json"
-        try:
-            mtime = plugin_json.stat().st_mtime
-        except OSError:
-            try:
-                mtime = root.stat().st_mtime
-            except OSError:
-                mtime = 0
-        candidates.append((mtime, str(root)))
-    return [root for _mtime, root in sorted(candidates, reverse=True)]
-
-
-def _resolve_plugin_root():
-    candidates = [
-        os.environ.get("CLAUDE_PLUGIN_ROOT"),
-        os.environ.get("ALFRED_DEV_PLUGIN_ROOT"),
-        EMBEDDED_PLUGIN_ROOT,
-    ]
-    candidates.extend(_cache_candidates())
-    for candidate in candidates:
-        resolved = _valid_root(candidate)
-        if resolved:
-            return resolved
-    sys.stderr.write("[Alfred Dev] No se pudo resolver la instalacion activa del plugin. Ejecuta /reload-plugins o reinstala alfred-dev.\\n")
-    raise SystemExit(2)
-
-
-PLUGIN_ROOT = _resolve_plugin_root()
+PLUGIN_ROOT = {plugin_root!r}
 if PLUGIN_ROOT not in sys.path:
     sys.path.insert(0, PLUGIN_ROOT)
 

@@ -9,30 +9,6 @@ Eres Alfred, orquestador del equipo Alfred Dev. El usuario quiere desarrollar un
 
 Descripción de la feature: $ARGUMENTS
 
-## Protocolo helper-first y modo headless
-
-Antes de leer contexto en detalle o lanzar agentes, intenta consumir un prefetch
-determinista ya preparado por el hook:
-
-```bash
-python3 .claude/alfred-continuity.py consume-prefetch "$PWD" --expected feature
-```
-
-Si el prefetch existe y devuelve salida, responde con esa salida y termina. Si
-no existe, arranca la sesión canónica con:
-
-```bash
-python3 .claude/alfred-continuity.py start-flow "$PWD" --command feature --raw "$ARGUMENTS"
-```
-
-En modo headless (`claude -p`), SDK sin callback usable de `AskUserQuestion`,
-auditoría automática o si una herramienta indica que hay prefetch consumido, NO
-ejecutes las 7 fases ni llames agentes. Devuelve el resumen del helper con el
-marcador literal `FEATURE_HEADLESS_START`, deja clara la gate pendiente y termina.
-
-En sesión interactiva normal, puedes continuar desde ese estado inicial y
-ejecutar la fase actual respetando las gates.
-
 ## Contexto previo obligatorio
 
 Antes de lanzar la primera fase, lee este contexto en orden:
@@ -59,20 +35,11 @@ seguir o redirige al flujo correcto si el ajuste es evidente.
 
 ## Composición dinámica de equipo
 
-Antes de lanzar la primera fase, localiza el fichero compartido de composición
-dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces la
-ruta exacta, búscala primero en la instalación del plugin (por ejemplo, bajo
-`~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y léela desde
-ahí.
-
-Después, sigue el protocolo de composición dinámica (pasos 1 a 4). Si por
-cualquier motivo no consigues localizar ese fichero, no bloquees
-`/alfred-dev:feature` solo por esa búsqueda: continúa con el equipo de núcleo
-por defecto y deja constancia breve de la degradación.
+Antes de lanzar la primera fase, lee el fichero `commands/_composicion.md` y sigue el protocolo de composición dinámica (pasos 1 a 4).
 
 ## Modo autopilot
 
-Antes de empezar, lee `.claude/alfred-dev.local.md` y comprueba el nivel de autonomía configurado. Si todas las fases están en `autonomo`, o si el estado en `.claude/alfred-dev-state.json` tiene `"autopilot": true` o el alias legacy `"modo": "autopilot"`, activa el **modo autopilot**:
+Antes de empezar, lee `.claude/alfred-dev.local.md` y comprueba el nivel de autonomía configurado. Si todas las fases están en `autonomo`, o si el estado en `.claude/alfred-dev-state.json` tiene `"modo": "autopilot"`, activa el **modo autopilot**:
 
 - Las **gates de usuario** (las que dicen «el usuario aprueba») se aprueban automáticamente sin usar `AskUserQuestion`. Muestra un resumen breve del resultado de cada fase y avanza.
 - Las **gates de seguridad** se evalúan normalmente: si el security-officer bloquea, el flujo se detiene.
@@ -86,12 +53,12 @@ Si el modo autopilot NO está activo, sigue el comportamiento interactivo habitu
 Ejecuta las siguientes fases en orden, respetando las quality gates:
 
 ### Fase 1: Producto
-Activa el agente `product-owner` usando la herramienta Agent con `subagent_type` apropiado. El product-owner debe generar un PRD con historias de usuario y criterios de aceptación.
+Activa el agente `product-owner` usando la herramienta Task con subagent_type apropiado. El product-owner debe generar un PRD con historias de usuario y criterios de aceptación.
 **GATE (usuario):** El usuario debe aprobar el PRD antes de avanzar. En autopilot, se aprueba automáticamente.
 
 ### Fase 1b — Estilo visual (condicional: solo si hay frontend)
 
-**Agente:** Selina (La Estilista) — activar con la herramienta Agent usando `subagent_type: "alfred-dev:selina"`
+**Agente:** Selina (La Estilista) — activar con la herramienta Task usando `subagent_type: "alfred-dev:selina"`
 **Gate:** usuario (el usuario elige una de las tres opciones)
 
 Selina lee el PRD aprobado, infiere el contexto visual del producto y presenta tres
@@ -118,7 +85,7 @@ Activa los agentes `qa-engineer` y `security-officer` en paralelo. Code review, 
 
 ### Fase 5: Documentación
 Activa el agente `tech-writer` para documentar API, arquitectura y guías.
-**GATE (libre):** Documentación completa con checklist del `tech-writer`. Puede cerrarse sin aprobación humana, pero no declares la fase superada si faltan artefactos o evidencia directa.
+**GATE (libre):** Documentación completa. Se aprueba siempre.
 
 ### Fase 6: Entrega
 Activa el agente `devops-engineer` con revisión del security-officer. CI/CD, Docker, deploy config.
@@ -161,7 +128,7 @@ inclúyelos en las fases correspondientes:
 Antes de cada fase, consulta `equipo_sesion` como fuente runtime canónica. Si
 no existe equipo efímero, usa el equipo persistido del proyecto ya derivado
 por el orquestador desde `.claude/alfred-dev.local.md`. Si un agente opcional
-está activo y tiene integración en esa fase, lánzalo con Agent usando su
+está activo y tiene integración en esa fase, lánzalo con Task usando su
 subagent_type registrado.
 
 ## Cierre canónico del comando

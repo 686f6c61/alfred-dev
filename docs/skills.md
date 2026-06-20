@@ -1,10 +1,10 @@
 # Catalogo de skills
 
-Los skills son las capacidades concretas que los agentes de Alfred pueden ejecutar. Cada skill es un fichero Markdown (`SKILL.md`) que contiene instrucciones paso a paso para una tarea específica: desde disenar un esquema de base de datos hasta auditar la accesibilidad de una interfaz. Los agentes no parten de una página en blanco: siguen las instrucciones del skill asignado para hacer el resultado más consistente, revisable y fácil de contrastar con evidencia.
+Los skills son las capacidades concretas que los agentes de Alfred pueden ejecutar. Cada skill es un fichero Markdown (`SKILL.md`) que contiene instrucciones paso a paso para una tarea específica: desde disenar un esquema de base de datos hasta auditar la accesibilidad de una interfaz. Los agentes no improvisan; siguen las instrucciones del skill asignado para garantizar que el resultado sea consistente, reproducible y de calidad profesional.
 
 La razon de separar los skills de los agentes es la misma por la que una empresa separa los procedimientos de los roles: un procedimiento (skill) puede ser ejecutado por diferentes personas (agentes) segun el contexto, y un mismo rol puede dominar multiples procedimientos. Esta separación permite que el sistema crezca sin acoplar capacidades a identidades.
 
-El repositorio mantiene un **catalogo de 62 skills** organizados en 15 dominios temáticos que cubren todo el ciclo de vida del software, desde la entrada contextual de Alfred hasta la definición de producto, la optimizacion SEO y la dirección de estilo visual. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegación y la asignación a agentes especializados.
+El repositorio mantiene un **catalogo de 61 skills** organizados en 14 dominios temáticos que cubren todo el ciclo de vida del software, desde la definición de producto hasta la optimizacion SEO y la dirección de estilo visual. Cada dominio agrupa skills que comparten un area de conocimiento comun, lo que facilita la navegación y la asignación a agentes especializados.
 
 Desde la v0.5.2, `plugin.json` publica el catalogo completo por dominios en Claude Code en lugar de exponer solo una muestra parcial. Los skills más pesados o con side effects evidentes (por ejemplo SonarQube, releases o el companion visual de Selina) siguen expuestos, pero marcados con `disable-model-invocation: true` para que su activación continúe siendo manual y explícita.
 
@@ -15,8 +15,6 @@ El siguiente diagrama muestra la organización completa del catalogo. Cada rama 
 ```mermaid
 mindmap
   root((Skills))
-    alfred
-      alfred
     arquitectura
       choose-stack
       design-system
@@ -24,7 +22,9 @@ mindmap
       write-adr
     calidad
       code-review
+      e2e-testing
       exploratory-testing
+      incident-response
       regression-check
       sonarqube
       spelling-check
@@ -43,6 +43,7 @@ mindmap
       deploy-config
       dockerize
       monitoring-setup
+      release-planning
     documentación
       api-docs
       architecture-docs
@@ -53,6 +54,8 @@ mindmap
       project-docs
       readme-review
       user-guide
+    estilo
+      style-direction
     github
       issue-templates
       pr-workflow
@@ -74,6 +77,7 @@ mindmap
     seguridad
       compliance-check
       dependency-audit
+      dependency-strategy
       dependency-update
       sbom-generate
       security-review
@@ -87,19 +91,6 @@ mindmap
       flow-review
       usability-heuristics
 ```
-
----
-
-## Alfred
-
-El dominio de Alfred existe para exponer el alias user-invocable `/alfred`.
-No sustituye al namespace tecnico del plugin: los comandos operativos siguen
-siendo `/alfred-dev:*`. Su unica responsabilidad es enrutar la invocacion corta
-hacia el asistente contextual sin crear una segunda familia de comandos.
-
-| Skill | Descripción | Agente |
-|-------|-------------|--------|
-| `alfred` | Entrada global `/alfred` que sigue el contrato interno de `commands/alfred.md` y evita redirigirse a sí mismo | Alfred |
 
 ---
 
@@ -123,7 +114,9 @@ El dominio de calidad cubre todo lo relacionado con la verificación del softwar
 | Skill | Descripción | Agente |
 |-------|-------------|--------|
 | `code-review` | Revisa código con foco en legibilidad, errores logicos, manejo de errores y complejidad | qa-engineer |
+| `e2e-testing` | Diseña y ejecuta pruebas end-to-end sobre flujos críticos con cobertura de escenarios felices, errores y regresión visible | qa-engineer |
 | `exploratory-testing` | Ejecuta sesiones de testing exploratorio estructurado con heuristicas, documentación en tiempo real y clasificacion de hallazgos | qa-engineer |
+| `incident-response` | Guía la respuesta a incidentes reales: contención, impacto, rollback, comunicación y siguientes acciones con criterio operativo | security-officer |
 | `regression-check` | Verifica que los cambios nuevos no rompen funcionalidad existente mediante análisis de impacto y ejecución de tests | qa-engineer |
 | `sonarqube` | Levanta SonarQube con Docker, ejecuta análisis estático del código y traduce los resultados en mejoras accionables | security-officer |
 | `spelling-check` | Verifica ortografia en castellano (tildes, concordancia, puntuación) en código, documentación e interfaz | qa-engineer |
@@ -166,6 +159,17 @@ El dominio de DevOps agrupa las capacidades de entrega y operación: conteneriza
 | `deploy-config` | Genera la configuración de despliegue segun el proveedor de hosting, con estrategia de deploy, rollback y health checks | devops-engineer |
 | `dockerize` | Genera un Dockerfile optimizado con multi-stage build, usuario no-root, capas cacheables y health check | devops-engineer |
 | `monitoring-setup` | Configura las tres patas de la observabilidad: logging estructurado, error tracking y metricas con alertas accionables | devops-engineer |
+| `release-planning` | Orquesta la preparación de una release: checklist, riesgos, dependencias, ventana de despliegue y rollback | devops-engineer |
+
+---
+
+## Estilo
+
+El dominio de estilo contiene la capacidad más singular del plugin: definir una dirección visual ejecutable antes de tocar frontend. No es un skill ornamental ni una fase de “decoración”, sino una herramienta de decisión temprana para que la capa visual quede cerrada antes de que arquitectura y desarrollo construyan componentes sobre arena movediza. El agente responsable es **selina**.
+
+| Skill | Descripción | Agente |
+|-------|-------------|--------|
+| `style-direction` | Recorre sistemas visuales base, fija familia tipográfica y cromática, y deja cerrada la dirección visual ejecutable del producto | selina |
 
 ---
 
@@ -245,6 +249,7 @@ El dominio de seguridad agrupa las capacidades de protección del software: revi
 |-------|-------------|--------|
 | `compliance-check` | Verifica el cumplimiento del proyecto contra RGPD, NIS2 y CRA con checklists detallados y acciones priorizadas | security-officer |
 | `dependency-audit` | Audita dependencias contra CVEs, versiones desactualizadas, licencias incompatibles y paquetes abandonados | security-officer |
+| `dependency-strategy` | Evalúa la estrategia global de dependencias del proyecto: criterio de adopción, riesgo de lock-in, mantenimiento y deuda acumulada | security-officer |
 | `dependency-update` | Revisa dependencias desactualizadas o con CVEs y propone un plan de actualización seguro, una dependencia a la vez | security-officer |
 | `sbom-generate` | Genera un Software Bill of Materials (SBOM) en formato CycloneDX o SPDX con todas las dependencias directas y transitivas | security-officer |
 | `security-review` | Revisa el código del proyecto contra las 10 categorías de vulnerabilidades OWASP Top 10 | security-officer |
@@ -266,7 +271,7 @@ El dominio de SEO cubre la optimizacion para motores de busqueda: meta tags, dat
 
 ## UX
 
-El dominio de UX agrupa las capacidades de revision de experiencia de usuario: auditoria de accesibilidad WCAG 2.1 AA, análisis de flujos de usuario y evaluación heuristica de Nielsen. El objetivo es detectar barreras de accesibilidad y fricción, proponer mejoras verificables y acercar el producto a una experiencia usable para más personas. El agente responsable es el **ux-reviewer**, un agente opcional que se activa cuando el proyecto tiene frontend y necesita validación de UX.
+El dominio de UX agrupa las capacidades de revision de experiencia de usuario: auditoria de accesibilidad WCAG 2.1 AA, análisis de flujos de usuario y evaluación heuristica de Nielsen. El objetivo es garantizar que el software sea usable por todas las personas, independientemente de sus capacidades, y que los flujos de interacción sean eficientes y libres de friccion innecesaria. El agente responsable es el **ux-reviewer**, un agente opcional que se activa cuando el proyecto tiene frontend y necesita validación de UX.
 
 | Skill | Descripción | Agente |
 |-------|-------------|--------|
@@ -278,11 +283,11 @@ El dominio de UX agrupa las capacidades de revision de experiencia de usuario: a
 
 ## Como se ejecutan los skills
 
-Salvo el alias manual `/alfred`, los skills no se invocan directamente por el usuario. Son instrucciones internas que los agentes siguen cuando ejecutan una tarea dentro de un flujo orquestado por Alfred. El usuario interactua con los flujos (`/alfred-dev:feature`, `/alfred-dev:fix`, `/alfred-dev:audit`, etc.) y Alfred asigna automáticamente los agentes y skills adecuados para cada fase.
+Los skills no se invocan directamente por el usuario. Son instrucciones internas que los agentes siguen cuando ejecutan una tarea dentro de un flujo orquestado por Alfred. El usuario interactua con los flujos (`/alfred-dev:feature`, `/alfred-dev:fix`, `/alfred-dev:audit`, etc.) y Alfred asigna automáticamente los agentes y skills adecuados para cada fase.
 
 Por ejemplo, cuando el flujo feature llega a la fase 4 (calidad), Alfred activa al **qa-engineer**. Este agente consulta el skill `calidad/code-review/SKILL.md` para ejecutar la revision de código siguiendo un proceso estandarizado: primero entiende el contexto del cambio, luego revisa legibilidad, errores logicos, manejo de errores, complejidad y edge cases, y finalmente documenta los hallazgos con ubicacion, impacto y sugerencia de correccion.
 
-La ventaja de este modelo es doble. Por un lado, el agente no depende de su "memoria" para saber como ejecutar una tarea: el skill le da un procedimiento verificable, repetible y auditable. Por otro lado, los skills se pueden mejorar de forma independiente sin tocar la lógica de los agentes ni de los flujos; basta con editar el fichero `SKILL.md` correspondiente.
+La ventaja de este modelo es doble. Por un lado, el agente no depende de su "memoria" para saber como ejecutar una tarea: el skill le da un procedimiento verificable y reproducible. Por otro lado, los skills se pueden mejorar de forma independiente sin tocar la lógica de los agentes ni de los flujos; basta con editar el fichero `SKILL.md` correspondiente.
 
 Los agentes opcionales (data-engineer, github-manager, copywriter, performance-engineer, seo-specialist, ux-reviewer) solo se activan cuando el proyecto los necesita. Si un proyecto no tiene frontend, el ux-reviewer y el seo-specialist nunca entran en juego. Si no hay base de datos, el data-engineer no se invoca. Esta activacion selectiva evita trabajo innecesario y mantiene los flujos ligeros.
 

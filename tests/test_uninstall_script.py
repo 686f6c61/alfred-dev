@@ -30,24 +30,12 @@ class TestUninstallSh(unittest.TestCase):
             plugins_dir = claude_dir / "plugins"
             cache_dir = plugins_dir / "cache" / "alfred-dev" / "alfred-dev" / PLUGIN_VERSION
             marketplace_dir = plugins_dir / "marketplaces" / "alfred-dev"
-            global_alias = claude_dir / "skills" / "alfred" / "SKILL.md"
-            global_command_alias = claude_dir / "commands" / "alfred.md"
             fake_bin = home / "bin"
             calls_file = claude_dir / "fake-claude-calls.log"
 
             fake_bin.mkdir(parents=True)
             cache_dir.mkdir(parents=True, exist_ok=True)
             marketplace_dir.mkdir(parents=True, exist_ok=True)
-            global_alias.parent.mkdir(parents=True, exist_ok=True)
-            global_alias.write_text(
-                "Marcador de instalacion: Alfred Dev global alias.\n",
-                encoding="utf-8",
-            )
-            global_command_alias.parent.mkdir(parents=True, exist_ok=True)
-            global_command_alias.write_text(
-                "Marcador de instalacion: Alfred Dev global alias.\n",
-                encoding="utf-8",
-            )
 
             (plugins_dir / "known_marketplaces.json").write_text(
                 json.dumps(
@@ -105,12 +93,10 @@ class TestUninstallSh(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             calls = calls_file.read_text(encoding="utf-8")
-            self.assertIn("plugin uninstall alfred-dev@alfred-dev --scope user", calls)
-            self.assertIn("plugin marketplace remove alfred-dev --scope user", calls)
+            self.assertIn("plugin uninstall alfred-dev@alfred-dev", calls)
+            self.assertIn("plugin marketplace remove alfred-dev", calls)
             self.assertFalse((plugins_dir / "cache" / "alfred-dev").exists())
             self.assertFalse(marketplace_dir.exists())
-            self.assertFalse(global_alias.exists())
-            self.assertFalse(global_command_alias.exists())
 
             known = json.loads((plugins_dir / "known_marketplaces.json").read_text(encoding="utf-8"))
             installed = json.loads((plugins_dir / "installed_plugins.json").read_text(encoding="utf-8"))

@@ -6,34 +6,6 @@ description: "Auditoría completa del proyecto con 4 agentes en paralelo"
 
 Eres Alfred, orquestador del equipo. El usuario quiere una auditoría completa del proyecto.
 
-## Protocolo helper-first y modo headless
-
-Antes de leer contexto en detalle, lanzar agentes o hacer análisis manual,
-intenta consumir un prefetch determinista ya preparado por el hook:
-
-```bash
-python3 .claude/alfred-continuity.py consume-prefetch "$PWD" --expected audit
-```
-
-Si el prefetch existe y devuelve salida, responde con esa salida y termina. Si
-no existe, arranca la sesión canónica y el preflight determinista de SonarQube
-con:
-
-```bash
-python3 .claude/alfred-continuity.py start-flow "$PWD" --command audit --raw "Auditoría completa del proyecto"
-```
-
-En modo headless (`claude -p`), SDK sin callback usable de `AskUserQuestion`,
-auditoría automática o si una herramienta indica que hay prefetch consumido, NO
-lances los 4 agentes, no llames agentes ni ejecutes una auditoría completa. Devuelve el resumen
-del helper con `AUDIT_HEADLESS_START` o, si Docker requiere decisión humana,
-con `AUDIT_DOCKER_INSTALL_MENU_HEADLESS` / `AUDIT_DOCKER_START_MENU_HEADLESS`.
-No instales Docker, no arranques Docker Desktop y no autoelijas "seguir sin
-SonarQube"; deja la decisión pendiente y termina.
-
-En sesión interactiva normal, puedes continuar desde ese estado inicial y
-ejecutar la auditoría respetando el preflight y las gates.
-
 ## Composición dinámica de equipo
 
 Antes de lanzar la auditoría, localiza el fichero compartido de composición dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces la ruta exacta, búscala primero en la instalación del plugin (por ejemplo, bajo `~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y léela desde ahí.
@@ -66,7 +38,7 @@ Antes de lanzar ningún agente, verifica si SonarQube puede ejecutarse de verdad
 
 ## Ejecución paralela
 
-Lanza 4 agentes EN PARALELO usando la herramienta Agent:
+Lanza 4 agentes EN PARALELO usando la herramienta Task:
 
 1. **qa-engineer**: cobertura de tests, tests rotos, code smells, deuda técnica de calidad.
 2. **security-officer**: CVEs en dependencias, OWASP, compliance RGPD/NIS2/CRA, SBOM.

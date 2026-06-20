@@ -7,18 +7,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-bootstrap.sh"
-            ],
-            "timeout": 10
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/session-bootstrap.sh && ${CLAUDE_PLUGIN_ROOT}/hooks/session-bootstrap.sh || true"
           },
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh && ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh || true",
             "async": true
           }
         ]
@@ -29,24 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "UserPromptExpansion": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -57,19 +33,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py"
-            ],
-            "timeout": 10
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py || true",
+            "timeout": 15
           }
         ]
       }
@@ -80,10 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/prefetch-finish-guard.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/prefetch-finish-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/prefetch-finish-guard.py || true",
             "timeout": 5
           }
         ]
@@ -93,10 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh && ${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh || true",
             "timeout": 5
           }
         ]
@@ -106,10 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/dangerous-command-guard.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/dangerous-command-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/dangerous-command-guard.py || true",
             "timeout": 5
           }
         ]
@@ -119,10 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/sensitive-read-guard.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/sensitive-read-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/sensitive-read-guard.py || true",
             "timeout": 5
           }
         ]
@@ -133,19 +91,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py"
-            ],
-            "timeout": 10
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py || true",
+            "timeout": 15
           }
         ]
       }
@@ -156,10 +108,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -169,10 +118,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/quality-gate.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/quality-gate.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/quality-gate.py || true",
             "timeout": 10
           }
         ]
@@ -182,10 +128,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/evidence-guard.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/evidence-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/evidence-guard.py || true",
             "timeout": 10
           }
         ]
@@ -195,10 +138,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -208,10 +148,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/dependency-watch.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/dependency-watch.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/dependency-watch.py || true",
             "timeout": 10
           }
         ]
@@ -221,10 +158,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/spelling-guard.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/spelling-guard.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/spelling-guard.py || true",
             "timeout": 10
           }
         ]
@@ -234,10 +168,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -247,10 +178,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -260,10 +188,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -273,10 +198,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -286,10 +208,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -299,10 +218,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]
@@ -312,10 +228,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
+            "command": "test -f ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py && python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py || true",
             "timeout": 10
           }
         ]

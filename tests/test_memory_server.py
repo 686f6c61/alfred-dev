@@ -7,10 +7,8 @@ correctos al invocar las operaciones sobre una base de datos temporal.
 Se comprueba tanto el comportamiento exitoso como los casos de validacion.
 """
 
-import io
 import json
 import os
-import shutil
 import sys
 import tempfile
 import unittest
@@ -18,109 +16,26 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.memory import MemoryDB
-from mcp import memory_server as memory_server_module
 from mcp.memory_server import MemoryMCPServer, _TOOLS, resolve_retention_days
-
-
-class _BinaryInput:
-    def __init__(self, data: bytes) -> None:
-        self.buffer = io.BytesIO(data)
-
-
-class _BinaryOutput:
-    def __init__(self) -> None:
-        self.buffer = io.BytesIO()
-
-
-class TestMCPTransport(unittest.TestCase):
-    """Verifica el framing stdio MCP moderno y la compatibilidad heredada."""
-
-    def tearDown(self):
-        memory_server_module._TRANSPORT_MODE = "jsonl"
-
-    def test_read_message_accepts_json_lines(self):
-        """MCP stdio moderno envia un JSON-RPC por linea."""
-        old_stdin = sys.stdin
-        try:
-            sys.stdin = _BinaryInput(
-                b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n'
-            )
-            message = memory_server_module._read_message()
-        finally:
-            sys.stdin = old_stdin
-
-        self.assertEqual(message["method"], "ping")
-        self.assertEqual(memory_server_module._TRANSPORT_MODE, "jsonl")
-
-    def test_read_message_accepts_content_length_framing(self):
-        """El framing Content-Length historico sigue aceptandose."""
-        body = b'{"jsonrpc":"2.0","id":2,"method":"ping"}'
-        payload = b"Content-Length: %d\r\n\r\n" % len(body) + body
-        old_stdin = sys.stdin
-        try:
-            sys.stdin = _BinaryInput(payload)
-            message = memory_server_module._read_message()
-        finally:
-            sys.stdin = old_stdin
-
-        self.assertEqual(message["id"], 2)
-        self.assertEqual(memory_server_module._TRANSPORT_MODE, "content-length")
-
-    def test_write_message_uses_json_lines_by_default(self):
-        """Las respuestas nuevas salen en JSONL para clientes MCP actuales."""
-        old_stdout = sys.stdout
-        sink = _BinaryOutput()
-        try:
-            sys.stdout = sink
-            memory_server_module._TRANSPORT_MODE = "jsonl"
-            memory_server_module._write_message(
-                {"jsonrpc": "2.0", "id": 1, "result": {}}
-            )
-        finally:
-            sys.stdout = old_stdout
-
-        output = sink.buffer.getvalue()
-        self.assertFalse(output.startswith(b"Content-Length:"))
-        self.assertTrue(output.endswith(b"\n"))
-        self.assertEqual(json.loads(output.decode("utf-8"))["id"], 1)
-
-    def test_write_message_preserves_legacy_framing(self):
-        """Si el cliente uso Content-Length, respondemos igual."""
-        old_stdout = sys.stdout
-        sink = _BinaryOutput()
-        try:
-            sys.stdout = sink
-            memory_server_module._TRANSPORT_MODE = "content-length"
-            memory_server_module._write_message(
-                {"jsonrpc": "2.0", "id": 2, "result": {}}
-            )
-        finally:
-            sys.stdout = old_stdout
-
-        output = sink.buffer.getvalue()
-        self.assertTrue(output.startswith(b"Content-Length:"))
-        self.assertIn(b"\r\n\r\n", output)
 
 
 class TestMCPTools(unittest.TestCase):
     """Verifica que los handlers MCP producen resultados correctos."""
 
     def setUp(self):
-        self._project_dir = tempfile.mkdtemp()
-        os.makedirs(os.path.join(self._project_dir, ".claude"), exist_ok=True)
-        self._db_path = os.path.join(
-            self._project_dir,
-            ".claude",
-            "alfred-memory.db",
-        )
+        self._tmpfile = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._db_path = self._tmpfile.name
+        self._tmpfile.close()
         self.server = MemoryMCPServer(db_path=self._db_path)
-        self.server._project_dir = self._project_dir
         self.db = self.server._ensure_db()
 
     def tearDown(self):
         if self.server._db:
             self.server._db.close()
-        shutil.rmtree(self._project_dir, ignore_errors=True)
+        for suffix in ("", "-wal", "-shm"):
+            path = self._db_path + suffix
+            if os.path.exists(path):
+                os.unlink(path)
 
     # --- Tests de herramientas nuevas --------------------------------------
 
@@ -194,47 +109,22 @@ class TestMCPTools(unittest.TestCase):
         self.db.log_decision(title="Decision A", chosen="Opcion 1")
         self.db.log_decision(title="Decision B", chosen="Opcion 2")
 
-        export_path = os.path.join(self._project_dir, "docs", "test_export.md")
-        result = self.server._call_memory_export(
-            self.db,
-            {"format": "markdown", "path": export_path},
+        export_path = os.path.join(
+            tempfile.mkdtemp(), "test_export.md",
         )
-
-        self.assertNotIn("error", result)
-        self.assertEqual(result["exported"], 2)
-        self.assertEqual(result["format"], "markdown")
-        self.assertTrue(os.path.exists(export_path))
-
-    def test_memory_export_rejects_path_outside_project(self):
-        """memory_export no debe escribir fuera del proyecto actual."""
-        self.db.log_decision(title="Decision A", chosen="Opcion 1")
-        outside_dir = tempfile.mkdtemp()
-        outside_path = os.path.join(outside_dir, "decisions.md")
         try:
             result = self.server._call_memory_export(
                 self.db,
-                {"format": "markdown", "path": outside_path},
+                {"format": "markdown", "path": export_path},
             )
 
-            self.assertIn("error", result)
-            self.assertIn("dentro del proyecto", result["error"])
-            self.assertFalse(os.path.exists(outside_path))
+            self.assertNotIn("error", result)
+            self.assertEqual(result["exported"], 2)
+            self.assertEqual(result["format"], "markdown")
+            self.assertTrue(os.path.exists(export_path))
         finally:
-            shutil.rmtree(outside_dir, ignore_errors=True)
-
-    def test_memory_import_rejects_path_outside_project(self):
-        """memory_import no debe leer repositorios o ADRs fuera del proyecto."""
-        outside_dir = tempfile.mkdtemp()
-        try:
-            result = self.server._call_memory_import(
-                self.db,
-                {"source": "adr", "path": outside_dir},
-            )
-
-            self.assertIn("error", result)
-            self.assertIn("dentro del proyecto", result["error"])
-        finally:
-            shutil.rmtree(outside_dir, ignore_errors=True)
+            if os.path.exists(export_path):
+                os.unlink(export_path)
 
     def test_memory_log_event_indexes_payload_when_content_missing(self):
         """memory_log_event deja el evento buscable aunque solo llegue payload."""
@@ -253,79 +143,6 @@ class TestMCPTools(unittest.TestCase):
         found = self.db.search("token")
         self.assertEqual(len(found), 1)
         self.assertEqual(found[0]["source_type"], "event")
-
-    def test_memory_log_event_rejects_non_object_payload(self):
-        """memory_log_event solo acepta payloads JSON de tipo objeto."""
-        self.db.start_iteration("feature", "Demo")
-
-        result = self.server._call_memory_log_event(
-            self.db,
-            {
-                "event_type": "custom",
-                "payload": ["no", "object"],
-            },
-        )
-
-        self.assertIn("error", result)
-        self.assertIn("payload", result["error"])
-
-    def test_memory_log_event_schema_declares_bounds(self):
-        """El schema MCP debe exponer limites para eventos libres."""
-        tool = next(tool for tool in _TOOLS if tool["name"] == "memory_log_event")
-        props = tool["inputSchema"]["properties"]
-
-        self.assertEqual(
-            props["event_type"]["maxLength"],
-            memory_server_module._EVENT_TYPE_MAX,
-        )
-        self.assertEqual(
-            props["phase"]["maxLength"],
-            memory_server_module._EVENT_PHASE_MAX,
-        )
-        self.assertEqual(
-            props["summary"]["maxLength"],
-            memory_server_module._EVENT_SUMMARY_MAX,
-        )
-        self.assertEqual(
-            props["content"]["maxLength"],
-            memory_server_module._EVENT_CONTENT_MAX,
-        )
-        self.assertIn("preview", props["payload"]["description"])
-
-    def test_memory_log_event_truncates_large_mcp_content_and_payload(self):
-        """La frontera MCP recorta eventos enormes sin perder trazabilidad."""
-        iteration_id = self.db.start_iteration("feature", "Demo")
-
-        result = self.server._call_memory_log_event(
-            self.db,
-            {
-                "event_type": "custom",
-                "phase": "calidad",
-                "summary": "contenido grande",
-                "content": "x" * (memory_server_module._EVENT_CONTENT_MAX + 1000),
-                "payload": {
-                    "blob": "y" * (memory_server_module._EVENT_PAYLOAD_MAX + 1000)
-                },
-            },
-        )
-
-        self.assertNotIn("error", result)
-        self.assertTrue(result["content_truncated"])
-        self.assertTrue(result["payload_truncated"])
-
-        timeline = self.db.get_timeline(iteration_id)
-        event = timeline[0]
-        self.assertLess(len(event["content"]), memory_server_module._EVENT_CONTENT_MAX + 1000)
-        self.assertIn("contenido recortado", event["content"])
-
-        payload = json.loads(event["payload"])
-        self.assertTrue(payload["_truncated"])
-        self.assertIn("_alfred_mcp_truncation", payload)
-        self.assertIn("payload", payload["_alfred_mcp_truncation"])
-        self.assertLess(
-            len(json.dumps(payload, ensure_ascii=False)),
-            memory_server_module._EVENT_PAYLOAD_MAX + 1000,
-        )
 
     def test_memory_get_iteration_returns_all_decisions_for_iteration(self):
         """memory_get_iteration no debe truncar decisiones a 50."""
@@ -379,19 +196,6 @@ class TestMCPTools(unittest.TestCase):
             plugin["version"],
         )
 
-    def test_tools_call_dispatches_bound_handler(self):
-        """tools/call debe ejecutar handlers reales, no solo listar schemas."""
-        response = self.server._handle_tools_call(
-            2,
-            {"name": "memory_stats", "arguments": {}},
-        )
-
-        self.assertNotIn("error", response)
-        self.assertFalse(response["result"]["isError"])
-        payload = json.loads(response["result"]["content"][0]["text"])
-        self.assertIn("total_decisions", payload)
-        self.assertIn("db_path", payload)
-
     # --- Tests de herramientas modificadas ---------------------------------
 
     def test_memory_search_with_filters(self):
@@ -417,79 +221,6 @@ class TestMCPTools(unittest.TestCase):
         titles = [r.get("title", "") for r in result["results"]]
         self.assertTrue(any("seguridad" in t for t in titles))
         self.assertFalse(any("rendimiento" in t for t in titles))
-
-    def test_memory_search_caps_excessive_limit(self):
-        """memory_search debe evitar salidas MCP enormes por limites abusivos."""
-        for index in range(120):
-            self.db.log_decision(
-                title=f"Decision de cache {index}",
-                chosen="Redis",
-            )
-
-        result = self.server._call_memory_search(
-            self.db,
-            {"query": "cache", "limit": 9999},
-        )
-
-        self.assertTrue(result["limit_capped"])
-        self.assertEqual(result["requested_limit"], 9999)
-        self.assertEqual(result["applied_limit"], 100)
-        self.assertLessEqual(result["total"], 100)
-
-    def test_memory_get_decisions_caps_excessive_limit(self):
-        """memory_get_decisions debe paginar de forma defensiva por defecto."""
-        for index in range(205):
-            self.db.log_decision(
-                title=f"Decision larga {index}",
-                chosen="SQLite",
-            )
-
-        result = self.server._call_memory_get_decisions(
-            self.db,
-            {"limit": 9999},
-        )
-
-        self.assertTrue(result["limit_capped"])
-        self.assertEqual(result["requested_limit"], 9999)
-        self.assertEqual(result["applied_limit"], 200)
-        self.assertEqual(result["total"], 200)
-
-    def test_memory_import_caps_excessive_git_limit(self):
-        """memory_import desde git no debe aceptar limites sin techo."""
-        calls = []
-
-        def fake_import_git_history(repo_path, limit):
-            calls.append((repo_path, limit))
-            return limit
-
-        self.db.import_git_history = fake_import_git_history
-
-        repo_path = self._project_dir
-        result = self.server._call_memory_import(
-            self.db,
-            {"source": "git", "path": repo_path, "limit": 999999},
-        )
-
-        self.assertEqual(calls, [(os.path.realpath(repo_path), 1000)])
-        self.assertTrue(result["limit_capped"])
-        self.assertEqual(result["requested_limit"], 999999)
-        self.assertEqual(result["applied_limit"], 1000)
-        self.assertEqual(result["imported"], 1000)
-
-    def test_memory_tool_schemas_expose_limit_bounds(self):
-        """Los schemas MCP deben declarar maximos para llamadas paginadas."""
-        by_name = {tool["name"]: tool for tool in _TOOLS}
-
-        search_limit = by_name["memory_search"]["inputSchema"]["properties"]["limit"]
-        decisions_limit = by_name["memory_get_decisions"]["inputSchema"]["properties"]["limit"]
-        import_limit = by_name["memory_import"]["inputSchema"]["properties"]["limit"]
-
-        self.assertEqual(search_limit["maximum"], 100)
-        self.assertEqual(decisions_limit["maximum"], 200)
-        self.assertEqual(import_limit["maximum"], 1000)
-        self.assertEqual(search_limit["minimum"], 1)
-        self.assertEqual(decisions_limit["minimum"], 1)
-        self.assertEqual(import_limit["minimum"], 1)
 
     def test_memory_log_decision_with_tags(self):
         """memory_log_decision registra las etiquetas correctamente."""

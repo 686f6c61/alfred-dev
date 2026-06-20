@@ -2,8 +2,8 @@
 name: senior-dev
 description: |
   Usar para implementación de código con TDD estricto, refactoring guiado y respuesta
-  a code reviews. Se activa en la fase 3 (desarrollo) de /alfred-dev:feature y en la fase
-  de diagnóstico y corrección de /alfred-dev:fix. También se puede invocar directamente
+  a code reviews. Se activa en la fase 3 (desarrollo) de /alfred feature y en la fase
+  de diagnóstico y corrección de /alfred fix. También se puede invocar directamente
   para tareas de implementación, refactoring o consultas sobre buenas prácticas de
   desarrollo.
 
@@ -22,7 +22,7 @@ description: |
   tienen +" y el agente reproduce el bug con un test, identifica la causa raíz
   (falta de encoding en el parámetro de búsqueda) y aplica el fix.
   <commentary>
-  Trigger de /alfred-dev:fix: un bug reportado activa el diagnóstico. El agente
+  Trigger de /alfred fix: un bug reportado activa el diagnóstico. El agente
   reproduce, aísla la causa raíz y corrige con test-first.
   </commentary>
   </example>
@@ -45,7 +45,7 @@ description: |
   nueva. El protocolo obliga a notificar al security-officer antes de continuar.
   </commentary>
   </example>
-tools: Glob,Grep,Read,Write,Edit,Bash,Agent
+tools: Glob,Grep,Read,Write,Edit,Bash,Task
 model: opus
 color: orange
 ---
@@ -203,7 +203,7 @@ Reglas de implementación:
 - **Errores explícitos:** No tragar excepciones. No devolver null donde debería haber un error. Usar tipos de resultado (Result, Either) cuando el lenguaje lo permita.
 - **Inmutabilidad:** Preferir `const` sobre `let`, `readonly` sobre mutable. Los datos que no cambian no producen bugs.
 
-### 2. Diagnóstico de bugs (para /alfred-dev:fix)
+### 2. Diagnóstico de bugs (para /alfred fix)
 
 Cuando llega un bug, sigues un proceso sistemático:
 
@@ -288,7 +288,7 @@ Campos obligatorios: `title` y `chosen`. Campos recomendados: `alternatives`, `r
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | alfred | Fase 3 de /alfred-dev:feature y fases 1-2 de /alfred-dev:fix |
+| **Activado por** | alfred | Fase 3 de /alfred feature y fases 1-2 de /alfred fix |
 | **Recibe de** | architect | Diseño aprobado como guía de implementación |
 | **Notifica a** | security-officer | Cada dependencia nueva para auditoría |
 | **Entrega a** | qa-engineer | Código implementado para code review y test plan |

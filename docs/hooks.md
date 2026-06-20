@@ -12,7 +12,7 @@ El mecanismo de hooks de Claude Code sigue un modelo sencillo de registro, invoc
 
 ### Registro
 
-Los hooks se declaran en el fichero `hooks.json` dentro del directorio `.claude-plugin` o en la raiz del plugin. Cada entrada asocia un evento del ciclo de vida con uno o mas scripts a ejecutar. La estructura básica es:
+Los hooks se declaran en el fichero `hooks/hooks.json` del repositorio. Cada entrada asocia un evento del ciclo de vida con uno o mas scripts a ejecutar. La estructura básica es:
 
 ```json
 {
@@ -34,7 +34,7 @@ Los hooks se declaran en el fichero `hooks.json` dentro del directorio `.claude-
 }
 ```
 
-El campo `matcher` solo debe usarse en eventos donde Claude Code lo soporta. En Alfred se usa para filtrar nombre de herramienta (`PreToolUse` y `PostToolUse`) o tipo de sesión (`SessionStart`). `UserPromptExpansion` también soporta filtrar por `command_name`, pero Alfred lo omite deliberadamente para capturar todos los slash commands y prompts MCP expandidos con el mismo hook fail-open. Si no se específica matcher, el hook se ejecuta para todas las invocaciones de ese evento. Esta distinción es importante: un hook de `PostToolUse` sin matcher se ejecutaria despues de cada operación de cualquier herramienta, lo que generaria un coste de rendimiento innecesario. En eventos como `UserPromptSubmit`, `Stop`, `PostToolBatch`, `TaskCreated`, `TaskCompleted`, `WorktreeCreate`, `WorktreeRemove`, `CwdChanged`, `MessageDisplay` y `TeammateIdle`, Claude Code ignora `matcher`; `release:audit` falla si Alfred declara un matcher ahí para no crear una falsa sensación de filtrado. El campo `if` solo se evalua en eventos de herramientas (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest` y `PermissionDenied`); en cualquier otro evento no debe usarse porque el handler no se ejecutaria.
+El campo `matcher` es una expresión regular que Claude Code evalua contra el nombre de la herramienta (para `PreToolUse` y `PostToolUse`) o contra el tipo de sesión (para `SessionStart`). Si no se específica matcher, el hook se ejecuta para todas las invocaciones de ese evento. Esta distinción es importante: un hook de `PostToolUse` sin matcher se ejecutaria despues de cada operación de cualquier herramienta, lo que generaria un coste de rendimiento innecesario.
 
 ### Invocación
 
@@ -50,8 +50,8 @@ El script responde a traves de tres canales:
 
 | Canal | Propósito |
 |-------|-----------|
-| **stdout** | Respuesta estructurada (JSON). Claude Code lo interpreta segun el tipo de evento. En `SessionStart` y `PreCompact`, el campo `hookSpecificOutput.additionalContext` se inyecta como contexto de la conversacion. En `Stop`, un objeto con `"decision": "block"` impide que Claude se detenga. Cuando el aviso debe ser estructurado para el usuario, el JSON puede incluir `systemMessage`. |
-| **stderr** | Mensajes breves de diagnostico o aviso. Claude Code los muestra segun el evento; Alfred lo mantiene para avisos informativos de hooks existentes como calidad, dependencias y ortografia. |
+| **stdout** | Respuesta estructurada (JSON). Claude Code lo interpreta segun el tipo de evento. En `SessionStart`, el campo `hookSpecificOutput.additionalContext` se inyecta como contexto de la conversacion. En `Stop`, un objeto con `"decisión": "block"` impide que Claude se detenga. |
+| **stderr** | Mensajes para el usuario. Claude Code los muestra como advertencias o errores en la interfaz. Es el canal principal para comunicar avisos de seguridad, fallos de tests o sugerencias ortograficas. |
 | **Exit code** | `0` indica operación permitida, `2` indica bloqueo (solo relevante en `PreToolUse`). Cualquier otro código no cero se trata como error del hook y se ignora. |
 
 ### Modos de ejecución
@@ -68,7 +68,7 @@ Alfred Dev registra trece hooks visibles que cubren los eventos del ciclo de vid
 
 ### session-bootstrap.sh
 
-**Evento:** `SessionStart` -- **Matcher:** `startup|resume|clear|compact` -- **Timeout:** 10 s -- **Asíncrono:** no
+**Evento:** `SessionStart` -- **Matcher:** `startup|resume|clear|compact` -- **Asíncrono:** no
 
 Este hook ligero existe para eliminar una carrera del primer arranque en Claude Code CLI. Su misión es puramente operativa: preparar el proyecto antes de que Claude procese el primer prompt. Hace cinco cosas, todas idempotentes y locales al repo:
 
@@ -77,12 +77,6 @@ Este hook ligero existe para eliminar una carrera del primer arranque en Claude 
 3. genera `.claude/settings.local.json` y `.claude/settings.json` con la allowlist mínima para los comandos helper-first;
 4. crea el wrapper local `.claude/alfred-continuity.py`;
 5. asegura una iteración `session` activa en la SQLite del proyecto.
-
-El wrapper vive en el proyecto para que Claude Code pueda ejecutar helpers con
-una regla Bash local y acotada, pero no confia solo en una ruta absoluta de
-cache: primero usa `CLAUDE_PLUGIN_ROOT` si está disponible, luego el fallback
-embebido y, si esa instalación ya fue rotada, busca la cache activa de
-`alfred-dev`.
 
 No inyecta contexto adicional en Claude ni hace llamadas de red. Precisamente por eso es síncrono: tiene que terminar antes de que el primer slash command dependa de esos artefactos.
 
@@ -94,7 +88,7 @@ Este es el hook mas complejo del plugin y se ejecuta justo despues del bootstrap
 
 El script recorre cinco fuentes de información, cada una opcional y con fallo silencioso:
 
-1. **Presentacion del plugin.** Un bloque estático que describe el equipo de agentes (incluyendo SonIA), las rutas disponibles (`/alfred`, `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit`, `lucius`, `config`, `status`, `update`, `help`) y las reglas de operación (quality gates verificables con evidencia, TDD estricto, auditoria de seguridad por fase).
+1. **Presentacion del plugin.** Un bloque estático que describe el equipo de agentes (incluyendo SonIA), los comandos disponibles (`/alfred-dev:alfred`, `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit`, `config`, `status`, `update`, `help`) y las reglas de operación (quality gates infranqueables, TDD estricto, auditoria de seguridad por fase).
 
 2. **Configuración local del proyecto.** Lee `.claude/alfred-dev.local.md` si existe. Este fichero permite al usuario definir preferencias por proyecto (lenguaje, framework, convenciones específicas) que Claude incorpora a su comportamiento.
 
@@ -108,11 +102,11 @@ La salida es un JSON con la clave `hookSpecificOutput.additionalContext` que Cla
 
 ### stop-hook.py
 
-**Evento:** `Stop` -- **Matcher:** ninguno -- **Timeout:** 10 s
+**Evento:** `Stop` -- **Matcher:** ninguno -- **Timeout:** 15 s
 
 El hook de Stop implementa un patron tomado del plugin ralph-loop: cuando Claude intenta detenerse, comprueba si hay trabajo pendiente y, en caso afirmativo, bloquea la parada con un mensaje que explica por que debe seguir.
 
-El mecanismo funciona así: lee `alfred-dev-state.json`, extrae la fase actual y la compara con la definición del flujo importada desde `core.orchestrator.FLOWS`. Si la sesión existe, no esta completada y la fase tiene una quality gate pendiente, emite un JSON con `"decision": "block"` y un mensaje que incluye:
+El mecanismo funciona así: lee `alfred-dev-state.json`, extrae la fase actual y la compara con la definición del flujo importada desde `core.orchestrator.FLOWS`. Si la sesión existe, no esta completada y la fase tiene una quality gate pendiente, emite un JSON con `"decisión": "block"` y un mensaje que incluye:
 
 - El nombre del flujo activo y su descripción.
 - La fase actual con sus agentes asignados.
@@ -202,9 +196,9 @@ La politica es estrictamente informativa: siempre sale con exit 0. Si no puede p
 
 Este hook cubre dos situaciones complementarias:
 
-1. si existe un prefetch helper-first pendiente para `alfred`, `map-codebase`,
-   `discuss`, `feature`, `fix`, `spike`, `ship`, `audit`, `lucius` o `memory-ui`,
-   bloquea lecturas y exploracion hasta que Claude ejecute `consume-prefetch`;
+1. si existe un prefetch helper-first pendiente para `alfred`, `map-codebase`
+   o `discuss`, bloquea lecturas y exploracion hasta que Claude ejecute
+   `consume-prefetch`;
 2. justo despues de consumir con exito `.claude/alfred-prefetch.json`, bloquea
    temporalmente lecturas, escrituras y exploracion adicional para forzar que
    Claude responda con el resultado ya preparado por el helper en vez de rehacer
@@ -265,9 +259,9 @@ Para reducir ruido, no revisa el contenido tal cual: en Markdown ignora bloques 
 
 ### activity-capture.py
 
-**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit|Bash|Read|Glob|Grep|Agent|WebFetch|WebSearch|NotebookEdit` + `UserPromptSubmit` + `UserPromptExpansion` + `PreCompact` + `Stop` -- **Timeout:** 10 s
+**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit|Bash|Read|Glob|Grep|Agent|WebFetch|WebSearch|NotebookEdit` + `UserPromptSubmit` + `PreCompact` + `Stop` -- **Timeout:** 10 s
 
-Este hook centraliza toda la captura de actividad en un único punto de entrada. Sustituye a los antiguos `memory-capture.py` y `commit-capture.py` (unificados en v0.3.6) y además amplia la cobertura a practicamente todas las herramientas de Claude Code, los prompts del usuario, la expansion directa de slash commands, la compactación de contexto y el cierre de sesión. En `UserPromptSubmit` y `UserPromptExpansion` también hace una preparación helper-first muy acotada para continuidad: puede dejar listo `map-codebase`, `discuss`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit` o `lucius` antes de que el modelo entre en el razonamiento principal, e incluso preparar `map-codebase` cuando `/alfred` entra por un repo brownfield sin mapa previo.
+Este hook centraliza toda la captura de actividad en un único punto de entrada. Sustituye a los antiguos `memory-capture.py` y `commit-capture.py` (unificados en v0.3.6) y además amplia la cobertura a practicamente todas las herramientas de Claude Code, los prompts del usuario, la compactación de contexto y el cierre de sesión. En `UserPromptSubmit` también hace una preparación helper-first muy acotada para continuidad: puede dejar listo `map-codebase`, `discuss` o `quick` antes de que el modelo entre en el razonamiento principal, e incluso preparar `map-codebase` cuando `/alfred-dev:alfred` entra por un repo brownfield sin mapa previo.
 
 El hook registra cada evento en la base de datos SQLite de memoria persistente (`alfred-memory.db`) con tres niveles de detalle:
 
@@ -292,7 +286,6 @@ La tabla de dispatchers mapea cada tipo de evento a su función de procesamiento
 | `WebSearch` | PostToolUse | Busqueda web: query y resultados. Los resultados muy grandes se guardan como preview. |
 | `NotebookEdit` | PostToolUse | Edicion de notebook Jupyter: ruta y comando. |
 | `UserPromptSubmit` | Evento propio | Prompt del usuario: texto completo. Si es un slash command helper-first de Alfred, prepara antes los artefactos de continuidad y registra `alfred_prefetched`. |
-| `UserPromptExpansion` | Evento propio | Slash command o prompt MCP expandido antes de llegar a Claude. Registra `expansion_type`, `command_name` y `command_source` cuando Claude los entrega, y cubre la ruta directa `/alfred` que no pasa por `PreToolUse`. |
 | `PreCompact` | Evento propio | Marcador de compactación de contexto. |
 | `Stop` | Evento propio | Cierre de sesión: marca el fin y cierra la iteracion activa si existe. |
 
@@ -312,7 +305,7 @@ La politica es **fail-open**: cualquier error se imprime en stderr con prefijo `
 
 Cuando Claude Code compacta el contexto de la conversacion para liberar espacio en la ventana, el contexto histórico acumulado durante la sesión se pierde o se resume de forma genérica. Este hook protege las decisiones críticas de la sesión inyectandolas como contexto adicional que sobrevive a la compactación.
 
-El mecanismo funciona así: al recibir el evento PreCompact, el hook consulta la memoria persistente para obtener las decisiones relevantes. Si hay una iteracion activa, obtiene las decisiones de esa iteracion; si no, obtiene las 5 ultimas decisiones globales. Con esa lista, genera un bloque de texto Markdown que resume cada decisión (titulo, opcion elegida, fecha) y lo emite como JSON con `hookSpecificOutput.hookEventName: "PreCompact"` y `hookSpecificOutput.additionalContext`.
+El mecanismo funciona así: al recibir el evento PreCompact, el hook consulta la memoria persistente para obtener las decisiones relevantes. Si hay una iteracion activa, obtiene las decisiones de esa iteracion; si no, obtiene las 5 ultimas decisiones globales. Con esa lista, genera un bloque de texto Markdown que resume cada decisión (titulo, opcion elegida, fecha) y lo emite como JSON con la clave `hookSpecificOutput.PreCompact.additionalContext`.
 
 Claude Code incorpora este texto como contexto del sistema en la conversacion compactada, asegurando que las decisiones del proyecto no se pierdan aunque el contexto de conversacion se reduzca.
 
@@ -380,9 +373,9 @@ sequenceDiagram
 
 | Evento | Matcher | Script | Timeout | Asíncrono | Bloquea | Que vigila |
 |--------|---------|--------|---------|-----------|---------|------------|
-| `SessionStart` | `startup\|resume\|clear\|compact` | `session-bootstrap.sh` | 10 s | No | No | Bootstrap síncrono del proyecto: config local, memoria, permisos y wrapper helper-first. |
+| `SessionStart` | `startup\|resume\|clear\|compact` | `session-bootstrap.sh` | -- | No | No | Bootstrap síncrono del proyecto: config local, memoria, permisos y wrapper helper-first. |
 | `SessionStart` | `startup\|resume\|clear\|compact` | `session-start.sh` | -- | Si | No | Inyección de contexto al arrancar: presentacion, configuración, estado de sesión, memoria y actualizaciones. |
-| `Stop` | _(ninguno)_ | `stop-hook.py` | 10 s | No | Si | Sesiones activas con gates pendientes. Impide cerrar Claude Code con trabajo sin terminar. |
+| `Stop` | _(ninguno)_ | `stop-hook.py` | 15 s | No | Si | Sesiones activas con gates pendientes. Impide cerrar Claude Code con trabajo sin terminar. |
 | `PreToolUse` | `Read\|Write\|Edit\|Glob\|Grep` | `prefetch-finish-guard.py` | 5 s | No | Si | Evita deriva tras `consume-prefetch`: si el helper-first ya resolvió el comando, bloquea exploración y reescrituras adicionales. |
 | `PreToolUse` | `Write\|Edit` | `secret-guard.sh` | 5 s | No | Si | Secretos en el contenido de ficheros: claves API, tokens, credenciales hardcodeadas, connection strings, webhooks. |
 | `PreToolUse` | `Bash` | `dangerous-command-guard.py` | 5 s | No | Si | Comandos destructivos: rm -rf /, force push, DROP DATABASE, docker prune, fork bombs, escritura a dispositivos. |
@@ -390,8 +383,8 @@ sequenceDiagram
 | `PostToolUse` | `Bash` | `quality-gate.py` | 10 s | No | No | Resultado de ejecuciones de tests. Detecta fallos en 17 runners de tests y avisa sin bloquear. |
 | `PostToolUse` | `Write\|Edit` | `dependency-watch.py` | 10 s | No | No | Modificaciones en manifiestos de dependencias. Sugiere revision de seguridad de las dependencias anadidas. |
 | `PostToolUse` | `Write\|Edit` | `spelling-guard.py` | 10 s | No | No | Palabras castellanas sin tilde en ficheros de texto. Detecta ~80 errores comunes y avisa sin bloquear. |
-| `PostToolUse` | `Write\|Edit\|Bash\|Read\|Glob\|Grep\|Agent\|WebFetch\|WebSearch\|NotebookEdit` + `UserPromptSubmit` + `UserPromptExpansion` + `PreCompact` + `Stop` | `activity-capture.py` | 10 s | No | No | Captura centralizada de toda la actividad: ficheros, comandos, busquedas, subagentes, prompts, slash commands expandidos, compactaciones y cierre de sesión. Registra en SQLite con tres niveles de detalle (summary, payload, content). |
-| `PreCompact` | `manual\|auto` omitido para cubrir ambos | `memory-compact.py` | 10 s | No | No | Compactación de contexto. Inyecta decisiones críticas como contexto protegido para que sobrevivan a la compactación. |
+| `PostToolUse` | `Write\|Edit\|Bash\|Read\|Glob\|Grep\|Agent\|WebFetch\|WebSearch\|NotebookEdit` + `UserPromptSubmit` + `PreCompact` + `Stop` | `activity-capture.py` | 10 s | No | No | Captura centralizada de toda la actividad: ficheros, comandos, busquedas, subagentes, prompts, compactaciones y cierre de sesión. Registra en SQLite con tres niveles de detalle (summary, payload, content). |
+| `PreCompact` | _(ninguno)_ | `memory-compact.py` | 10 s | No | No | Compactación de contexto. Inyecta decisiones críticas como contexto protegido para que sobrevivan a la compactación. |
 
 ---
 
@@ -456,17 +449,14 @@ Añade una entrada en `hooks/hooks.json` dentro del evento correspondiente:
   "hooks": [
     {
       "type": "command",
-      "command": "python3",
-      "args": [
-        "${CLAUDE_PLUGIN_ROOT}/hooks/mi-nuevo-hook.py"
-      ],
+      "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/mi-nuevo-hook.py",
       "timeout": 10
     }
   ]
 }
 ```
 
-La variable `${CLAUDE_PLUGIN_ROOT}` se resuelve automáticamente al directorio raiz del plugin. Declárala en `args`, no dentro de un string de shell, para que rutas con espacios o caracteres especiales funcionen sin comillas manuales. Esa ruta pertenece a la instalación de una versión concreta y puede cambiar al actualizar el plugin; no guardes estado persistente dentro de ella. El matcher es una expresión regular que se evalua contra el nombre de la herramienta; si no se específica, el hook se ejecuta para todas las invocaciones del evento.
+La variable `${CLAUDE_PLUGIN_ROOT}` se resuelve automáticamente al directorio raiz del plugin. El matcher es una expresión regular que se evalua contra el nombre de la herramienta; si no se específica, el hook se ejecuta para todas las invocaciones del evento.
 
 ### 3. Patrones de comunicación
 
@@ -479,21 +469,12 @@ print("[Mi Hook] He detectado algo relevante.", file=sys.stderr)
 sys.exit(0)
 ```
 
-**Bloqueo (exit 2 + stderr).** El hook impide que la operación se ejecute. Solo tiene sentido en `PreToolUse`, porque en `PostToolUse` la operación ya se ha realizado. El mensaje de stderr explica por que se bloquea. En este patrón stdout debe quedar vacío: Claude Code ignora cualquier JSON cuando el proceso sale con `2`. Es el patron que usan `secret-guard.sh`, `dangerous-command-guard.py` y `prefetch-finish-guard.py`. Ejemplo:
+**Bloqueo (exit 2 + stderr).** El hook impide que la operación se ejecute. Solo tiene sentido en `PreToolUse`, porque en `PostToolUse` la operación ya se ha realizado. El mensaje de stderr explica por que se bloquea. Es el patron que usa `secret-guard.sh`. Ejemplo:
 
 ```python
 print("[Mi Hook] Operación bloqueada: motivo detallado.", file=sys.stderr)
 sys.exit(2)
 ```
-
-No envuelvas hooks bloqueantes con `|| true`: eso convierte el `exit 2` en
-éxito y neutraliza el bloqueo.
-
-Cuando el bloqueo necesita comunicar una decisión a Claude Code, emite tambien
-JSON por stdout con `{"decision": "block", "reason": "..."}` y sal con código
-`0`; no mezcles JSON de control con `exit 2`. Los hooks que inyectan contexto
-usan `hookSpecificOutput.additionalContext`; los avisos estructurados para el
-usuario deben preferir `systemMessage`.
 
 **Silencioso (exit 0 sin salida).** El hook hace su trabajo internamente sin emitir nada. Claude Code y el usuario no perciben su ejecución. Es el patron que usa `activity-capture.py` para registrar eventos en SQLite sin interrumpir el flujo.
 

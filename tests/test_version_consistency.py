@@ -8,9 +8,8 @@ el mismo valor.
 
 Ficheros cubiertos:
   - .claude-plugin/plugin.json   (JSON, campo "version")
-  - .claude-plugin/marketplace.json (no duplica plugins[0].version)
+  - .claude-plugin/marketplace.json (JSON, plugins[0].version)
   - package.json                 (JSON, campo "version")
-  - site/package.json            (JSON, campo "version")
   - install.sh                   (bash, variable VERSION="...")
   - install.ps1                  (PowerShell, variable $Version = "...")
 """
@@ -43,21 +42,15 @@ def _get_plugin_json_version() -> str:
     return data["version"]
 
 
-def _marketplace_plugin_entry() -> dict:
-    """Extrae la entrada del primer plugin en marketplace.json."""
+def _get_marketplace_json_version() -> str:
+    """Extrae la version del primer plugin en marketplace.json."""
     data = json.loads(_read_file(".claude-plugin/marketplace.json"))
-    return data["plugins"][0]
+    return data["plugins"][0]["version"]
 
 
 def _get_package_json_version() -> str:
     """Extrae la version de package.json."""
     data = json.loads(_read_file("package.json"))
-    return data["version"]
-
-
-def _get_site_package_json_version() -> str:
-    """Extrae la version de site/package.json."""
-    data = json.loads(_read_file("site/package.json"))
     return data["version"]
 
 
@@ -94,12 +87,12 @@ class TestVersionConsistency(unittest.TestCase):
             f"La version '{self.canonical}' en plugin.json no es semver valida",
         )
 
-    def test_marketplace_json_omits_duplicate_version(self):
-        """marketplace.json no debe duplicar la version canonica de plugin.json."""
-        self.assertNotIn(
-            "version",
-            _marketplace_plugin_entry(),
-            "Claude Code resuelve version desde plugin.json; duplicarla en marketplace puede ocultar drift",
+    def test_marketplace_json_matches(self):
+        """marketplace.json debe coincidir con plugin.json."""
+        self.assertEqual(
+            _get_marketplace_json_version(),
+            self.canonical,
+            "La version en marketplace.json no coincide con plugin.json",
         )
 
     def test_package_json_matches(self):
@@ -108,14 +101,6 @@ class TestVersionConsistency(unittest.TestCase):
             _get_package_json_version(),
             self.canonical,
             "La version en package.json no coincide con plugin.json",
-        )
-
-    def test_site_package_json_matches(self):
-        """site/package.json debe coincidir con plugin.json."""
-        self.assertEqual(
-            _get_site_package_json_version(),
-            self.canonical,
-            "La version en site/package.json no coincide con plugin.json",
         )
 
     def test_install_sh_matches(self):

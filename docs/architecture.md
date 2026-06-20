@@ -16,10 +16,11 @@ Los comandos son la puerta de entrada del usuario al sistema. Cuando alguien esc
 
 Cada fichero de comando tiene dos partes: un frontmatter YAML con metadatos (descripción del comando, hint del argumento) y un cuerpo Markdown con las instrucciones del flujo. El frontmatter le permite a Claude Code mostrar ayuda contextual; el cuerpo define las fases, las gates y las reglas que no se pueden saltar.
 
-El plugin tiene 25 comandos registrados en `plugin.json` y una ruta global `/alfred` instalada como skill personal global sin shim de comando duplicado:
+El plugin tiene 26 comandos registrados en `plugin.json`:
 
 | Comando | Fichero | Propósito |
 |---------|---------|-----------|
+| `/alfred-dev:alfred` | `alfred.md` | Punto de entrada contextual y triaje |
 | `/alfred-dev:map-codebase` | `map-codebase.md` | Mapeo brownfield del repositorio |
 | `/alfred-dev:memory-ui` | `memory-ui.md` | UI local para explorar la memoria SQLite del proyecto |
 | `/alfred-dev:discuss` | `discuss.md` | Refinado previo y discovery persistente |
@@ -46,22 +47,11 @@ El plugin tiene 25 comandos registrados en `plugin.json` y una ruta global `/alf
 | `/alfred-dev:update` | `update.md` | Actualización del plugin |
 | `/alfred-dev:help` | `help.md` | Ayuda contextual del plugin |
 
-La entrada principal del usuario es `/alfred`. No se registra una variante
-namespaced `alfred` en `plugin.json`: vive en `skills/alfred/alfred/SKILL.md`
-como fuente empaquetada oculta (`user-invocable: false`) para no duplicar la
-entrada en el selector de Claude. El instalador la materializa como copia
-personal global invocable en `~/.claude/skills/alfred/SKILL.md` y elimina el
-shim personal obsoleto `~/.claude/commands/alfred.md` si existe, porque en
-Claude Code actual ambas entradas visibles duplican `/alfred`. La copia personal
-lee `commands/alfred.md` como contrato interno. Esta separación
-evita que un comando namespaced llamado `alfred` tape el skill personal global
-que Claude Code debe mostrar al escribir `/alfred`.
-
 ### Capa de agentes (`agents/*.md`)
 
-Los agentes son system prompts especializados que Claude Code ejecuta como subagentes mediante la herramienta Agent. Cada agente tiene un rol definido dentro del equipo virtual, herramientas restringidas segun su ámbito de actuacion y una personalidad propia que se adapta al nivel de sarcasmo configurado por el usuario.
+Los agentes son system prompts especializados que Claude Code ejecuta como subagentes mediante la herramienta Task. Cada agente tiene un rol definido dentro del equipo virtual, herramientas restringidas segun su ámbito de actuacion y una personalidad propia que se adapta al nivel de sarcasmo configurado por el usuario.
 
-La distinción clave en esta capa es la separación entre agentes de nucleo y agentes opcionales. Los 10 agentes de nucleo participan en todos los flujos y son invocados programaticamente desde los commands: cuando `feature.md` dice «activa el agente product-owner», Claude Code crea un subagente Agent cuyo system prompt es el contenido de `agents/product-owner.md`. Los 9 agentes opcionales amplían el equipo segun el tipo de proyecto y pueden activarse desde la configuración local.
+La distinción clave en esta capa es la separación entre agentes de nucleo y agentes opcionales. Los 10 agentes de nucleo participan en todos los flujos y son invocados programaticamente desde los commands: cuando `feature.md` dice «activa el agente product-owner», Claude Code crea un subagente Task cuyo system prompt es el contenido de `agents/product-owner.md`. Los 9 agentes opcionales amplían el equipo segun el tipo de proyecto y pueden activarse desde la configuración local.
 
 **Agentes de nucleo** (10):
 
@@ -75,8 +65,8 @@ La distinción clave en esta capa es la separación entre agentes de nucleo y ag
 | `devops-engineer` | El Fontanero | DevOps |
 | `tech-writer` | El Traductor | Tech Writer |
 | `project-manager` | SonIA | PM operativo y trazabilidad |
+| `selina` | La Estilista | Dirección de estilo visual |
 | `alfred` | Alfred | Jefe de operaciones / Orquestador |
-| `selina` | La Estilista | Dirección visual y sistema de diseño |
 
 **Agentes opcionales** (9):
 
@@ -96,7 +86,7 @@ La distinción clave en esta capa es la separación entre agentes de nucleo y ag
 
 La capa core contiene la lógica de negocio pura del plugin, escrita en Python. Estos modulos no tienen dependencia directa de Claude Code: son funciones y clases que reciben datos, los procesan y devuelven resultados. Se ejecutan via `python3 -c` desde los hooks o como imports desde el servidor MCP.
 
-La capa se compone de cinco modulos principales:
+La capa core no es un único módulo grande, sino una familia de módulos especializados. Los más importantes hoy son:
 
 - **`orchestrator.py`** -- Maquina de estados que define 6 flujos de trabajo (feature, fix, spike, ship, audit, quick), cada uno con sus fases secuenciales y quality gates. El orquestador gestiona la creación de sesiones, la evaluación de gates y el avance entre fases. El estado se persiste en un fichero JSON plano (`.claude/alfred-dev-state.json`). Desde v0.3.6, `run_flow()` puede inyectar un equipo efimero (`equipo_sesion`) generado por la composicion dinámica y, si no se le pasa uno explícito, deriva automáticamente el equipo persistido del proyecto desde `.claude/alfred-dev.local.md` para que runtime y configuración no diverjan (ver [configuration.md](configuration.md#composicion-dinámica-de-equipo)).
 
@@ -104,18 +94,19 @@ La capa se compone de cinco modulos principales:
 - **`optional_agents.py`** -- Catálogo canónico de los 9 opcionales. Centraliza grupos, orden, labels visibles, especialidad base, integraciones por fase y los builders de menús (`build_optional_agent_group_menu()` / `build_optional_agent_group_menus()`) para que `config` y la composición dinámica no dependan de listas escritas a mano.
 
 - **`continuity.py`** -- Capa determinista de continuidad operativa y PM ligero. Implementa `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `standup`, `blocked`, `in-progress`, `verify`, `validate`, `search`, `sync-github` y los artefactos persistentes asociados (`current.md`, `handoff.md`, `uat.md`, `github-sync.md`). Como helper de mantenimiento interno, tambien expone `normalize-kanban` para normalizar tipos de tarea en tableros heredados de SonIA.
-
+- **`memory.py`, `memory_sync.py`, `memory_ui_server.py`** -- Subsistema de memoria persistente: SQLite, búsqueda, sanitización, sync a memorias nativas y UI local.
 - **`memory_config.py`** -- Parser ligero de la seccion `memoria` del frontmatter local. Permite que hooks, sync y servidor MCP apliquen la misma configuracion efectiva sin duplicar logica.
-
 - **`personality.py`** -- Motor de personalidad que define la identidad, voz y frases caracteristicas de cada agente. El tono se adapta a un nivel de sarcasmo configurable (1 = profesional, 5 = acido). Con niveles altos se añaden frases mordaces al repertorio de cada agente.
+- **`session_report.py`** -- Generación de informes de sesión en `docs/alfred-reports/` al cierre o interrupción de flujos.
+- **`selina_*`** -- Runtime visual de Selina: catálogo de estilos, selector guiado, dirección final, variantes y soporte de renderizado.
 
 ### Capa de integración (`hooks/`, `mcp/`)
 
 La capa de integración es el puente entre Alfred Dev y el ciclo de vida de Claude Code. Mientras que las capas anteriores definen «que hacer», esta capa define «cuando hacerlo» y «como conectar con el exterior».
 
-**Hooks** (13 ficheros visibles, 7 eventos del ciclo de vida):
+**Hooks** (13 ficheros visibles, 6 eventos del ciclo de vida):
 
-Los hooks son scripts que Claude Code ejecuta automáticamente cuando ocurren eventos específicos. Se registran en `hooks/hooks.json`; `matcher` es opcional y solo se declara en eventos donde Claude Code lo soporta. En eventos como `Stop` y `UserPromptSubmit`, Alfred evita declarar `matcher` porque Claude Code lo ignora. En `UserPromptExpansion`, Alfred también omite `matcher` para cubrir todos los slash commands y prompts MCP expandidos, aunque Claude Code ya permite filtrar por `command_name`. En `PreCompact`, Alfred omite `matcher` para cubrir tanto compactaciones manuales como automáticas.
+Los hooks son scripts que Claude Code ejecuta automáticamente cuando ocurren eventos específicos. Se registran en `hooks/hooks.json` y cada uno tiene un matcher que filtra cuando se dispara.
 
 | Hook | Evento | Matcher | Función |
 |------|--------|---------|---------|
@@ -130,12 +121,12 @@ Los hooks son scripts que Claude Code ejecuta automáticamente cuando ocurren ev
 | `evidence-guard.py` | PostToolUse | Bash | Registra evidencia real de ejecucion de tests para gates automaticas |
 | `dependency-watch.py` | PostToolUse | Write, Edit | Detecta cambios en dependencias (package.json, etc.) |
 | `spelling-guard.py` | PostToolUse | Write, Edit | Comprueba ortografia en ficheros modificados |
-| `activity-capture.py` | PostToolUse + UserPromptSubmit + UserPromptExpansion + PreCompact + Stop | (multiples) | Captura centralizada de actividad en la memoria persistente |
-| `memory-compact.py` | PreCompact | manual, auto (omitido: todos) | Inyecta decisiones críticas como contexto protegido |
+| `activity-capture.py` | PostToolUse + UserPromptSubmit + PreCompact + Stop | (multiples) | Captura centralizada de actividad en la memoria persistente |
+| `memory-compact.py` | PreCompact | (todos) | Inyecta decisiones críticas como contexto protegido |
 
 **Servidor MCP** (1 fichero):
 
-El fichero `mcp/memory_server.py` implementa un servidor MCP (Model Context Protocol) sobre stdio que expone la memoria persistente del proyecto. Claude Code lanza este proceso al inicio de sesión y lo mantiene vivo. El servidor habla JSON-RPC 2.0 sobre stdio en formato MCP actual (un mensaje JSON por linea), mantiene lectura compatible con el framing `Content-Length` historico y expone 15 herramientas:
+El fichero `mcp/memory_server.py` implementa un servidor MCP (Model Context Protocol) sobre stdio que expone la memoria persistente del proyecto. Claude Code lanza este proceso al inicio de sesión y lo mantiene vivo. El servidor habla JSON-RPC 2.0 con encabezados Content-Length (identico a LSP) y hoy expone 15 herramientas:
 
 | Herramienta MCP | Propósito |
 |-----------------|-----------|
@@ -145,15 +136,15 @@ El fichero `mcp/memory_server.py` implementa un servidor MCP (Model Context Prot
 | `memory_get_iteration` | Obtiene datos de una iteracion (o la activa) |
 | `memory_get_timeline` | Cronología de eventos de una iteracion |
 | `memory_stats` | Estadisticas generales de la memoria |
-| `memory_manage_iteration` | Inicia o completa iteraciones |
-| `memory_log_event` | Registra eventos en la cronologia |
-| `memory_get_decisions` | Lista decisiones con filtros |
-| `memory_purge` | Purga eventos antiguos segun retencion |
-| `memory_update_decision` | Actualiza estado o etiquetas de una decision |
-| `memory_link_decisions` | Relaciona decisiones entre si |
-| `memory_health` | Comprueba integridad de la memoria |
-| `memory_export` | Exporta decisiones a Markdown |
-| `memory_import` | Importa commits o ADRs |
+| `memory_manage_iteration` | Inicia o completa iteraciones desde MCP |
+| `memory_log_event` | Registra eventos arbitrarios de cronología |
+| `memory_get_decisions` | Lista decisiones con filtros por iteración, tags o estado |
+| `memory_purge` | Purga eventos antiguos según retención |
+| `memory_update_decision` | Actualiza estado o etiquetas de una decisión |
+| `memory_link_decisions` | Crea relaciones entre decisiones |
+| `memory_health` | Valida integridad y salud de la memoria |
+| `memory_export` | Exporta decisiones a Markdown tipo ADR |
+| `memory_import` | Importa historial desde Git o ADRs |
 
 ---
 
@@ -170,10 +161,10 @@ C4Context
     System(claude, "Claude Code", "CLI de Anthropic que ejecuta el modelo Claude con herramientas, hooks y plugins")
 
     Container_Boundary(plugin, "Plugin Alfred Dev") {
-        Container(commands, "Commands", "Markdown + YAML", "25 comandos namespaced + /alfred como skill personal global: flujos, continuidad, PM operativo y sync GitHub")
-        Container(agents, "Agents", "Markdown", "10 nucleo + 9 opcionales, invocados como subagentes Agent")
+        Container(commands, "Commands", "Markdown + YAML", "26 comandos: flujos, continuidad, PM operativo y sync GitHub")
+        Container(agents, "Agents", "Markdown", "10 nucleo + 9 opcionales, invocados como subagentes Task")
         Container(core, "Core", "Python", "Orquestador, continuidad, config, memoria y personalidad")
-        Container(hooks, "Hooks", "Shell + Python", "13 hooks en 7 eventos del ciclo de vida")
+        Container(hooks, "Hooks", "Shell + Python", "13 hooks en 6 eventos del ciclo de vida")
         Container(mcp, "MCP Server", "Python stdio", "Servidor JSON-RPC que expone memoria persistente")
     }
 
@@ -183,11 +174,12 @@ C4Context
 
     Rel(user, claude, "Escribe comandos, revisa resultados")
     Rel(claude, commands, "Inyecta command como system prompt")
-    Rel(commands, agents, "Invocan agentes via herramienta Agent")
+    Rel(commands, agents, "Invocan agentes via herramienta Task")
     Rel(commands, core, "Leen/escriben estado via python3")
     Rel(hooks, core, "Ejecutan lógica de negocio")
     Rel(mcp, sqlite, "Lee/escribe memoria persistente")
-    Rel(hooks, mcp, "Capturan eventos hacia la memoria")
+    Rel(core, sqlite, "Gestiona memoria, sync e informes")
+    Rel(hooks, core, "Capturan eventos y consultan estado/configuración")
     Rel(core, github, "Consulta releases para actualización")
 
     UpdateRelStyle(user, claude, $offsetY="-20")
@@ -238,7 +230,7 @@ sequenceDiagram
 
     CMD->>ORC: create_session("feature", descripción)
     ORC-->>CMD: Estado inicial (fase: producto)
-    CMD->>PO: Agent: análisis de requisitos, PRD
+    CMD->>PO: Task: análisis de requisitos, PRD
     PO-->>CMD: PRD con historias de usuario
     CMD->>U: Presenta PRD
     U->>CMD: Aprueba / solicita cambios
@@ -250,8 +242,8 @@ sequenceDiagram
     Note over ORC: Fase 2: Arquitectura
 
     par Agentes en paralelo
-        CMD->>AR: Agent: diseño técnico
-        CMD->>SO: Agent: threat model
+        CMD->>AR: Task: diseño técnico
+        CMD->>SO: Task: threat model
     end
     AR-->>CMD: Propuesta arquitectonica
     SO-->>CMD: Informe de seguridad
@@ -263,7 +255,7 @@ sequenceDiagram
 
     Note over ORC: Fase 3: Desarrollo
 
-    CMD->>SD: Agent: implementacion TDD
+    CMD->>SD: Task: implementacion TDD
     SD-->>CMD: Código + tests
     HK->>HK: secret-guard.sh vigila escrituras
     HK->>HK: quality-gate.py vigila tests
@@ -274,8 +266,8 @@ sequenceDiagram
     Note over ORC: Fase 4: Calidad
 
     par Agentes en paralelo
-        CMD->>QA: Agent: test plan, code review
-        CMD->>SO: Agent: OWASP scan, SBOM
+        CMD->>QA: Task: test plan, code review
+        CMD->>SO: Task: OWASP scan, SBOM
     end
     QA-->>CMD: Informe QA
     SO-->>CMD: Informe seguridad
@@ -285,7 +277,7 @@ sequenceDiagram
 
     Note over ORC: Fase 5: Documentación
 
-    CMD->>TW: Agent: documentación API, arquitectura, guias
+    CMD->>TW: Task: documentación API, arquitectura, guias
     TW-->>CMD: Documentación generada
     CMD->>ORC: check_gate(resultado="aprobado")
     ORC-->>CMD: Gate libre superada
@@ -293,8 +285,8 @@ sequenceDiagram
 
     Note over ORC: Fase 6: Entrega
 
-    CMD->>DO: Agent: CI/CD, empaquetado y preparacion de merge
-    CMD->>SO: Agent: validación final
+    CMD->>DO: Task: CI/CD, empaquetado y preparacion de merge
+    CMD->>SO: Task: validación final
     DO-->>CMD: Artefacto de entrega
     SO-->>CMD: Visto bueno final
     CMD->>U: Solicita aprobacion final
@@ -331,11 +323,11 @@ El protocolo MCP (Model Context Protocol) permite que Claude Code invoque herram
 
 La alternativa seria ejecutar `python3 -c "..."` cada vez que un agente necesite consultar la memoria. Esto implicaria abrir y cerrar la conexión SQLite en cada invocación, sin estado compartido entre llamadas. Con un servidor MCP persistente, la conexión se abre una sola vez, el índice FTS5 se carga en memoria y las consultas posteriores son significativamente mas rapidas. Además, el servidor puede mantener caches y realizar purgas de mantenimiento en segundo plano.
 
-### Por que los agentes viven en `agents/`
+### Por que los agentes de nucleo tambien aparecen en `plugin.json`
 
-Los agentes de nucleo (alfred, product-owner, selina, architect, senior-dev, security-officer, qa-engineer, devops-engineer, tech-writer y project-manager) se invocan programaticamente desde los commands mediante la herramienta Agent de Claude Code. El manifiesto no declara la clave `agents`: Claude Code descubre los agentes desde el directorio `agents/`, que es el formato que carga correctamente en la CLI actual.
+Los agentes de nucleo (alfred, product-owner, selina, architect, senior-dev, security-officer, qa-engineer, devops-engineer, tech-writer y project-manager) se invocan programaticamente desde los commands mediante la herramienta Task de Claude Code. Aun así, el manifiesto actual tambien los registra en `plugin.json` para que la superficie publicada del plugin sea autocontenida y para que el usuario pueda inspeccionarlos o invocarlos directamente si lo necesita fuera de un flujo Alfred.
 
-Los 9 agentes opcionales (data-engineer, ux-reviewer, performance-engineer, github-manager, seo-specialist, copywriter, librarian, i18n-specialist y lucius) viven en el mismo directorio `agents/` para que Claude Code conozca toda la plantilla publicada del plugin. La diferencia práctica no es dónde se declaran, sino cómo se usan: los de nucleo siempre forman parte de los flujos; los opcionales se activan o desactivan desde `/alfred-dev:config` segun las necesidades del proyecto. Cuando un opcional tiene integración por fase, Alfred lo incorpora automáticamente; cuando no la tiene, queda disponible como especialista bajo demanda.
+Los 9 agentes opcionales (data-engineer, ux-reviewer, performance-engineer, github-manager, seo-specialist, copywriter, librarian, i18n-specialist y lucius) se registran igualmente en `plugin.json` para que Claude Code conozca toda la plantilla publicada del plugin. La diferencia práctica no es si estan o no en el manifiesto, sino cómo se usan: los de nucleo siempre forman parte de los flujos; los opcionales se activan o desactivan desde `/alfred-dev:config` segun las necesidades del proyecto. Cuando un opcional tiene integración por fase, Alfred lo incorpora automáticamente; cuando no la tiene, queda disponible como especialista bajo demanda.
 
 ### El patron de estado
 
@@ -356,7 +348,7 @@ Desde que el usuario escribe `/alfred-dev:feature` hasta que se genera el artefa
 2. **Claude Code** -- localiza el command correspondiente y lo carga como system prompt.
 3. **Command** (`feature.md`) -- define las fases, los agentes y las gates del flujo.
 4. **Core** (`orchestrator.py`) -- crea la sesión, persiste el estado, evalua gates.
-5. **Agentes** -- se invocan como subagentes Agent con su system prompt especializado.
+5. **Agentes** -- se invocan como subagentes Task con su system prompt especializado.
 6. **Hooks** -- vigilan la ejecución: bloquean secretos, comprueban tests, capturan eventos.
 7. **MCP** (`memory_server.py`) -- registra decisiones, commits y eventos en SQLite.
 8. **Artefacto** -- el resultado final (código, documentación, release) se entrega al usuario.
@@ -395,7 +387,7 @@ stateDiagram-v2
 
     producto --> estilo_visual: gate_producto [usuario + frontend]
     producto --> arquitectura: gate_producto [sin frontend]
-    estilo_visual --> arquitectura: gate_estilo_visual [usuario]
+    estilo_visual --> arquitectura: gate_estilo [usuario]
     arquitectura --> desarrollo: gate_arquitectura [usuario+seguridad]
     desarrollo --> calidad: gate_desarrollo [automático]
     calidad --> documentación: gate_calidad [automático+seguridad]

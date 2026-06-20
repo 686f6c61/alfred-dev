@@ -31,7 +31,7 @@ el frontmatter YAML.
 
 2. NO uses `AskUserQuestion` en este bootstrap inicial. El objetivo es que
    Alfred pueda actuar automáticamente desde la primera sesión si el usuario
-   invoca `/alfred`, `/alfred-dev:feature`, `/alfred-dev:quick`, `/alfred-dev:fix`,
+   invoca `/alfred-dev:alfred`, `/alfred-dev:feature`, `/alfred-dev:quick`, `/alfred-dev:fix`,
    `/alfred-dev:spike`, `/alfred-dev:audit` o `/alfred-dev:ship`.
 
 3. Muestra un mensaje breve indicando que Alfred ha activado el modo
@@ -118,8 +118,7 @@ Usa estas fronteras para no activar dos técnicos por la misma intuición:
 Antes de presentar las preguntas al usuario, comprueba si el modo autopilot está activo:
 
 1. Lee `.claude/alfred-dev.local.md` y comprueba si todas las fases de autonomía están en `autonomo`.
-2. Lee `.claude/alfred-dev-state.json` y comprueba si tiene `"autopilot": true`
-   o, por compatibilidad con sesiones antiguas, `"modo": "autopilot"`.
+2. Lee `.claude/alfred-dev-state.json` y comprueba si tiene `"autopilot": true`.
 
 **Si autopilot está activo:** salta directamente al paso 4. Usa los agentes opcionales configurados en `.claude/alfred-dev.local.md` (si existen) o los que tu razonamiento semántico (paso 2) haya marcado como relevantes. No uses `AskUserQuestion`. Muestra un mensaje breve indicando qué agentes se activan y por qué.
 
@@ -138,21 +137,6 @@ tests primero.
 Después de cada intento de superar una gate (exitoso o no), guarda el estado
 actualizado en `.claude/alfred-dev-state.json`. Esto incluye el contador de
 iteraciones de la fase actual.
-
-## Paso 2e -- Honestidad operativa y antifingimiento
-
-Antes de declarar una gate como superada, un test como ejecutado, una auditoría
-como completada o una integración externa como verificada, comprueba que tienes
-evidencia directa en salida de herramienta, artefacto persistido o respuesta
-explícita del usuario.
-
-- No digas "he ejecutado", "ha pasado" o "está validado" si solo lo has inferido.
-- Si un helper, comando, agente o servicio externo falla, dilo con el error
-  relevante y deja el siguiente paso verificable; no lo conviertas en éxito.
-- Si faltan credenciales, permisos, Docker, red o contexto, declara el límite y
-  conserva el flujo en estado pendiente o bloqueado.
-- Distingue siempre entre "recomiendo ejecutar X" y "he ejecutado X con este
-  resultado".
 
 ## Paso 3 -- Presentación al usuario
 
@@ -182,18 +166,13 @@ Ejemplo de un grupo:
 
 ```text
 AskUserQuestion({
-  questions: [
-    {
-      question: "¿Qué agente técnico quieres activar para esta sesión?",
-      header: "Técnicos",
-      multiSelect: false,
-      options: [
-        { label: "Seguir sin activar más", description: "Pasar al siguiente grupo" },
-        { label: "Data Engineer", description: "<razón contextual o descripción breve>" },
-        { label: "Performance Engineer", description: "<razón contextual>" },
-        { label: "GitHub Manager", description: "<razón contextual>" }
-      ]
-    }
+  question: "¿Qué agente técnico quieres activar para esta sesión?",
+  header: "Técnicos",
+  options: [
+    { label: "Seguir sin activar más", description: "Pasar al siguiente grupo" },
+    { label: "Data Engineer", description: "<razón contextual o descripción breve>" },
+    { label: "Performance Engineer", description: "<razón contextual>" },
+    { label: "GitHub Manager", description: "<razón contextual>" }
   ]
 })
 ```

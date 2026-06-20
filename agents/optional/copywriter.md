@@ -1,5 +1,6 @@
 ---
 name: copywriter
+color: purple
 description: |
   Usar para revisión y redacción de textos públicos: landing pages, emails,
   onboarding, CTAs, microcopy y guías de tono. Se activa cuando el proyecto

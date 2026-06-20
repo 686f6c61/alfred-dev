@@ -1,10 +1,12 @@
 # Documentación técnica de Alfred Dev
 
-Esta documentación esta pensada para desarrolladores que necesitan entender como funciona el plugin Alfred Dev por dentro: su arquitectura, sus decisiones de diseño, como se integra en Claude Code y como contribuir. No es documentación de usuario (eso esta en el [README del proyecto](../README.md) y en la [landing page](https://alfred-dev.com/)); es documentación de ingenieria interna.
+Esta documentación esta pensada para desarrolladores que necesitan entender como funciona el plugin Alfred Dev por dentro: su arquitectura, sus decisiones de diseño, como se integra en Claude Code y como contribuir. No es documentación de usuario (eso esta en el [README del proyecto](../README.md) y en la [landing page](https://alfred-dev.com/)); es documentación técnica del plugin.
 
-En la rama `Alfred-Astro`, este repositorio conserva también `site/` para construir y desplegar la landing pública desde Coolify. La rama `main` sigue siendo la rama canónica del plugin y su runtime.
+`docs/` contiene solo documentación estable y útil para entender, operar y mantener Alfred Dev. Las auditorías, planes temporales y notas de reorganización viven fuera de este directorio, en `internal/`.
 
-Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 19 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates verificables con evidencia. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
+La rama `main` contiene el plugin y su runtime. La landing publica vive en la rama `Alfred-Astro` y se despliega desde Coolify sobre el VPS.
+
+Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 19 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
 
 El código fuente es la referencia definitiva, pero esta documentación explica el **por que** detrás de cada decisión: por que Python y no JavaScript, por que SQLite y no JSON, por que 19 agentes y no uno solo, por que quality gates en cada transición. Un junior debe poder leer esta documentación de principio a fin y entender el proyecto sin ayuda externa.
 
@@ -31,13 +33,13 @@ mindmap
       9 agentes opcionales
       Motor de personalidad
     Capacidades
-      Catalogo publicado de 62 skills en 15 dominios
+      Catalogo publicado de 61 skills en 14 dominios
       13 hooks del ciclo de vida
       Memoria persistente SQLite
     Operaciones
       Instalación y carga
       Configuración por proyecto
-      Tests y gates de release
+      Tests unitarios
 ```
 
 ---
@@ -50,18 +52,19 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 |---------|-------------|
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseño fundamentales |
 | [flows.md](flows.md) | Los 6 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
+| [commands.md](commands.md) | Referencia de los 26 comandos publicados por el plugin, agrupados por uso real |
 | [agents/README.md](agents/README.md) | Vision general del equipo de 19 agentes, modelo de colaboración, distribución de modelos |
-| [skills.md](skills.md) | Catalogo de 62 skills organizados en 15 dominios, junto con las reglas de publicación y activación manual de los skills más delicados |
+| [skills.md](skills.md) | Catalogo de 61 skills organizados en 14 dominios, junto con las reglas de publicación y activación manual de los skills más delicados |
 | [hooks.md](hooks.md) | Los 13 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
 | [configuration.md](configuration.md) | Detección de stack, fichero .local.md, niveles de autonomía, agentes opcionales, composicion dinámica de equipo |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalación, troubleshooting |
 | [personality.md](personality.md) | Motor de personalidad: frases, sarcasmo, veredictos, distribución de modelos |
-| [testing.md](testing.md) | Tests, auditorías reproducibles, smokes de Claude CLI, revisión humana y limites honestos de cobertura |
-| [release-audit-0.6.0.md](release-audit-0.6.0.md) | Matriz viva de auditoría previa a publicar 0.6.0: claims, evidencia, smoke terminal y pruebas humanas |
-| [promise-evidence-0.6.0.md](promise-evidence-0.6.0.md) | Matriz de promesas públicas contra evidencia canónica: qué está cubierto, qué es parcial y qué depende de servicios externos |
-| [release-readiness-0.6.0.md](release-readiness-0.6.0.md) | Resumen de salida: qué está probado, qué bloquea publicar y qué revisión humana/external sigue pendiente |
-| [manual-review-0.6.0.md](manual-review-0.6.0.md) | Runbook de revisión humana: criterios por caso, bloqueos obligatorios y comandos finales |
+| [testing.md](testing.md) | Tests unitarios: cobertura por modulo, patrones de testing, como contribuir |
+| [operations.md](operations.md) | Continuidad, SonIA, handoff, UAT, `docs/project/` y sync con GitHub |
+| [mcp.md](mcp.md) | Servidor MCP de memoria, Memory UI local y cómo encajan con SQLite y continuidad |
+| [contributing.md](contributing.md) | Cómo cambiar prompts, runtime, documentación y releases sin dejar drift |
+| [repository.md](repository.md) | Mapa del repo: dónde vive cada subsistema y qué documento explica cada zona |
 
 ### Fichas individuales de agentes
 
@@ -99,11 +102,17 @@ La ruta de lectura depende de lo que necesites:
 
 **Quiero contribuir al plugin.** Lee [architecture.md](architecture.md) para entender las capas y luego [testing.md](testing.md) para saber como ejecutar y escribir tests. Consulta [hooks.md](hooks.md) si vas a tocar la capa de integración o [personality.md](personality.md) si vas a añadir un agente.
 
+**Quiero mantener o publicar cambios sin dejar drift.** Lee [contributing.md](contributing.md). Resume qué superficies hay que alinear cuando cambias prompts, manifiestos, instaladores, documentación o versión.
+
+**Quiero ubicarme rápido en el repositorio.** Empieza por [repository.md](repository.md) para saber en que directorio vive cada subsistema. Luego salta a [commands.md](commands.md) si necesitas la superficie operativa publicada o a [architecture.md](architecture.md) si necesitas una visión de diseño.
+
 **Quiero entender la arquitectura y las decisiones de diseño.** Lee [architecture.md](architecture.md) de principio a fin. Las secciones de decisiones de diseño explican el razonamiento detrás de cada eleccion técnica. Complementa con [memory.md](memory.md) para el sistema de memoria y [installation.md](installation.md) para la cadena de carga de plugins.
 
 **Quiero añadir un agente nuevo.** Lee [agents/README.md](agents/README.md) para entender la diferencia entre nucleo y opcionales, luego cualquier ficha de agente como referencia de estructura (por ejemplo, [agents/qa-engineer.md](agents/qa-engineer.md)). Consulta [personality.md](personality.md) para entender como funciona el motor de personalidad y como registrar el agente en `personality.py`.
 
 **Quiero configurar Alfred para mi proyecto.** Lee [configuration.md](configuration.md) para todas las opciones disponibles: detección de stack, niveles de autonomía, agentes opcionales, memoria persistente y personalidad.
+
+**Quiero entender la operación continua del plugin.** Lee [operations.md](operations.md) y luego [mcp.md](mcp.md). Ahí está la relación entre continuidad, SonIA, `docs/project/`, memoria, búsqueda y la UI local.
 
 ---
 

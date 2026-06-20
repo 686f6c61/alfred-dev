@@ -87,9 +87,8 @@ class TestPrefetchFinishGuard(unittest.TestCase):
             )
 
             self.assertEqual(code, 2)
-            self.assertEqual(stdout, "")
+            self.assertIn('"decision": "block"', stdout)
             self.assertIn("helper-first", stderr)
-            self.assertIn("No añadas bloques Insight", stderr)
 
     def test_pending_prefetch_blocks_wrapper_until_it_is_consumed(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -113,8 +112,7 @@ class TestPrefetchFinishGuard(unittest.TestCase):
             )
 
             self.assertEqual(code, 2)
-            self.assertEqual(stdout, "")
-            self.assertIn("consume-prefetch", stderr)
+            self.assertIn("consume-prefetch", stdout)
             self.assertIn("prefetch pendiente", stderr)
 
     def test_pending_prefetch_for_quick_does_not_block(self):
@@ -164,8 +162,7 @@ class TestPrefetchFinishGuard(unittest.TestCase):
             )
 
             self.assertEqual(code, 2)
-            self.assertEqual(stdout, "")
-            self.assertIn("consume-prefetch", stderr)
+            self.assertIn("consume-prefetch", stdout)
             self.assertIn("memory-ui", stderr)
 
     def test_resolves_project_dir_from_absolute_file_path(self):
@@ -201,7 +198,7 @@ class TestPrefetchFinishGuard(unittest.TestCase):
             )
 
             self.assertEqual(code, 2)
-            self.assertEqual(stdout, "")
+            self.assertIn('"decision": "block"', stdout)
             self.assertIn("helper-first", stderr)
 
     def test_expired_marker_is_ignored_and_removed(self):

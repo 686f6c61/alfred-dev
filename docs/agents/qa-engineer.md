@@ -17,12 +17,12 @@ El tono del Rompe-cosas es directo y sin concesiones cuando se trata de calidad,
 | Rol | QA Engineer |
 | Modelo | sonnet |
 | Color en terminal | magenta (`red`) |
-| Herramientas | Glob, Grep, Read, Write, Bash, Agent |
+| Herramientas | Glob, Grep, Read, Write, Bash, Task |
 | Tipo de agente | Nucleo (siempre disponible) |
 
 ## Responsabilidades
 
-El trabajo del Rompe-cosas se organiza en cuatro areas, todas centradas en verificar con evidencia que el código cumple los estandares de calidad y los criterios de aceptacion definidos en el PRD.
+El trabajo del Rompe-cosas se organiza en cuatro areas, todas centradas en garantizar que el código cumple con los estandares de calidad y con los criterios de aceptacion definidos en el PRD.
 
 **Lo que hace:**
 

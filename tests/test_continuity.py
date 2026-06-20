@@ -48,19 +48,15 @@ from core.continuity import (
     mark_session_paused,
     needs_codebase_map,
     pause_session,
-    prepare_lucius_review,
     project_has_codebase,
     save_prefetch_result,
     load_prefetch_consumed_marker,
     resume_session,
     render_discovery_summary,
-    render_flow_start_summary,
-    render_lucius_summary,
     render_next_markdown,
     render_quick_setup_summary,
     render_progress_markdown,
     render_status_markdown,
-    start_flow_session,
     start_quick_session,
     suggest_verify_action,
     suggest_next_action,
@@ -246,7 +242,7 @@ class TestContinuitySuggestions(unittest.TestCase):
             suggestion = suggest_next_action(tmpdir)
 
         self.assertEqual(suggestion["command"], "alfred")
-        self.assertEqual(suggestion["source"], "project")
+        self.assertEqual(suggestion["source"], "current")
 
     def test_active_quick_session_suggests_resume(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -343,21 +339,6 @@ class TestContinuitySuggestions(unittest.TestCase):
 
         self.assertEqual(suggestion["command"], "discuss")
         self.assertEqual(suggestion["source"], "current")
-
-    def test_self_referential_current_does_not_drive_next_action(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            os.makedirs(os.path.join(tmpdir, "docs", "project"), exist_ok=True)
-            with open(os.path.join(tmpdir, "package.json"), "w", encoding="utf-8") as fh:
-                json.dump({"name": "demo"}, fh)
-            with open(os.path.join(tmpdir, CODEBASE_MAP_RELATIVE_PATH), "w", encoding="utf-8") as fh:
-                fh.write("# mapa\n")
-            with open(os.path.join(tmpdir, CURRENT_RELATIVE_PATH), "w", encoding="utf-8") as fh:
-                fh.write("# Current\n\n- Siguiente comando recomendado: /alfred\n")
-
-            suggestion = suggest_next_action(tmpdir)
-
-        self.assertEqual(suggestion["command"], "alfred")
-        self.assertEqual(suggestion["source"], "project")
 
 
 class TestContinuityHelpers(unittest.TestCase):
@@ -459,7 +440,7 @@ class TestContinuityHelpers(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn("## Mapeo brownfield completado", result.stdout)
-        self.assertIn("/alfred", result.stdout)
+        self.assertIn("/alfred-dev:alfred", result.stdout)
 
     def test_cli_consume_prefetch_prints_and_clears_recent_payload(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -535,7 +516,7 @@ class TestContinuityHelpers(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertIn("Estado: completado y verificado.", current)
-        self.assertIn("Siguiente comando recomendado: /alfred", current)
+        self.assertIn("Siguiente comando recomendado: /alfred-dev:alfred", current)
         self.assertIn("Verificación/UAT: aprobada.", progress)
         self.assertIn("UAT actual: aprobada.", traceability)
         self.assertIn("Estado de verify: `done`.", traceability)
@@ -657,29 +638,6 @@ class TestContinuityHelpers(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(quick.returncode, 0, msg=quick.stderr)
-            self.assertIn("## Quick preparado", quick.stdout)
-            self.assertIn("/alfred-dev:verify", quick.stdout)
-            self.assertIn("sin bloques Insight", quick.stdout)
-            self.assertFalse(quick.stdout.lstrip().startswith("{"))
-
-            quick_json = subprocess.run(
-                [
-                    sys.executable,
-                    continuity_script,
-                    "quick",
-                    tmpdir,
-                    "--raw",
-                    "ajustar copy login",
-                    "--json",
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertEqual(quick_json.returncode, 0, msg=quick_json.stderr)
-            quick_json_payload = json.loads(quick_json.stdout)
-            self.assertEqual(quick_json_payload["command"], "quick")
-            self.assertEqual(quick_json_payload["next_command"], "/alfred-dev:verify")
 
             next_after_quick = subprocess.run(
                 [sys.executable, continuity_script, "next", tmpdir, "--json"],
@@ -689,166 +647,6 @@ class TestContinuityHelpers(unittest.TestCase):
             )
             self.assertEqual(next_after_quick.returncode, 0, msg=next_after_quick.stderr)
             self.assertEqual(json.loads(next_after_quick.stdout)["command"], "resume")
-
-    def test_start_flow_session_seeds_long_flow_without_completing_phase(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with open(os.path.join(tmpdir, "package.json"), "w", encoding="utf-8") as fh:
-                json.dump({"name": "demo-flow", "scripts": {"test": "node --test"}}, fh)
-
-            result = start_flow_session(
-                tmpdir,
-                command="feature",
-                raw_request="sistema de login con email y password",
-            )
-
-            self.assertEqual(result["command"], "feature")
-            self.assertEqual(result["phase"], "producto")
-            self.assertEqual(result["pending_gate"], "usuario")
-            self.assertEqual(result["headless_marker"], "FEATURE_HEADLESS_START")
-            self.assertTrue(os.path.isfile(os.path.join(tmpdir, STATE_RELATIVE_PATH)))
-            self.assertTrue(os.path.isfile(os.path.join(tmpdir, CURRENT_RELATIVE_PATH)))
-            self.assertTrue(os.path.isfile(os.path.join(tmpdir, PROGRESS_MD_RELATIVE_PATH)))
-            self.assertTrue(os.path.isfile(os.path.join(tmpdir, TRACEABILITY_MD_RELATIVE_PATH)))
-
-            with open(os.path.join(tmpdir, STATE_RELATIVE_PATH), encoding="utf-8") as fh:
-                state = json.load(fh)
-            self.assertEqual(state["comando"], "feature")
-            self.assertEqual(state["fase_actual"], "producto")
-            self.assertEqual(state["fases_completadas"], [])
-            self.assertTrue(state["helper_first"])
-
-            summary = render_flow_start_summary(result)
-            self.assertIn("`FEATURE_HEADLESS_START`", summary)
-            self.assertIn("/alfred-dev:resume", summary)
-            self.assertIn("No he marcado fases como completadas", summary)
-
-    def test_cli_start_flow_outputs_markdown_and_json(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            continuity_script = os.path.join(
-                os.path.dirname(__file__),
-                "..",
-                "core",
-                "continuity.py",
-            )
-
-            markdown = subprocess.run(
-                [
-                    sys.executable,
-                    continuity_script,
-                    "start-flow",
-                    tmpdir,
-                    "--command",
-                    "fix",
-                    "--raw",
-                    "el login falla con password correcta",
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertEqual(markdown.returncode, 0, msg=markdown.stderr)
-            self.assertIn("`FIX_HEADLESS_START`", markdown.stdout)
-            self.assertIn("## Flujo preparado", markdown.stdout)
-
-            json_result = subprocess.run(
-                [
-                    sys.executable,
-                    continuity_script,
-                    "start-flow",
-                    tmpdir,
-                    "--command",
-                    "fix",
-                    "--raw",
-                    "el login falla con password correcta",
-                    "--json",
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertEqual(json_result.returncode, 0, msg=json_result.stderr)
-            payload = json.loads(json_result.stdout)
-            self.assertTrue(payload["already_active"])
-            self.assertEqual(payload["headless_marker"], "FIX_HEADLESS_START")
-
-    def test_prepare_lucius_review_is_headless_safe(self):
-        original_path = os.environ.get("PATH", "")
-        try:
-            os.environ["PATH"] = ""
-            with tempfile.TemporaryDirectory() as tmpdir:
-                result = prepare_lucius_review(
-                    tmpdir,
-                    raw_request="src --scope security",
-                )
-        finally:
-            os.environ["PATH"] = original_path
-
-        self.assertEqual(result["command"], "lucius")
-        self.assertEqual(result["target"], "src")
-        self.assertEqual(result["scope"], "security")
-        self.assertEqual(result["codex_status"], "missing")
-        self.assertEqual(result["headless_marker"], "LUCIUS_HEADLESS_START")
-
-        summary = render_lucius_summary(result)
-        self.assertIn("`LUCIUS_HEADLESS_START`", summary)
-        self.assertIn("Scope: `security`", summary)
-        self.assertIn("No he lanzado Agent", summary)
-        self.assertIn("no he ejecutado `codex exec`", summary)
-        self.assertIn("sign-off de QA, seguridad o arquitectura", summary)
-
-    def test_prepare_lucius_review_rejects_invalid_scope_without_codex(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            result = prepare_lucius_review(
-                tmpdir,
-                raw_request="src --scope bananas",
-            )
-
-        self.assertFalse(result["valid"])
-        self.assertEqual(result["invalid_scope"], "bananas")
-        self.assertEqual(result["codex_status"], "not_checked")
-        self.assertEqual(result["headless_marker"], "LUCIUS_INVALID_SCOPE")
-
-        summary = render_lucius_summary(result)
-        self.assertIn("`LUCIUS_INVALID_SCOPE`", summary)
-        self.assertIn("Scopes válidos", summary)
-        self.assertIn("No lanzo Lucius", summary)
-        self.assertIn("no ejecuto Codex CLI", summary)
-
-    def test_start_flow_audit_reports_docker_menu_when_docker_missing(self):
-        original_path = os.environ.get("PATH", "")
-        try:
-            os.environ["PATH"] = ""
-            with tempfile.TemporaryDirectory() as tmpdir:
-                result = start_flow_session(tmpdir, command="audit")
-        finally:
-            os.environ["PATH"] = original_path
-
-        self.assertEqual(result["command"], "audit")
-        self.assertEqual(result["phase"], "auditoria_paralela")
-        self.assertEqual(result["headless_marker"], "AUDIT_DOCKER_INSTALL_MENU_HEADLESS")
-        self.assertFalse(result["sonarqube_preflight"]["sonarqube_autorizado"])
-        self.assertIn("Instalar/preparar Docker", result["sonarqube_preflight"]["menu_options"][0])
-        summary = render_flow_start_summary(result)
-        self.assertIn("AUDIT_DOCKER_INSTALL_MENU_HEADLESS", summary)
-        self.assertIn("Seguir sin SonarQube", summary)
-
-    def test_start_flow_audit_treats_fake_command_not_found_as_docker_missing(self):
-        original_path = os.environ.get("PATH", "")
-        try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                fake_bin = os.path.join(tmpdir, "bin")
-                os.makedirs(fake_bin, exist_ok=True)
-                docker = os.path.join(fake_bin, "docker")
-                with open(docker, "w", encoding="utf-8") as fh:
-                    fh.write("#!/usr/bin/env bash\necho 'docker: command not found' >&2\nexit 127\n")
-                os.chmod(docker, 0o755)
-                os.environ["PATH"] = fake_bin
-                result = start_flow_session(tmpdir, command="audit")
-        finally:
-            os.environ["PATH"] = original_path
-
-        self.assertEqual(result["sonarqube_preflight"]["status"], "docker_missing")
-        self.assertEqual(result["headless_marker"], "AUDIT_DOCKER_INSTALL_MENU_HEADLESS")
 
     def test_project_has_codebase_detects_source_tree(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -5,7 +5,7 @@ description: |
   seguimiento con kanban en ficheros Markdown, trazabilidad de criterios de aceptación,
   verificación de completitud y detección de desvíos de alcance. Se activa después
   de la fase 1 (producto) para crear el kanban y al final de cada fase para actualizar
-  el estado. También se activa en /alfred-dev:audit para evaluar la salud del proyecto.
+  el estado. También se activa en /alfred audit para evaluar la salud del proyecto.
   Se puede invocar directamente para consultar el estado de las tareas o la
   trazabilidad de cualquier criterio de aceptación.
 
@@ -41,7 +41,7 @@ description: |
   </example>
 tools: Glob,Grep,Read,Write,Edit,Bash
 model: sonnet
-color: cyan
+color: magenta
 ---
 
 # SonIA -- Project Manager del equipo Alfred Dev

@@ -54,30 +54,10 @@ Después de ejecutar el Bash:
 - si el helper ya deja visibles foco, alcance, riesgo, pregunta abierta clave y
   siguiente comando, NO lo reenvuelvas con una segunda entrevista ni con un
   resumen alternativo;
-- si la petición original del usuario expresa duda explícita entre rutas
-  operativas (por ejemplo contiene "no sé si", "no se si", "bug", "feature",
-  "quick", "spike", "parche" o varias rutas candidatas en la misma frase), eso
-  cuenta como ambigüedad persistente aunque el helper recomiende una ruta.
-  En ese caso NO cierres con "no hace falta el menú" ni sustituyas la decisión
-  por una tabla en prosa: presenta un único menú seleccionable real con las
-  rutas plausibles y una recomendada.
 - si el helper indica que hay sesión activa o handoff pendiente, actúa como
   `/alfred-dev:next` o `/alfred-dev:resume` según corresponda;
 - si el helper falla, no está disponible o `Bash` es denegado, NO lo reintentes:
   cae al modo manual inmediatamente.
-
-### Fallback headless para rutas ambiguas
-
-Si estás en `claude -p`, SDK sin callback de input o cualquier modo
-no interactivo donde `AskUserQuestion` no pueda recibir selección en esta misma
-llamada, no esperes indefinidamente. Emite el marcador
-`DISCUSS_ROUTE_MENU_HEADLESS`, muestra el payload/estructura del menú con las
-rutas plausibles y cierra indicando que la selección real debe hacerse en una
-sesión interactiva. No digas que el menú no hace falta.
-Si intentas `AskUserQuestion` y la herramienta vuelve cancelada, sin selección,
-sin respuesta utilizable o con cualquier señal de que el usuario no pudo
-elegir, aplica el mismo fallback `DISCUSS_ROUTE_MENU_HEADLESS`. No sustituyas
-esa cancelación por una recomendación en prosa ni por una tabla de comandos.
 
 Solo en modo manual lee, en este orden:
 

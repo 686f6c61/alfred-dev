@@ -59,8 +59,7 @@ class TestAlfredContextContract(unittest.TestCase):
         self.assertIn("NO reintentes `Bash`", self.command)
 
     def test_avoids_old_command_prefix_and_default_menu(self):
-        self.assertIn("NO uses nombres viejos del plugin sin prefijo `-dev`", self.command)
-        self.assertNotIn("`/alfred feature`", self.command)
+        self.assertIn("NO uses nombres viejos como `/alfred feature`", self.command)
         self.assertIn("NO ofrezcas un menú genérico si el siguiente paso es evidente", self.command)
         self.assertIn("AskUserQuestion", self.command)
         self.assertIn("menú seleccionable real", self.command)

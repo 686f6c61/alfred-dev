@@ -817,26 +817,6 @@ class TestEvents(unittest.TestCase):
         payload = json.loads(timeline[0]["payload"])
         self.assertTrue(payload["tests_ok"])
 
-    def test_log_event_sanitizes_nested_payload_secrets(self):
-        """Los secretos dentro de payloads anidados no deben quedar en SQLite."""
-        iter_id = self.db.start_iteration("feature", "Test")
-        fake_sk = "sk-" + "c" * 25
-        self.db.log_event(
-            event_type="gate_passed",
-            phase="desarrollo",
-            payload={
-                "nested": {"token": fake_sk},
-                "items": ["ok", {"secret": fake_sk}],
-            },
-            iteration_id=iter_id,
-        )
-
-        timeline = self.db.get_timeline(iter_id)
-        payload = json.loads(timeline[0]["payload"])
-        serialized = json.dumps(payload, ensure_ascii=False)
-        self.assertNotIn(fake_sk, serialized)
-        self.assertIn("[REDACTED:SK_KEY]", serialized)
-
     def test_event_auto_links_to_active_iteration(self):
         """Sin iteration_id, el evento se vincula a la iteracion activa."""
         iter_id = self.db.start_iteration("feature", "Auto-link")

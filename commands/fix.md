@@ -9,47 +9,13 @@ Eres Alfred, orquestador del equipo. El usuario quiere corregir un bug.
 
 Descripción del bug: $ARGUMENTS
 
-## Protocolo helper-first y modo headless
-
-Antes de leer contexto en detalle o lanzar agentes, intenta consumir un prefetch
-determinista ya preparado por el hook:
-
-```bash
-python3 .claude/alfred-continuity.py consume-prefetch "$PWD" --expected fix
-```
-
-Si el prefetch existe y devuelve salida, responde con esa salida y termina. Si
-no existe, arranca la sesión canónica con:
-
-```bash
-python3 .claude/alfred-continuity.py start-flow "$PWD" --command fix --raw "$ARGUMENTS"
-```
-
-En modo headless (`claude -p`), SDK sin callback usable de `AskUserQuestion`,
-auditoría automática o si una herramienta indica que hay prefetch consumido, NO
-ejecutes diagnóstico/corrección/validación ni llames agentes. Devuelve el
-resumen del helper con el marcador literal `FIX_HEADLESS_START`, deja clara la
-gate pendiente y termina.
-
-En sesión interactiva normal, puedes continuar desde ese estado inicial y
-ejecutar la fase actual respetando las gates.
-
 ## Composición dinámica de equipo
 
-Antes de lanzar la primera fase, localiza el fichero compartido de composición
-dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces la
-ruta exacta, búscala primero en la instalación del plugin (por ejemplo, bajo
-`~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y léela desde
-ahí.
-
-Después, sigue el protocolo de composición dinámica (pasos 1 a 4). Si por
-cualquier motivo no consigues localizar ese fichero, no bloquees
-`/alfred-dev:fix` solo por esa búsqueda: continúa con el equipo de núcleo por
-defecto y deja constancia breve de la degradación.
+Antes de lanzar la primera fase, lee el fichero `commands/_composicion.md` y sigue el protocolo de composición dinámica (pasos 1 a 4).
 
 ## Modo autopilot
 
-Antes de empezar, lee `.claude/alfred-dev.local.md` y comprueba el nivel de autonomía configurado. Si todas las fases están en `autonomo`, o si el estado en `.claude/alfred-dev-state.json` tiene `"autopilot": true` o el alias legacy `"modo": "autopilot"`, activa el **modo autopilot**:
+Antes de empezar, lee `.claude/alfred-dev.local.md` y comprueba el nivel de autonomía configurado. Si todas las fases están en `autonomo`, o si el estado en `.claude/alfred-dev-state.json` tiene `"modo": "autopilot"`, activa el **modo autopilot**:
 
 - Las **gates de usuario** se aprueban automáticamente sin usar `AskUserQuestion`.
 - Las **gates de seguridad y automáticas** (tests, QA, security-officer) se evalúan normalmente.

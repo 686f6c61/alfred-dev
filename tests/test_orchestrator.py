@@ -270,7 +270,7 @@ class TestSession(unittest.TestCase):
             loaded = load_state(state_path)
 
         self.assertIn("Estado: completado y verificado.", current)
-        self.assertIn("Siguiente comando recomendado: /alfred", current)
+        self.assertIn("Siguiente comando recomendado: /alfred-dev:alfred", current)
         self.assertIn("Verificación/UAT: aprobada.", progress)
         self.assertIn("Artefactos acumulados: 6.", progress)
         self.assertIn("## Fases del flujo", progress)
@@ -976,8 +976,7 @@ class TestRunFlow(unittest.TestCase):
 
     def test_tc15_sin_equipo_sesion(self):
         """TC-15: run_flow sin equipo_sesion crea sesión con equipo_sesion=None."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            session = run_flow("feature", "Nueva funcionalidad", project_dir=tmpdir)
+        session = run_flow("feature", "Nueva funcionalidad")
         self.assertIn("equipo_sesion", session)
         self.assertIsNone(session["equipo_sesion"])
         self.assertIsNone(session["equipo_sesion_error"])
@@ -995,13 +994,7 @@ class TestRunFlow(unittest.TestCase):
         old_stderr = sys.stderr
         sys.stderr = captured
         try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                session = run_flow(
-                    "feature",
-                    "Test",
-                    equipo_sesion={"malo": True},
-                    project_dir=tmpdir,
-                )
+            session = run_flow("feature", "Test", equipo_sesion={"malo": True})
         finally:
             sys.stderr = old_stderr
         self.assertIsNone(session["equipo_sesion"])

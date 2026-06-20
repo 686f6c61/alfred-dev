@@ -666,7 +666,7 @@ class TestDispatchBash(_DBTestCase):
 # ---------------------------------------------------------------------------
 
 class TestDispatchPrompt(_DBTestCase):
-    """Verifica el dispatcher de UserPromptSubmit/UserPromptExpansion."""
+    """Verifica el dispatcher de UserPromptSubmit."""
 
     def setUp(self):
         super().setUp()
@@ -711,33 +711,6 @@ class TestDispatchPrompt(_DBTestCase):
         events = self._get_events("user_prompt")
         payload = self._parse_payload(events[0])
         self.assertEqual(payload["length"], len(text))
-        self.assertEqual(payload["source"], "UserPromptSubmit")
-
-    def test_prompt_expansion_payload_keeps_command_metadata(self):
-        """UserPromptExpansion debe registrar metadata del slash command."""
-        text = "/alfred-dev:quick ajustar CTA"
-        data = {
-            "hook_event_name": "UserPromptExpansion",
-            "expansion_type": "slash_command",
-            "command_name": "alfred-dev:quick",
-            "command_source": "plugin",
-            "prompt": text,
-        }
-
-        _capture._dispatch_prompt(self._db, data)
-
-        events = self._get_events("user_prompt")
-        payload = self._parse_payload(events[-1])
-        self.assertEqual(payload["source"], "UserPromptExpansion")
-        self.assertEqual(payload["expansion_type"], "slash_command")
-        self.assertEqual(payload["command_name"], "alfred-dev:quick")
-        self.assertEqual(payload["command_source"], "plugin")
-
-    def test_dispatcher_table_supports_user_prompt_expansion(self):
-        """El evento moderno de expansion de slash commands usa el dispatcher de prompt."""
-        dispatchers = _capture._build_dispatcher_table()
-
-        self.assertIs(dispatchers["UserPromptExpansion"], _capture._dispatch_prompt)
 
     def test_empty_prompt_creates_no_event(self):
         """Un prompt vacio no crea ningun evento."""
@@ -776,12 +749,12 @@ class TestDispatchPrompt(_DBTestCase):
         self.assertIn("docs/project/codebase-map.md", payload["artifacts"])
 
     def test_prefetches_brownfield_map_for_contextual_alfred_prompt(self):
-        """`/alfred` debe preparar el mapa si el repo ya existe."""
+        """`/alfred-dev:alfred` debe preparar el mapa si el repo ya existe."""
         os.makedirs(os.path.join(self._tmpdir, "src"), exist_ok=True)
         with open(os.path.join(self._tmpdir, "src", "index.js"), "w", encoding="utf-8") as fh:
             fh.write("console.log('hola');\n")
 
-        data = {"prompt": "/alfred añade login y usuarios"}
+        data = {"prompt": "/alfred-dev:alfred añade login y usuarios"}
 
         _capture._dispatch_prompt(self._db, data)
 
@@ -793,7 +766,7 @@ class TestDispatchPrompt(_DBTestCase):
         self.assertEqual(payload["prefetched_command"], "map-codebase")
 
     def test_contextual_alfred_prefetch_skips_map_when_verify_is_pending(self):
-        """`/alfred` no debe adelantar map-codebase si toca verify."""
+        """`/alfred-dev:alfred` no debe adelantar map-codebase si toca verify."""
         os.makedirs(os.path.join(self._tmpdir, ".claude"), exist_ok=True)
         os.makedirs(os.path.join(self._tmpdir, "src"), exist_ok=True)
         with open(os.path.join(self._tmpdir, "src", "index.js"), "w", encoding="utf-8") as fh:
@@ -801,7 +774,7 @@ class TestDispatchPrompt(_DBTestCase):
         session = _complete_session("feature", "Login y usuarios")
         save_state(session, os.path.join(self._tmpdir, STATE_RELATIVE_PATH))
 
-        data = {"prompt": "/alfred añade login y usuarios"}
+        data = {"prompt": "/alfred-dev:alfred añade login y usuarios"}
 
         _capture._dispatch_prompt(self._db, data)
 
@@ -964,40 +937,6 @@ class TestHookScriptRuntime(unittest.TestCase):
         self.assertEqual(len(prompt_events), 1)
         self.assertEqual(prompt_events[0].get("content"), "Prompt runtime real")
 
-    def test_script_logs_user_prompt_expansion_without_pythonpath(self):
-        """El hook real soporta el payload moderno UserPromptExpansion."""
-        payload = {
-            "hook_event_name": "UserPromptExpansion",
-            "expansion_type": "slash_command",
-            "command_name": "alfred-dev:quick",
-            "command_source": "plugin",
-            "prompt": "/alfred-dev:quick ajustar copy",
-        }
-
-        result = subprocess.run(
-            [sys.executable, os.path.join(_plugin_root, "hooks", "activity-capture.py")],
-            input=json.dumps(payload),
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=self._tmpdir,
-            env={"PATH": os.environ.get("PATH", "")},
-            check=False,
-        )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        db = MemoryDB(os.path.join(self._tmpdir, ".claude", "alfred-memory.db"))
-        try:
-            iteration = db.get_active_iteration()
-            events = db.get_timeline(iteration["id"])
-        finally:
-            db.close()
-        prompt_events = [e for e in events if e.get("event_type") == "user_prompt"]
-        self.assertEqual(len(prompt_events), 1)
-        prompt_payload = json.loads(prompt_events[0].get("payload"))
-        self.assertEqual(prompt_payload["source"], "UserPromptExpansion")
-        self.assertEqual(prompt_payload["command_name"], "alfred-dev:quick")
-
     def test_script_prefetches_map_codebase_on_first_prompt(self):
         """El hook debe preparar map-codebase antes del razonamiento principal."""
         payload = {
@@ -1034,7 +973,7 @@ class TestHookScriptRuntime(unittest.TestCase):
         self.assertEqual(len(prefetch_events), 1)
 
     def test_script_prefetches_brownfield_map_for_contextual_alfred(self):
-        """El primer `/alfred` en brownfield debe dejar el mapa listo."""
+        """El primer `/alfred-dev:alfred` en brownfield debe dejar el mapa listo."""
         os.makedirs(os.path.join(self._tmpdir, "src"), exist_ok=True)
         with open(os.path.join(self._tmpdir, "src", "index.js"), "w", encoding="utf-8") as fh:
             fh.write("console.log('hola');\n")
@@ -1045,7 +984,7 @@ class TestHookScriptRuntime(unittest.TestCase):
             "cwd": self._tmpdir,
             "permission_mode": "default",
             "hook_event_name": "UserPromptSubmit",
-            "prompt": "/alfred añade login y usuarios",
+            "prompt": "/alfred-dev:alfred añade login y usuarios",
         }
 
         proc = subprocess.run(

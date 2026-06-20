@@ -3,10 +3,9 @@
 Servidor MCP stdio para la memoria persistente de Alfred Dev.
 
 Implementa el protocolo Model Context Protocol sobre stdin/stdout usando
-exclusivamente la biblioteca estandar de Python (json, sys, logging).
-El transporte stdio moderno de MCP usa JSON-RPC 2.0 con un mensaje JSON por
-linea. El servidor mantiene lectura compatible con el framing historico
-Content-Length para herramientas antiguas.
+exclusivamente la biblioteca estandar de Python (json, sys, struct, logging).
+El formato de transporte es JSON-RPC 2.0 con encabezados Content-Length,
+identico al que usa LSP (Language Server Protocol).
 
 El servidor expone quince herramientas que permiten a los agentes de Alfred
 consultar, registrar y gestionar la base de datos de memoria del proyecto:
@@ -41,7 +40,7 @@ Seguridad:
 
 Uso:
     No esta pensado para ejecutarse manualmente. Claude Code lo gestiona a
-    traves de la configuracion MCP declarada en ``.mcp.json``.
+    traves de la configuracion en ``.claude-plugin/mcp.json``.
 """
 
 import json
@@ -55,73 +54,15 @@ from typing import Any, Dict, List, Optional
 # Configuracion de logging
 # ---------------------------------------------------------------------------
 # Los logs van a stderr para no interferir con el protocolo MCP que viaja
-# por stdout. Por defecto solo emitimos warnings: algunos health-checks de MCP
-# tratan cualquier ruido temprano en stderr como una señal de fallo de conexión.
+# por stdout. Nivel DEBUG para facilitar diagnostico durante desarrollo.
 
 logging.basicConfig(
     stream=sys.stderr,
-    level=getattr(
-        logging,
-        os.environ.get("ALFRED_MEMORY_LOG_LEVEL", "WARNING").upper(),
-        logging.WARNING,
-    ),
+    level=logging.DEBUG,
     format="[alfred-memory] %(asctime)s %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
 _log = logging.getLogger("alfred-memory")
-
-_SEARCH_LIMIT_DEFAULT = 20
-_SEARCH_LIMIT_MAX = 100
-_DECISIONS_LIMIT_DEFAULT = 50
-_DECISIONS_LIMIT_MAX = 200
-_GIT_IMPORT_LIMIT_DEFAULT = 100
-_GIT_IMPORT_LIMIT_MAX = 1000
-_EVENT_TYPE_MAX = 80
-_EVENT_PHASE_MAX = 80
-_EVENT_SUMMARY_MAX = 500
-_EVENT_CONTENT_MAX = 8000
-_EVENT_PAYLOAD_MAX = 8000
-
-
-def _bounded_text(value: Any, maximum: int) -> tuple[Optional[str], bool, int]:
-    """Normaliza texto MCP y recorta entradas demasiado grandes."""
-    if value is None:
-        return None, False, 0
-
-    text = str(value)
-    if len(text) <= maximum:
-        return text, False, len(text)
-
-    suffix = (
-        f"\n\n[contenido recortado por alfred-memory: "
-        f"{len(text)} caracteres originales, maximo {maximum}]"
-    )
-    return text[:maximum].rstrip() + suffix, True, len(text)
-
-
-def _bounded_event_payload(
-    value: Any,
-) -> tuple[Optional[Dict[str, Any]], bool, int]:
-    """Limita payloads de eventos recibidos por MCP sin perder trazabilidad."""
-    if value is None:
-        return None, False, 0
-    if not isinstance(value, dict):
-        raise ValueError("El campo 'payload' debe ser un objeto JSON.")
-
-    serialized = json.dumps(value, ensure_ascii=False, default=str)
-    if len(serialized) <= _EVENT_PAYLOAD_MAX:
-        return value, False, len(serialized)
-
-    return (
-        {
-            "_truncated": True,
-            "preview": serialized[:_EVENT_PAYLOAD_MAX].rstrip(),
-            "original_chars": len(serialized),
-            "max_chars": _EVENT_PAYLOAD_MAX,
-        },
-        True,
-        len(serialized),
-    )
 
 
 def _load_plugin_version() -> str:
@@ -130,35 +71,9 @@ def _load_plugin_version() -> str:
     try:
         with open(plugin_path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
-        return str(data.get("version", "0.6.0"))
+        return str(data.get("version", "0.5.1"))
     except (OSError, json.JSONDecodeError, TypeError, ValueError):
-        return "0.6.0"
-
-
-def _bounded_limit(
-    value: Any,
-    default: int,
-    maximum: int,
-) -> tuple[int, bool, Optional[int]]:
-    """
-    Normaliza limites recibidos por MCP para evitar salidas/cargas enormes.
-
-    Devuelve ``(limit, capped, requested)``. ``requested`` queda a ``None``
-    cuando el cliente no envio un valor interpretable.
-    """
-    if value is None:
-        return default, False, None
-
-    try:
-        requested = int(value)
-    except (TypeError, ValueError):
-        return default, False, None
-
-    if requested < 1:
-        return 1, True, requested
-    if requested > maximum:
-        return maximum, True, requested
-    return requested, False, requested
+        return "0.5.1"
 
 # ---------------------------------------------------------------------------
 # Importacion de MemoryDB
@@ -197,13 +112,8 @@ _TOOLS: List[Dict[str, Any]] = [
                 },
                 "limit": {
                     "type": "integer",
-                    "description": (
-                        "Numero maximo de resultados "
-                        f"(por defecto {_SEARCH_LIMIT_DEFAULT}, maximo {_SEARCH_LIMIT_MAX})."
-                    ),
-                    "default": _SEARCH_LIMIT_DEFAULT,
-                    "minimum": 1,
-                    "maximum": _SEARCH_LIMIT_MAX,
+                    "description": "Numero maximo de resultados (por defecto 20).",
+                    "default": 20,
                 },
                 "iteration_id": {
                     "type": "integer",
@@ -428,7 +338,6 @@ _TOOLS: List[Dict[str, Any]] = [
             "properties": {
                 "event_type": {
                     "type": "string",
-                    "maxLength": _EVENT_TYPE_MAX,
                     "description": (
                         "Tipo de evento (ej. 'gate_approved', 'agent_executed', "
                         "'phase_completed', 'custom')."
@@ -436,27 +345,21 @@ _TOOLS: List[Dict[str, Any]] = [
                 },
                 "phase": {
                     "type": "string",
-                    "maxLength": _EVENT_PHASE_MAX,
                     "description": "Fase del flujo en la que ocurrio el evento.",
                 },
                 "payload": {
                     "type": "object",
-                    "description": (
-                        "Datos JSON asociados al evento. Si serializados superan "
-                        f"{_EVENT_PAYLOAD_MAX} caracteres, se guarda un preview."
-                    ),
+                    "description": "Datos arbitrarios asociados al evento.",
                 },
                 "summary": {
                     "type": "string",
-                    "maxLength": _EVENT_SUMMARY_MAX,
-                    "description": "Resumen breve del evento para consultas rapidas.",
+                    "description": "Resumen breve del evento para consultas rápidas.",
                 },
                 "content": {
                     "type": "string",
-                    "maxLength": _EVENT_CONTENT_MAX,
                     "description": (
                         "Contenido completo indexable. Si se omite, se usa el payload "
-                        "serializado como fallback. Las entradas enormes se recortan."
+                        "serializado como fallback."
                     ),
                 },
                 "iteration_id": {
@@ -485,13 +388,8 @@ _TOOLS: List[Dict[str, Any]] = [
                 },
                 "limit": {
                     "type": "integer",
-                    "description": (
-                        "Numero maximo de decisiones "
-                        f"(por defecto {_DECISIONS_LIMIT_DEFAULT}, maximo {_DECISIONS_LIMIT_MAX})."
-                    ),
-                    "default": _DECISIONS_LIMIT_DEFAULT,
-                    "minimum": 1,
-                    "maximum": _DECISIONS_LIMIT_MAX,
+                    "description": "Numero maximo de decisiones (por defecto 50).",
+                    "default": 50,
                 },
                 "tags": {
                     "type": "array",
@@ -642,13 +540,8 @@ _TOOLS: List[Dict[str, Any]] = [
                 },
                 "limit": {
                     "type": "integer",
-                    "description": (
-                        "Numero maximo de registros a importar (para git; "
-                        f"por defecto {_GIT_IMPORT_LIMIT_DEFAULT}, maximo {_GIT_IMPORT_LIMIT_MAX})."
-                    ),
-                    "default": _GIT_IMPORT_LIMIT_DEFAULT,
-                    "minimum": 1,
-                    "maximum": _GIT_IMPORT_LIMIT_MAX,
+                    "description": "Numero maximo de registros a importar (para git).",
+                    "default": 100,
                 },
             },
             "required": ["source"],
@@ -664,17 +557,12 @@ _TOOL_NAMES = {t["name"] for t in _TOOLS}
 # Transporte JSON-RPC sobre stdio
 # ---------------------------------------------------------------------------
 
-_TRANSPORT_MODE = "jsonl"
-
 
 def _read_message() -> Optional[Dict[str, Any]]:
     """
-    Lee un mensaje JSON-RPC de stdin.
+    Lee un mensaje JSON-RPC de stdin con encabezado Content-Length.
 
-    MCP stdio actual envia un objeto JSON por linea:
-        {"jsonrpc":"2.0","id":1,"method":"initialize"}\\n
-
-    Para compatibilidad tambien se acepta el framing historico tipo LSP:
+    El formato es identico al de LSP:
         Content-Length: <N>\\r\\n
         \\r\\n
         <N bytes de JSON>
@@ -683,38 +571,30 @@ def _read_message() -> Optional[Dict[str, Any]]:
         Diccionario con el mensaje parseado, o None si stdin se cierra.
 
     Raises:
-        ValueError: si el mensaje no tiene un formato esperado.
+        ValueError: si el encabezado no tiene el formato esperado.
     """
-    global _TRANSPORT_MODE
+    # Leer encabezados hasta encontrar la linea vacia
+    content_length: Optional[int] = None
 
     while True:
-        first_line = sys.stdin.buffer.readline()
+        line = sys.stdin.buffer.readline()
 
         # Si stdin se cierra, terminar
-        if not first_line:
-            return None
-
-        if first_line.strip():
-            break
-
-    # JSONL moderno: un mensaje JSON-RPC completo por linea.
-    if first_line.lstrip().startswith(b"{"):
-        _TRANSPORT_MODE = "jsonl"
-        return json.loads(first_line.decode("utf-8"))
-
-    # Framing heredado: bloque de cabeceras seguido del cuerpo exacto.
-    content_length: Optional[int] = None
-    header_lines = [first_line]
-
-    while True:
-        line = header_lines.pop(0) if header_lines else sys.stdin.buffer.readline()
         if not line:
             return None
 
+        # Decodificar la linea como ASCII (los encabezados son ASCII puro)
         line_str = line.decode("ascii").strip()
-        if line_str == "":
-            break
 
+        # Linea vacia marca el fin de los encabezados
+        if line_str == "":
+            if content_length is not None:
+                break
+            # Si aun no tenemos Content-Length, seguir leyendo
+            # (puede haber lineas vacias espurias al inicio)
+            continue
+
+        # Parsear encabezado Content-Length
         if line_str.lower().startswith("content-length:"):
             try:
                 content_length = int(line_str.split(":", 1)[1].strip())
@@ -722,12 +602,7 @@ def _read_message() -> Optional[Dict[str, Any]]:
                 raise ValueError(
                     f"Encabezado Content-Length malformado: {line_str!r}"
                 ) from exc
-
         # Ignorar otros encabezados (ej. Content-Type)
-
-    if content_length is None:
-        preview = first_line.decode("utf-8", errors="replace").strip()
-        raise ValueError(f"Mensaje MCP malformado: {preview!r}")
 
     # Leer el cuerpo exacto
     body = sys.stdin.buffer.read(content_length)
@@ -739,27 +614,19 @@ def _read_message() -> Optional[Dict[str, Any]]:
         )
         return None
 
-    _TRANSPORT_MODE = "content-length"
     return json.loads(body.decode("utf-8"))
 
 
 def _write_message(msg: Dict[str, Any]) -> None:
     """
-    Escribe un mensaje JSON-RPC a stdout.
-
-    Por defecto usa JSONL, que es el transporte stdio MCP actual. Si el
-    cliente envio el mensaje con framing Content-Length, responde igual para
-    conservar compatibilidad con probes antiguos.
+    Escribe un mensaje JSON-RPC a stdout con encabezado Content-Length.
 
     Args:
         msg: diccionario con el mensaje JSON-RPC a enviar.
     """
     body = json.dumps(msg, ensure_ascii=False).encode("utf-8")
-    if _TRANSPORT_MODE == "content-length":
-        header = f"Content-Length: {len(body)}\r\n\r\n".encode("ascii")
-        sys.stdout.buffer.write(header + body)
-    else:
-        sys.stdout.buffer.write(body + b"\n")
+    header = f"Content-Length: {len(body)}\r\n\r\n".encode("ascii")
+    sys.stdout.buffer.write(header + body)
     sys.stdout.buffer.flush()
 
 
@@ -827,8 +694,8 @@ class MemoryMCPServer:
 
     Gestiona el ciclo de vida de la conexion con la base de datos SQLite
     y despacha los mensajes JSON-RPC recibidos por stdin a los handlers
-    correspondientes. Las respuestas se escriben por stdout en JSONL MCP
-    moderno o, si el cliente lo usa, en framing Content-Length heredado.
+    correspondientes. Las respuestas se escriben por stdout en el mismo
+    formato Content-Length + JSON-RPC.
 
     El servidor soporta cuatro metodos del protocolo MCP:
         - ``initialize``: negociacion de capacidades.
@@ -901,46 +768,10 @@ class MemoryMCPServer:
 
         return self._db
 
-    def _resolve_project_path(self, path: Optional[str], default: str) -> str:
-        """
-        Resuelve rutas MCP dentro del proyecto actual y bloquea escapes.
-
-        Las tools de memoria trabajan con artefactos del proyecto. Aceptamos
-        rutas relativas normales y rutas absolutas que apunten al proyecto,
-        pero rechazamos ``..``/symlinks que salgan de ``self._project_dir``.
-        """
-        raw = path if isinstance(path, str) and path.strip() else default
-        candidate = raw if os.path.isabs(raw) else os.path.join(self._project_dir, raw)
-        candidate_abs = os.path.abspath(candidate)
-        candidate_real = os.path.realpath(candidate_abs)
-        project_root = os.path.realpath(self._project_dir)
-
-        probe = candidate_abs if os.path.exists(candidate_abs) else os.path.dirname(candidate_abs)
-        while probe and not os.path.exists(probe):
-            parent = os.path.dirname(probe)
-            if parent == probe:
-                break
-            probe = parent
-
-        targets = [candidate_real]
-        if probe and os.path.exists(probe):
-            targets.append(os.path.realpath(probe))
-
-        for target in targets:
-            try:
-                if os.path.commonpath([project_root, target]) != project_root:
-                    raise ValueError
-            except ValueError as exc:
-                raise ValueError(
-                    "La ruta debe estar dentro del proyecto actual."
-                ) from exc
-
-        return candidate_real
-
     # --- Handlers de protocolo MCP -----------------------------------------
 
     def _handle_initialize(
-        self, request_id: Any, params: Dict[str, Any]
+        self, request_id: Any, _params: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Responde al metodo ``initialize`` con la informacion del servidor.
@@ -950,9 +781,8 @@ class MemoryMCPServer:
         """
         self._initialized = True
         _log.info("Inicializacion solicitada por el cliente")
-        protocol_version = str(params.get("protocolVersion") or "2025-06-18")
         return _make_response(request_id, {
-            "protocolVersion": protocol_version,
+            "protocolVersion": "2024-11-05",
             "serverInfo": {
                 "name": "alfred-memory",
                 "version": _load_plugin_version(),
@@ -1027,10 +857,7 @@ class MemoryMCPServer:
             )
 
         try:
-            # _TOOL_HANDLERS guarda funciones de clase no enlazadas para que
-            # el mapa sea estable y verificable. Al despachar desde una
-            # instancia hay que pasar self explicitamente.
-            result = handler(self, db, arguments)
+            result = handler(db, arguments)
             text_content = json.dumps(result, ensure_ascii=False, indent=2)
             # Si el handler devuelve {"error": ...}, marcamos isError para
             # que el consumidor MCP distinga errores de validacion de
@@ -1074,11 +901,7 @@ class MemoryMCPServer:
             Diccionario con la lista de resultados y metadatos de la busqueda.
         """
         query: str = args.get("query", "")
-        limit, limit_capped, requested_limit = _bounded_limit(
-            args.get("limit"),
-            _SEARCH_LIMIT_DEFAULT,
-            _SEARCH_LIMIT_MAX,
-        )
+        limit: int = args.get("limit", 20)
         iteration_id: Optional[int] = args.get("iteration_id")
         since: Optional[str] = args.get("since")
         until: Optional[str] = args.get("until")
@@ -1097,19 +920,12 @@ class MemoryMCPServer:
             tags=tags,
             status=status,
         )
-        payload = {
+        return {
             "results": results,
             "total": len(results),
             "query": query,
             "fts_enabled": db.fts_enabled,
         }
-        if limit_capped:
-            payload.update({
-                "limit_capped": True,
-                "requested_limit": requested_limit,
-                "applied_limit": limit,
-            })
-        return payload
 
     def _call_memory_log_decision(
         self, db: MemoryDB, args: Dict[str, Any]
@@ -1429,29 +1245,9 @@ class MemoryMCPServer:
         Returns:
             Diccionario con el ID del evento registrado.
         """
-        event_type_value = args.get("event_type")
-        if not isinstance(event_type_value, str) or not event_type_value.strip():
+        event_type: str = args.get("event_type", "")
+        if not event_type:
             return {"error": "El campo 'event_type' es obligatorio."}
-        event_type = event_type_value.strip()
-        if len(event_type) > _EVENT_TYPE_MAX:
-            return {
-                "error": (
-                    f"El campo 'event_type' no puede superar "
-                    f"{_EVENT_TYPE_MAX} caracteres."
-                ),
-            }
-
-        phase_value = args.get("phase")
-        if phase_value is not None and not isinstance(phase_value, str):
-            return {"error": "El campo 'phase' debe ser texto si se proporciona."}
-        phase = phase_value.strip() if isinstance(phase_value, str) else None
-        if phase and len(phase) > _EVENT_PHASE_MAX:
-            return {
-                "error": (
-                    f"El campo 'phase' no puede superar "
-                    f"{_EVENT_PHASE_MAX} caracteres."
-                ),
-            }
 
         iteration_id: Optional[int] = args.get("iteration_id")
         if iteration_id is None:
@@ -1465,55 +1261,17 @@ class MemoryMCPServer:
                 }
             iteration_id = active["id"]
 
-        try:
-            payload, payload_truncated, payload_chars = _bounded_event_payload(
-                args.get("payload")
-            )
-        except ValueError as exc:
-            return {"error": str(exc)}
-
-        summary, summary_truncated, summary_chars = _bounded_text(
-            args.get("summary"),
-            _EVENT_SUMMARY_MAX,
-        )
-        content, content_truncated, content_chars = _bounded_text(
-            args.get("content"),
-            _EVENT_CONTENT_MAX,
-        )
-
-        if content is None and payload is not None:
+        content = args.get("content")
+        if content is None and args.get("payload") is not None:
             # La tool pública promete trazabilidad útil; si no se aporta
             # contenido indexable, usamos el payload serializado como fallback.
-            content, content_truncated, content_chars = _bounded_text(
-                json.dumps(payload, ensure_ascii=False, default=str),
-                _EVENT_CONTENT_MAX,
-            )
-
-        truncation: Dict[str, Any] = {}
-        if payload_truncated:
-            truncation["payload"] = {
-                "original_chars": payload_chars,
-                "max_chars": _EVENT_PAYLOAD_MAX,
-            }
-        if summary_truncated:
-            truncation["summary"] = {
-                "original_chars": summary_chars,
-                "max_chars": _EVENT_SUMMARY_MAX,
-            }
-        if content_truncated:
-            truncation["content"] = {
-                "original_chars": content_chars,
-                "max_chars": _EVENT_CONTENT_MAX,
-            }
-        if truncation:
-            payload = dict(payload or {})
-            payload["_alfred_mcp_truncation"] = truncation
+            content = json.dumps(args.get("payload"), ensure_ascii=False)
 
         event_id = db.log_event(
             event_type=event_type,
-            phase=phase,
-            payload=payload,
-            summary=summary,
+            phase=args.get("phase"),
+            payload=args.get("payload"),
+            summary=args.get("summary"),
             content=content,
             iteration_id=iteration_id,
         )
@@ -1521,9 +1279,6 @@ class MemoryMCPServer:
         return {
             "event_id": event_id,
             "iteration_id": iteration_id,
-            "payload_truncated": payload_truncated,
-            "summary_truncated": summary_truncated,
-            "content_truncated": content_truncated,
             "message": f"Evento '{event_type}' registrado con ID {event_id}.",
         }
 
@@ -1544,11 +1299,7 @@ class MemoryMCPServer:
             Diccionario con la lista de decisiones y metadatos.
         """
         iteration_id: Optional[int] = args.get("iteration_id")
-        limit, limit_capped, requested_limit = _bounded_limit(
-            args.get("limit"),
-            _DECISIONS_LIMIT_DEFAULT,
-            _DECISIONS_LIMIT_MAX,
-        )
+        limit: int = args.get("limit", 50)
         tags: Optional[List[str]] = args.get("tags")
         status: Optional[str] = args.get("status")
 
@@ -1559,18 +1310,11 @@ class MemoryMCPServer:
             status=status,
         )
 
-        payload = {
+        return {
             "decisions": decisions,
             "total": len(decisions),
             "iteration_id": iteration_id,
         }
-        if limit_capped:
-            payload.update({
-                "limit_capped": True,
-                "requested_limit": requested_limit,
-                "applied_limit": limit,
-            })
-        return payload
 
     def _call_memory_purge(
         self, db: MemoryDB, args: Dict[str, Any]
@@ -1728,7 +1472,7 @@ class MemoryMCPServer:
             y el formato.
         """
         fmt: str = args.get("format", "")
-        path: Optional[str] = args.get("path")
+        path: str = args.get("path", "DECISIONS.md")
         iteration_id: Optional[int] = args.get("iteration_id")
 
         if fmt != "markdown":
@@ -1739,16 +1483,11 @@ class MemoryMCPServer:
                 ),
             }
 
-        try:
-            export_path = self._resolve_project_path(path, "DECISIONS.md")
-        except ValueError as exc:
-            return {"error": str(exc)}
-
-        count = db.export_decisions_markdown(export_path, iteration_id)
+        count = db.export_decisions_markdown(path, iteration_id)
 
         return {
             "exported": count,
-            "path": export_path,
+            "path": path,
             "format": fmt,
         }
 
@@ -1773,23 +1512,13 @@ class MemoryMCPServer:
         """
         source: str = args.get("source", "")
         path: Optional[str] = args.get("path")
-        limit, limit_capped, requested_limit = _bounded_limit(
-            args.get("limit"),
-            _GIT_IMPORT_LIMIT_DEFAULT,
-            _GIT_IMPORT_LIMIT_MAX,
-        )
+        limit: int = args.get("limit", 100)
 
         if source == "git":
-            try:
-                repo_path = self._resolve_project_path(path, ".")
-            except ValueError as exc:
-                return {"error": str(exc)}
+            repo_path = path or os.getcwd()
             count = db.import_git_history(repo_path, limit)
         elif source == "adr":
-            try:
-                adr_path = self._resolve_project_path(path, "docs/adr")
-            except ValueError as exc:
-                return {"error": str(exc)}
+            adr_path = path or "docs/adr"
             count = db.import_adrs(adr_path)
         else:
             return {
@@ -1799,17 +1528,10 @@ class MemoryMCPServer:
                 ),
             }
 
-        payload = {
+        return {
             "imported": count,
             "source": source,
         }
-        if source == "git" and limit_capped:
-            payload.update({
-                "limit_capped": True,
-                "requested_limit": requested_limit,
-                "applied_limit": limit,
-            })
-        return payload
 
     # --- Diccionario de handlers (inicializacion) -------------------------
     # Se define aqui, despues de todos los metodos _call_*, para que las

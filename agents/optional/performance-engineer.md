@@ -1,5 +1,6 @@
 ---
 name: performance-engineer
+color: orange
 description: |
   Usar para profiling, optimización de rendimiento, benchmarks, análisis de
   cuellos de botella, uso de memoria y tamaño de bundles. Se activa en
@@ -36,7 +37,7 @@ description: |
   con herramientas de profiling y propone la corrección.
   </commentary>
   </example>
-tools: Glob,Grep,Read,Write,Edit,Bash,Agent
+tools: Glob,Grep,Read,Write,Edit,Bash,Task
 model: sonnet
 color: orange
 ---

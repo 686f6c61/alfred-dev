@@ -9,7 +9,7 @@ Cuando el desarrollador quiere personalizar el comportamiento --ajustar el nivel
 
 Antes de que el desarrollador configure nada, `config_loader.py` ejecuta un análisis del directorio del proyecto buscando ficheros indicadores. La razon de esta detección automática es doble: por un lado, evita que el usuario tenga que declarar manualmente información que ya esta implícita en su proyecto; por otro, permite que los agentes ajusten sus recomendaciones al stack real (un agente de QA no sugiere Vitest en un proyecto Python, ni pytest en uno Node).
 
-El análisis funciona por prioridad. Primero se comprueba el runtime y lenguaje a traves de ficheros raiz, y despues se profundiza leyendo manifiestos de dependencias (`package.json`, `pyproject.toml`, `requirements.txt`, `pom.xml`, `build.gradle`, `composer.json`, `.csproj` y `Package.swift`) para identificar framework, ORM, test runner y bundler cuando el ecosistema lo permite.
+El análisis funciona por prioridad. Primero se comprueba el runtime y lenguaje a traves de ficheros raiz, y despues se profundiza leyendo manifiestos de dependencias (package.json, pyproject.toml, requirements.txt) para identificar framework, ORM, test runner y bundler.
 
 ### Ficheros indicadores de runtime y lenguaje
 
@@ -25,12 +25,6 @@ El orden de evaluación determina la prioridad. Si un proyecto tiene simultaneam
 | `go.mod`             | go                | go                         |
 | `Gemfile`            | ruby              | ruby                       |
 | `mix.exs`            | elixir            | elixir                     |
-| `pom.xml`            | jvm               | java                       |
-| `build.gradle`       | jvm               | java                       |
-| `build.gradle.kts`   | jvm               | kotlin                     |
-| `composer.json`      | php               | php                        |
-| `*.csproj` / `*.sln` | dotnet            | csharp                    |
-| `Package.swift`      | swift             | swift                      |
 
 ### Frameworks detectados
 
@@ -70,35 +64,6 @@ Para proyectos Node, el parser lee `dependencies` y `devDependencies` de `packag
 | tornado             | `tornado`       |
 | aiohttp             | `aiohttp`       |
 
-**Java / Kotlin:**
-
-| Framework detectado | Marcador buscado |
-|---------------------|------------------|
-| spring-boot         | `spring-boot` o `org.springframework.boot` |
-| quarkus             | `quarkus` o `io.quarkus` |
-| micronaut           | `micronaut` o `io.micronaut` |
-
-**PHP:**
-
-| Framework detectado | Paquete buscado |
-|---------------------|-----------------|
-| laravel             | `laravel/framework` |
-| symfony             | `symfony/framework-bundle` |
-| slim                | `slim/slim` |
-
-**C# / .NET:**
-
-| Framework detectado | Marcador buscado |
-|---------------------|------------------|
-| aspnet              | `Microsoft.NET.Sdk.Web` |
-| blazor              | `Microsoft.AspNetCore.Components.WebAssembly` o `blazor` |
-
-**Swift:**
-
-| Framework detectado | Marcador buscado |
-|---------------------|------------------|
-| vapor               | `vapor` en `Package.swift` |
-
 ### ORMs detectados
 
 **Node:**
@@ -124,13 +89,6 @@ Para proyectos Node, el parser lee `dependencies` y `devDependencies` de `packag
 | peewee        | `peewee`        |
 | pony          | `pony`          |
 
-**PHP / .NET:**
-
-| ORM detectado | Paquete o marcador buscado |
-|---------------|----------------------------|
-| doctrine      | `doctrine/orm`             |
-| entity-framework | `Microsoft.EntityFrameworkCore` |
-
 ### Test runners detectados
 
 **Node:**
@@ -153,19 +111,6 @@ Para proyectos Node, el parser lee `dependencies` y `devDependencies` de `packag
 | unittest    | `unittest`      |
 | nose        | `nose`          |
 
-**Otros ecosistemas:**
-
-| Test runner | Marcador buscado |
-|-------------|------------------|
-| junit       | `junit` en Maven/Gradle |
-| kotest      | `kotest` en Maven/Gradle |
-| phpunit     | `phpunit/phpunit` en Composer |
-| pest        | `pestphp/pest` en Composer |
-| xunit       | `xunit` en `.csproj` |
-| nunit       | `nunit` en `.csproj` |
-| mstest      | `mstest` en `.csproj` |
-| swift-test  | `.testTarget` o `swift-testing` en `Package.swift` |
-
 ### Bundlers detectados (solo Node)
 
 | Bundler   | Paquete buscado |
@@ -187,10 +132,6 @@ La configuración de Alfred Dev vive en `.claude/alfred-dev.local.md`, dentro de
 La razon de este formato hibrido es practica: YAML cubre la configuración tipada (booleanos, números, listas), mientras que el cuerpo Markdown permite al desarrollador añadir instrucciones en lenguaje natural que Alfred inyecta en su contexto. El fichero es editable a mano, pero la forma recomendada de gestionarlo es a traves del comando `/alfred-dev:config`, que guia al usuario por cada sección de forma interactiva. El menú principal de secciones y sus descripciones ya salen de `build_config_section_menu()` / `build_config_section_summaries()`, la confirmación de cambios puede apoyarse en `build_config_section_change_preview()`, y la persistencia final en `update_config_section()` / `update_project_config_section()`, así que la UX de `config` no depende de reescribir a mano el estado actual, el diff esperado ni el guardado final en cada prompt.
 
 La fusion con los valores por defecto es recursiva: el desarrollador solo necesita definir las claves que quiere cambiar. El resto se hereda automáticamente del `DEFAULT_CONFIG` del plugin. El runtime acepta alias legacy como `autonomía`, pero la escritura canónica del plugin es `autonomia`.
-
-El menú principal de `/alfred-dev:config` expone estas 7 secciones canónicas:
-Autonomía por fase, Proyecto, Agentes opcionales, Memoria persistente,
-Compliance, Integraciones y Personalidad.
 
 ### Sección `autonomia`
 
@@ -403,7 +344,7 @@ Para entender como la autonomía interactua con cada fase, conviene conocer los 
 
 | Tipo de gate             | Condiciones para pasar                                                    |
 |--------------------------|---------------------------------------------------------------------------|
-| `libre`                  | Requiere resultado favorable y evidencia/checklist; no pide aprobacion humana. |
+| `libre`                  | Se supera siempre que el resultado sea favorable.                          |
 | `usuario`                | Requiere aprobacion explícita del desarrollador.                           |
 | `automático`             | Requiere que los tests pasen y el resultado sea favorable.                 |
 | `usuario+seguridad`      | Requiere aprobacion del desarrollador y auditoría de seguridad positiva.   |
@@ -510,7 +451,7 @@ Ejemplos de razonamiento semántico:
 
 ### Capa de presentacion: todos los agentes visibles
 
-Los comandos presentan al usuario **todos** los agentes opcionales mediante `AskUserQuestion` con 3 menús navegables por grupo, no con una llamada gigante difícil de usar. Cada menú se construye como payload actual de Claude Code (`questions[]` con `multiSelect: false`) y conserva `question`/`header`/`options` en raíz solo como compatibilidad interna de lectura. Cada grupo se recorre por separado y, si el usuario quiere activar más de un agente del mismo grupo, Alfred vuelve a mostrar ese mismo menú para elegir **uno por interacción** hasta que el usuario indica `Seguir sin activar más` o `Listo con este grupo`. Los que Alfred considera relevantes llevan «(Recomendado)» al final del label con una razon contextual en la descripcion. Los demas aparecen con una descripcion breve de su especialidad, para que el usuario pueda activar cualquiera que Alfred no haya detectado.
+Los comandos presentan al usuario **todos** los agentes opcionales mediante `AskUserQuestion` con 3 menús navegables por grupo, no con una llamada gigante difícil de usar. Cada grupo se recorre por separado y, si el usuario quiere activar más de un agente del mismo grupo, Alfred vuelve a mostrar ese mismo menú para elegir **uno por interacción** hasta que el usuario indica `Seguir sin activar más` o `Listo con este grupo`. Los que Alfred considera relevantes llevan «(Recomendado)» al final del label con una razon contextual en la descripcion. Los demas aparecen con una descripcion breve de su especialidad, para que el usuario pueda activar cualquiera que Alfred no haya detectado.
 
 Desde v0.6, esa UX ya no depende solo del prompt: `core/optional_agents.py`
 actúa como fuente canónica del menú con `build_optional_agent_group_menu()` y

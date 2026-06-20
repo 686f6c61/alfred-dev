@@ -559,6 +559,13 @@ def main():
             f"La guardia de comandos peligrosos bloquea por precaucion.",
             file=sys.stderr,
         )
+        json.dump(
+            {
+                "decision": "block",
+                "reason": f"No se pudo analizar el comando: {e}",
+            },
+            sys.stdout,
+        )
         sys.exit(2)
 
     tool_input = data.get("tool_input", {})
@@ -589,6 +596,14 @@ def main():
             f"  Si realmente necesitas ejecutar este comando, pidele\n"
             f"  al usuario que lo ejecute manualmente en su terminal.\n",
             file=sys.stderr,
+        )
+        # Emitir JSON de bloqueo por stdout para Claude Code
+        json.dump(
+            {
+                "decision": "block",
+                "reason": f"Comando potencialmente destructivo: {description}",
+            },
+            sys.stdout,
         )
         sys.exit(2)
 

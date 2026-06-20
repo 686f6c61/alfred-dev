@@ -27,12 +27,6 @@ Ese helper debe:
 - armar un bypass transitorio del stop hook para que el comando pueda cerrar limpio en CLI;
 - dejar la sesión lista para `pause`, `resume`, `next` y `verify`.
 
-Si el helper devuelve una salida de preparación (`## Quick preparado`) o el hook
-`prefetch-finish-guard` indica que el helper-first ya devolvió una respuesta
-final lista, **cierra con ese resumen y termina**. No añadas bloques
-`Insight`, explicación pedagógica, composición dinámica ni lectura adicional:
-en `claude -p` el cierre debe ser breve, operativo y de menos de 20 líneas.
-
 2. Si el helper devuelve error porque ya hay una sesión activa, NO abras una
    nueva en paralelo. Actúa como `/alfred-dev:next`.
 
@@ -48,14 +42,9 @@ en `claude -p` el cierre debe ser breve, operativo y de menos de 20 líneas.
    refresca `docs/project/codebase-map.md` y `docs/project/current.md` antes de
    tocar código. Hazlo dentro de este mismo comando, sin abrir una entrevista.
 
-5. Antes de ejecutar la fase 1, localiza el fichero compartido de composición
-   dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces
-   la ruta exacta, búscala primero en la instalación del plugin (por ejemplo,
-   bajo `~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y
-   léela desde ahí. Después sigue el protocolo de composición dinámica. Si no
-   consigues localizar ese fichero, continúa con el equipo de núcleo por
-   defecto, deja constancia breve de la degradación y usa solo los agentes
-   opcionales que de verdad aporten a este cambio pequeño.
+5. Antes de ejecutar la fase 1, lee `commands/_composicion.md` y sigue el
+   protocolo de composición dinámica. Usa solo los agentes opcionales que de
+   verdad aporten a este cambio pequeño.
 
 6. Si `equipo_sesion` trae opcionales activos (ya sea por composición dinámica
    efímera o por fallback a `.claude/alfred-dev.local.md`), consúltalo siempre
@@ -121,8 +110,7 @@ En ese caso:
 ## Cierre canónico del comando
 
 - Si el helper ya sembró estado y el flujo quedó activo, no cierres con una
-  segunda planificación libre. Devuelve el resumen del helper de forma compacta,
-  sin bloques `Insight` ni narrativa adicional.
+  segunda planificación libre.
 - Apóyate en `.claude/alfred-dev-state.json` y en
   `docs/project/current.md` / `docs/project/progress.md` /
   `docs/project/traceability.md` para dejar visible:

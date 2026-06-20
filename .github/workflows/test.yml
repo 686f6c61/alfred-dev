@@ -1,63 +1,25 @@
-# Pipeline de tests automaticos para Alfred Dev.
+# Pipeline de tests automaticos para la web Astro de Alfred Dev.
 #
-# Se ejecuta en cada push y pull request sobre main y Alfred-Astro. Cubre
-# Python 3.10-3.13 en Ubuntu (entorno mas cercano a produccion). No necesita
-# dependencias externas porque el proyecto usa exclusivamente la stdlib de
-# Python y, en Alfred-Astro, valida tambien la landing Astro.
+# Se ejecuta en cada push y pull request sobre Alfred-Astro. main es la rama
+# del plugin y mantiene su propio workflow Python; esta rama valida solo la
+# landing Astro.
 #
 # Seguridad: no se usa ningun input dinamico de usuario (issue titles,
 # PR bodies, commit messages) en bloques run:. Todos los comandos son
 # literales estaticos.
 
-name: Tests
+name: Web
 
 on:
   push:
-    branches: [main, Alfred-Astro]
+    branches: [Alfred-Astro]
   pull_request:
-    branches: [main, Alfred-Astro]
+    branches: [Alfred-Astro]
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Configurar Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Instalar dependencias de test
-        run: python3 -m pip install --quiet pytest
-
-      - name: Ejecutar tests
-        run: python3 -m pytest tests/ -v --tb=short
-
-      - name: Ejecutar tests con cobertura (solo 3.12)
-        if: matrix.python-version == '3.12'
-        run: |
-          python3 -m pip install --quiet coverage
-          coverage run -m pytest tests/ -v --tb=short
-          coverage report --fail-under=60
-          coverage html -d coverage-html
-
-      - name: Subir informe de cobertura
-        if: matrix.python-version == '3.12'
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage-html/
-          retention-days: 14
-
   site:
     runs-on: ubuntu-latest
 

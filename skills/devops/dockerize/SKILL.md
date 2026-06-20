@@ -88,7 +88,7 @@ Un buen Dockerfile no es solo "que funcione", sino que sea seguro, rápido de co
 
 ## Que NO hacer
 
-- No usar `latest` como tag de imagen base. Siempre fijar la versión concreta (por ejemplo, `node:20.11-alpine`) para mejorar la reproducibilidad de los builds.
+- No usar `latest` como tag de imagen base. Siempre fijar la versión concreta (por ejemplo, `node:20.11-alpine`) para garantizar builds reproducibles.
 - No ejecutar la aplicación como root dentro del contenedor. Crear un usuario de sistema dedicado con los permisos mínimos necesarios.
 - No copiar `node_modules` al contenedor desde el host. Instalar las dependencias dentro del contenedor para evitar incompatibilidades de plataforma y binarios nativos.
 - No incluir secretos en la imagen (ficheros `.env`, claves privadas, tokens). Los secretos se pasan en runtime como variables de entorno o mediante sistemas de gestión de secretos.

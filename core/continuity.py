@@ -18,7 +18,6 @@ import json
 import os
 import re
 import shlex
-import shutil
 import signal
 import socket
 import subprocess
@@ -109,7 +108,6 @@ _SKIP_DIRS = {
     ".scannerwork",
 }
 _GREENFIELD_COMMAND = "alfred"
-_SELF_ROUTING_COMMANDS = frozenset({"alfred"})
 _NEXT_ACTION_SOURCE_LABELS = {
     "state": "sesión activa",
     "handoff": "handoff pendiente",
@@ -1965,7 +1963,7 @@ def _session_next_command(session: Dict[str, Any], uat: Optional[Dict[str, Any]]
 
     uat_status = str((uat or {}).get("status", "")).strip()
     if uat_status == "approved":
-        return "/alfred"
+        return "/alfred-dev:alfred"
 
     next_after_completion = str(session.get("next_after_completion", "")).strip()
     if next_after_completion:
@@ -3957,31 +3955,6 @@ def render_github_sync_markdown(result: Dict[str, Any]) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def render_github_sync_cli_summary(result: Dict[str, Any]) -> str:
-    next_action = result.get("next_action", {"command": "alfred", "directive": ""})
-    counts = [
-        f"sincronizadas={len(result.get('tasks', []))}",
-        f"omitidas={len(result.get('skipped', []))}",
-        f"internas={len(result.get('internal_omitted', []))}",
-        f"retiradas={len(result.get('retired', []))}",
-        f"drift={len(result.get('remote_drift', []))}",
-    ]
-    lines = [
-        "## SonIA Sync listo",
-        "",
-        f"- Repo: `{result.get('repo', '-')}`",
-        f"- Issue paraguas: {result.get('board_issue', {}).get('url', 'pendiente')}",
-        f"- Conteo: {', '.join(counts)}",
-        f"- Estado local: `{GITHUB_SYNC_JSON_RELATIVE_PATH}`",
-        f"- Informe detallado: `{GITHUB_SYNC_MD_RELATIVE_PATH}`",
-        (
-            f"- Siguiente paso: `/alfred-dev:{next_action.get('command', 'alfred')}` "
-            f"— {next_action.get('directive', 'Avanza con el siguiente comando recomendado.')}"
-        ),
-    ]
-    return "\n".join(lines).strip() + "\n"
-
-
 def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str, Any]:
     normalize_kanban_task_types(project_dir)
     board = load_kanban_board(project_dir)
@@ -4081,7 +4054,6 @@ def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str,
             "internal_omitted": internal_omitted,
             "retired": retired,
             "remote_drift": remote_drift,
-            "next_action": next_action,
         }))
 
     state = load_state(_project_path(project_dir, STATE_RELATIVE_PATH))
@@ -4100,7 +4072,6 @@ def sync_project_to_github(project_dir: str, raw_request: str = "") -> Dict[str,
         "sync_path": sync_path,
         "sync_md_path": sync_md_path,
         "bypass_path": bypass_path,
-        "next_action": next_action,
     }
 
 
@@ -4118,11 +4089,7 @@ def _extract_recommended_alfred_command(markdown: str) -> Optional[str]:
             flags=re.IGNORECASE,
         ):
             command = match.group("command").lower()
-            if (
-                command not in _KNOWN_ALFRED_COMMANDS
-                or command in _SELF_ROUTING_COMMANDS
-                or command in seen
-            ):
+            if command not in _KNOWN_ALFRED_COMMANDS or command in seen:
                 continue
             seen.add(command)
             commands.append(command)
@@ -4657,466 +4624,7 @@ def render_quick_setup_summary(result: Dict[str, Any]) -> str:
         f"- Estado persistido: `{STATE_RELATIVE_PATH}`\n"
         f"{map_note}"
         f"- Siguiente paso esperado al cerrar: `{result.get('next_command', '/alfred-dev:verify')}`\n"
-        "- Cierre canónico: responde con este resumen, sin bloques Insight ni explicación larga.\n"
     )
-
-
-_HELPER_FIRST_FLOW_COMMANDS = frozenset({"feature", "fix", "spike", "ship", "audit"})
-_LUCIUS_SCOPES = frozenset({"all", "security", "tests", "architecture", "performance"})
-
-
-def _default_flow_description(command: str) -> str:
-    defaults = {
-        "feature": "Nueva funcionalidad por definir",
-        "fix": "Bug por diagnosticar y corregir",
-        "spike": "Investigacion tecnica por acotar",
-        "ship": "Preparar entrega a produccion",
-        "audit": "Auditoria completa del proyecto",
-    }
-    return defaults.get(command, "Trabajo Alfred Dev")
-
-
-def _first_phase_description(command: str, phase: str) -> str:
-    flow = FLOWS.get(command, {})
-    for candidate in flow.get("fases", []):
-        if candidate.get("nombre") == phase:
-            return str(candidate.get("descripcion", "")).strip()
-    return ""
-
-
-def render_flow_start_current_markdown(result: Dict[str, Any]) -> str:
-    """Resume en current.md el arranque determinista de un flujo largo."""
-    command = result.get("command", "flujo")
-    phase = result.get("phase", "fase_inicial")
-    description = result.get("description", "trabajo")
-    pending_gate = result.get("pending_gate") or "sin gate pendiente detectada"
-    return (
-        "# Current\n\n"
-        f"- Estado: `{command}` activo, preparado por helper-first.\n"
-        f"- Trabajo: {description}.\n"
-        f"- Fase actual: `{phase}`.\n"
-        f"- Gate pendiente: {pending_gate}.\n"
-        "- Qué está listo: estado operativo, trazabilidad mínima y tarea principal en SonIA.\n"
-        "- Qué falta: ejecutar la fase actual, aportar evidencia y resolver la gate correspondiente.\n"
-        "- Siguiente comando recomendado: /alfred-dev:resume\n"
-    )
-
-
-def render_flow_start_progress_markdown(result: Dict[str, Any]) -> str:
-    """Deja una señal humana mínima para progress tras arrancar un flujo largo."""
-    command = result.get("command", "flujo")
-    phase = result.get("phase", "fase_inicial")
-    phase_description = result.get("phase_description") or "Primera fase del flujo."
-    return (
-        "# Progress\n\n"
-        f"- Flujo activo: `{command}`.\n"
-        f"- Fase inicial pendiente: `{phase}`.\n"
-        f"- Objetivo de la fase: {phase_description}\n"
-        "- No hay fases completadas todavía; el helper solo sembró continuidad y guardrails.\n"
-        "- Retomar con `/alfred-dev:resume` para ejecutar el trabajo real con sus gates.\n"
-    )
-
-
-def render_flow_start_traceability_markdown(result: Dict[str, Any]) -> str:
-    """Registra los criterios iniciales del flujo sin fingir evidencia."""
-    command = result.get("command", "flujo")
-    pending_gate = result.get("pending_gate") or "sin gate pendiente detectada"
-    return (
-        "# Traceability\n\n"
-        f"- `{command}` arrancó por helper-first; no se marca ninguna fase como completada.\n"
-        f"- Gate inicial pendiente: {pending_gate}.\n"
-        "- Evidencia requerida: artefactos de la fase, tests/checks cuando apliquen y validación de seguridad según el flujo.\n"
-        "- Comando de continuidad: `/alfred-dev:resume`.\n"
-    )
-
-
-def render_flow_start_summary(result: Dict[str, Any]) -> str:
-    """Resumen breve para devolver cuando un flujo largo quedó sembrado."""
-    command = result.get("command", "flujo")
-    marker = result.get("headless_marker") or f"{command.upper()}_HEADLESS_START"
-    pending_gate = result.get("pending_gate") or "sin gate pendiente detectada"
-    phase_description = result.get("phase_description") or "Primera fase del flujo."
-    artifacts = result.get("artifacts") or []
-    artifact_lines = "\n".join(f"- `{item}`" for item in artifacts) if artifacts else "- Ninguno"
-    sonarqube_section = _render_audit_sonarqube_summary(result)
-    return (
-        f"`{marker}`\n\n"
-        "## Flujo preparado\n\n"
-        f"- Sesión activa: `{command}` en fase `{result.get('phase', 'fase_inicial')}`\n"
-        f"- Trabajo pedido: `{result.get('description', 'trabajo')}`\n"
-        f"- Gate pendiente: {pending_gate}\n"
-        f"- Estado persistido: `{STATE_RELATIVE_PATH}`\n"
-        f"- Siguiente paso: `{result.get('next_command', '/alfred-dev:resume')}`\n\n"
-        f"{sonarqube_section}"
-        "### Primera fase\n\n"
-        f"{phase_description}\n\n"
-        "### Artefactos preparados\n\n"
-        f"{artifact_lines}\n\n"
-        "No he marcado fases como completadas ni he aprobado gates humanas: el helper solo deja el flujo listo para continuar sin bloquear `claude -p`.\n"
-    )
-
-
-def _parse_lucius_request(raw_request: str) -> Dict[str, Any]:
-    try:
-        tokens = shlex.split(raw_request or "")
-    except ValueError:
-        tokens = (raw_request or "").split()
-
-    scope = "all"
-    target = "."
-    invalid_scope = ""
-    consumed_next_scope = False
-    positional: List[str] = []
-
-    index = 0
-    while index < len(tokens):
-        token = tokens[index]
-        if consumed_next_scope:
-            consumed_next_scope = False
-            index += 1
-            continue
-        if token == "--scope":
-            if index + 1 >= len(tokens):
-                invalid_scope = ""
-            else:
-                candidate = tokens[index + 1].strip().lower()
-                if candidate in _LUCIUS_SCOPES:
-                    scope = candidate
-                else:
-                    invalid_scope = candidate
-                consumed_next_scope = True
-            index += 1
-            continue
-        if token.startswith("--scope="):
-            candidate = token.split("=", 1)[1].strip().lower()
-            if candidate in _LUCIUS_SCOPES:
-                scope = candidate
-            else:
-                invalid_scope = candidate
-            index += 1
-            continue
-        if token.startswith("--"):
-            index += 1
-            continue
-        positional.append(token)
-        index += 1
-
-    if positional:
-        target = positional[0]
-
-    return {
-        "scope": scope,
-        "target": target,
-        "invalid_scope": invalid_scope,
-        "valid": not bool(invalid_scope),
-    }
-
-
-def render_lucius_summary(result: Dict[str, Any]) -> str:
-    marker = result.get("headless_marker", "LUCIUS_HEADLESS_START")
-    valid = bool(result.get("valid", True))
-    if not valid:
-        return (
-            "`LUCIUS_INVALID_SCOPE`\n\n"
-            "## Scope inválido\n\n"
-            f"- Valor recibido: `{result.get('invalid_scope', '')}`\n"
-            f"- Scopes válidos: `{', '.join(sorted(_LUCIUS_SCOPES))}`\n"
-            "- No lanzo Lucius, no ejecuto Codex CLI y no modifico el proyecto.\n"
-        )
-
-    codex_status = result.get("codex_status", "unknown")
-    codex_version = result.get("codex_version", "")
-    version_line = f"- Codex CLI: `{codex_version}`\n" if codex_version else f"- Codex CLI: `{codex_status}`\n"
-    return (
-        f"`{marker}`\n\n"
-        "## Lucius preparado\n\n"
-        f"- Directorio objetivo: `{result.get('target', '.')}`\n"
-        f"- Scope: `{result.get('scope', 'all')}`\n"
-        f"{version_line}"
-        "- Ejecución externa: pendiente de sesión interactiva.\n"
-        "- No he lanzado Agent, no he ejecutado `codex exec` y no presento esto como sign-off de QA, seguridad o arquitectura.\n\n"
-        "### Siguiente paso\n\n"
-        "Ejecuta `/alfred-dev:lucius` en sesión interactiva si quieres autorizar la revisión externa con Codex CLI.\n"
-    )
-
-
-def prepare_lucius_review(project_dir: str, raw_request: str = "") -> Dict[str, Any]:
-    parsed = _parse_lucius_request(raw_request)
-    result = {
-        "command": "lucius",
-        "target": parsed["target"],
-        "scope": parsed["scope"],
-        "valid": parsed["valid"],
-        "invalid_scope": parsed["invalid_scope"],
-        "headless_marker": "LUCIUS_HEADLESS_START",
-        "next_command": "/alfred-dev:lucius",
-    }
-
-    if not parsed["valid"]:
-        result["headless_marker"] = "LUCIUS_INVALID_SCOPE"
-        result["codex_status"] = "not_checked"
-        return result
-
-    codex = shutil.which("codex")
-    if not codex:
-        result["codex_status"] = "missing"
-        return result
-
-    try:
-        version = _run_short_command([codex, "--version"], timeout=5)
-    except (OSError, subprocess.SubprocessError):
-        result["codex_status"] = "unavailable"
-        return result
-
-    if version.returncode == 0:
-        result["codex_status"] = "available"
-        result["codex_version"] = " ".join((version.stdout or "").split()).strip()
-    else:
-        result["codex_status"] = "unavailable"
-        result["codex_version"] = " ".join((version.stderr or version.stdout or "").split()).strip()
-    return result
-
-
-def _run_short_command(command: List[str], timeout: float = 5.0) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
-
-
-def _build_audit_sonarqube_preflight() -> Dict[str, Any]:
-    docker = shutil.which("docker")
-    if not docker:
-        return {
-            "status": "docker_missing",
-            "sonarqube_autorizado": False,
-            "headless_marker": "AUDIT_DOCKER_INSTALL_MENU_HEADLESS",
-            "summary": "Docker no esta disponible en PATH; SonarQube requiere decision humana antes de instalar o preparar Docker.",
-            "menu_title": "Preparar Docker para SonarQube",
-            "menu_options": [
-                "Instalar/preparar Docker (Recomendado)",
-                "Seguir sin SonarQube",
-            ],
-        }
-
-    version = _run_short_command([docker, "--version"], timeout=5)
-    info = _run_short_command([docker, "info"], timeout=5)
-    version_text = " ".join(part for part in (version.stderr, version.stdout) if part)
-    info_text = " ".join(part for part in (info.stderr, info.stdout) if part)
-    missing_signal = " ".join((version_text, info_text)).lower()
-    if (
-        version.returncode == 127
-        or info.returncode == 127
-        or "command not found" in missing_signal
-        or "no such file or directory" in missing_signal
-    ):
-        return {
-            "status": "docker_missing",
-            "sonarqube_autorizado": False,
-            "headless_marker": "AUDIT_DOCKER_INSTALL_MENU_HEADLESS",
-            "summary": "Docker no esta disponible en PATH; SonarQube requiere decision humana antes de instalar o preparar Docker.",
-            "detail": missing_signal[:500],
-            "menu_title": "Preparar Docker para SonarQube",
-            "menu_options": [
-                "Instalar/preparar Docker (Recomendado)",
-                "Seguir sin SonarQube",
-            ],
-        }
-
-    if version.returncode == 0 and info.returncode == 0:
-        return {
-            "status": "docker_ready",
-            "sonarqube_autorizado": True,
-            "headless_marker": "AUDIT_HEADLESS_START",
-            "summary": "Docker esta instalado y el daemon responde; SonarQube queda autorizado para la auditoria interactiva.",
-            "menu_title": "",
-            "menu_options": [],
-        }
-
-    detail = " ".join(part.strip() for part in [version_text, info_text] if part and part.strip())
-    return {
-        "status": "docker_daemon_down",
-        "sonarqube_autorizado": False,
-        "headless_marker": "AUDIT_DOCKER_START_MENU_HEADLESS",
-        "summary": (
-            "Docker existe, pero el daemon no responde; SonarQube requiere decision humana "
-            "antes de arrancar Docker Desktop o el servicio."
-        ),
-        "detail": detail[:500],
-        "menu_title": "Arrancar Docker para SonarQube",
-        "menu_options": [
-            "Arrancar Docker y ejecutar SonarQube (Recomendado)",
-            "Seguir sin SonarQube",
-        ],
-    }
-
-
-def _render_audit_sonarqube_summary(result: Dict[str, Any]) -> str:
-    preflight = result.get("sonarqube_preflight")
-    if not isinstance(preflight, dict):
-        return ""
-
-    marker = preflight.get("headless_marker", "")
-    option_lines = "\n".join(
-        f"- {option}" for option in preflight.get("menu_options", []) if option
-    )
-    menu_block = ""
-    if option_lines:
-        menu_block = (
-            "### Menú SonarQube pendiente\n\n"
-            f"`{marker}`\n\n"
-            f"**{preflight.get('menu_title', 'Decision SonarQube')}**\n\n"
-            f"{option_lines}\n\n"
-            "En headless no elijo por el usuario ni intento instalar/arrancar Docker.\n\n"
-        )
-
-    detail = preflight.get("detail")
-    detail_line = f"- Detalle Docker: {detail}\n" if detail else ""
-    return (
-        "### Preflight SonarQube\n\n"
-        f"- Estado: `{preflight.get('status', 'desconocido')}`\n"
-        f"- Autorizado para SonarQube: `{str(preflight.get('sonarqube_autorizado', False)).lower()}`\n"
-        f"- Lectura: {preflight.get('summary', 'sin resumen')}\n"
-        f"{detail_line}\n"
-        f"{menu_block}"
-    )
-
-
-def start_flow_session(project_dir: str, command: str, raw_request: str = "") -> Dict[str, Any]:
-    """Crea la sesión inicial de un flujo largo sin ejecutar sus fases."""
-    normalized_command = (command or "").strip().lower()
-    if normalized_command not in _HELPER_FIRST_FLOW_COMMANDS:
-        raise RuntimeError(
-            "start-flow solo admite feature, fix, spike, ship o audit."
-        )
-
-    description = _normalize_request_description(
-        raw_request,
-        _default_flow_description(normalized_command),
-    )
-    state_path = _project_path(project_dir, STATE_RELATIVE_PATH)
-    state = load_state(state_path)
-    if state and state.get("fase_actual") != "completado":
-        if state.get("comando") == normalized_command and state.get("descripcion") == description:
-            pending_gate = get_pending_gate(state)
-            result = {
-                "state_path": state_path,
-                "command": state.get("comando", normalized_command),
-                "phase": state.get("fase_actual", ""),
-                "description": state.get("descripcion", description),
-                "pending_gate": pending_gate,
-                "phase_description": _first_phase_description(
-                    str(state.get("comando", normalized_command)),
-                    str(state.get("fase_actual", "")),
-                ),
-                "next_command": "/alfred-dev:resume",
-                "headless_marker": f"{normalized_command.upper()}_HEADLESS_START",
-                "artifacts": state.get("artefactos", []),
-                "already_active": True,
-                "bypass_path": arm_stop_hook_bypass(project_dir, f"/alfred-dev:{normalized_command}"),
-            }
-            if normalized_command == "audit":
-                result["sonarqube_preflight"] = state.get("sonarqube_preflight") or _build_audit_sonarqube_preflight()
-                result["headless_marker"] = result["sonarqube_preflight"].get("headless_marker", "AUDIT_HEADLESS_START")
-            return result
-        raise RuntimeError(
-            "Ya existe una sesión activa. Usa /alfred-dev:next o /alfred-dev:resume antes de abrir otro flujo."
-        )
-
-    handoff = load_handoff(project_dir)
-    if handoff and not handoff.get("resolved", False):
-        raise RuntimeError(
-            "Hay un handoff pendiente. Retómalo con /alfred-dev:resume antes de abrir otro flujo."
-        )
-
-    session = run_flow(normalized_command, description, project_dir=project_dir)
-    session["origen"] = f"/alfred-dev:{normalized_command}"
-    session["helper_first"] = True
-    session["next_after_completion"] = "/alfred-dev:verify"
-
-    os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
-    os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
-    bypass_path = arm_stop_hook_bypass(project_dir, f"/alfred-dev:{normalized_command}")
-
-    pending_gate = get_pending_gate(session)
-    phase = str(session.get("fase_actual", ""))
-    phase_description = _first_phase_description(normalized_command, phase)
-    sonarqube_preflight = (
-        _build_audit_sonarqube_preflight()
-        if normalized_command == "audit"
-        else None
-    )
-    result = {
-        "state_path": state_path,
-        "command": normalized_command,
-        "phase": phase,
-        "description": session.get("descripcion", description),
-        "pending_gate": pending_gate,
-        "phase_description": phase_description,
-        "next_command": "/alfred-dev:resume",
-        "headless_marker": (
-            sonarqube_preflight.get("headless_marker", "AUDIT_HEADLESS_START")
-            if sonarqube_preflight
-            else f"{normalized_command.upper()}_HEADLESS_START"
-        ),
-        "artifacts": [
-            CURRENT_RELATIVE_PATH,
-            PROGRESS_MD_RELATIVE_PATH,
-            TRACEABILITY_MD_RELATIVE_PATH,
-        ],
-        "already_active": False,
-        "bypass_path": bypass_path,
-    }
-    if sonarqube_preflight is not None:
-        result["sonarqube_preflight"] = sonarqube_preflight
-        session["sonarqube_preflight"] = sonarqube_preflight
-        session["sonarqube_autorizado"] = sonarqube_preflight.get("sonarqube_autorizado", False)
-
-    with open(_project_path(project_dir, CURRENT_RELATIVE_PATH), "w", encoding="utf-8") as fh:
-        fh.write(render_flow_start_current_markdown(result))
-    with open(_project_path(project_dir, PROGRESS_MD_RELATIVE_PATH), "w", encoding="utf-8") as fh:
-        fh.write(render_flow_start_progress_markdown(result))
-    with open(_project_path(project_dir, TRACEABILITY_MD_RELATIVE_PATH), "w", encoding="utf-8") as fh:
-        fh.write(render_flow_start_traceability_markdown(result))
-
-    active_task = _ensure_session_execution_task(project_dir, session)
-    session["kanban_task_id"] = active_task.get("id", "")
-    session["artefactos"] = result["artifacts"]
-    save_state(session, state_path)
-
-    _capture_helper_memory(
-        project_dir,
-        helper_name=normalized_command,
-        phase=phase,
-        event_summary=f"{normalized_command} preparado: {session['descripcion']}",
-        event_content=(
-            f"Flujo {normalized_command} activo para '{session['descripcion']}'. "
-            f"Fase inicial: {phase}. Gate pendiente: {pending_gate}. "
-            "No se completaron fases durante el helper-first."
-        ),
-        decision_title=f"Abrir flujo {normalized_command}: {session['descripcion']}",
-        decision_choice=f"Sembrar estado y continuar con /alfred-dev:resume",
-        decision_context=(
-            "El comando necesita continuidad y gates verificables; en modo headless "
-            "no debe intentar completar todo el flujo interactivo."
-        ),
-        decision_rationale=(
-            "Arrancar el estado canónico evita bloqueos en claude -p y mantiene visible "
-            "la primera gate pendiente para una sesión interactiva."
-        ),
-        tags=[normalized_command, "helper-first"],
-        payload={
-            "pending_gate": pending_gate,
-            "artifacts": result["artifacts"],
-            "next_command": result["next_command"],
-        },
-    )
-
-    return result
 
 
 def render_prefetch_response(payload: Dict[str, Any]) -> str:
@@ -5140,12 +4648,6 @@ def render_prefetch_response(payload: Dict[str, Any]) -> str:
 
     if prefetched_command == "quick":
         return render_quick_setup_summary(payload)
-
-    if prefetched_command in _HELPER_FIRST_FLOW_COMMANDS:
-        return render_flow_start_summary(payload)
-
-    if prefetched_command == "lucius":
-        return render_lucius_summary(payload)
 
     if prefetched_command == "memory-ui":
         return render_memory_ui_markdown(payload)
@@ -5427,9 +4929,9 @@ def _status_label(status: str) -> str:
 
 def _next_command_for_uat(status: str) -> str:
     if status == "approved":
-        return "/alfred"
+        return "/alfred-dev:alfred"
     if status == "rejected":
-        return "/alfred"
+        return "/alfred-dev:alfred"
     return "/alfred-dev:verify aprobado"
 
 
@@ -5484,7 +4986,7 @@ def render_uat_markdown(uat: Dict[str, Any]) -> str:
     checklist = "\n".join(f"- {item}" for item in (uat.get("checklist") or []))
     notes = uat.get("notes") or "Sin notas registradas."
     target_completed_at = uat.get("target_completed_at") or "No aplica"
-    next_step = uat.get("next_command", "/alfred")
+    next_step = uat.get("next_command", "/alfred-dev:alfred")
 
     if uat.get("status") == "pending":
         action = (
@@ -5726,7 +5228,7 @@ def suggest_next_action(project_dir: str) -> Dict[str, str]:
             "project",
             focus="Elegir el siguiente flujo razonable",
             directive=(
-                "Abre `/alfred` para decidir el siguiente flujo sobre el "
+                "Abre `/alfred-dev:alfred` para decidir el siguiente flujo sobre el "
                 "contexto ya existente del proyecto."
             ),
             urgency="media",
@@ -5741,7 +5243,7 @@ def suggest_next_action(project_dir: str) -> Dict[str, str]:
         "default",
         focus="Arrancar el contexto de trabajo",
         directive=(
-            "Empieza por `/alfred` para elegir el flujo correcto y "
+            "Empieza por `/alfred-dev:alfred` para elegir el flujo correcto y "
             "sembrar el contexto inicial."
         ),
         urgency="media",
@@ -7214,45 +6716,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Crea una sesión ligera para /alfred-dev:quick",
     )
     quick_parser.add_argument("project_dir", nargs="?", default=".")
-    quick_parser.add_argument("--json", action="store_true", dest="as_json")
     quick_parser.add_argument(
         "--raw",
         default="",
         dest="raw_request",
         help="Argumento libre recibido desde /alfred-dev:quick",
-    )
-
-    lucius_parser = subparsers.add_parser(
-        "lucius",
-        help="Prepara una revisión Lucius sin ejecutar Codex CLI",
-    )
-    lucius_parser.add_argument("project_dir", nargs="?", default=".")
-    lucius_parser.add_argument("--json", action="store_true", dest="as_json")
-    lucius_parser.add_argument(
-        "--raw",
-        default="",
-        dest="raw_request",
-        help="Argumentos recibidos desde /alfred-dev:lucius",
-    )
-
-    start_flow_parser = subparsers.add_parser(
-        "start-flow",
-        help="Crea la sesión inicial de un flujo largo sin ejecutar sus fases",
-    )
-    start_flow_parser.add_argument("project_dir", nargs="?", default=".")
-    start_flow_parser.add_argument("--json", action="store_true", dest="as_json")
-    start_flow_parser.add_argument(
-        "--command",
-        required=True,
-        choices=sorted(_HELPER_FIRST_FLOW_COMMANDS),
-        dest="flow_command",
-        help="Flujo a preparar: feature, fix, spike, ship o audit",
-    )
-    start_flow_parser.add_argument(
-        "--raw",
-        default="",
-        dest="raw_request",
-        help="Argumento libre recibido desde el slash command",
     )
 
     consume_prefetch_parser = subparsers.add_parser(
@@ -7404,7 +6872,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         except RuntimeError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print(render_github_sync_cli_summary(result))
+        print(render_github_sync_markdown(result))
         return 0
 
     if args.command == "memory-ui":
@@ -7465,34 +6933,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         except RuntimeError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        if args.as_json:
-            print(json.dumps(result, ensure_ascii=False))
-        else:
-            print(render_quick_setup_summary(result))
-        return 0
-
-    if args.command == "lucius":
-        result = prepare_lucius_review(project_dir, raw_request=args.raw_request)
-        if args.as_json:
-            print(json.dumps(result, ensure_ascii=False))
-        else:
-            print(render_lucius_summary(result))
-        return 0
-
-    if args.command == "start-flow":
-        try:
-            result = start_flow_session(
-                project_dir,
-                command=args.flow_command,
-                raw_request=args.raw_request,
-            )
-        except RuntimeError as exc:
-            print(str(exc), file=sys.stderr)
-            return 1
-        if args.as_json:
-            print(json.dumps(result, ensure_ascii=False))
-        else:
-            print(render_flow_start_summary(result))
+        print(json.dumps(result, ensure_ascii=False))
         return 0
 
     if args.command == "consume-prefetch":

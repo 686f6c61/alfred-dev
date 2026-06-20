@@ -36,7 +36,7 @@ description: |
   planifica cada paso con red de seguridad.
   </commentary>
   </example>
-tools: Glob,Grep,Read,Write,Edit,Bash,Agent
+tools: Glob,Grep,Read,Write,Edit,Bash,Task
 model: sonnet
 color: yellow
 ---

@@ -2,46 +2,11 @@
 description: "Configura Alfred Dev: autonomía, proyecto, agentes opcionales, memoria y personalidad"
 ---
 
-# /alfred-dev:config
+# Configuración de Alfred Dev
 
 Lee el fichero `.claude/alfred-dev.local.md` si existe. Si no existe, créalo con la configuración canónica actual del plugin.
 
 Escribe siempre la clave canónica `autonomia` en el frontmatter, aunque encuentres variantes legacy como `autonomía`. El runtime las entiende por retrocompatibilidad, pero la escritura nueva debe quedar normalizada.
-
-## Paso 0: helper determinista
-
-Antes de razonar o preguntar, ejecuta este Bash inmediatamente para cargar o
-crear la configuración, detectar stack, construir las 7 secciones y generar el
-menú canónico:
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/core/config_cli.py" "$PWD" --headless
-```
-
-Conserva ese stdout como `CONFIG_SUMMARY`. Si el comando falla porque
-`CLAUDE_PLUGIN_ROOT` no existe en desarrollo local, reintenta una sola vez con
-`python3 core/config_cli.py "$PWD" --headless` solo si estás en el repo del
-plugin. En modo headless, `CONFIG_SUMMARY` debe contener el marcador literal
-`CONFIG_HEADLESS_MENU`.
-
-## Modo no interactivo / `claude -p`
-
-Si esta invocación se está ejecutando en modo no interactivo/headless
-(`claude -p`, SDK sin callback `canUseTool`, auditoría automatizada o cualquier
-contexto donde no puedas recibir una selección del usuario en esta misma
-llamada), **no llames `AskUserQuestion`**. En ese modo:
-
-1. devuelve `CONFIG_SUMMARY` tal cual, sin reescribirlo con otra tabla;
-2. no abras submenús;
-3. no termines con una pregunta abierta.
-
-No esperes indefinidamente una respuesta humana en modo headless y no abras los
-submenús de agentes opcionales ni memoria sin una selección real del usuario.
-Si llamas a `AskUserQuestion` y la herramienta vuelve cancelada, sin selección,
-sin respuesta utilizable o con cualquier señal de que el usuario no pudo elegir,
-trátalo igual que modo headless: devuelve `CONFIG_SUMMARY` tal cual. No
-conviertas esa cancelación en una pregunta abierta tipo "¿sobre qué sección
-actúo?".
 
 Presenta al usuario la configuración actual organizada en secciones:
 
@@ -128,18 +93,13 @@ Ejemplo para un grupo:
 
 ```text
 AskUserQuestion({
-  questions: [
-    {
-      question: "¿Qué agente técnico quieres activar ahora?",
-      header: "Técnicos",
-      multiSelect: false,
-      options: [
-        { label: "Seguir sin activar más", description: "Pasar al siguiente grupo" },
-        { label: "Data Engineer", description: "<razón contextual>" },
-        { label: "Performance Engineer", description: "<razón contextual>" },
-        { label: "GitHub Manager", description: "<razón contextual>" }
-      ]
-    }
+  question: "¿Qué agente técnico quieres activar ahora?",
+  header: "Técnicos",
+  options: [
+    { label: "Seguir sin activar más", description: "Pasar al siguiente grupo" },
+    { label: "Data Engineer", description: "<razón contextual>" },
+    { label: "Performance Engineer", description: "<razón contextual>" },
+    { label: "GitHub Manager", description: "<razón contextual>" }
   ]
 })
 ```

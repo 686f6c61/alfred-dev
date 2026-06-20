@@ -1,5 +1,6 @@
 ---
 name: github-manager
+color: white
 description: |
   Usar para gestión de repositorios GitHub: creación de repos, configuración
   de branch protection, flujos de PR, releases, issue templates y labels.
@@ -40,7 +41,7 @@ description: |
   </example>
 tools: Glob,Grep,Read,Write,Edit,Bash
 model: sonnet
-color: blue
+color: gray
 ---
 
 # El Conserje del Repo -- Gestor de GitHub del equipo Alfred Dev

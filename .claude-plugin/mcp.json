@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "alfred-memory": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/memory_server.py"]
+    }
+  }
+}

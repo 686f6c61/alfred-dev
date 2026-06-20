@@ -22,7 +22,7 @@ La razón de usar un diccionario plano en lugar de clases u objetos más elabora
 |---|---|---|---|
 | `nombre_display` | `str` | Nombre visible del agente, el que aparece en la terminal y en los mensajes. | `"Alfred"`, `"El Rompe-cosas"` |
 | `rol` | `str` | Descripción de una frase que resume la función del agente en el equipo. | `"Jefe de operaciones / Orquestador"` |
-| `color` | `str` | Color de terminal para identificación visual. Debe usar un valor soportado por Claude Code: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink` o `cyan`. | `"blue"`, `"red"`, `"orange"` |
+| `color` | `str` | Color de terminal para identificación visual. Permite distinguir agentes en logs y salida formateada sin leer el nombre. | `"blue"`, `"red"`, `"orange"` |
 | `modelo` | `str` | Modelo de IA asignado: `"opus"` para agentes críticos, `"sonnet"` para el resto. La sección [Distribución de modelos](#distribución-de-modelos) explica el criterio. | `"opus"`, `"sonnet"` |
 | `personalidad` | `str` | Párrafo que define el tono, la actitud y los rasgos de carácter del agente. Se inyecta en el system prompt para que el modelo de lenguaje mantenga la voz a lo largo de la sesión. | *(ver fichero fuente)* |
 | `frases` | `List[str]` | Lista de frases base que representan la voz del agente en niveles de sarcasmo normales (<= 3). Son frases con personalidad pero dentro de un registro profesional. | `["Venga, vamos a ello. Ya tengo un plan."]` |
@@ -190,9 +190,7 @@ La razón de tener tres niveles en lugar de un simple binario (aprobado/rechazad
 
 ## Distribución de modelos
 
-De los 19 agentes, 7 usan el modelo `opus` y los 12 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
-
-Claude Code también acepta aliases como `haiku`, `fable` e `inherit`, además de IDs completos de modelo. Alfred Dev 0.6.0 los considera válidos a nivel de compatibilidad, pero conserva deliberadamente la política operativa `opus`/`sonnet` mientras no haya una reasignación explícita del equipo.
+De los 19 agentes, 6 usan el modelo `opus` y los 13 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
 
 ### Criterio de asignación
 
@@ -200,7 +198,7 @@ La regla es sencilla: **opus para agentes que toman decisiones de diseño irreve
 
 Una decisión de arquitectura mal tomada puede costar días de refactorización; un error en la documentación se corrige en minutos. El coste de usar opus donde sonnet basta es real (mayor latencia, mayor consumo de tokens), y el beneficio marginal es despreciable en tareas de formato, revisión estilística o etiquetado de issues.
 
-### Agentes con opus (7)
+### Agentes con opus (6)
 
 | Agente | Identificador | Justificación |
 |---|---|---|
@@ -209,10 +207,9 @@ Una decisión de arquitectura mal tomada puede costar días de refactorización;
 | El Dibujante de Cajas | `architect` | Diseña la estructura del sistema. Las decisiones de arquitectura son las más difíciles de revertir una vez implementadas. |
 | El Artesano | `senior-dev` | Escribe código de producción. La calidad del código que genera determina directamente la calidad del entregable. |
 | El Paranoico | `security-officer` | Evalúa la seguridad. Un falso negativo en seguridad (no detectar una vulnerabilidad) puede tener consecuencias graves. Opus ofrece mayor capacidad de razonamiento para detectar patrones sutiles. |
-| Selina | `selina` | Define dirección visual y sistema de diseño en proyectos con UI. Sus decisiones afectan tipografía, paleta, densidad y experiencia de primera impresión. |
-| El Director Técnico Externo | `lucius` | Coordina la auditoría externa vía Codex CLI y sintetiza el informe final. Necesita razonamiento profundo para interpretar el output del modelo configurado en Codex CLI y convertirlo en prescripciones accionables sin sustituir el sign-off canónico del flujo. |
+| El Director Técnico Externo | `lucius` | Coordina la auditoría externa vía Codex CLI y sintetiza el informe final. Necesita razonamiento profundo para interpretar el output de GPT-5.4 y convertirlo en prescripciones accionables sin sustituir el sign-off canónico del flujo. |
 
-### Agentes con sonnet (12)
+### Agentes con sonnet (13)
 
 | Agente | Identificador | Justificación |
 |---|---|---|
@@ -227,6 +224,7 @@ Una decisión de arquitectura mal tomada puede costar días de refactorización;
 | El Pluma | `copywriter` | Genera y revisa textos. Sonnet es suficiente para mantener coherencia de tono. |
 | El Bibliotecario | `librarian` | Consulta y mantiene la memoria del proyecto. Opera sobre datos existentes sin generar decisiones de diseño. |
 | SonIA | `project-manager` | Gestiona kanban, trazabilidad y seguimiento entre fases. Opera sobre artefactos y estados definidos. |
+| Selina | `selina` | Presenta opciones visuales y persiste la dirección de estilo elegida. Tarea creativa pero acotada. |
 | La Interprete | `i18n-specialist` | Audita claves i18n y detecta cadenas hardcodeadas siguiendo patrones bien definidos. |
 
 ---

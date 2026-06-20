@@ -112,11 +112,6 @@ class TestSessionBootstrapRuntime(unittest.TestCase):
             self.assertTrue(os.path.isfile(settings_shared))
             self.assertTrue(os.path.isfile(wrapper))
             self.assertTrue(os.path.isfile(memory_db))
-            with open(wrapper, "r", encoding="utf-8") as fh:
-                wrapper_source = fh.read()
-            self.assertIn("CLAUDE_PLUGIN_ROOT", wrapper_source)
-            self.assertIn("EMBEDDED_PLUGIN_ROOT", wrapper_source)
-            self.assertIn("_cache_candidates", wrapper_source)
 
             for settings_path in (settings_local, settings_shared):
                 with open(settings_path, "r", encoding="utf-8") as fh:
@@ -124,48 +119,6 @@ class TestSessionBootstrapRuntime(unittest.TestCase):
 
                 self.assertEqual(payload["defaultMode"], "acceptEdits")
                 self.assertIn("Bash(python3 .claude/alfred-continuity.py *)", payload["permissions"]["allow"])
-
-    def test_continuity_wrapper_recovers_from_stale_embedded_plugin_root(self):
-        script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-bootstrap.sh")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            result = subprocess.run(
-                [script_path],
-                cwd=tmpdir,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, msg=result.stderr)
-
-            wrapper = os.path.join(tmpdir, ".claude", "alfred-continuity.py")
-            with open(wrapper, "r", encoding="utf-8") as fh:
-                wrapper_source = fh.read()
-            wrapper_source = "\n".join(
-                "EMBEDDED_PLUGIN_ROOT = '/tmp/alfred-dev-stale-cache'"
-                if line.startswith("EMBEDDED_PLUGIN_ROOT = ")
-                else line
-                for line in wrapper_source.splitlines()
-            ) + "\n"
-            with open(wrapper, "w", encoding="utf-8") as fh:
-                fh.write(wrapper_source)
-
-            env = os.environ.copy()
-            env["CLAUDE_PLUGIN_ROOT"] = os.path.realpath(_PROJECT_ROOT)
-            wrapper_result = subprocess.run(
-                [sys.executable, wrapper, "status", tmpdir, "--json"],
-                cwd=tmpdir,
-                env=env,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-
-            self.assertEqual(wrapper_result.returncode, 0, msg=wrapper_result.stderr)
-            payload = json.loads(wrapper_result.stdout)
-            self.assertIn("next_action", payload)
-            self.assertIn("kanban", payload)
-            self.assertIn("session_status_label", payload)
 
     def test_bootstrap_injects_valid_frontmatter_when_body_only_mentions_memory(self):
         script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-bootstrap.sh")

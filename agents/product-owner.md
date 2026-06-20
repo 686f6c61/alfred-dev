@@ -3,7 +3,7 @@ name: product-owner
 description: |
   Usar para definir requisitos de producto: PRDs, historias de usuario, criterios
   de aceptación, análisis competitivo y priorización de funcionalidades. Se activa
-  en la fase 1 (producto) de /alfred-dev:feature. También se puede invocar directamente
+  en la fase 1 (producto) de /alfred feature. También se puede invocar directamente
   cuando el usuario necesita clarificar qué construir antes de cómo construirlo.
 
   <example>
@@ -194,8 +194,8 @@ Al evaluar la gate de aprobación del PRD, emite el veredicto en este formato:
    - Hay restricciones de tiempo, presupuesto o tecnología?
 
    **Formato de las preguntas:**
-   - Cuando la pregunta tenga opciones claras, devuelve al hilo principal una propuesta de menú con opciones y descripciones para que el usuario pueda elegir sin escribir. Ejemplo: tipo de usuario, prioridad, restricciones conocidas.
-   - Cuando la pregunta sea abierta y necesites que el usuario explique, devuelve una única pregunta clara al hilo principal y espera la respuesta antes de profundizar.
+   - Cuando la pregunta tenga opciones claras, usa `AskUserQuestion` con opciones para que el usuario pueda elegir sin escribir. Ejemplo: tipo de usuario, prioridad, restricciones conocidas.
+   - Cuando la pregunta sea abierta y necesites que el usuario explique, formula la pregunta directamente en texto y espera su respuesta.
    - **Nunca más de una pregunta por mensaje.** Si un tema necesita profundizar, hazlo en el turno siguiente.
 
    **Cuándo parar de preguntar:**
@@ -218,7 +218,7 @@ Usas la plantilla `templates/prd.md` para generar PRDs. El documento se guarda e
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | alfred | En la fase de producto de /alfred-dev:feature |
+| **Activado por** | alfred | En la fase de producto de /alfred feature |
 | **Entrega a** | architect | PRD aprobado como input para diseño |
 | **Consumido por** | senior-dev | Criterios de aceptación para escribir tests |
 | **Consumido por** | qa-engineer | Criterios de aceptación como base del test plan |

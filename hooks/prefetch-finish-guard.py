@@ -23,18 +23,7 @@ _PREFETCH_RELATIVE_PATH = os.path.join(".claude", "alfred-prefetch.json")
 _MEMORY_UI_STATE_RELATIVE_PATH = os.path.join(".claude", "alfred-memory-ui.json")
 _CODEBASE_MAP_RELATIVE_PATH = os.path.join("docs", "project", "codebase-map.md")
 _DISCOVERY_RELATIVE_PATH = os.path.join("docs", "project", "discovery.md")
-_PENDING_GUARD_COMMANDS = frozenset({
-    "alfred",
-    "audit",
-    "map-codebase",
-    "discuss",
-    "feature",
-    "fix",
-    "lucius",
-    "ship",
-    "spike",
-    "memory-ui",
-})
+_PENDING_GUARD_COMMANDS = frozenset({"alfred", "map-codebase", "discuss", "memory-ui"})
 
 
 def _discover_project_dir(data: dict) -> str:
@@ -214,10 +203,19 @@ def main():
         tool_name = data.get("tool_name", "tool")
         print(
             f"[Alfred Dev] Bloqueado {tool_name}: hay un prefetch pendiente para "
-            f"/alfred-dev:{source_command}. Ejecuta consume-prefetch para "
-            f"consumir primero el helper ({prefetched_command}) antes de leer "
-            f"o explorar el repo.",
+            f"/alfred-dev:{source_command}. Consume primero el helper "
+            f"({prefetched_command}) antes de leer o explorar el repo.",
             file=sys.stderr,
+        )
+        json.dump(
+            {
+                "decision": "block",
+                "reason": (
+                    "Hay un prefetch helper-first pendiente. "
+                    "Ejecuta consume-prefetch antes de usar mas tools."
+                ),
+            },
+            sys.stdout,
         )
         sys.exit(2)
 
@@ -232,9 +230,18 @@ def main():
     print(
         f"[Alfred Dev] Bloqueado {tool_name}: el helper-first de "
         f"/alfred-dev:{source_command} ya devolvio una respuesta final lista. "
-        f"Usa la salida del helper consumido ({prefetched_command}) y termina. "
-        "No añadas bloques Insight, explicaciones largas ni nuevas lecturas.",
+        f"Usa la salida del helper consumido ({prefetched_command}) y termina.",
         file=sys.stderr,
+    )
+    json.dump(
+        {
+            "decision": "block",
+            "reason": (
+                "El prefetch helper-first ya resolvio este comando. "
+                "No uses mas tools; responde con la salida del helper."
+            ),
+        },
+        sys.stdout,
     )
     sys.exit(2)
 

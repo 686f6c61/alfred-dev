@@ -24,10 +24,6 @@ MARKETPLACE_DIR="${PLUGINS_DIR}/marketplaces/${PLUGIN_NAME}"
 INSTALLED_FILE="${PLUGINS_DIR}/installed_plugins.json"
 KNOWN_MARKETPLACES="${PLUGINS_DIR}/known_marketplaces.json"
 SETTINGS_FILE="${CLAUDE_DIR}/settings.json"
-GLOBAL_ALIAS_DIR="${CLAUDE_DIR}/skills/alfred"
-GLOBAL_ALIAS_FILE="${GLOBAL_ALIAS_DIR}/SKILL.md"
-GLOBAL_COMMAND_ALIAS_DIR="${CLAUDE_DIR}/commands"
-GLOBAL_COMMAND_ALIAS_FILE="${GLOBAL_COMMAND_ALIAS_DIR}/alfred.md"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -39,36 +35,6 @@ NC='\033[0m'
 info()  { printf "${BLUE}>${NC} %s\n" "$1"; }
 ok()    { printf "${GREEN}+${NC} %s\n" "$1"; }
 error() { printf "${RED}x${NC} %s\n" "$1" >&2; }
-
-remove_global_alfred_alias() {
-    local removed=0
-
-    if [[ -f "${GLOBAL_ALIAS_FILE}" ]]; then
-        if grep -q "Alfred Dev global alias" "${GLOBAL_ALIAS_FILE}"; then
-            rm -f "${GLOBAL_ALIAS_FILE}"
-            rmdir "${GLOBAL_ALIAS_DIR}" >/dev/null 2>&1 || true
-            ok "Alias global /alfred eliminado"
-            removed=1
-        else
-            info "Se conserva ${GLOBAL_ALIAS_FILE}: no parece ser el alias de Alfred Dev"
-        fi
-    fi
-
-    if [[ -f "${GLOBAL_COMMAND_ALIAS_FILE}" ]]; then
-        if grep -q "Alfred Dev global alias" "${GLOBAL_COMMAND_ALIAS_FILE}"; then
-            rm -f "${GLOBAL_COMMAND_ALIAS_FILE}"
-            rmdir "${GLOBAL_COMMAND_ALIAS_DIR}" >/dev/null 2>&1 || true
-            ok "Shim de comando global /alfred eliminado"
-            removed=1
-        else
-            info "Se conserva ${GLOBAL_COMMAND_ALIAS_FILE}: no parece ser el alias de Alfred Dev"
-        fi
-    fi
-
-    if [[ "${removed}" -eq 0 ]]; then
-        info "No se encontro alias global /alfred"
-    fi
-}
 
 find_compatible_python() {
     local candidate ver major minor
@@ -112,7 +78,7 @@ if [[ -z "${HOME:-}" ]] || [[ ! -d "${HOME}" ]]; then
 fi
 
 if [[ ! -d "${CLAUDE_DIR}" ]]; then
-    info "No se encontró ${CLAUDE_DIR}; no hay instalación de usuario que limpiar"
+    info "No se encontró ${CLAUDE_DIR}; no hay instalación local que limpiar"
     exit 0
 fi
 
@@ -121,8 +87,8 @@ printf "\n${BOLD}Desinstalando Alfred Dev${NC}\n\n"
 # Intentar primero la vía canónica de Claude Code.
 if command -v claude &>/dev/null; then
     info "Desinstalando plugin con Claude CLI..."
-    claude plugin uninstall "${PLUGIN_KEY}" --scope user >/dev/null 2>&1 || true
-    claude plugin marketplace remove "${PLUGIN_NAME}" --scope user >/dev/null 2>&1 || true
+    claude plugin uninstall "${PLUGIN_KEY}" >/dev/null 2>&1 || true
+    claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
     ok "Claude CLI ha intentado desregistrar el plugin y el marketplace"
 else
     info "El comando 'claude' no está disponible; se aplicará limpieza manual de seguridad"
@@ -147,8 +113,6 @@ if [ -d "${MARKETPLACE_DIR}" ]; then
 else
     info "No se encontró directorio de marketplace"
 fi
-
-remove_global_alfred_alias
 
 # Si no hay Python compatible, no podemos aplicar la limpieza residual de JSON.
 PYTHON_CMD="$(find_compatible_python || true)"

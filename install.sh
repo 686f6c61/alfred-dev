@@ -10,8 +10,7 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra globalmente en Claude Code la fuente GitHub del plugin
 #   3. Instala el plugin con claude plugin install
-#   4. Instala el alias personal global /alfred y elimina shims obsoletos
-#   5. Listo para usar: /alfred
+#   4. Listo para usar: /alfred-dev:help
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para registrar una
@@ -22,7 +21,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.6.0"
+VERSION="0.5.2"
 
 # -- Colores ----------------------------------------------------------------
 
@@ -113,165 +112,6 @@ sys.exit(1)
 PYEOF
 }
 
-normalize_to_user_scope_installation() {
-    # Alfred Dev solo soporta instalacion global de usuario. Si alguien lo
-    # instalo antes en local/project, limpiamos ese rastro en el contexto actual
-    # antes de reinstalar con --scope user.
-    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" --scope local >/dev/null 2>&1 || true
-    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" --scope project >/dev/null 2>&1 || true
-    claude plugin marketplace remove "${PLUGIN_NAME}" --scope local >/dev/null 2>&1 || true
-    claude plugin marketplace remove "${PLUGIN_NAME}" --scope project >/dev/null 2>&1 || true
-    ok "Scopes local/project normalizados; Alfred se instalara como usuario global"
-}
-
-install_global_alfred_alias() {
-    local plugin_root
-    local source_alias
-    local alias_dir
-    local alias_file
-    local command_alias_dir
-    local command_alias_file
-
-    plugin_root=$(resolve_installed_plugin_root 2>/dev/null || true)
-    if [[ -z "${plugin_root}" ]]; then
-        error "No se pudo resolver la raiz del plugin instalado para crear /alfred"
-        return 1
-    fi
-
-    source_alias="${plugin_root}/skills/alfred/alfred/SKILL.md"
-    if [[ ! -f "${source_alias}" ]]; then
-        error "No se encontro el skill de alias global en la instalacion:"
-        error "  ${source_alias}"
-        return 1
-    fi
-
-    alias_dir="${HOME}/.claude/skills/alfred"
-    alias_file="${alias_dir}/SKILL.md"
-    command_alias_dir="${HOME}/.claude/commands"
-    command_alias_file="${command_alias_dir}/alfred.md"
-    mkdir -p "${alias_dir}"
-
-    materialize_alias() {
-        local target="$1"
-        local invocable="$2"
-
-        "${PYTHON_CMD}" - "${source_alias}" "${target}" "${invocable}" <<'PYEOF'
-import re
-import sys
-from pathlib import Path
-
-source = Path(sys.argv[1])
-target = Path(sys.argv[2])
-invocable = sys.argv[3].lower() == "true"
-text = source.read_text(encoding="utf-8")
-replacement = f"user-invocable: {str(invocable).lower()}"
-if re.search(r"(?m)^user-invocable:\s*(true|false)\s*$", text):
-    text = re.sub(r"(?m)^user-invocable:\s*(true|false)\s*$", replacement, text, count=1)
-elif text.startswith("---\n"):
-    text = text.replace("---\n", "---\n" + replacement + "\n", 1)
-target.write_text(text, encoding="utf-8")
-PYEOF
-    }
-
-    if [[ -f "${alias_file}" ]] && ! grep -q "Alfred Dev global alias" "${alias_file}"; then
-        local backup="${alias_file}.before-alfred-dev.$(date +%Y%m%d%H%M%S)"
-        cp "${alias_file}" "${backup}"
-        info "Skill /alfred existente respaldado en ${backup}"
-    fi
-
-    materialize_alias "${alias_file}" "true"
-    ok "Alias global /alfred instalado en ${alias_file}"
-
-    if [[ -f "${command_alias_file}" ]]; then
-        if grep -q "Alfred Dev global alias" "${command_alias_file}"; then
-            rm -f "${command_alias_file}"
-            ok "Shim de comando global /alfred obsoleto eliminado en ${command_alias_file}"
-        else
-            local backup="${command_alias_file}.before-alfred-dev.$(date +%Y%m%d%H%M%S)"
-            mv "${command_alias_file}" "${backup}"
-            info "Comando /alfred existente movido a ${backup} para evitar duplicados"
-        fi
-    fi
-}
-
-verify_user_scope_installation() {
-    local plugin_key="${PLUGIN_NAME}@${PLUGIN_NAME}"
-    local list_json
-    local verify_output
-
-    if ! list_json=$(claude plugin list --json 2>/dev/null); then
-        error "No se pudo confirmar el scope global con 'claude plugin list --json'"
-        error "Alfred Dev debe quedar instalado como scope user."
-        return 1
-    fi
-
-    if verify_output=$(
-        CLAUDE_PLUGIN_LIST_JSON="${list_json}" "${PYTHON_CMD}" - "${plugin_key}" <<'PYEOF'
-import json
-import os
-import sys
-
-plugin_key = sys.argv[1]
-
-try:
-    entries = json.loads(os.environ.get("CLAUDE_PLUGIN_LIST_JSON", ""))
-except json.JSONDecodeError as exc:
-    print(f"JSON invalido en claude plugin list --json: {exc}", file=sys.stderr)
-    sys.exit(1)
-
-if not isinstance(entries, list):
-    print("claude plugin list --json no devolvio una lista", file=sys.stderr)
-    sys.exit(1)
-
-matches = [entry for entry in entries if isinstance(entry, dict) and entry.get("id") == plugin_key]
-if not matches:
-    print(f"No aparece {plugin_key} en claude plugin list --json", file=sys.stderr)
-    sys.exit(1)
-
-active_non_user = [
-    entry for entry in matches
-    if entry.get("enabled") is True and entry.get("scope") != "user"
-]
-if active_non_user:
-    details = ", ".join(
-        f"scope={entry.get('scope', 'desconocido')} projectPath={entry.get('projectPath', '')}"
-        for entry in active_non_user
-    )
-    print(f"Hay instalaciones activas no globales de {plugin_key}: {details}", file=sys.stderr)
-    sys.exit(1)
-
-enabled_user = [
-    entry for entry in matches
-    if entry.get("enabled") is True and entry.get("scope") == "user"
-]
-if not enabled_user:
-    scopes = ", ".join(str(entry.get("scope", "desconocido")) for entry in matches)
-    print(f"{plugin_key} existe, pero no hay entrada enabled con scope user. Scopes vistos: {scopes}", file=sys.stderr)
-    sys.exit(1)
-
-stale_non_user = [
-    entry for entry in matches
-    if entry.get("enabled") is not True and entry.get("scope") != "user"
-]
-if stale_non_user:
-    details = ", ".join(
-        f"scope={entry.get('scope', 'desconocido')} projectPath={entry.get('projectPath', '')}"
-        for entry in stale_non_user
-    )
-    print(f"AVISO: quedan entradas antiguas no activas de {plugin_key}: {details}")
-PYEOF
-    ); then
-        if [[ -n "${verify_output}" ]]; then
-            info "${verify_output}"
-        fi
-        ok "Instalacion global de usuario confirmada (--scope user)"
-        return 0
-    fi
-
-    error "${verify_output}"
-    return 1
-}
-
 # -- Verificaciones ---------------------------------------------------------
 
 # Python 3.10+ es necesario para los hooks y el core del plugin.
@@ -341,7 +181,7 @@ fi
 
 if [ ! -d "${HOME}/.claude" ]; then
     error "No se encontro el directorio ~/.claude"
-    error "Asegurate de tener Claude Code instalado: https://code.claude.com/docs/en/setup"
+    error "Asegurate de tener Claude Code instalado: https://docs.anthropic.com/en/docs/claude-code"
     exit 1
 fi
 
@@ -361,20 +201,19 @@ printf "${DIM}Plugin de ingenieria de software automatizada${NC}\n\n"
 # del registro global y del cache con los ficheros mas recientes del repo.
 
 info "Registrando fuente GitHub global en Claude Code..."
-normalize_to_user_scope_installation
 
 # Si existe una instalacion previa, la quitamos antes de refrescar el
 # marketplace. Esto evita estados intermedios donde el plugin sigue apuntando
 # a un marketplace ya corrupto o incompleto en disco.
 if claude plugin list 2>/dev/null | grep -q "${PLUGIN_NAME}@${PLUGIN_NAME}"; then
-    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" --scope user >/dev/null 2>&1 || true
+    claude plugin uninstall "${PLUGIN_NAME}@${PLUGIN_NAME}" >/dev/null 2>&1 || true
 fi
 
 if claude plugin marketplace list 2>/dev/null | grep -q "${PLUGIN_NAME}"; then
-    claude plugin marketplace remove "${PLUGIN_NAME}" --scope user >/dev/null 2>&1 || true
+    claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
 fi
 
-if claude plugin marketplace add "${REPO}" --scope user 2>&1; then
+if claude plugin marketplace add "${REPO}" 2>&1; then
     ok "Fuente GitHub declarada"
 else
     error "No se pudo registrar la fuente GitHub"
@@ -389,15 +228,15 @@ if is_global_source_registered; then
     ok "Fuente GitHub registrada globalmente"
 else
     info "La CLI respondio OK, pero la fuente no quedo registrada; reintentando..."
-    claude plugin marketplace remove "${PLUGIN_NAME}" --scope user >/dev/null 2>&1 || true
-    if claude plugin marketplace add "${REPO}" --scope user 2>&1 && is_global_source_registered; then
+    claude plugin marketplace remove "${PLUGIN_NAME}" >/dev/null 2>&1 || true
+    if claude plugin marketplace add "${REPO}" 2>&1 && is_global_source_registered; then
         ok "Fuente GitHub registrada globalmente tras reintento"
     else
         error "Claude Code no dejo registrada la fuente global del plugin"
         error "Fichero esperado: ${HOME}/.claude/plugins/known_marketplaces.json"
         error "Prueba a ejecutar manualmente:"
-        error "  claude plugin marketplace remove ${PLUGIN_NAME} --scope user"
-        error "  claude plugin marketplace add ${REPO} --scope user"
+        error "  claude plugin marketplace remove ${PLUGIN_NAME}"
+        error "  claude plugin marketplace add ${REPO}"
         exit 1
     fi
 fi
@@ -406,23 +245,20 @@ fi
 
 info "Instalando plugin..."
 
-if claude plugin install "${PLUGIN_NAME}@${PLUGIN_NAME}" --scope user 2>&1; then
+if claude plugin install "${PLUGIN_NAME}@${PLUGIN_NAME}" 2>&1; then
     ok "Plugin instalado y habilitado"
 else
     error "No se pudo instalar el plugin"
     error "Puedes intentar instalarlo manualmente:"
-    error "  claude plugin marketplace add ${REPO} --scope user"
-    error "  claude plugin install ${PLUGIN_NAME}@${PLUGIN_NAME} --scope user"
+    error "  claude plugin marketplace add ${REPO}"
+    error "  claude plugin install ${PLUGIN_NAME}@${PLUGIN_NAME}"
     exit 1
 fi
-
-install_global_alfred_alias
-verify_user_scope_installation
 
 # -- 3. Parchear hooks y MCP si python3 no es 3.10+ ------------------------
 # Si el python3 por defecto del sistema es demasiado antiguo pero encontramos
 # una version compatible (python3.12, python3.11, etc.), actualizamos la
-# configuracion instalada para que hooks y el MCP usen esa version concreta.
+# configuracion instalada para que hooks y MCP usen esa version concreta.
 
 if [[ "$PYTHON_CMD" != "python3" ]]; then
     _patch_in_place() {
@@ -450,60 +286,11 @@ if [[ "$PYTHON_CMD" != "python3" ]]; then
     MCP_JSON=""
     if [[ -n "${PLUGIN_ROOT}" ]]; then
         HOOKS_JSON="${PLUGIN_ROOT}/hooks/hooks.json"
-        MCP_JSON="${PLUGIN_ROOT}/.mcp.json"
+        MCP_JSON="${PLUGIN_ROOT}/.claude-plugin/mcp.json"
     fi
 
     if [[ -f "$HOOKS_JSON" ]]; then
-        if "${PYTHON_CMD}" - "$HOOKS_JSON" "$PYTHON_ABS" <<'PYEOF'
-import json
-import os
-import sys
-import tempfile
-
-path, python_abs = sys.argv[1:3]
-
-with open(path, "r", encoding="utf-8") as fh:
-    data = json.load(fh)
-
-patched = False
-for event_group in data.get("hooks", {}).values():
-    if not isinstance(event_group, list):
-        continue
-    for matcher in event_group:
-        if not isinstance(matcher, dict):
-            continue
-        for hook in matcher.get("hooks", []):
-            if not isinstance(hook, dict) or hook.get("type") != "command":
-                continue
-            command = hook.get("command")
-            if command == "python3":
-                hook["command"] = python_abs
-                patched = True
-            elif isinstance(command, str) and "python3 ${CLAUDE_PLUGIN_ROOT}" in command:
-                hook["command"] = command.replace(
-                    "python3 ${CLAUDE_PLUGIN_ROOT}",
-                    f"{python_abs} ${{CLAUDE_PLUGIN_ROOT}}",
-                )
-                patched = True
-
-if not patched:
-    raise SystemExit("hooks.json no contiene hooks Python parcheables")
-
-directory = os.path.dirname(path)
-fd, tmp_path = tempfile.mkstemp(prefix=".tmp-plugin-", dir=directory)
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, ensure_ascii=False, indent=2)
-        fh.write("\n")
-    os.replace(tmp_path, path)
-except Exception:
-    try:
-        os.unlink(tmp_path)
-    except OSError:
-        pass
-    raise
-PYEOF
-        then
+        if _patch_in_place "$HOOKS_JSON" "s|python3 \${CLAUDE_PLUGIN_ROOT}|${PYTHON_ABS} \${CLAUDE_PLUGIN_ROOT}|g"; then
             ok "hooks.json parcheado para usar $PYTHON_ABS"
         else
             info "Aviso: no se pudo parchear hooks.json, los hooks usaran 'python3'"
@@ -513,57 +300,20 @@ PYEOF
     fi
 
     if [[ -f "$MCP_JSON" ]]; then
-        if "${PYTHON_CMD}" - "$MCP_JSON" "$PYTHON_ABS" <<'PYEOF'
-import json
-import os
-import sys
-import tempfile
-
-path, python_abs = sys.argv[1:3]
-
-with open(path, "r", encoding="utf-8") as fh:
-    data = json.load(fh)
-
-mcp_servers = data.get("mcpServers") if isinstance(data.get("mcpServers"), dict) else data
-if not isinstance(mcp_servers, dict):
-    raise SystemExit(".mcp.json no declara servidores MCP")
-
-alfred_memory = mcp_servers.get("alfred-memory")
-if not isinstance(alfred_memory, dict):
-    raise SystemExit(".mcp.json no declara alfred-memory")
-
-alfred_memory["command"] = python_abs
-
-directory = os.path.dirname(path)
-fd, tmp_path = tempfile.mkstemp(prefix=".tmp-plugin-", dir=directory)
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, ensure_ascii=False, indent=2)
-        fh.write("\n")
-    os.replace(tmp_path, path)
-except Exception:
-    try:
-        os.unlink(tmp_path)
-    except OSError:
-        pass
-    raise
-PYEOF
-        then
-            ok ".mcp.json parcheado para usar $PYTHON_ABS"
+        if _patch_in_place "$MCP_JSON" "s|\"command\": \"python3\"|\"command\": \"${PYTHON_ABS}\"|g"; then
+            ok "mcp.json parcheado para usar $PYTHON_ABS"
         else
-            info "Aviso: no se pudo parchear .mcp.json, el MCP usara 'python3'"
+            info "Aviso: no se pudo parchear mcp.json, el MCP usara 'python3'"
         fi
     else
-        info "Aviso: no se encontro .mcp.json en la instalacion activa para parchear Python"
+        info "Aviso: no se encontro mcp.json en la instalacion activa para parchear Python"
     fi
 fi
 
 # -- Resultado --------------------------------------------------------------
 
 printf "\n${GREEN}${BOLD}Instalacion completada${NC}\n\n"
-printf "  En Claude Code, ejecuta ${BOLD}/reload-plugins${NC} y despues:\n"
-printf "  ${BOLD}/alfred${NC}\n"
-printf "  ${DIM}Ayuda completa: /alfred-dev:help${NC}\n\n"
-printf "  ${DIM}Si /reload-plugins avisa por MCP/coste de cache o no aparece el plugin, reinicia Claude Code.${NC}\n"
+printf "  Reinicia Claude Code y ejecuta:\n"
+printf "  ${BOLD}/alfred-dev:help${NC}\n\n"
 printf "  ${DIM}Repositorio: https://github.com/${REPO}${NC}\n"
 printf "  ${DIM}Documentacion: https://alfred-dev.com${NC}\n\n"

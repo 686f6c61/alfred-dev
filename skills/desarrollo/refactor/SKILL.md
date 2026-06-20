@@ -7,7 +7,7 @@ description: "Usar para refactorizar código con tests como red de seguridad. Ac
 
 ## Resumen
 
-Este skill guía un proceso de refactorización seguro. La regla de oro es que la refactorización no debe cambiar el comportamiento observable del sistema, solo mejorar su estructura interna. Para reducir el riesgo de cambios involuntarios, los tests existentes actúan como red de seguridad: deben pasar antes, durante y después de la refactorización.
+Este skill guía un proceso de refactorización seguro. La regla de oro es que la refactorización nunca cambia el comportamiento observable del sistema, solo mejora su estructura interna. Para garantizar esto, los tests existentes actúan como red de seguridad: deben pasar antes, durante y después de la refactorización.
 
 La refactorización y la adición de funcionalidad son dos actividades distintas que nunca se mezclan en el mismo commit. Si se detecta un bug durante la refactorización, se anota y se corrige en un commit separado.
 
