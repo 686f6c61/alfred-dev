@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import signal
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -40,6 +41,13 @@ class TestVisualScripts(unittest.TestCase):
         self.assertTrue(payload["session_dir"].startswith(self.project_dir))
         self.assertTrue(os.path.isfile(payload["pid_file"]))
         self.assertGreater(payload["server_pid"], 0)
+        for path in (
+            payload["session_dir"],
+            os.path.join(payload["session_dir"], "content"),
+            os.path.join(payload["session_dir"], "state"),
+        ):
+            mode = stat.S_IMODE(os.stat(path).st_mode)
+            self.assertEqual(mode & 0o077, 0, msg=f"{path} no es privado: {oct(mode)}")
 
         info_path = os.path.join(payload["session_dir"], "state", "server-info")
         self.assertTrue(os.path.isfile(info_path))
@@ -99,6 +107,30 @@ class TestVisualScripts(unittest.TestCase):
         session_dir = payload["session_dir"]
         self.assertTrue(os.path.isdir(session_dir))
         self.assertFalse(os.path.exists(os.path.join(session_dir, "state", "server.pid")))
+
+    def test_start_server_reports_missing_option_value_as_json(self):
+        result = subprocess.run(
+            ["bash", START_SERVER, "--project-dir"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 1)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["type"], "error")
+        self.assertIn("Falta valor para --project-dir", payload["message"])
+
+    def test_start_server_escapes_unknown_argument_json(self):
+        result = subprocess.run(
+            ["bash", START_SERVER, 'bad"arg'],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 1)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["type"], "error")
+        self.assertIn('bad"arg', payload["message"])
 
 
 if __name__ == "__main__":

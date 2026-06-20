@@ -15,9 +15,9 @@ La rama `main` documentada aquí corresponde al plugin. La landing pública vive
 | `core/` | Runtime Python: orquestación, memoria, configuración, Selina | Cubierto por temas; faltan páginas por subsistema |
 | `hooks/` | Hooks del ciclo de vida y guards | Cubierto en `hooks.md` |
 | `mcp/` | Servidor MCP de memoria | Cobertura insuficiente |
-| `skills/` | Catálogo de 61 skills por dominio | Cubierto en `skills.md` |
+| `skills/` | Catálogo de 62 skills por dominio | Cubierto en `skills.md` |
 | `tests/` | Suite de tests y contratos | Cubierto en `testing.md`, con margen de mejora |
-| `visual/` | Scripts visuales de Selina y servidor local | Cobertura insuficiente |
+| `visual/` | Scripts visuales de Selina y servidor local | Cubierto en [visual.md](visual.md) |
 | `templates/` | Plantillas de artefactos y salidas | Sin página propia |
 | `.github/workflows/` | Automatización CI/release | Sin página propia |
 
@@ -27,10 +27,7 @@ La rama `main` documentada aquí corresponde al plugin. La landing pública vive
 
 ### `agents/`
 
-Aquí viven los prompts fuente que el plugin publica en `.claude-plugin/plugin.json`. La separación entre núcleo y opcionales es física:
-
-- núcleo en `agents/*.md`;
-- opcionales en `agents/optional/*.md`.
+Aquí viven los prompts fuente que Claude Code descubre desde el directorio `agents/`. Desde 0.6.0 todos los agentes publicados están en `agents/*.md`; la diferencia entre núcleo y opcionales se documenta en sus fichas y en el motor de personalidad, no mediante un subdirectorio `agents/optional/`.
 
 La documentación humana equivalente está en `docs/agents/`. Si cambias un agente fuente, conviene revisar su ficha en `docs/agents/` y cualquier mención en `docs/README.md`, `docs/personality.md` o `docs/flows.md`.
 
@@ -78,7 +75,7 @@ Contiene el servidor MCP local de memoria (`memory_server.py`). Aunque la memori
 
 ### `visual/`
 
-Scripts y helpers del companion visual de Selina. Aquí viven el servidor local, las plantillas HTML y los generadores de pantallas/variantes. Es una de las partes más singulares del repo y una de las menos documentadas a nivel de runtime.
+Scripts y helpers del companion visual de Selina. Aquí viven el servidor local, las plantillas HTML y los generadores de pantallas/variantes. La referencia técnica está en [visual.md](visual.md).
 
 ### `tests/`
 
@@ -103,7 +100,7 @@ La documentación de testing existía, pero necesitaba ponerse al día con esta 
 | Configuración | `core/config_loader.py` | `docs/configuration.md` |
 | Memoria | `core/memory.py` | `core/memory_sync.py`, `mcp/memory_server.py`, `docs/memory.md` |
 | Hooks | `hooks/hooks.json` | el script concreto, sus tests y `docs/hooks.md` |
-| Selina | `core/selina_*` y `visual/scripts/` | `agents/selina.md`, `docs/agents/selina.md` |
+| Selina | `core/selina_*` y `visual/scripts/` | `agents/selina.md`, `docs/agents/selina.md`, `docs/visual.md` |
 | Tests/contratos | `tests/` | `docs/testing.md` |
 
 ---

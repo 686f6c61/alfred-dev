@@ -152,6 +152,21 @@ class TestServerLifecycle(unittest.TestCase):
         self.assertIn(b'101 Switching Protocols', response)
         return sock
 
+    def _websocket_handshake_response(self, lines):
+        """Envia un handshake WebSocket manual y devuelve la respuesta cruda."""
+        sock = socket.create_connection(('127.0.0.1', self.port), timeout=5)
+        try:
+            sock.sendall('\r\n'.join(lines).encode('ascii'))
+            response = b''
+            while b'\r\n\r\n' not in response:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+            return response
+        finally:
+            sock.close()
+
     def _recv_ws_text(self, sock):
         """Recibe un frame de texto no enmascarado enviado por el servidor."""
         first = sock.recv(2)
@@ -348,6 +363,22 @@ class TestServerLifecycle(unittest.TestCase):
         self.assertEqual(event['label'], 'Modern SaaS clean')
         self.assertEqual(event['type'], 'click')
 
+    def test_server_rejects_invalid_http_click_event_shape(self):
+        """El fallback HTTP no debe persistir eventos sin elección válida."""
+        self._start_server()
+        status, body = self._post_json('/events', {'choice': 42, 'label': 'No valido'})
+        self.assertEqual(status, 400)
+        self.assertIn('Evento invalido', body)
+        self.assertFalse(os.path.exists(os.path.join(self.state_dir, 'events')))
+
+    def test_server_rejects_oversized_http_click_event(self):
+        """El endpoint de eventos no debe aceptar cuerpos arbitrariamente grandes."""
+        self._start_server()
+        status, body = self._post_json('/events', {'choice': 'A' * (70 * 1024), 'label': 'Grande'})
+        self.assertEqual(status, 413)
+        self.assertIn('Evento demasiado grande', body)
+        self.assertFalse(os.path.exists(os.path.join(self.state_dir, 'events')))
+
     def test_server_accepts_loopback_origin_alias_for_websocket(self):
         """Abrir la URL como 127.0.0.1 no debe romper WS si el servidor anunció localhost."""
         self._start_server()
@@ -362,6 +393,35 @@ class TestServerLifecycle(unittest.TestCase):
         with open(events_path, 'r', encoding='utf-8') as fh:
             lines = [line.strip() for line in fh if line.strip()]
         self.assertEqual(len(lines), 1)
+
+    def test_server_rejects_invalid_websocket_handshake(self):
+        """El upgrade WS exige version 13 y una Sec-WebSocket-Key RFC 6455."""
+        self._start_server()
+        invalid_key_response = self._websocket_handshake_response([
+            'GET / HTTP/1.1',
+            f'Host: 127.0.0.1:{self.port}',
+            'Upgrade: websocket',
+            'Connection: Upgrade',
+            'Sec-WebSocket-Key: not-base64',
+            'Sec-WebSocket-Version: 13',
+            '',
+            '',
+        ])
+        invalid_version_response = self._websocket_handshake_response([
+            'GET / HTTP/1.1',
+            f'Host: 127.0.0.1:{self.port}',
+            'Upgrade: websocket',
+            'Connection: Upgrade',
+            f'Sec-WebSocket-Key: {b64encode(os.urandom(16)).decode("ascii")}',
+            'Sec-WebSocket-Version: 12',
+            '',
+            '',
+        ])
+
+        self.assertIn(b'400 Bad Request', invalid_key_response)
+        self.assertIn(b'400 Bad Request', invalid_version_response)
+        self.assertNotIn(b'101 Switching Protocols', invalid_key_response)
+        self.assertNotIn(b'101 Switching Protocols', invalid_version_response)
 
     def test_server_broadcasts_reload_on_screen_update(self):
         """Actualizar la pantalla debe disparar reload por WebSocket."""

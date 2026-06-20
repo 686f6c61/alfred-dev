@@ -14,6 +14,30 @@
 #   Error:  {"type":"error","message":"..."}
 
 set -euo pipefail
+umask 077
+
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+json_error() {
+  local message="$1"
+  printf '{"type":"error","message":"%s"}\n' "$(json_escape "$message")"
+}
+
+require_value() {
+  local flag="$1"
+  if [[ $# -lt 2 || -z "${2:-}" || "${2:-}" == --* ]]; then
+    json_error "Falta valor para ${flag}"
+    exit 1
+  fi
+}
 
 # ---------------------------------------------------------------------------
 # Valores por defecto
@@ -31,14 +55,17 @@ MODE=""          # foreground | background (se resuelve abajo)
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-dir)
+      require_value "$1" "${2:-}"
       PROJECT_DIR="$2"
       shift 2
       ;;
     --host)
+      require_value "$1" "${2:-}"
       HOST="$2"
       shift 2
       ;;
     --url-host)
+      require_value "$1" "${2:-}"
       URL_HOST="$2"
       shift 2
       ;;
@@ -51,7 +78,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     *)
-      printf '{"type":"error","message":"Argumento desconocido: %s"}\n' "$1"
+      json_error "Argumento desconocido: $1"
       exit 1
       ;;
   esac
@@ -80,8 +107,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_CJS="$SCRIPT_DIR/server.cjs"
 
+if ! command -v node >/dev/null 2>&1; then
+  json_error "Node.js no esta en PATH"
+  exit 1
+fi
+
 if [[ ! -f "$SERVER_CJS" ]]; then
-  printf '{"type":"error","message":"No se encontro server.cjs en %s"}\n' "$SCRIPT_DIR"
+  json_error "No se encontro server.cjs en $SCRIPT_DIR"
   exit 1
 fi
 

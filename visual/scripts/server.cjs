@@ -41,6 +41,12 @@ const OWNER_CHECK_INTERVAL_MS = 60 * 1000;
 /** Debounce para el vigilante de ficheros (100 ms). */
 const WATCH_DEBOUNCE_MS = 100;
 
+/** Tamaño máximo aceptado para eventos del navegador (64 KiB). */
+const MAX_EVENT_BODY_BYTES = 64 * 1024;
+
+/** Tamaño máximo de campos de evento persistidos. */
+const MAX_EVENT_FIELD_CHARS = 512;
+
 const CONTENT_DIR = path.join(SESSION_DIR, 'content');
 const STATE_DIR = path.join(SESSION_DIR, 'state');
 const DEBUG_WS = process.env.ALFRED_VISUAL_DEBUG_WS === '1';
@@ -89,6 +95,35 @@ function normalizeSingleHeader(value) {
     return String(value[0] || '').trim();
   }
   return String(value || '').split(',')[0].trim();
+}
+
+/**
+ * Comprueba si una cabecera HTTP contiene un token concreto separado por comas.
+ * @param {string|string[]|undefined} value
+ * @param {string} token
+ * @returns {boolean}
+ */
+function headerHasToken(value, token) {
+  const rawValues = Array.isArray(value) ? value : [value];
+  return rawValues.some((raw) => String(raw || '')
+    .split(',')
+    .map((part) => part.trim().toLowerCase())
+    .includes(token.toLowerCase()));
+}
+
+/**
+ * Valida que Sec-WebSocket-Key sea base64 de 16 bytes, como exige RFC 6455.
+ * @param {string} key
+ * @returns {boolean}
+ */
+function isValidWebSocketKey(key) {
+  if (!key) return false;
+  try {
+    const decoded = Buffer.from(key, 'base64');
+    return decoded.length === 16 && decoded.toString('base64') === key;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -358,12 +393,39 @@ function buildChoiceEvent(event) {
 }
 
 /**
+ * Normaliza la entrada recibida desde navegador antes de persistirla.
+ * @param {unknown} event
+ * @returns {{choice: string, label: string, element: string}|null}
+ */
+function normalizeChoiceEventInput(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    return null;
+  }
+
+  const choice = event.choice;
+  if (typeof choice !== 'string' || choice.trim() === '' || choice.length > MAX_EVENT_FIELD_CHARS) {
+    return null;
+  }
+
+  const label = typeof event.label === 'string' && event.label.length <= MAX_EVENT_FIELD_CHARS
+    ? event.label
+    : choice;
+  const element = typeof event.element === 'string' && event.element.length <= MAX_EVENT_FIELD_CHARS
+    ? event.element
+    : '.style-option';
+
+  return { choice, label, element };
+}
+
+/**
  * Registra una eleccion canónica en el log de eventos y la emite por stdout.
  * @param {object} event
  * @returns {object}
  */
 function recordChoiceEvent(event) {
-  const choiceEvent = buildChoiceEvent(event);
+  const normalizedEvent = normalizeChoiceEventInput(event);
+  if (!normalizedEvent) return null;
+  const choiceEvent = buildChoiceEvent(normalizedEvent);
   const eventLine = JSON.stringify(choiceEvent);
   fs.appendFileSync(path.join(STATE_DIR, 'events'), eventLine + '\n');
   emit(choiceEvent);
@@ -457,13 +519,36 @@ function handleRequest(req, res) {
   lastActivity = Date.now();
 
   if (req.method === 'POST' && req.url === '/events') {
+    const contentLength = Number.parseInt(normalizeSingleHeader(req.headers['content-length']) || '0', 10);
+    if (Number.isFinite(contentLength) && contentLength > MAX_EVENT_BODY_BYTES) {
+      res.writeHead(413, SECURITY_HEADERS);
+      res.end('Evento demasiado grande');
+      return;
+    }
+
     const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
+    let receivedBytes = 0;
+    let tooLarge = false;
+    req.on('data', (chunk) => {
+      receivedBytes += chunk.length;
+      if (receivedBytes > MAX_EVENT_BODY_BYTES) {
+        tooLarge = true;
+        chunks.length = 0;
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => {
+      if (tooLarge) {
+        res.writeHead(413, SECURITY_HEADERS);
+        res.end('Evento demasiado grande');
+        return;
+      }
+
       try {
         const body = Buffer.concat(chunks).toString('utf8');
         const event = JSON.parse(body || '{}');
-        if (event.choice === undefined) {
+        if (!normalizeChoiceEventInput(event)) {
           res.writeHead(400, SECURITY_HEADERS);
           res.end('Evento invalido');
           return;
@@ -534,6 +619,29 @@ function broadcast(message) {
  * @param {net.Socket} socket
  */
 function handleUpgrade(req, socket, head) {
+  const rejectUpgrade = (reason) => {
+    debugWs('upgrade-rejected', { reason });
+    try {
+      socket.write('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
+    } catch {
+      // La conexión puede estar ya cerrada.
+    }
+    socket.destroy();
+  };
+
+  if (!headerHasToken(req.headers.upgrade, 'websocket')) {
+    rejectUpgrade('missing-upgrade-websocket');
+    return;
+  }
+  if (!headerHasToken(req.headers.connection, 'upgrade')) {
+    rejectUpgrade('missing-connection-upgrade');
+    return;
+  }
+  if (normalizeSingleHeader(req.headers['sec-websocket-version']) !== '13') {
+    rejectUpgrade('unsupported-websocket-version');
+    return;
+  }
+
   // Verificar origen del WebSocket para prevenir conexiones desde dominios ajenos
   const origin = normalizeSingleHeader(req.headers['origin']);
   debugWs('upgrade-request', {
@@ -546,15 +654,15 @@ function handleUpgrade(req, socket, head) {
     const allowedOrigins = getAllowedOrigins();
     if (!allowedOrigins.has(origin)) {
       debugWs('upgrade-rejected-origin', { origin, allowedOrigins: Array.from(allowedOrigins) });
-      socket.destroy();
+      rejectUpgrade('origin-not-allowed');
       return;
     }
   }
 
   const key = normalizeSingleHeader(req.headers['sec-websocket-key']);
-  if (!key) {
+  if (!isValidWebSocketKey(key)) {
     debugWs('upgrade-rejected-missing-key');
-    socket.destroy();
+    rejectUpgrade('invalid-websocket-key');
     return;
   }
 
@@ -591,7 +699,7 @@ function handleUpgrade(req, socket, head) {
           try {
             const event = JSON.parse(text);
             // Si el evento contiene una eleccion, registrarla
-            if (event.choice !== undefined) {
+            if (normalizeChoiceEventInput(event)) {
               recordChoiceEvent(event);
             }
           } catch {

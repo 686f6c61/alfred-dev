@@ -55,6 +55,7 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 | [commands.md](commands.md) | Referencia de los 26 comandos publicados por el plugin, agrupados por uso real |
 | [agents/README.md](agents/README.md) | Vision general del equipo de 19 agentes, modelo de colaboración, distribución de modelos |
 | [skills.md](skills.md) | Catalogo de 62 skills organizados en 15 dominios, junto con las reglas de publicación y activación manual de los skills más delicados |
+| [visual.md](visual.md) | Runtime visual local de Selina: servidor, scripts, eventos, hardening y empaquetado |
 | [hooks.md](hooks.md) | Los 13 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
 | [configuration.md](configuration.md) | Detección de stack, fichero .local.md, niveles de autonomía, agentes opcionales, composicion dinámica de equipo |
