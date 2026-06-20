@@ -229,7 +229,7 @@ El artefacto debe poder leerse seis meses después y responder sin ambigüedad: 
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | alfred | Fase visual de /alfred feature tras aprobación del PRD |
+| **Activado por** | alfred | Fase visual de /alfred-dev:feature tras aprobación del PRD |
 | **Recibe de** | product-owner | PRD aprobado como input para entender audiencia y tono |
 | **Entrega a** | architect | Artefacto `docs/style-direction.md` como restricción de diseño visual |
 | **Referenciado por** | senior-dev | Para implementar tokens y componentes alineados con la dirección |

@@ -3,7 +3,7 @@ name: architect
 description: |
   Usar para diseño de arquitectura, elección de stack tecnológico, ADRs (Architecture
   Decision Records) y evaluación de dependencias. Se activa en la fase 2 (arquitectura)
-  de /alfred feature y en /alfred spike. También se puede invocar directamente para
+  de /alfred-dev:feature y en /alfred-dev:spike. También se puede invocar directamente para
   consultas de diseño de sistemas, evaluación de patrones o revisión de acoplamiento.
 
   <example>
@@ -27,11 +27,11 @@ description: |
   </example>
 
   <example>
-  El usuario ejecuta "/alfred spike websockets vs SSE para notificaciones en tiempo
+  El usuario ejecuta "/alfred-dev:spike websockets vs SSE para notificaciones en tiempo
   real" y el agente investiga ambas opciones, las compara con pruebas de concepto
   y documenta los hallazgos en un ADR.
   <commentary>
-  Trigger de spike: /alfred spike activa la investigación técnica. El architect
+  Trigger de spike: /alfred-dev:spike activa la investigación técnica. El architect
   explora alternativas y documenta hallazgos sin compromiso de implementación.
   </commentary>
   </example>
@@ -247,7 +247,7 @@ El Bibliotecario y el usuario podrán consultar estas decisiones en cualquier mo
 
 | Relación | Agente | Contexto |
 |----------|--------|----------|
-| **Activado por** | alfred | Fase 2 de /alfred feature y /alfred spike |
+| **Activado por** | alfred | Fase 2 de /alfred-dev:feature y /alfred-dev:spike |
 | **Recibe de** | product-owner | PRD aprobado como input para el diseño |
 | **Trabaja con** | security-officer | Threat model y validación de seguridad en paralelo |
 | **Entrega a** | senior-dev | Diseño aprobado como guía de implementación |

@@ -129,6 +129,22 @@ def sanitize_content(text: Optional[str]) -> Optional[str]:
     return result
 
 
+def _sanitize_json_value(value: Any) -> Any:
+    """Sanitiza strings dentro de estructuras JSON sin cambiar su forma."""
+    if isinstance(value, str):
+        return sanitize_content(value)
+    if isinstance(value, dict):
+        return {
+            str(sanitize_content(str(key))): _sanitize_json_value(inner)
+            for key, inner in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize_json_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_json_value(item) for item in value]
+    return value
+
+
 # ---------------------------------------------------------------------------
 # SQL de creacion del esquema
 # ---------------------------------------------------------------------------
@@ -948,13 +964,12 @@ class MemoryDB:
         now = datetime.now(timezone.utc).isoformat()
         payload_json = None
         if payload is not None:
-            # Sanitizar los valores del payload por si contienen secretos
-            sanitized = {
-                k: sanitize_content(str(v)) if isinstance(v, str) else v
-                for k, v in payload.items()
-            }
+            # Sanitizar payloads anidados por si contienen secretos.
+            sanitized = _sanitize_json_value(payload)
             payload_json = json.dumps(sanitized, ensure_ascii=False)
 
+        sanitized_event_type = sanitize_content(event_type) or ""
+        sanitized_phase = sanitize_content(phase) if phase else None
         sanitized_summary = sanitize_content(summary) if summary else None
         sanitized_content = sanitize_content(content) if content else None
 
@@ -962,7 +977,7 @@ class MemoryDB:
             "INSERT INTO events "
             "(iteration_id, event_type, phase, payload, summary, content, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (iteration_id, event_type, phase, payload_json,
+            (iteration_id, sanitized_event_type, sanitized_phase, payload_json,
              sanitized_summary, sanitized_content, now),
         )
 

@@ -24,6 +24,7 @@ from core.continuity import (  # noqa: E402
     move_kanban_task,
     normalize_kanban_task_types,
     render_lane_markdown,
+    render_github_sync_cli_summary,
     render_standup_markdown,
     render_validation_markdown,
     search_project_context,
@@ -341,7 +342,7 @@ class TestPmHelpers(unittest.TestCase):
                 "status": "approved",
                 "checklist": [],
                 "notes": "",
-                "next_command": "/alfred-dev:alfred",
+                "next_command": "/alfred",
             }
             _write(
                 os.path.join(tmpdir, ".claude", "alfred-uat.json"),
@@ -1123,6 +1124,8 @@ class TestGitHubSyncHelpers(unittest.TestCase):
 
             self.assertEqual(proc.returncode, 0, msg=proc.stderr)
             self.assertIn("## SonIA Sync", proc.stdout)
+            self.assertNotIn("### Issues", proc.stdout)
+            self.assertIn(GITHUB_SYNC_MD_RELATIVE_PATH, proc.stdout)
             self.assertTrue(os.path.isfile(os.path.join(tmpdir, GITHUB_SYNC_JSON_RELATIVE_PATH)))
             self.assertTrue(os.path.isfile(os.path.join(tmpdir, GITHUB_SYNC_MD_RELATIVE_PATH)))
 
@@ -1155,6 +1158,38 @@ class TestGitHubSyncHelpers(unittest.TestCase):
         self.assertIn("## SonIA Sync", markdown)
         self.assertIn("[T-010] Preparar labels de issues", markdown)
         self.assertNotIn("[T-010] [T-010]", markdown)
+
+    def test_sync_cli_summary_keeps_issue_detail_in_artifact(self):
+        result = {
+            "repo": "686f6c61/alfred-e2e",
+            "board_issue": {"url": "https://github.com/686f6c61/alfred-e2e/issues/9"},
+            "tasks": [
+                {
+                    "id": "T-010",
+                    "title": "Preparar labels de issues",
+                    "status": "backlog",
+                    "number": 101,
+                }
+            ],
+            "skipped": [],
+            "internal_omitted": [],
+            "retired": [],
+            "remote_drift": [],
+            "next_action": {
+                "command": "feature",
+                "directive": "Continua con el flujo persistido.",
+            },
+        }
+
+        summary = render_github_sync_cli_summary(result)
+
+        self.assertIn("## SonIA Sync listo", summary)
+        self.assertIn("sincronizadas=1", summary)
+        self.assertIn(GITHUB_SYNC_JSON_RELATIVE_PATH, summary)
+        self.assertIn(GITHUB_SYNC_MD_RELATIVE_PATH, summary)
+        self.assertIn("/alfred-dev:feature", summary)
+        self.assertNotIn("### Issues", summary)
+        self.assertNotIn("Preparar labels de issues", summary)
 
 
 if __name__ == "__main__":

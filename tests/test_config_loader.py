@@ -3,9 +3,10 @@
 
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
-import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -363,6 +364,10 @@ class TestLoadConfig(unittest.TestCase):
 
         self.assertEqual(menu["header"], "Config")
         self.assertEqual(menu["question"], "¿Qué sección quieres modificar ahora?")
+        self.assertEqual(menu["questions"][0]["header"], "Config")
+        self.assertEqual(menu["questions"][0]["question"], menu["question"])
+        self.assertEqual(menu["questions"][0]["options"], menu["options"])
+        self.assertEqual(menu["questions"][0]["multiSelect"], False)
         self.assertEqual(labels[0], "Salir sin cambios")
         self.assertIn("Autonomía por fase", labels)
         self.assertIn("Proyecto", labels)
@@ -404,6 +409,92 @@ class TestLoadConfig(unittest.TestCase):
             set(updated["agentes_opcionales"].keys()),
             set(get_optional_agent_names()),
         )
+
+    def test_all_config_sections_preview_and_persist_round_trip(self):
+        updates = {
+            "autonomia": {
+                "producto": "interactivo",
+                "calidad": "semi-autonomo",
+            },
+            "proyecto": {
+                "runtime": "node",
+                "lenguaje": "typescript",
+                "framework": "next",
+                "test_runner": "vitest",
+                "bundler": "vite",
+            },
+            "agentes_opcionales": {
+                "lucius": True,
+                "github-manager": True,
+            },
+            "memoria": {
+                "enabled": True,
+                "sync_commits_limit": 3,
+                "retention_days": 30,
+            },
+            "compliance": {
+                "estilo": "strict",
+                "lint": False,
+                "format_on_save": False,
+            },
+            "integraciones": {
+                "git": False,
+                "ci": True,
+                "deploy": True,
+            },
+            "personalidad": {
+                "nivel_sarcasmo": 1,
+                "verbosidad": "alta",
+                "idioma": "es-ES",
+                "celebrar_victorias": False,
+            },
+        }
+
+        for section_name, patch in updates.items():
+            with self.subTest(section=section_name):
+                base_config = load_config("/ruta/que/no/existe")
+                preview = build_config_section_change_preview(
+                    base_config,
+                    section_name,
+                    patch,
+                )
+
+                self.assertTrue(preview["changed"], msg=preview)
+                self.assertEqual(preview["section"], section_name)
+                for key, value in patch.items():
+                    self.assertEqual(preview["updated_config"][section_name][key], value)
+
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    suffix=".md",
+                    delete=False,
+                    encoding="utf-8",
+                ) as f:
+                    f.write(
+                        "---\n"
+                        "memoria:\n"
+                        "  enabled: false\n"
+                        "---\n\n"
+                        "## Notas\n\n"
+                        "Nota estable.\n"
+                    )
+                    path = f.name
+
+                try:
+                    persisted_preview = update_config_section(
+                        path,
+                        section_name,
+                        patch,
+                        include_defaults=False,
+                    )
+                    reloaded = load_config(path)
+                finally:
+                    os.unlink(path)
+
+                self.assertEqual(persisted_preview["section"], section_name)
+                for key, value in patch.items():
+                    self.assertEqual(reloaded[section_name][key], value)
+                self.assertIn("Nota estable", reloaded["notas"])
 
     def test_build_config_section_change_preview_reports_before_and_after(self):
         config = load_config("/ruta/que/no/existe")
@@ -532,6 +623,90 @@ class TestDetectStack(unittest.TestCase):
         self.assertEqual(stack["orm"], "ninguno")
         self.assertEqual(stack["test_runner"], "pytest")
 
+    def test_detects_jvm_maven_project(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "pom.xml"), "w", encoding="utf-8") as f:
+                f.write(
+                    "<project><dependencies>"
+                    "<dependency><groupId>org.springframework.boot</groupId>"
+                    "<artifactId>spring-boot-starter-web</artifactId></dependency>"
+                    "<dependency><groupId>org.junit.jupiter</groupId>"
+                    "<artifactId>junit-jupiter</artifactId></dependency>"
+                    "</dependencies></project>"
+                )
+            stack = detect_stack(tmpdir)
+        self.assertEqual(stack["runtime"], "jvm")
+        self.assertEqual(stack["lenguaje"], "java")
+        self.assertEqual(stack["framework"], "spring-boot")
+        self.assertEqual(stack["test_runner"], "junit")
+
+    def test_detects_kotlin_gradle_project(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "build.gradle.kts"), "w", encoding="utf-8") as f:
+                f.write(
+                    "plugins { kotlin(\"jvm\") version \"2.0.0\" }\n"
+                    "dependencies { implementation(\"io.quarkus:quarkus-rest\") }\n"
+                )
+            stack = detect_stack(tmpdir)
+        self.assertEqual(stack["runtime"], "jvm")
+        self.assertEqual(stack["lenguaje"], "kotlin")
+        self.assertEqual(stack["framework"], "quarkus")
+
+    def test_detects_php_composer_project(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "composer.json"), "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "require": {
+                            "laravel/framework": "^11.0",
+                            "doctrine/orm": "^3.0",
+                        },
+                        "require-dev": {
+                            "pestphp/pest": "^2.0",
+                        },
+                    },
+                    f,
+                )
+            stack = detect_stack(tmpdir)
+        self.assertEqual(stack["runtime"], "php")
+        self.assertEqual(stack["lenguaje"], "php")
+        self.assertEqual(stack["framework"], "laravel")
+        self.assertEqual(stack["orm"], "doctrine")
+        self.assertEqual(stack["test_runner"], "pest")
+
+    def test_detects_dotnet_project(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "App.csproj"), "w", encoding="utf-8") as f:
+                f.write(
+                    "<Project Sdk=\"Microsoft.NET.Sdk.Web\">"
+                    "<ItemGroup>"
+                    "<PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"8.0.0\" />"
+                    "<PackageReference Include=\"xunit\" Version=\"2.8.0\" />"
+                    "</ItemGroup>"
+                    "</Project>"
+                )
+            stack = detect_stack(tmpdir)
+        self.assertEqual(stack["runtime"], "dotnet")
+        self.assertEqual(stack["lenguaje"], "csharp")
+        self.assertEqual(stack["framework"], "aspnet")
+        self.assertEqual(stack["orm"], "entity-framework")
+        self.assertEqual(stack["test_runner"], "xunit")
+
+    def test_detects_swift_package_project(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "Package.swift"), "w", encoding="utf-8") as f:
+                f.write(
+                    "let package = Package(\n"
+                    "  dependencies: [.package(url: \"https://github.com/vapor/vapor\", from: \"4.0.0\")],\n"
+                    "  targets: [.testTarget(name: \"AppTests\", dependencies: [\"App\"])]\n"
+                    ")\n"
+                )
+            stack = detect_stack(tmpdir)
+        self.assertEqual(stack["runtime"], "swift")
+        self.assertEqual(stack["lenguaje"], "swift")
+        self.assertEqual(stack["framework"], "vapor")
+        self.assertEqual(stack["test_runner"], "swift-test")
+
 
 class TestOptionalAgents(unittest.TestCase):
     """Tests para la configuración y descubrimiento de agentes opcionales."""
@@ -574,6 +749,10 @@ class TestOptionalAgents(unittest.TestCase):
             menu["question"],
             "¿Qué agente técnico quieres activar ahora?",
         )
+        self.assertEqual(menu["questions"][0]["header"], "Tecnicos")
+        self.assertEqual(menu["questions"][0]["question"], menu["question"])
+        self.assertEqual(menu["questions"][0]["options"], menu["options"])
+        self.assertEqual(menu["questions"][0]["multiSelect"], False)
         self.assertEqual(menu["options"][0]["label"], "Seguir sin activar más")
         self.assertEqual(menu["options"][1]["label"], "Data Engineer")
 
@@ -788,6 +967,31 @@ class TestOptionalAgents(unittest.TestCase):
             suggestions = suggest_optional_agents(tmpdir)
         agent_names = [s[0] for s in suggestions]
         self.assertNotIn("librarian", agent_names)
+
+
+class TestConfigCli(unittest.TestCase):
+    def test_summary_headless_renders_menu_and_bootstraps_config(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    os.path.join(os.path.dirname(__file__), "..", "core", "config_cli.py"),
+                    tmpdir,
+                    "--headless",
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("CONFIG_HEADLESS_MENU", result.stdout)
+            self.assertIn("Autonomía", result.stdout)
+            self.assertIn("Personalidad", result.stdout)
+            self.assertTrue(
+                os.path.isfile(os.path.join(tmpdir, ".claude", "alfred-dev.local.md"))
+            )
 
 
 

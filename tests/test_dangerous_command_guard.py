@@ -271,6 +271,25 @@ class TestSafeAlfredHelpers(unittest.TestCase):
             "allow",
         )
 
+    def test_blocking_exit_2_does_not_emit_ignored_json(self):
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "rm -rf /"},
+        }
+
+        result = subprocess.run(
+            [sys.executable, _hook_path],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("COMANDO PELIGROSO BLOQUEADO", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

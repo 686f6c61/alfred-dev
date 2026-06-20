@@ -8,7 +8,8 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra globalmente en Claude Code la fuente GitHub del plugin
 #   3. Instala el plugin con claude plugin install
-#   4. Listo para usar: /alfred-dev:help
+#   4. Instala el alias personal global /alfred y elimina shims obsoletos
+#   5. Listo para usar: /alfred
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para registrar una
@@ -19,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.5.2"
+$Version = "0.6.0"
 
 # -- Funciones auxiliares ---------------------------------------------------
 
@@ -160,6 +161,147 @@ function Test-GlobalSourceRegistration {
     return $entry.source.source -eq "github" -and $entry.source.repo -eq $Repo
 }
 
+function Normalize-ToUserScopeInstallation {
+    param(
+        [string]$PluginName,
+        [string]$PluginKey
+    )
+
+    # Alfred Dev solo soporta instalacion global de usuario. Si alguien lo
+    # instalo antes en local/project, limpiamos ese rastro en el contexto actual
+    # antes de reinstalar con --scope user.
+    & claude plugin uninstall $PluginKey --scope local 2>&1 | Out-Null
+    & claude plugin uninstall $PluginKey --scope project 2>&1 | Out-Null
+    & claude plugin marketplace remove $PluginName --scope local 2>&1 | Out-Null
+    & claude plugin marketplace remove $PluginName --scope project 2>&1 | Out-Null
+    Write-Ok "Scopes local/project normalizados; Alfred se instalara como usuario global"
+}
+
+function Install-GlobalAlfredAlias {
+    param(
+        [string]$ClaudeDir,
+        [string]$PluginRoot
+    )
+
+    if (-not $PluginRoot) {
+        Write-Err "No se pudo resolver la raiz del plugin instalado para crear /alfred"
+        exit 1
+    }
+
+    $sourceAlias = Join-Path $PluginRoot "skills/alfred/alfred/SKILL.md"
+    if (-not (Test-Path $sourceAlias -PathType Leaf)) {
+        Write-Err "No se encontro el skill de alias global en la instalacion:"
+        Write-Err "  $sourceAlias"
+        exit 1
+    }
+
+    $aliasDir = Join-Path $ClaudeDir "skills/alfred"
+    $aliasFile = Join-Path $aliasDir "SKILL.md"
+    $commandAliasDir = Join-Path $ClaudeDir "commands"
+    $commandAliasFile = Join-Path $commandAliasDir "alfred.md"
+    New-Item -ItemType Directory -Path $aliasDir -Force | Out-Null
+
+    function Write-AlfredAlias {
+        param(
+            [string]$Source,
+            [string]$Target,
+            [bool]$Invocable
+        )
+
+        $content = Get-Content $Source -Raw -Encoding UTF8
+        $value = if ($Invocable) { "true" } else { "false" }
+        if ($content -match '(?m)^user-invocable:\s*(true|false)\s*$') {
+            $content = [regex]::Replace(
+                $content,
+                '(?m)^user-invocable:\s*(true|false)\s*$',
+                "user-invocable: $value",
+                1
+            )
+        }
+        elseif ($content.StartsWith("---`n")) {
+            $content = "---`nuser-invocable: $value`n" + $content.Substring(4)
+        }
+
+        Write-TextFileAtomic -Path $Target -Content $content
+    }
+
+    if (Test-Path $aliasFile -PathType Leaf) {
+        $existing = Get-Content $aliasFile -Raw -Encoding UTF8
+        if ($existing -notmatch "Alfred Dev global alias") {
+            $backup = "$aliasFile.before-alfred-dev.$(Get-Date -Format 'yyyyMMddHHmmss')"
+            Copy-Item $aliasFile $backup -Force
+            Write-Info "Skill /alfred existente respaldado en $backup"
+        }
+    }
+
+    Write-AlfredAlias -Source $sourceAlias -Target $aliasFile -Invocable $true
+    Write-Ok "Alias global /alfred instalado en $aliasFile"
+
+    if (Test-Path $commandAliasFile -PathType Leaf) {
+        $existing = Get-Content $commandAliasFile -Raw -Encoding UTF8
+        if ($existing -match "Alfred Dev global alias") {
+            Remove-Item $commandAliasFile -Force
+            Write-Ok "Shim de comando global /alfred obsoleto eliminado en $commandAliasFile"
+        }
+        else {
+            $backup = "$commandAliasFile.before-alfred-dev.$(Get-Date -Format 'yyyyMMddHHmmss')"
+            Move-Item $commandAliasFile $backup -Force
+            Write-Info "Comando /alfred existente movido a $backup para evitar duplicados"
+        }
+    }
+}
+
+function Assert-UserScopeInstallation {
+    param([string]$PluginKey)
+
+    $pluginListJson = & claude plugin list --json 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "No se pudo confirmar el scope global con 'claude plugin list --json'"
+        Write-Err "Alfred Dev debe quedar instalado como scope user."
+        exit 1
+    }
+
+    try {
+        $entries = @(($pluginListJson | Out-String) | ConvertFrom-Json)
+    }
+    catch {
+        Write-Err "JSON invalido en claude plugin list --json: $_"
+        exit 1
+    }
+
+    $matches = @($entries | Where-Object { $_.id -eq $PluginKey })
+    if ($matches.Count -eq 0) {
+        Write-Err "No aparece $PluginKey en claude plugin list --json"
+        exit 1
+    }
+
+    $activeNonUser = @($matches | Where-Object { $_.enabled -eq $true -and $_.scope -ne "user" })
+    if ($activeNonUser.Count -gt 0) {
+        $details = @($activeNonUser | ForEach-Object {
+            "scope=$($_.scope) projectPath=$($_.projectPath)"
+        }) -join ", "
+        Write-Err "Hay instalaciones activas no globales de ${PluginKey}: $details"
+        exit 1
+    }
+
+    $enabledUser = @($matches | Where-Object { $_.enabled -eq $true -and $_.scope -eq "user" })
+    if ($enabledUser.Count -eq 0) {
+        $scopes = @($matches | ForEach-Object { "$($_.scope)" }) -join ", "
+        Write-Err "$PluginKey existe, pero no hay entrada enabled con scope user. Scopes vistos: $scopes"
+        exit 1
+    }
+
+    $staleNonUser = @($matches | Where-Object { $_.enabled -ne $true -and $_.scope -ne "user" })
+    if ($staleNonUser.Count -gt 0) {
+        $details = @($staleNonUser | ForEach-Object {
+            "scope=$($_.scope) projectPath=$($_.projectPath)"
+        }) -join ", "
+        Write-Info "AVISO: quedan entradas antiguas no activas de ${PluginKey}: $details"
+    }
+
+    Write-Ok "Instalacion global de usuario confirmada (--scope user)"
+}
+
 # -- Verificaciones ---------------------------------------------------------
 
 $Python = Get-CompatiblePython
@@ -180,7 +322,7 @@ if (-not $env:USERPROFILE -or -not (Test-Path $env:USERPROFILE -PathType Contain
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
 if (-not (Test-Path $ClaudeDir)) {
     Write-Err "No se encontro el directorio $ClaudeDir"
-    Write-Err "Asegurate de tener Claude Code instalado: https://docs.anthropic.com/en/docs/claude-code"
+    Write-Err "Asegurate de tener Claude Code instalado: https://code.claude.com/docs/en/setup"
     exit 1
 }
 
@@ -203,17 +345,19 @@ Write-Host ""
 Write-Info "Registrando fuente GitHub global en Claude Code..."
 
 $pluginKey = "$PluginName@$PluginName"
+Normalize-ToUserScopeInstallation -PluginName $PluginName -PluginKey $pluginKey
+
 $pluginList = & claude plugin list 2>&1
 if ($pluginList -match [regex]::Escape($pluginKey)) {
-    & claude plugin uninstall $pluginKey 2>&1 | Out-Null
+    & claude plugin uninstall $pluginKey --scope user 2>&1 | Out-Null
 }
 
 $marketplaceList = & claude plugin marketplace list 2>&1
 if ($marketplaceList -match $PluginName) {
-    & claude plugin marketplace remove $PluginName 2>&1 | Out-Null
+    & claude plugin marketplace remove $PluginName --scope user 2>&1 | Out-Null
 }
 
-$marketplaceResult = & claude plugin marketplace add $Repo 2>&1
+$marketplaceResult = & claude plugin marketplace add $Repo --scope user 2>&1
 if ($LASTEXITCODE -eq 0) {
     Write-Ok "Fuente GitHub declarada"
 }
@@ -229,8 +373,8 @@ if (Test-GlobalSourceRegistration -ClaudeDir $ClaudeDir -PluginName $PluginName 
 }
 else {
     Write-Info "La CLI respondio OK, pero la fuente no quedo registrada; reintentando..."
-    & claude plugin marketplace remove $PluginName 2>&1 | Out-Null
-    $marketplaceResult = & claude plugin marketplace add $Repo 2>&1
+    & claude plugin marketplace remove $PluginName --scope user 2>&1 | Out-Null
+    $marketplaceResult = & claude plugin marketplace add $Repo --scope user 2>&1
     if ($LASTEXITCODE -eq 0 -and (Test-GlobalSourceRegistration -ClaudeDir $ClaudeDir -PluginName $PluginName -Repo $Repo)) {
         Write-Ok "Fuente GitHub registrada globalmente tras reintento"
     }
@@ -238,8 +382,8 @@ else {
         Write-Err "Claude Code no dejo registrada la fuente global del plugin"
         Write-Err "Fichero esperado: $(Join-Path $ClaudeDir 'plugins/known_marketplaces.json')"
         Write-Err "Prueba a ejecutar manualmente:"
-        Write-Err "  claude plugin marketplace remove $PluginName"
-        Write-Err "  claude plugin marketplace add $Repo"
+        Write-Err "  claude plugin marketplace remove $PluginName --scope user"
+        Write-Err "  claude plugin marketplace add $Repo --scope user"
         exit 1
     }
 }
@@ -248,15 +392,15 @@ else {
 
 Write-Info "Instalando plugin..."
 
-$installResult = & claude plugin install $pluginKey 2>&1
+$installResult = & claude plugin install $pluginKey --scope user 2>&1
 if ($LASTEXITCODE -eq 0) {
     Write-Ok "Plugin instalado y habilitado"
 }
 else {
     Write-Err "No se pudo instalar el plugin"
     Write-Err "Puedes intentar instalarlo manualmente:"
-    Write-Err "  claude plugin marketplace add $Repo"
-    Write-Err "  claude plugin install $pluginKey"
+    Write-Err "  claude plugin marketplace add $Repo --scope user"
+    Write-Err "  claude plugin install $pluginKey --scope user"
     exit 1
 }
 
@@ -266,9 +410,12 @@ $PluginRoot = Get-InstalledPluginRoot -ClaudeDir $ClaudeDir -PluginName $PluginN
 $hooksJson = $null
 $mcpJson = $null
 
+Install-GlobalAlfredAlias -ClaudeDir $ClaudeDir -PluginRoot $PluginRoot
+Assert-UserScopeInstallation -PluginKey $pluginKey
+
 if ($PluginRoot) {
     $hooksPath = Join-Path $PluginRoot "hooks/hooks.json"
-    $mcpPath = Join-Path $PluginRoot ".claude-plugin/mcp.json"
+    $mcpPath = Join-Path $PluginRoot ".mcp.json"
     if (Test-Path $hooksPath -PathType Leaf) {
         $hooksJson = Get-Item $hooksPath
     }
@@ -287,9 +434,15 @@ if ($hooksJson) {
             if (-not $matcher.hooks) { continue }
             foreach ($hook in $matcher.hooks) {
                 if ($hook.type -ne 'command' -or -not $hook.command) { continue }
-                if ($hook.command -notmatch 'python3 \$\{CLAUDE_PLUGIN_ROOT\}') { continue }
-                $hook.command = $hook.command -replace 'python3 \$\{CLAUDE_PLUGIN_ROOT\}', $quotedPython
-                $patchedHooks = $true
+                if ($hook.command -eq 'python3') {
+                    $hook.command = $Python.ExecutablePath
+                    $patchedHooks = $true
+                    continue
+                }
+                if ($hook.command -match 'python3 \$\{CLAUDE_PLUGIN_ROOT\}') {
+                    $hook.command = $hook.command -replace 'python3 \$\{CLAUDE_PLUGIN_ROOT\}', $quotedPython
+                    $patchedHooks = $true
+                }
             }
         }
     }
@@ -305,14 +458,18 @@ else {
 
 if ($mcpJson) {
     $mcpData = (Get-Content $mcpJson.FullName -Raw -Encoding UTF8) | ConvertFrom-Json
-    if ($mcpData.mcpServers.'alfred-memory'.command -ne $Python.ExecutablePath) {
-        $mcpData.mcpServers.'alfred-memory'.command = $Python.ExecutablePath
+    $mcpServers = $mcpData
+    if ($mcpData.PSObject.Properties.Name.Contains("mcpServers")) {
+        $mcpServers = $mcpData.mcpServers
+    }
+    if ($mcpServers.'alfred-memory'.command -ne $Python.ExecutablePath) {
+        $mcpServers.'alfred-memory'.command = $Python.ExecutablePath
         Write-TextFileAtomic $mcpJson.FullName ($mcpData | ConvertTo-Json -Depth 20)
-        Write-Ok "mcp.json parcheado para usar $($Python.ExecutablePath)"
+        Write-Ok ".mcp.json parcheado para usar $($Python.ExecutablePath)"
     }
 }
 else {
-    Write-Info "Aviso: no se encontro mcp.json en la instalacion activa para parchear Python"
+    Write-Info "Aviso: no se encontro .mcp.json en la instalacion activa para parchear Python"
 }
 
 # -- Resultado --------------------------------------------------------------
@@ -320,9 +477,11 @@ else {
 Write-Host ""
 Write-Host "Instalacion completada" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Reinicia Claude Code y ejecuta:"
-Write-Host "  /alfred-dev:help" -ForegroundColor White
+Write-Host "  En Claude Code, ejecuta /reload-plugins y despues:"
+Write-Host "  /alfred" -ForegroundColor White
+Write-Host "  Ayuda completa: /alfred-dev:help" -ForegroundColor DarkGray
 Write-Host ""
+Write-Host "  Si /reload-plugins avisa por MCP/coste de cache o no aparece el plugin, reinicia Claude Code." -ForegroundColor DarkGray
 Write-Host "  Repositorio: https://github.com/$Repo" -ForegroundColor DarkGray
 Write-Host "  Documentacion: https://alfred-dev.com" -ForegroundColor DarkGray
 Write-Host ""

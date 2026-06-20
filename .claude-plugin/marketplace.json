@@ -1,13 +1,14 @@
 {
   "name": "alfred-dev",
+  "description": "Marketplace no oficial de Alfred Dev para Claude Code.",
   "owner": {
     "name": "686f6c61"
   },
   "plugins": [
     {
       "name": "alfred-dev",
-      "description": "Plugin de ingeniería de software completa: 19 agentes (10 de núcleo + 9 opcionales), 61 skills, memoria persistente, quality gates y compliance europeo integrado.",
-      "version": "0.5.2",
+      "displayName": "Alfred Dev",
+      "description": "Plugin de ingeniería de software completa: 19 agentes (10 de núcleo + 9 opcionales), 62 skills, memoria persistente, quality gates y compliance europeo integrado.",
       "source": "./",
       "author": {
         "name": "686f6c61"

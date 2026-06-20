@@ -17,7 +17,7 @@ El tono del Artesano es directo y practico. Cuando ve código malo lo dice con r
 | Rol | Senior dev |
 | Modelo | opus |
 | Color en terminal | amarillo (`orange`) |
-| Herramientas | Glob, Grep, Read, Write, Edit, Bash, Task |
+| Herramientas | Glob, Grep, Read, Write, Edit, Bash, Agent |
 | Tipo de agente | Nucleo (siempre disponible) |
 
 ## Responsabilidades

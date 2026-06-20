@@ -24,6 +24,10 @@ $InstalledFile = Join-Path $PluginsDir "installed_plugins.json"
 $KnownMarketplaces = Join-Path $PluginsDir "known_marketplaces.json"
 $SettingsFile = Join-Path $ClaudeDir "settings.json"
 $PluginKey = "$PluginName@$PluginName"
+$GlobalAliasDir = Join-Path $ClaudeDir "skills/alfred"
+$GlobalAliasFile = Join-Path $GlobalAliasDir "SKILL.md"
+$GlobalCommandAliasDir = Join-Path $ClaudeDir "commands"
+$GlobalCommandAliasFile = Join-Path $GlobalCommandAliasDir "alfred.md"
 
 # -- Funciones auxiliares ---------------------------------------------------
 
@@ -60,6 +64,46 @@ function Write-JsonFileAtomic {
     }
 }
 
+function Remove-GlobalAlfredAlias {
+    $removed = $false
+
+    if (Test-Path $GlobalAliasFile -PathType Leaf) {
+        $content = Get-Content $GlobalAliasFile -Raw -Encoding UTF8
+        if ($content -match "Alfred Dev global alias") {
+            Remove-Item $GlobalAliasFile -Force
+            if (Test-Path $GlobalAliasDir -PathType Container -and
+                -not (Get-ChildItem $GlobalAliasDir -Force -ErrorAction SilentlyContinue)) {
+                Remove-Item $GlobalAliasDir -Force
+            }
+            Write-Ok "Alias global /alfred eliminado"
+            $removed = $true
+        }
+        else {
+            Write-Info "Se conserva $GlobalAliasFile: no parece ser el alias de Alfred Dev"
+        }
+    }
+
+    if (Test-Path $GlobalCommandAliasFile -PathType Leaf) {
+        $content = Get-Content $GlobalCommandAliasFile -Raw -Encoding UTF8
+        if ($content -match "Alfred Dev global alias") {
+            Remove-Item $GlobalCommandAliasFile -Force
+            if (Test-Path $GlobalCommandAliasDir -PathType Container -and
+                -not (Get-ChildItem $GlobalCommandAliasDir -Force -ErrorAction SilentlyContinue)) {
+                Remove-Item $GlobalCommandAliasDir -Force
+            }
+            Write-Ok "Shim de comando global /alfred eliminado"
+            $removed = $true
+        }
+        else {
+            Write-Info "Se conserva $GlobalCommandAliasFile: no parece ser el alias de Alfred Dev"
+        }
+    }
+
+    if (-not $removed) {
+        Write-Info "No se encontro alias global /alfred"
+    }
+}
+
 # ---------------------------------------------------------------------------
 
 Write-Host ""
@@ -70,8 +114,8 @@ Write-Host ""
 $ClaudeCli = Get-Command claude -ErrorAction SilentlyContinue
 if ($null -ne $ClaudeCli) {
     Write-Info "Desinstalando plugin con Claude CLI..."
-    & claude plugin uninstall $PluginKey 2>&1 | Out-Null
-    & claude plugin marketplace remove $PluginName 2>&1 | Out-Null
+    & claude plugin uninstall $PluginKey --scope user 2>&1 | Out-Null
+    & claude plugin marketplace remove $PluginName --scope user 2>&1 | Out-Null
     Write-Ok "Claude CLI ha intentado desregistrar el plugin y el marketplace"
 }
 else {
@@ -95,6 +139,8 @@ if (Test-Path $MarketplaceDir) {
 else {
     Write-Info "No se encontro directorio de marketplace"
 }
+
+Remove-GlobalAlfredAlias
 
 # Eliminar marketplace de known_marketplaces.json
 if (Test-Path $KnownMarketplaces) {

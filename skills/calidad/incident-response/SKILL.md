@@ -10,13 +10,13 @@ El usuario ha reportado o detectado un incidente en produccion. Sigue este proto
 
 ## Resumen
 
-Los incidentes en produccion requieren una respuesta rapida pero ordenada. La tentacion es saltar directamente al codigo, pero sin un triaje previo se pierde tiempo en diagnosticos erroneos. Este protocolo garantiza que cada paso se documenta y que las lecciones aprendidas quedan registradas para evitar recurrencias.
+Los incidentes en produccion requieren una respuesta rapida pero ordenada. La tentacion es saltar directamente al codigo, pero sin un triaje previo se pierde tiempo en diagnosticos erroneos. Este protocolo exige documentar cada paso y registrar las lecciones aprendidas para reducir recurrencias.
 
 ## Proceso
 
 ### Fase 1: Triaje (qa-engineer)
 
-Usa la herramienta Task para lanzar al agente `qa-engineer` con la siguiente mision:
+Usa la herramienta Agent para lanzar al agente `qa-engineer` con la siguiente mision:
 
 1. Clasificar la severidad del incidente (P0 critico, P1 alto, P2 medio, P3 bajo).
 2. Identificar el impacto: usuarios afectados, funcionalidad comprometida, datos en riesgo.

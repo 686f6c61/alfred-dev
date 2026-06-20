@@ -14,7 +14,7 @@ No optimiza prematuramente ni sacrifica legibilidad por rendimiento sin una just
 |-----------|-------|
 | **Modelo** | sonnet |
 | **Color** | amarillo (personality.py) / magenta (system prompt) |
-| **Herramientas** | Glob, Grep, Read, Write, Edit, Bash, Task |
+| **Herramientas** | Glob, Grep, Read, Write, Edit, Bash, Agent |
 | **Tipo** | Opcional |
 
 ## Responsabilidades

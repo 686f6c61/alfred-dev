@@ -20,8 +20,12 @@ Arquitectura:
 import json
 import os
 import re
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.optional_agents import get_optional_integrations, order_optional_agent_names
 from core.orchestrator import FLOWS
@@ -385,7 +389,7 @@ def _verification_status(
         return {
             "label": "aprobada",
             "detail": detail,
-            "next_command": "/alfred-dev:alfred",
+            "next_command": "/alfred",
             "next_reason": "La validación final ya está cerrada; toca continuar con el siguiente trabajo o preparar release.",
         }
 
@@ -398,7 +402,7 @@ def _verification_status(
         return {
             "label": "rechazada",
             "detail": detail,
-            "next_command": "/alfred-dev:alfred",
+            "next_command": "/alfred",
             "next_reason": "Hay que corregir el cambio y volver a pasar la verificación manual.",
         }
 
@@ -419,8 +423,8 @@ def _report_next_step_payload(
     """Devuelve una guía estructurada del siguiente paso para el informe."""
     verification = _verification_status(project_dir, session, completed)
     next_command = _single_line_text(
-        verification.get("next_command", "/alfred-dev:alfred"),
-        default="/alfred-dev:alfred",
+        verification.get("next_command", "/alfred"),
+        default="/alfred",
     )
 
     if next_command == "/alfred-dev:resume":
@@ -727,9 +731,9 @@ def _get_plugin_version() -> str:
         )
         with open(plugin_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get("version", "0.5.1")
+        return data.get("version", "0.6.0")
     except (OSError, json.JSONDecodeError, KeyError):
-        return "0.5.1"
+        return "0.6.0"
 
 
 def _section_mode(session: Dict[str, Any]) -> str:

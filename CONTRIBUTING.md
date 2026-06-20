@@ -15,7 +15,7 @@ No hay dependencias externas: todo el codigo Python usa exclusivamente la stdlib
 ```
 alfred-dev/
   agents/                 # 8 agentes de nucleo (.md)
-  agents/optional/        # 7 agentes opcionales (.md)
+  agents/                 # Agentes de núcleo y opcionales (.md)
   commands/               # 24 comandos /alfred-dev (.md)
   skills/                 # 60 skills en 13 dominios (SKILL.md)
   hooks/                  # 13 hooks del ciclo de vida (.py, .sh)
@@ -30,7 +30,7 @@ alfred-dev/
 
 Los agentes son ficheros Markdown con frontmatter YAML que define metadatos y un system prompt en el cuerpo.
 
-1. Crear `agents/<nombre>.md` (nucleo) o `agents/optional/<nombre>.md` (opcional).
+1. Crear `agents/<nombre>.md`. Claude Code descubre agentes de plugin desde la raíz de `agents/`.
 2. Incluir el frontmatter obligatorio:
 
 ```yaml

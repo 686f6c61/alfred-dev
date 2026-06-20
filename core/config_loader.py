@@ -23,6 +23,9 @@ import sys
 import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from core.optional_agents import (
     build_optional_agent_flags,
     get_optional_agent_display_label,
@@ -379,9 +382,20 @@ def build_config_section_menu(
             }
         )
 
+    question = "¿Qué sección quieres modificar ahora?"
+    header = "Config"
+
     return {
+        "questions": [
+            {
+                "question": question,
+                "header": header,
+                "options": options,
+                "multiSelect": False,
+            }
+        ],
         "header": "Config",
-        "question": "¿Qué sección quieres modificar ahora?",
+        "question": question,
         "options": options,
     }
 
@@ -844,8 +858,9 @@ def detect_stack(project_dir):
     Detecta el stack tecnológico de un proyecto analizando ficheros clave.
 
     Examina la presencia de ficheros como package.json, tsconfig.json,
-    pyproject.toml, Cargo.toml, go.mod, etc. para inferir el runtime,
-    lenguaje, framework y ORM del proyecto.
+    pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json,
+    ficheros .csproj o Package.swift para inferir el runtime, lenguaje,
+    framework y ORM del proyecto.
 
     La detección de frameworks y ORMs se hace leyendo las dependencias
     declaradas en los manifiestos del proyecto (package.json para Node,
@@ -887,6 +902,14 @@ def detect_stack(project_dir):
     has_go_mod = os.path.isfile(os.path.join(project_dir, "go.mod"))
     has_gemfile = os.path.isfile(os.path.join(project_dir, "Gemfile"))
     has_mix = os.path.isfile(os.path.join(project_dir, "mix.exs"))
+    has_pom = os.path.isfile(os.path.join(project_dir, "pom.xml"))
+    has_gradle = any(
+        os.path.isfile(os.path.join(project_dir, name))
+        for name in ("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts")
+    )
+    has_composer = os.path.isfile(os.path.join(project_dir, "composer.json"))
+    has_dotnet = _has_root_file_with_suffix(project_dir, (".csproj", ".sln"))
+    has_package_swift = os.path.isfile(os.path.join(project_dir, "Package.swift"))
 
     if has_package_json:
         stack["runtime"] = "node"
@@ -908,6 +931,22 @@ def detect_stack(project_dir):
     elif has_mix:
         stack["runtime"] = "elixir"
         stack["lenguaje"] = "elixir"
+    elif has_pom or has_gradle:
+        stack["runtime"] = "jvm"
+        stack["lenguaje"] = "kotlin" if _looks_like_kotlin_project(project_dir) else "java"
+        _detect_jvm_details(project_dir, stack)
+    elif has_composer:
+        stack["runtime"] = "php"
+        stack["lenguaje"] = "php"
+        _detect_php_details(project_dir, stack)
+    elif has_dotnet:
+        stack["runtime"] = "dotnet"
+        stack["lenguaje"] = "csharp"
+        _detect_dotnet_details(project_dir, stack)
+    elif has_package_swift:
+        stack["runtime"] = "swift"
+        stack["lenguaje"] = "swift"
+        _detect_swift_details(project_dir, stack)
 
     return stack
 
@@ -977,6 +1016,56 @@ def _find_first_match(candidates, deps):
         if candidate in deps:
             return candidate
     return None
+
+
+def _has_root_file_with_suffix(project_dir, suffixes):
+    try:
+        return any(
+            name.endswith(suffixes)
+            for name in os.listdir(project_dir)
+            if os.path.isfile(os.path.join(project_dir, name))
+        )
+    except OSError:
+        return False
+
+
+def _read_text_if_exists(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except (OSError, IOError, UnicodeDecodeError):
+        return ""
+
+
+def _root_file_text(project_dir, names):
+    parts = []
+    for name in names:
+        text = _read_text_if_exists(os.path.join(project_dir, name))
+        if text:
+            parts.append(text)
+    return "\n".join(parts).lower()
+
+
+def _project_has_source_suffix(project_dir, suffixes, max_depth=3):
+    root_depth = len(os.path.abspath(project_dir).split(os.sep))
+    ignored = {".git", "node_modules", "vendor", "target", "build", ".build", "bin", "obj"}
+    for current, dirs, files in os.walk(project_dir):
+        dirs[:] = [name for name in dirs if name not in ignored]
+        depth = len(os.path.abspath(current).split(os.sep)) - root_depth
+        if depth > max_depth:
+            dirs[:] = []
+            continue
+        if any(name.endswith(suffixes) for name in files):
+            return True
+    return False
+
+
+def _looks_like_kotlin_project(project_dir):
+    return (
+        os.path.isfile(os.path.join(project_dir, "build.gradle.kts"))
+        or os.path.isfile(os.path.join(project_dir, "settings.gradle.kts"))
+        or _project_has_source_suffix(project_dir, (".kt", ".kts"))
+    )
 
 
 def _extract_python_dependency_names(text):
@@ -1579,6 +1668,105 @@ def _detect_python_details(project_dir, stack):
     found = _find_first_match(py_test_runners, dependency_names)
     if found:
         stack["test_runner"] = found
+
+
+def _detect_jvm_details(project_dir, stack):
+    """Detecta framework y runner en proyectos Java/Kotlin."""
+    text = _root_file_text(
+        project_dir,
+        (
+            "pom.xml",
+            "build.gradle",
+            "build.gradle.kts",
+            "settings.gradle",
+            "settings.gradle.kts",
+        ),
+    )
+    if not text:
+        return
+
+    framework_markers = (
+        ("spring-boot", ("spring-boot", "org.springframework.boot")),
+        ("quarkus", ("quarkus", "io.quarkus")),
+        ("micronaut", ("micronaut", "io.micronaut")),
+    )
+    for framework, markers in framework_markers:
+        if any(marker in text for marker in markers):
+            stack["framework"] = framework
+            break
+
+    if "junit" in text:
+        stack["test_runner"] = "junit"
+    elif "kotest" in text:
+        stack["test_runner"] = "kotest"
+
+
+def _detect_php_details(project_dir, stack):
+    """Detecta framework, ORM y runner en proyectos PHP con Composer."""
+    composer_path = os.path.join(project_dir, "composer.json")
+    try:
+        with open(composer_path, "r", encoding="utf-8") as f:
+            composer = json.load(f)
+    except (OSError, IOError, json.JSONDecodeError):
+        return
+
+    deps = {
+        **composer.get("require", {}),
+        **composer.get("require-dev", {}),
+    }
+
+    frameworks = (
+        ("laravel", "laravel/framework"),
+        ("symfony", "symfony/framework-bundle"),
+        ("slim", "slim/slim"),
+    )
+    for framework, package in frameworks:
+        if package in deps:
+            stack["framework"] = framework
+            break
+
+    if "doctrine/orm" in deps:
+        stack["orm"] = "doctrine"
+    if "phpunit/phpunit" in deps:
+        stack["test_runner"] = "phpunit"
+    elif "pestphp/pest" in deps:
+        stack["test_runner"] = "pest"
+
+
+def _detect_dotnet_details(project_dir, stack):
+    """Detecta framework, ORM y runner en proyectos C#/.NET."""
+    parts = []
+    try:
+        root_names = os.listdir(project_dir)
+    except OSError:
+        root_names = []
+    for name in root_names:
+        if name.endswith((".csproj", ".sln")):
+            parts.append(_read_text_if_exists(os.path.join(project_dir, name)))
+    text = "\n".join(parts).lower()
+
+    if "microsoft.net.sdk.web" in text:
+        stack["framework"] = "aspnet"
+    if "microsoft.aspnetcore.components.webassembly" in text or "blazor" in text:
+        stack["framework"] = "blazor"
+    if "microsoft.entityframeworkcore" in text:
+        stack["orm"] = "entity-framework"
+
+    if "xunit" in text:
+        stack["test_runner"] = "xunit"
+    elif "nunit" in text:
+        stack["test_runner"] = "nunit"
+    elif "mstest" in text:
+        stack["test_runner"] = "mstest"
+
+
+def _detect_swift_details(project_dir, stack):
+    """Detecta framework y runner en proyectos Swift Package Manager."""
+    text = _read_text_if_exists(os.path.join(project_dir, "Package.swift")).lower()
+    if "vapor" in text:
+        stack["framework"] = "vapor"
+    if ".testtarget" in text or "swift-testing" in text:
+        stack["test_runner"] = "swift-test"
 
 
 # --- Descubrimiento contextual de agentes opcionales ----------------------

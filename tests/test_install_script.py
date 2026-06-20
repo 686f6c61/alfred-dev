@@ -39,9 +39,10 @@ class TestInstallSh(unittest.TestCase):
             marketplace_dir.parent.mkdir(parents=True, exist_ok=True)
             cache_dir.mkdir(parents=True, exist_ok=True)
             known_marketplaces.write_text("{}", encoding="utf-8")
+            state_file.write_text("installed=1\nmarketplace=1\n", encoding="utf-8")
 
             stale_hooks = cache_dir / "alfred-dev" / "0.5.9" / "hooks" / "hooks.json"
-            stale_mcp = cache_dir / "alfred-dev" / "0.5.9" / ".claude-plugin" / "mcp.json"
+            stale_mcp = cache_dir / "alfred-dev" / "0.5.9" / ".mcp.json"
             stale_hooks.parent.mkdir(parents=True, exist_ok=True)
             stale_mcp.parent.mkdir(parents=True, exist_ok=True)
             stale_hooks.write_text(
@@ -55,7 +56,10 @@ class TestInstallSh(unittest.TestCase):
                             "hooks": [
                               {
                                 "type": "command",
-                                "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
+                                "command": "python3",
+                                "args": [
+                                  "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
+                                ]
                               }
                             ]
                           }
@@ -73,7 +77,10 @@ class TestInstallSh(unittest.TestCase):
                       "mcpServers": {
                         "alfred-memory": {
                           "command": "python3",
-                          "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/memory_server.py"]
+                          "args": [
+                            "-c",
+                            "import os, runpy; root = os.environ.get('CLAUDE_PLUGIN_ROOT') or os.getcwd(); runpy.run_path(os.path.join(root, 'mcp', 'memory_server.py'), run_name='__main__')"
+                          ]
                         }
                       }
                     }
@@ -108,7 +115,9 @@ class TestInstallSh(unittest.TestCase):
                     KNOWN_MARKETPLACES="$CLAUDE_DIR/plugins/known_marketplaces.json"
                     CACHE_ROOT="$CLAUDE_DIR/plugins/cache/alfred-dev/alfred-dev/{PLUGIN_VERSION}"
                     HOOKS_JSON="$CACHE_ROOT/hooks/hooks.json"
-                    MCP_JSON="$CACHE_ROOT/.claude-plugin/mcp.json"
+                    PLUGIN_JSON="$CACHE_ROOT/.claude-plugin/plugin.json"
+                    MCP_JSON="$CACHE_ROOT/.mcp.json"
+                    ALIAS_SKILL="$CACHE_ROOT/skills/alfred/alfred/SKILL.md"
 
                     installed=0
                     marketplace=0
@@ -125,16 +134,36 @@ class TestInstallSh(unittest.TestCase):
 
                     case "${{2:-}}" in
                       list)
-                        if [ "$installed" = 1 ]; then
+                        if [ "${{3:-}}" = "--json" ]; then
+                          if [ "$installed" = 1 ]; then
+                            cat <<'EOF'
+                    [
+                      {{
+                        "id": "alfred-dev@alfred-dev",
+                        "version": "{PLUGIN_VERSION}",
+                        "scope": "user",
+                        "enabled": true,
+                        "installPath": "$CACHE_ROOT",
+                        "installedAt": "2026-06-20T00:00:00.000Z",
+                        "lastUpdated": "2026-06-20T00:00:00.000Z"
+                      }}
+                    ]
+                    EOF
+                          else
+                            printf '[]\\n'
+                          fi
+                        elif [ "$installed" = 1 ]; then
                           printf 'alfred-dev@alfred-dev\\n'
                         fi
                         ;;
                       uninstall)
-                        installed=0
+                        if [ "${{5:-user}}" = "user" ]; then
+                          installed=0
+                        fi
                         ;;
                       install)
                         installed=1
-                        mkdir -p "$(dirname "$HOOKS_JSON")" "$(dirname "$MCP_JSON")"
+                        mkdir -p "$(dirname "$HOOKS_JSON")" "$(dirname "$PLUGIN_JSON")" "$(dirname "$MCP_JSON")" "$(dirname "$ALIAS_SKILL")"
                         cat > "$HOOKS_JSON" <<'EOF'
                     {{
                       "hooks": {{
@@ -144,7 +173,10 @@ class TestInstallSh(unittest.TestCase):
                             "hooks": [
                               {{
                                 "type": "command",
-                                "command": "python3 ${{CLAUDE_PLUGIN_ROOT}}/hooks/activity-capture.py"
+                                "command": "python3",
+                                "args": [
+                                  "${{CLAUDE_PLUGIN_ROOT}}/hooks/activity-capture.py"
+                                ]
                               }}
                             ]
                           }}
@@ -152,15 +184,34 @@ class TestInstallSh(unittest.TestCase):
                       }}
                     }}
                     EOF
+                        cat > "$PLUGIN_JSON" <<'EOF'
+                    {{
+                      "name": "alfred-dev",
+                      "version": "{PLUGIN_VERSION}",
+                    }}
+                    EOF
                         cat > "$MCP_JSON" <<'EOF'
                     {{
-                      "mcpServers": {{
-                        "alfred-memory": {{
-                          "command": "python3",
-                          "args": ["${{CLAUDE_PLUGIN_ROOT}}/mcp/memory_server.py"]
-                        }}
+                      "alfred-memory": {{
+                        "command": "python3",
+                        "args": [
+                          "-c",
+                          "import os, runpy; root = os.environ.get('CLAUDE_PLUGIN_ROOT') or os.getcwd(); runpy.run_path(os.path.join(root, 'mcp', 'memory_server.py'), run_name='__main__')"
+                        ]
                       }}
                     }}
+                    EOF
+                        cat > "$ALIAS_SKILL" <<'EOF'
+                    ---
+                    name: alfred
+                    description: Alias global /alfred
+                    disable-model-invocation: true
+                    user-invocable: false
+                    ---
+
+                    Marcador de instalacion: Alfred Dev global alias.
+
+                    Usa el contrato de Alfred Dev.
                     EOF
                         ;;
                       marketplace)
@@ -171,9 +222,11 @@ class TestInstallSh(unittest.TestCase):
                             fi
                             ;;
                           remove)
-                            marketplace=0
-                            rm -rf "$MARKETPLACE_DIR"
-                            printf '{{}}' > "$KNOWN_MARKETPLACES"
+                            if [ "${{6:-user}}" = "user" ]; then
+                              marketplace=0
+                              rm -rf "$MARKETPLACE_DIR"
+                              printf '{{}}' > "$KNOWN_MARKETPLACES"
+                            fi
                             ;;
                           add)
                             marketplace=1
@@ -239,22 +292,40 @@ class TestInstallSh(unittest.TestCase):
                 / "alfred-dev"
                 / "alfred-dev"
                 / PLUGIN_VERSION
-                / ".claude-plugin"
-                / "mcp.json"
+                / ".mcp.json"
             ).read_text(encoding="utf-8")
+            global_alias = (
+                home / ".claude" / "skills" / "alfred" / "SKILL.md"
+            ).read_text(encoding="utf-8")
+            global_command_alias_path = home / ".claude" / "commands" / "alfred.md"
             calls = calls_file.read_text(encoding="utf-8")
             registered = json.loads(known_marketplaces.read_text(encoding="utf-8"))
             stale_hooks_after = stale_hooks.read_text(encoding="utf-8")
             stale_mcp_after = stale_mcp.read_text(encoding="utf-8")
 
-            self.assertIn("plugin marketplace add 686f6c61/alfred-dev", calls)
-            self.assertIn("plugin install alfred-dev@alfred-dev", calls)
+            self.assertIn("plugin marketplace add 686f6c61/alfred-dev --scope user", calls)
+            self.assertIn("plugin uninstall alfred-dev@alfred-dev --scope local", calls)
+            self.assertIn("plugin uninstall alfred-dev@alfred-dev --scope project", calls)
+            self.assertIn("plugin marketplace remove alfred-dev --scope local", calls)
+            self.assertIn("plugin marketplace remove alfred-dev --scope project", calls)
+            self.assertIn("plugin uninstall alfred-dev@alfred-dev --scope user", calls)
+            self.assertIn("plugin marketplace remove alfred-dev --scope user", calls)
+            self.assertIn("plugin install alfred-dev@alfred-dev --scope user", calls)
+            self.assertIn("plugin list --json", calls)
             self.assertEqual(registered["alfred-dev"]["source"]["source"], "github")
             self.assertEqual(registered["alfred-dev"]["source"]["repo"], "686f6c61/alfred-dev")
             self.assertIn(str(fake_bin / "python3.13"), hooks_json)
             self.assertIn(str(fake_bin / "python3.13"), mcp_json)
+            self.assertIn("Alfred Dev global alias", global_alias)
+            self.assertIn("name: alfred", global_alias)
+            self.assertIn("user-invocable: true", global_alias)
+            self.assertNotIn("user-invocable: false", global_alias)
+            self.assertFalse(global_command_alias_path.exists())
             self.assertNotIn(str(fake_bin / "python3.13"), stale_hooks_after)
             self.assertNotIn(str(fake_bin / "python3.13"), stale_mcp_after)
+            self.assertIn("Instalacion global de usuario confirmada (--scope user)", result.stdout)
+            self.assertIn("Scopes local/project normalizados", result.stdout)
+            self.assertIn("Alias global /alfred instalado", result.stdout)
             self.assertIn("Instalacion completada", result.stdout)
 
 

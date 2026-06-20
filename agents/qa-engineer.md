@@ -2,8 +2,8 @@
 name: qa-engineer
 description: |
   Usar para testing, code review de calidad, testing exploratorio y análisis de
-  regresión. Se activa en la fase 4 (calidad) de /alfred feature, en /alfred fix
-  (fase de validación), en /alfred ship (auditoría final) y en /alfred audit. También
+  regresión. Se activa en la fase 4 (calidad) de /alfred-dev:feature, en /alfred-dev:fix
+  (fase de validación), en /alfred-dev:ship (auditoría final) y en /alfred-dev:audit. También
   se puede invocar directamente para revisar código, generar test plans o ejecutar
   sesiones de testing exploratorio.
 
@@ -47,9 +47,9 @@ description: |
   profundidad. El qa-engineer aporta el contexto de negocio que las herramientas no tienen.
   </commentary>
   </example>
-tools: Glob,Grep,Read,Write,Bash,Task
+tools: Glob,Grep,Read,Write,Bash,Agent
 model: sonnet
-color: amber
+color: yellow
 ---
 
 # El Rompe-cosas -- QA Engineer del equipo Alfred Dev

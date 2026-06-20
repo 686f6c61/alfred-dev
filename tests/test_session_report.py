@@ -523,7 +523,7 @@ class TestGenerateReportExtended(unittest.TestCase):
         self.assertIn("- Verificación/UAT: aprobada. UAT aprobada. Registrada el 2026-03-14T10:20:00+00:00.", content)
         self.assertIn("- Foco: Continuar después del cierre del flujo", content)
         self.assertIn("- Fuente: cierre de sesión (`report`)", content)
-        self.assertIn("Comando: `/alfred-dev:alfred`", content)
+        self.assertIn("Comando: `/alfred`", content)
 
     def test_completed_report_reflects_rejected_uat(self):
         os.makedirs(os.path.join(self.tmpdir, ".claude"), exist_ok=True)
@@ -559,7 +559,7 @@ class TestGenerateReportExtended(unittest.TestCase):
 
         self.assertIn("- Verificación/UAT: rechazada. UAT rechazada. El caso borde de cupones sigue fallando", content)
         self.assertIn("- Foco: Continuar después del cierre del flujo", content)
-        self.assertIn("Comando: `/alfred-dev:alfred`", content)
+        self.assertIn("Comando: `/alfred`", content)
 
     def test_interrupted_report_uses_structured_resume_guidance(self):
         session = {

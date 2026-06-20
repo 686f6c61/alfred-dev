@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "alfred-memory": {
+      "command": "python3",
+      "args": [
+        "-c",
+        "import os, runpy; root = os.environ.get('CLAUDE_PLUGIN_ROOT') or os.getcwd(); runpy.run_path(os.path.join(root, 'mcp', 'memory_server.py'), run_name='__main__')"
+      ]
+    }
+  }
+}

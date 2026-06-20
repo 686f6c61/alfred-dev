@@ -64,7 +64,7 @@ python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-d
 
 3. **Si el último flujo completado todavía no tiene UAT aprobada**:
    - si `.claude/alfred-uat.json` no existe o tiene `status: "pending"` para el último entregable, actúa como `/alfred-dev:verify`
-   - si `.claude/alfred-uat.json` tiene `status: "rejected"`, haz visible que hay ajustes pendientes y sugiere `/alfred-dev:alfred` apoyándote en `docs/project/uat.md`
+   - si `.claude/alfred-uat.json` tiene `status: "rejected"`, haz visible que hay ajustes pendientes y sugiere `/alfred` apoyándote en `docs/project/uat.md`
 
 4. **Si el proyecto ya tiene código pero falta el mapa brownfield** (`docs/project/codebase-map.md` o `docs/project/current.md`):
    - actúa como `/alfred-dev:map-codebase`

@@ -278,10 +278,21 @@ def build_optional_agent_group_menu(
             )
         )
 
+    header = OPTIONAL_AGENT_GROUP_LABELS[group_name]
+    question = OPTIONAL_AGENT_GROUP_QUESTIONS[group_name]
+
     return {
         "group": group_name,
-        "header": OPTIONAL_AGENT_GROUP_LABELS[group_name],
-        "question": OPTIONAL_AGENT_GROUP_QUESTIONS[group_name],
+        "questions": [
+            {
+                "question": question,
+                "header": header,
+                "options": options,
+                "multiSelect": False,
+            }
+        ],
+        "header": header,
+        "question": question,
         "options": options,
     }
 

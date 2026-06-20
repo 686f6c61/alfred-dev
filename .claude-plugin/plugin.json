@@ -1,7 +1,8 @@
 {
   "name": "alfred-dev",
+  "displayName": "Alfred Dev",
   "description": "Plugin de ingeniería de software completa: 10 agentes de núcleo y 9 opcionales con personalidad propia, memoria persistente por proyecto, quality gates y flujos automatizados desde la idea hasta producción.",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "author": {
     "name": "686f6c61"
   },
@@ -10,7 +11,6 @@
   "license": "MIT",
   "keywords": ["sdlc", "agents", "security", "tdd", "devops", "qa", "product", "spanish", "seo", "ux", "data"],
   "commands": [
-    "./commands/alfred.md",
     "./commands/audit.md",
     "./commands/blocked.md",
     "./commands/config.md",
@@ -37,28 +37,8 @@
     "./commands/update.md",
     "./commands/lucius.md"
   ],
-  "agents": [
-    "./agents/alfred.md",
-    "./agents/product-owner.md",
-    "./agents/architect.md",
-    "./agents/senior-dev.md",
-    "./agents/security-officer.md",
-    "./agents/qa-engineer.md",
-    "./agents/devops-engineer.md",
-    "./agents/tech-writer.md",
-    "./agents/project-manager.md",
-    "./agents/selina.md",
-    "./agents/optional/data-engineer.md",
-    "./agents/optional/ux-reviewer.md",
-    "./agents/optional/performance-engineer.md",
-    "./agents/optional/github-manager.md",
-    "./agents/optional/seo-specialist.md",
-    "./agents/optional/copywriter.md",
-    "./agents/optional/librarian.md",
-    "./agents/optional/i18n-specialist.md",
-    "./agents/optional/lucius.md"
-  ],
   "skills": [
+    "./skills/alfred/",
     "./skills/arquitectura/",
     "./skills/calidad/",
     "./skills/datos/",

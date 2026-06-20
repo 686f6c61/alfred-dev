@@ -35,7 +35,7 @@ GATE_AUTOMATICO_SEGURIDAD = "automatico+seguridad"
 
 ### Gate `libre`
 
-Se supera siempre que el resultado sea favorable. No requiere ni tests verdes ni auditoria de seguridad. Este tipo de gate existe porque hay fases donde no tiene sentido exigir validaciones técnicas: por ejemplo, la fase de documentación genera prosa y diagramas, no código ejecutable. Pedir tests verdes a un fichero Markdown seria absurdo. La gate libre confiere al flujo la flexibilidad de avanzar rapidamente en fases que producen artefactos no ejecutables, sin relajar el rigor en las fases que si lo necesitan.
+Se supera cuando el resultado del agente responsable es favorable y hay evidencia directa del artefacto o checklist esperado. No requiere tests verdes, auditoria de seguridad ni aprobacion humana. Eso no la convierte en una aprobacion incondicional: si faltan docs, conclusiones, changelog o cualquier entregable prometido por la fase, la gate debe quedar pendiente o rechazada. Este tipo de gate existe porque hay fases donde no tiene sentido exigir validaciones técnicas: por ejemplo, la fase de documentación genera prosa y diagramas, no código ejecutable. Pedir tests verdes a un fichero Markdown seria absurdo. La gate libre confiere al flujo la flexibilidad de avanzar rapidamente en fases que producen artefactos no ejecutables, sin relajar el rigor en las fases que si lo necesitan.
 
 ### Gate `usuario`
 
@@ -131,7 +131,7 @@ La gate es de tipo `usuario+seguridad` porque la arquitectura es una decisión e
 
 ### Fase 3: desarrollo
 
-Con los requisitos aprobados y la arquitectura validada, el agente `senior-dev` implementa el código siguiendo TDD estricto: primero escribe los tests que fallan (rojo), luego el código mínimo para que pasen (verde) y finalmente refactoriza para mejorar la calidad sin cambiar el comportamiento (refactor). Este ciclo garantiza que cada linea de código tiene al menos un test que la respalda.
+Con los requisitos aprobados y la arquitectura validada, el agente `senior-dev` implementa el código siguiendo TDD estricto: primero escribe los tests que fallan (rojo), luego el código mínimo para que pasen (verde) y finalmente refactoriza para mejorar la calidad sin cambiar el comportamiento (refactor). Este ciclo no promete cobertura línea a línea: exige tests de comportamiento para los criterios de aceptación y deja evidencia ejecutable antes de avanzar.
 
 La gate es de tipo `automático` porque en esta fase los criterios de aceptacion son objetivos: el código compila y los tests pasan. No se necesita aprobacion humana para verificar que `2 + 2 == 4`. Esto permite que el desarrollador itere rapidamente sin esperar validaciones externas.
 
@@ -274,7 +274,7 @@ journey
         Gate superada: 5: Sistema
     section Documentación
         Tech-writer genera docs: 4: Sistema
-        Avance automático con gate libre: 5: Sistema
+        Docs completas, gate libre con evidencia: 5: Sistema
     section Entrega
         DevOps prepara CI/CD y changelog: 4: Sistema
         Revisa artefacto de entrega: 4: Usuario

@@ -7,25 +7,7 @@ description: "Muestra los comandos disponibles de Alfred Dev"
 Muestra al usuario los comandos disponibles agrupados por valor operativo. No
 presentes la lista como si todos tuvieran el mismo peso: Alfred ya tiene
 muchas vistas auxiliares y el usuario no debería tener que memorizar 26
-entradas para sacar valor del plugin.
-
-Si la ayuda se pide dentro de un proyecto real, antes de responder consulta
-también la guía operativa actual para contextualizar la orientación:
-
-```bash
-python3 .claude/alfred-continuity.py next "$PWD" --json
-```
-
-Usa ese helper para hacer visible, cuando aplique y sin convertir la respuesta
-en un informe largo:
-
-- el foco operativo actual;
-- el comando que más sentido tiene ahora;
-- la razón concreta de esa recomendación.
-
-Si el helper no puede resolver contexto operativo, continúa con la ayuda
-estática sin bloquear el comando. Si sí aporta señal útil, limítate a una
-orientación breve y no conviertas `/alfred-dev:help` en un segundo `/next`.
+rutas públicas para sacar valor del plugin.
 
 Si existe una sesión activa y solo vas a mostrar ayuda, arma antes un bypass
 transitorio del stop hook para que Claude Code pueda cerrar este comando sin
@@ -35,11 +17,13 @@ reabrir el flujo:
 python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-dev:help"
 ```
 
+No conviertas `/alfred-dev:help` en un segundo `/next`: no ejecutes helpers de continuidad salvo `allow-stop-once`. Si el usuario pide foco operativo actual, recomiéndale `/alfred-dev:next`, `/alfred-dev:progress` o `/alfred-dev:status`.
+
 ## Comandos core
 
 | Comando | Argumentos | Descripción |
 |---------|-----------|-------------|
-| `/alfred-dev:alfred` | [petición opcional] | Entrada principal: enruta al flujo o vista correcta sin obligar al usuario a elegir a mano |
+| `/alfred` | [petición opcional] | Entrada principal global: enruta al flujo o vista correcta sin obligar al usuario a elegir a mano |
 | `/alfred-dev:feature` | [descripción] | Ciclo completo: producto, estilo visual condicional, arquitectura, desarrollo, QA, documentación y entrega |
 | `/alfred-dev:quick` | [descripción] | Cambio pequeño y acotado con menos ceremonia, pero con tests y seguridad |
 | `/alfred-dev:fix` | [descripción] | Corrección de bugs: diagnóstico, corrección TDD y validación |
@@ -63,7 +47,7 @@ python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-d
 | `/alfred-dev:search` | [texto] | Busca en artefactos de SonIA y memoria SQLite |
 | `/alfred-dev:sync-github` | [owner/repo opcional] | Ejecuta SonIA Sync sobre GitHub Issues |
 | `/alfred-dev:validate` | -- | Valida la salud operativa de kanban, trazabilidad, UAT y sync local |
-| `/alfred-dev:lucius` | [dir] [--scope X] | Segunda opinión técnica externa vía Codex CLI (GPT-5.4). Requiere suscripción OpenAI |
+| `/alfred-dev:lucius` | [dir] [--scope X] | Segunda opinión técnica externa vía Codex CLI. Respeta el modelo configurado por el usuario y requiere acceso activo a Codex CLI |
 | `/alfred-dev:update` | -- | Comprobar y aplicar actualizaciones del plugin |
 
 ## Vistas y aliases operativos
@@ -82,9 +66,9 @@ Si el usuario no sabe qué hacer ahora, prioriza estas entradas en este orden:
 2. `/alfred-dev:progress` para ver panorama operativo, bloqueos y trazabilidad.
 3. `/alfred-dev:status` para inspeccionar en detalle la sesión actual o el handoff.
 
-Además, al escribir `/alfred-dev:alfred` sin subcomando, Alfred actúa como asistente contextual: evalúa el estado del proyecto y la sesión, y dirige al usuario al flujo más adecuado.
+Además, al escribir `/alfred` sin subcomando, Alfred actúa como asistente contextual: evalúa el estado del proyecto y la sesión, y dirige al usuario al flujo más adecuado. Internamente reutiliza el contrato de `commands/alfred.md`, pero esa ruta no se publica como `/alfred-dev:alfred` para no tapar el alias global.
 
-Explica brevemente que Alfred Dev es un equipo de **10 agentes de núcleo** (siempre activos) más **9 agentes opcionales** (activables según el proyecto) que cubren el ciclo completo de ingeniería de software, con quality gates y flujos automatizados.
+Explica brevemente que Alfred Dev es un equipo de **10 agentes de núcleo** disponibles por defecto más **9 agentes opcionales** activables según el proyecto. Cubren el ciclo completo de ingeniería de software con quality gates y flujos automatizados.
 
 ### Agentes de núcleo
 
@@ -106,4 +90,4 @@ activan por una simple heurística automática:
 | **copywriter** | Copy público, release notes o documentación visible cuando el tono importa |
 | **librarian** | Memoria persistente o historial relevante; especialista solo bajo demanda |
 | **i18n-specialist** | Proyectos multiidioma o que necesitan traducción |
-| **lucius** | Segunda opinión técnica vía Codex CLI. Requiere suscripción OpenAI (Plus o Pro) |
+| **lucius** | Segunda opinión técnica vía Codex CLI. Requiere acceso activo a Codex CLI |
