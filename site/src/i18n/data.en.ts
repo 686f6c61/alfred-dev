@@ -1,9 +1,9 @@
 /**
  * English content data for the Alfred Dev landing page.
  *
- * All values have been translated from the Spanish original (data.es.ts).
- * SVG icon paths, CSS colours, URLs and commands remain identical to
- * the source file. Only user-facing text has been localised.
+ * English content source for the public site. Public claims must stay aligned
+ * with plugin.json, README.md and docs/promise-evidence-0.6.0.md before
+ * publishing.
  *
  * @module i18n/data.en
  */
@@ -18,13 +18,13 @@ const data: PageData = {
 
   meta: {
     title: 'Alfred Dev - Claude Code plugin for development teams',
-    description: 'Claude Code plugin with 19 specialised agents, a published catalog of 61 skills and per-project persistent memory. Strict TDD, transversal security and automatic quality gates at every phase.',
+    description: 'Claude Code plugin with 19 specialised agents, a published catalog of 62 skills and per-project persistent memory. Strict TDD, transversal security and automatic quality gates at every phase.',
     canonical: 'https://alfred-dev.com/en/',
     locale: 'en_US',
     og: {
       type: 'website',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: 'A team of 19 specialised agents for Claude Code. Each role has restricted tools, its own personality and quality gates the workflow cannot skip.',
+      description: 'A team of 19 specialised agents for Claude Code. Each role has restricted tools, its own personality and quality gates that require evidence before work can close.',
       url: 'https://alfred-dev.com/en/',
       siteName: 'Alfred Dev',
       locale: 'en_US',
@@ -37,7 +37,7 @@ const data: PageData = {
     twitter: {
       card: 'summary_large_image',
       title: 'Alfred Dev - Claude Code plugin for development teams',
-      description: 'Claude Code plugin: 10 core agents + 9 optional, per-project SQLite memory, 26 commands and automatic quality gates at every stage of development.',
+      description: 'Claude Code plugin: 10 core agents + 9 optional, per-project SQLite memory, 25 namespaced commands + /alfred and automatic quality gates at every stage of development.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-share-en.png',
       imageAlt: 'Screenshot of the Alfred Dev landing page with the headline A work system for Claude Code',
       site: '@686f6c61',
@@ -103,8 +103,8 @@ const data: PageData = {
 
   hero: {
     titleHtml: 'Your development<br>teammates in one <em>plugin</em>',
-    platformHtml: 'for <span style="color: var(--blue);">Claude Code</span> and <span style="color: var(--gold);">OpenCode</span> <span style="font-size: 13px; opacity: 0.7;">(in development)</span>',
-    subtitle: '19 specialised agents with their own personality. 10 core, 9 optional. Up to 7 phases, 26 commands, persistent memory and automatic quality gates at every transition.',
+    platformHtml: 'for <span style="color: var(--blue);">Claude Code</span> <span style="font-size: 13px; opacity: 0.7;">(OpenCode compatibility under investigation)</span>',
+    subtitle: '19 specialised agents with their own personality. 10 core, 9 optional. Up to 7 phases, 25 namespaced commands + /alfred, persistent memory and automatic quality gates at every transition.',
     ctas: [
       {
         label: 'macOS / Linux',
@@ -177,9 +177,9 @@ const data: PageData = {
 
   stats: [
     { number: 19, label: 'Agents' },
-    { number: 61, label: 'Skills' },
+    { number: 62, label: 'Skills' },
     { number: 6, label: 'Workflows' },
-    { number: 26, label: 'Commands' },
+    { number: 26, label: 'Routes' },
     { number: 7, label: 'Templates' },
     { number: 13, label: 'Hooks' },
     { number: 23, label: 'Gates' },
@@ -193,7 +193,7 @@ const data: PageData = {
     header: {
       label: 'The team',
       title: '10 core agents',
-      description: 'Each agent has a defined role, its own personality and signature phrases. They work coordinated by Alfred, the head butler. Always active in every workflow.',
+      description: 'Each agent has a defined role, its own personality and signature phrases. They work coordinated by Alfred, the head butler, and form the default core team.',
     },
     agents: [
       {
@@ -359,7 +359,7 @@ const data: PageData = {
         name: 'Lucius',
         model: 'opus',
         alias: 'External technical director',
-        role: 'External technical second opinion via Codex CLI with GPT-5.4. Audits the full project and returns diagnosis and prescription per item. Requires an active OpenAI subscription. No modifications: analysis only.',
+        role: 'External technical second opinion via Codex CLI with the user-configured model. Audits the full project and returns diagnosis and prescription per item. Requires active Codex CLI access. No modifications: analysis only.',
         phrase: '"From the outside, this has a weak point you probably can\'t see because you\'re too close to it."',
         color: '#d97706',
       },
@@ -377,10 +377,10 @@ const data: PageData = {
       title: 'The team you need, when you need it',
       description: 'When Alfred detects that it is time to open a multi-agent workflow, it analyzes your task in real time and suggests the most relevant optional agents. If mapping, resuming, verifying or showing progress comes first, it resolves that before composing a full team.',
     },
-    introHtml: 'When <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:alfred</code> or an explicit command decides that the correct route is a multi-agent workflow, Alfred reasons about which specialists fit the work, presents the selection and starts the right phase. This is what it looks like when the chosen route is <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>:',
+    introHtml: 'When <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred</code> or an explicit command decides that the correct route is a multi-agent workflow, Alfred reasons about which specialists fit the work, presents the selection and starts the right phase. This is what it looks like when the chosen route is <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>:',
     terminalPrompt: '$ /alfred-dev:feature',
     terminalText: 'Migrate the database from SQLite to PostgreSQL and redesign the checkout interface with accessibility testing',
-    coreTeamText: 'Core team (always active): Alfred, Product Owner, Architect, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA, Selina.',
+    coreTeamText: 'Default core team: Alfred, Product Owner, Architect, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA, Selina.',
     techQuestion: 'Which technical agents do you want to activate?',
     techOptions: [
       { label: 'Data Engineer', desc: 'DB migration detected (Recommended)', selected: true },
@@ -503,10 +503,16 @@ const data: PageData = {
   skills: {
     header: {
       label: 'Capabilities',
-      title: '61 skills across 14 domains',
-      description: 'Published plugin catalog: each skill is a specific capability that agents can invoke. The original 7 domains are expanded with 6 new ones for optional agents plus a dedicated design-system domain for Selina. Since v0.5.2, the public Claude Code manifest exposes all 14 domains; heavier skills or those with clear side effects remain available, but are marked as manual-only.',
+      title: '62 skills across 15 domains',
+      description: 'Published plugin catalog: each skill is a specific capability that agents can invoke. The original 7 domains are expanded with 6 new ones for optional agents, a dedicated design-system domain for Selina, and an Alfred domain for the manual /alfred alias. Since v0.5.2, the public Claude Code manifest exposes every domain; heavier skills or those with clear side effects remain available, but are marked as manual-only.',
     },
     domains: [
+      {
+        name: 'Alfred',
+        skills: [
+          { name: 'alfred', description: 'Global /alfred alias for the contextual assistant' },
+        ],
+      },
       {
         name: 'Product',
         skills: [
@@ -689,14 +695,14 @@ const data: PageData = {
         ],
       },
       {
-        title: '6 core modules',
+        title: 'Python core',
         items: [
           { name: 'orchestrator.py', label: 'Workflows, sessions, gates, iterative loop and autopilot' },
           { name: 'continuity.py', label: 'Continuity, operational PM, search and GitHub sync' },
-          { name: 'personality.py', label: 'Personality engine' },
-          { name: 'config_loader.py', label: 'Config and stack detection' },
-          { name: 'memory.py', label: 'SQLite persistent memory' },
-          { name: 'session_report.py', label: 'Markdown session reports' },
+          { name: 'config_loader.py', label: 'Config, stack detection and optional agents' },
+          { name: 'memory*.py', label: 'SQLite memory, Markdown sync and local UI' },
+          { name: 'selina_*.py', label: 'Visual direction, catalog, selection and variants' },
+          { name: 'secrets.py', label: 'Reusable secret sanitization' },
         ],
       },
     ],
@@ -709,7 +715,7 @@ const data: PageData = {
   commands: {
     header: {
       label: 'Interface',
-      title: '26 commands',
+      title: '25 commands + /alfred',
       description: 'Everything is controlled from the Claude Code command line.',
     },
     groups: [
@@ -729,10 +735,10 @@ const data: PageData = {
         label: 'Context',
         color: 'var(--green)',
         commands: [
-          { command: '/alfred-dev:alfred',       description: 'Contextual assistant: reads project state and decides whether to map, resume, refine or open a workflow.' },
+          { command: '/alfred',                  description: 'Global contextual assistant: reads project state and decides whether to map, resume, refine or open a workflow.' },
           { command: '/alfred-dev:map-codebase', description: 'Analyzes an existing repo and creates <code>codebase-map.md</code> and <code>current.md</code> before touching code.' },
           { command: '/alfred-dev:discuss',      description: 'Refines an idea before implementation. Leaves <code>discovery.md</code> and a recommended next command.' },
-          { command: '/alfred-dev:lucius',       description: 'External second opinion via Codex CLI (GPT-5.4). Diagnosis and prescription per item. Requires OpenAI subscription.' },
+          { command: '/alfred-dev:lucius',       description: 'External second opinion via Codex CLI (user-configured model). Diagnosis and prescription per item. Requires active Codex CLI access.' },
         ],
       },
       {
@@ -880,7 +886,7 @@ const data: PageData = {
         color: 'var(--gold)',
         background: 'rgba(201,169,110,0.08)',
         title: 'Contextual assistant',
-        command: '/alfred-dev:alfred',
+        command: '/alfred',
         steps: [
           'Alfred detects the project stack, active session, pending handoff and whether brownfield mapping is missing',
           'It decides whether the right route is next, map-codebase, discuss, quick, feature, fix, spike, audit, verify or progress',
@@ -1174,10 +1180,12 @@ const data: PageData = {
         color: 'var(--green)',
         background: 'rgba(78,201,126,0.08)',
         title: 'Autopilot mode',
-        command: '/alfred-dev:feature --autopilot',
+        command: '/alfred-dev:config',
         steps: [
+          'It is enabled through project autonomy settings; there is no magic per-command flag',
           'The full workflow runs unattended: user gates are approved automatically',
           'Automatic gates (tests) and security gates are still evaluated normally',
+          'Production deployment still requires explicit human confirmation even in autopilot',
           'If an automatic gate fails, the iterative loop retries up to 5 times before escalating',
         ],
       },
@@ -1269,25 +1277,25 @@ const data: PageData = {
   install: {
     sectionLabel: 'Getting started',
     title: 'Installation',
-    description: 'One command in the terminal and you\'re set. Compatible with macOS, Linux and Windows. The installer is idempotent: running it again updates without conflicts. On the first session Alfred can bootstrap your local config and suggest the next step.',
+    description: 'One command in the terminal and you\'re set. Compatible with macOS, Linux and Windows. The installer is idempotent: running it again updates the installed copy and leaves Alfred Dev installed globally for the user.',
     tabs: [
       {
         id: 'macos',
         label: 'macOS',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requirements:</strong> Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requirements:</strong> Python 3.10+, a recent Claude Code CLI with plugins/skills/hooks/MCP.<br>After installation, run <strong>/reload-plugins</strong>, then <strong>/alfred</strong> or <strong>/alfred-dev:help</strong>. If Claude warns about MCP/cache cost or the plugin does not appear, restart Claude Code.',
       },
       {
         id: 'linux',
         label: 'Linux',
         command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requirements:</strong> Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.',
+        requirementsHtml: '<strong>Requirements:</strong> Python 3.10+, a recent Claude Code CLI with plugins/skills/hooks/MCP.<br>After installation, run <strong>/reload-plugins</strong>, then <strong>/alfred</strong> or <strong>/alfred-dev:help</strong>. If Claude warns about MCP/cache cost or the plugin does not appear, restart Claude Code.',
       },
       {
         id: 'windows',
         label: 'Windows',
         command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
-        requirementsHtml: '<strong>Requirements:</strong> PowerShell 5.1+ (pre-installed on Windows 10/11), Python 3.10+, Claude Code installed.<br>After installation, restart Claude Code and run <strong>/alfred-dev:alfred</strong> or <strong>/alfred-dev:help</strong>.<br>Alternative: you can also use the bash installer with WSL or Git Bash.',
+        requirementsHtml: '<strong>Requirements:</strong> PowerShell 5.1+ (pre-installed on Windows 10/11), Python 3.10+, a recent Claude Code CLI with plugins/skills/hooks/MCP.<br>After installation, run <strong>/reload-plugins</strong>, then <strong>/alfred</strong> or <strong>/alfred-dev:help</strong>. If Claude warns about MCP/cache cost or the plugin does not appear, restart Claude Code.<br>Alternative: you can also use the bash installer with WSL or Git Bash.',
       },
     ],
     uninstall: {
@@ -1308,7 +1316,7 @@ const data: PageData = {
     },
     update: {
       title: 'Update',
-      descriptionHtml: 'From Claude Code, run <strong style="color: var(--blue);">/alfred-dev:update</strong> to check for a new version. If available, Alfred shows the release notes and asks if you want to update. You can also re-run the installer: it\'s idempotent.',
+      descriptionHtml: 'From Claude Code, run <strong style="color: var(--blue);">/alfred-dev:update</strong> to check for a new version. If available, Alfred shows the release notes, detects the installed scope, and asks if you want to update. User, local, project or unknown scopes use the idempotent installer, clean inherited <code>local</code>/<code>project</code> traces for this plugin, and normalize to a global user install.',
     },
   },
 
@@ -1389,17 +1397,17 @@ personalidad:
       {
         svgContent: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
         question: 'Does it work on Windows?',
-        answerHtml: 'Yes. Alfred Dev has a native PowerShell installer for Windows 10/11. You can also use the bash installer through WSL (Windows Subsystem for Linux) or Git Bash. The only dependency on Windows is git; python3 is not required.',
+        answerHtml: 'Yes. Alfred Dev has a native PowerShell installer for Windows 10/11. You can also use the bash installer through WSL (Windows Subsystem for Linux) or Git Bash. It requires a recent Claude Code CLI and Python 3.10+ on Windows too.',
       },
       {
         svgContent: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
         question: 'What dependencies does it need?',
-        answerHtml: 'On macOS and Linux: <strong>git</strong> and <strong>python3</strong>. Both are usually pre-installed or easy to install with the system package manager.<br><br>On Windows: just <strong>git</strong>. PowerShell handles JSON natively, so python3 is not needed. PowerShell 5.1+ comes pre-installed on Windows 10/11.',
+        answerHtml: 'On macOS, Linux and Windows it needs a <strong>recent Claude Code CLI</strong> and <strong>Python 3.10+</strong>. On Windows, PowerShell 5.1+ comes pre-installed on Windows 10/11.',
       },
       {
         svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
         question: 'How do I update the plugin?',
-        answerHtml: 'Run <strong>/alfred-dev:update</strong> inside Claude Code. The command queries GitHub, compares versions and shows the release notes if a new version is available. You can also re-run the installer: it overwrites the previous version without conflicts.',
+        answerHtml: 'Run <strong>/alfred-dev:update</strong> inside Claude Code. The command queries GitHub, compares versions, detects the installed scope with <code>claude plugin list --json</code>, and shows release notes if a new version is available. User, local, project or unknown scopes use the idempotent installer, clean inherited <code>local</code>/<code>project</code> traces and normalize to a global user install; managed scope is left to the administrator.',
       },
       {
         svgContent: '<path d="M3 12h18"/><path d="M12 3v18"/><path d="M5 5l14 14"/>',
@@ -1449,7 +1457,7 @@ personalidad:
       {
         svgContent: '<path d="M19.439 5.56a5.018 5.018 0 0 0-7.09 0L11 6.91l-1.35-1.35a5.013 5.013 0 0 0-7.09 7.09L11 21.09l8.44-8.44a5.013 5.013 0 0 0 0-7.09z"/>',
         question: 'Is it compatible with other Claude Code plugins?',
-        answerHtml: 'Yes. Alfred Dev coexists without conflicts with other installed plugins. It uses its own namespace (<code>alfred-dev</code>) and doesn\'t interfere with other plugins\' configuration.',
+        answerHtml: 'It is designed to coexist with other installed plugins: it uses its own namespace (<code>alfred-dev</code>) and does not write third-party plugin configuration. If another plugin defines similar commands or hooks, inspect the inventory with <code>/plugin</code> and <code>/reload-plugins</code>.',
       },
       {
         svgContent: '<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>',
@@ -1459,7 +1467,7 @@ personalidad:
       {
         svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
         question: 'How many skills does it have in total?',
-        answerHtml: 'Alfred maintains 61 skills distributed across 14 domains. The original 7 domains (product, architecture, development, security, quality, DevOps, documentation) cover the standard lifecycle. The 6 optional-agent domains (data, UX, performance, GitHub, SEO, marketing) broaden the plugin scope, and Selina adds a dedicated design-system domain. Since v0.5.2, the public Claude Code manifest publishes the full catalog by domain; the most delicate skills stay visible, but require explicit manual activation.',
+        answerHtml: 'Alfred maintains 62 skills distributed across 15 domains. The original 7 domains (product, architecture, development, security, quality, DevOps, documentation) cover the standard lifecycle. The 6 optional-agent domains (data, UX, performance, GitHub, SEO, marketing) broaden the plugin scope, Selina adds a dedicated design-system domain, and the Alfred domain packages the hidden source for the <code>/alfred</code> alias, which the installer materializes as a global personal skill. Since v0.5.2, the public Claude Code manifest publishes the full catalog by domain; the most delicate skills stay visible, but require explicit manual activation.',
       },
       {
         svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
@@ -1479,7 +1487,7 @@ personalidad:
       {
         svgContent: '<polyline points="20 6 9 17 4 12"/>',
         question: 'What versions of Claude Code does it support?',
-        answerHtml: 'Any version of Claude Code that supports the plugin system. If you can install plugins from the command line, Alfred Dev will work. There is no specific minimum version requirement.',
+        answerHtml: 'Alfred Dev 0.6.0 is audited against Claude Code 2.1.183 and requires a recent CLI with plugins, skills, hooks, and MCP. If your installation can install plugins but fails in headless mode or authentication, update Claude Code with <code>claude update</code>, restart the session, and run the verification again.',
       },
       {
         svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -1489,7 +1497,7 @@ personalidad:
       {
         svgContent: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
         question: 'Do the agents consume additional tokens?',
-        answerHtml: 'Yes, like any interaction with Claude. Agents are system instructions that guide responses, so they consume context proportional to their complexity. In practice, the additional cost is moderate: agent system prompts are optimised to take up as little space as possible without losing precision. Optional agents are only loaded if you activate them, so the base context is that of the 10 core agents.',
+        answerHtml: 'Yes, like any interaction with Claude. Agents are system instructions that guide responses, so they consume context proportional to their complexity. Alfred keeps prompts bounded and optional agents only load if you activate them, but the real cost depends on the workflow, project and model used.',
       },
       {
         svgContent: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
@@ -1504,7 +1512,7 @@ personalidad:
       {
         svgContent: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
         question: 'Does it work with OpenCode?',
-        answerHtml: 'It\'s in development. OpenCode is an open-source terminal-based code editor that shares the plugin architecture with Claude Code. Alfred Dev is being adapted to be compatible with both environments. The OpenCode version will be announced in the repository when it\'s ready for general use.',
+        answerHtml: 'Not as published support yet. Alfred Dev 0.6.0 is audited for Claude Code. OpenCode has its own plugin system and compatibility remains under investigation; if a compatible version lands, it will be announced as a separate repository release.',
       },
     ],
   },
@@ -1515,10 +1523,27 @@ personalidad:
 
   changelog: [
     {
+      version: '0.6.0',
+      date: '2026-06-19',
+      changed: [
+        '<strong>Agents loaded from the root</strong>: the 9 optional agents move into <code>agents/</code> so Claude Code can discover all 19 plugin agents.',
+        '<strong>MCP compatible with the current CLI</strong>: <code>alfred-memory</code> is declared in <code>.mcp.json</code> with a portable launcher that uses <code>CLAUDE_PLUGIN_ROOT</code> when installed and <code>cwd</code> during local development.',
+        '<strong>Updated terminology</strong>: commands, agents, and operational docs replace obsolete <code>Task</code> references with <code>Agent</code>.',
+        '<strong>Human UI name</strong>: <code>plugin.json</code> and <code>marketplace.json</code> declare <code>displayName: "Alfred Dev"</code> so Claude Code shows <code>Alfred Dev (alfred-dev)</code> without changing the technical namespace.',
+        '0.6.0 stabilization release: <code>plugin.json</code> is the canonical version source and the marketplace does not duplicate <code>version</code>.',
+        'The memory MCP server speaks modern JSONL stdio and still reads legacy <code>Content-Length</code> framing.',
+      ],
+      fixed: [
+        'Claude Code can now show the 19 agents in the plugin inventory.',
+        'Claude Code counts <code>alfred-memory</code> in the plugin inventory again.',
+        '<code>claude mcp get plugin:alfred-dev:alfred-memory</code> now connects to the real server.',
+      ],
+    },
+    {
       version: '0.5.2',
       date: '2026-04-11',
       added: [
-        '<strong>Full skills catalog published</strong>: <code>plugin.json</code> stops enumerating a partial sample and now exposes all 14 domains under <code>skills/</code>.',
+        '<strong>Full skills catalog published</strong>: <code>plugin.json</code> stops enumerating a partial sample and now exposes all 15 domains under <code>skills/</code>.',
         '<strong>Stricter public surface contracts</strong>: the suite now validates the published catalog, canonical frontmatter, manual-only skills, and the absence of collisions with commands.',
         '<strong>Selina gets a real guided flow</strong>: base system first, then typography and palette, and only then three comparable final proposals inside that family.',
       ],
@@ -1526,7 +1551,7 @@ personalidad:
         'Heavier skills or those with clear side effects remain published, but are forced to manual activation with <code>disable-model-invocation: true</code>.',
         'Help and public docs now group commands by actual value: core, advanced operations, and views/aliases.',
         'Selina’s final proposals now respect the selected visual system instead of recolouring the same generic layout shell.',
-        'The landing no longer frames the catalog as an internal/partial sample and now reflects the 61 published skills in the release.',
+        'The landing no longer frames the catalog as an internal/partial sample and now reflects the 62 published skills in the release.',
         'Version alignment to 0.5.2 across plugin, marketplace, installers, packages, docs, changelog, and landing.',
       ],
       fixed: [
@@ -1557,11 +1582,11 @@ personalidad:
       version: '0.5.0',
       date: '2026-03-31',
       added: [
-        '<strong>Lucius — The Technical Director</strong>: new optional agent that acts as an external technical second opinion. It invokes <code>codex review</code> with GPT-5.4 in read-only mode and returns diagnosis + prescription per item.',
+        '<strong>Lucius — The Technical Director</strong>: new optional agent that acts as an external technical second opinion. It invokes <code>codex exec</code> with an explicit read-only sandbox, uses the configured Codex CLI model and returns diagnosis + prescription per item.',
         '<strong><code>/alfred-dev:lucius</code> command</strong>: entry point for the audit. It accepts an optional target directory and scope (<code>all</code>, <code>security</code>, <code>tests</code>, <code>architecture</code>, <code>performance</code>).',
         '<strong>Structured report per item</strong>: Lucius returns diagnosis + prescription + effort (S/M/L) + suggested implementer (Alfred or Codex) in four sections: Critical, Relevant, Opportunities and What\'s working well.',
         '<strong>Prerequisite preflight</strong>: checks that <code>codex</code> is on the PATH and authenticated. If something is missing, it stops with clear install instructions.',
-        '<strong>Hard gate with no modifications</strong>: the <code>codex review</code> subcommand enables native <code>sandbox: read-only</code> and <code>approval: never</code>, guaranteeing that no files are touched.',
+        '<strong>Hard gate with no modifications</strong>: Lucius compares Git status before and after running Codex CLI in <code>--sandbox read-only</code>; if it detects differences, it reports them instead of hiding the problem.',
         '<strong>Selina — The Stylist</strong>: new core agent (10th) that occupies phase 1b of the <code>feature</code> workflow and presents three style directions before component design starts.',
         '<strong>Local visual server</strong>: zero-dependency HTTP + WebSocket server in <code>visual/scripts/server.cjs</code> with hot reload, per-project sessions and graceful shutdown.',
         '<strong>Visual style skill</strong>: <code>skills/estilo/style-direction/SKILL.md</code> guides Selina to start the server, propose options, capture the selection and generate <code>docs/style-direction.md</code>.',
@@ -1581,7 +1606,7 @@ personalidad:
         '<code>catch</code> block without unused variable: <code>catch (e)</code> becomes <code>catch {}</code> in <code>serveStaticFile</code>.',
         'Cognitive complexity in <code>config_loader.py</code>: <code>_count_source_files</code> and <code>suggest_optional_agents</code> were simplified by extracting reusable helpers.',
         'SonarQube skill registered in <code>plugin.json</code>: the file existed but was missing from the plugin manifest.',
-        'Docker permissions in subagents: <code>Bash(docker ...)</code> entries in <code>~/.claude/settings.json</code> let <code>security-officer</code> start SonarQube without asking the user for confirmation.',
+        'Docker execution in subagents: scoped <code>Bash(docker ...)</code> entries let <code>security-officer</code> run the SonarQube workflow after <code>/audit</code> confirms Docker is operational or the user authorizes preparing it.',
       ],
     },
     {
@@ -1632,7 +1657,7 @@ personalidad:
         'Shared memory configuration parser and new coverage for event FTS, purge + health, Git import with "|" and sync beyond 1000 decisions.',
       ],
       changed: [
-        '/alfred-dev:alfred becomes a contextual router: it decides whether continuity, brownfield mapping, refinement or a multi-agent workflow should happen next.',
+        '/alfred becomes a contextual router: it decides whether continuity, brownfield mapping, refinement or a multi-agent workflow should happen next.',
         'SessionStart bootstraps local configuration and recommends the next step from the very first session.',
         'The website now reflects the current model: 6 execution workflows, 18 commands and a visible operational layer.',
         'Persistent memory stops producing false negatives: content-bearing events are searchable, purge cleans FTS, retention_days is read from project config and size_bytes includes WAL.',
@@ -1750,7 +1775,7 @@ personalidad:
       version: '0.3.5',
       date: '2026-03-10',
       changed: [
-        '<strong>SonarQube moved to security-officer</strong> -- the SonarQube analysis is now run by the security-officer instead of the qa-engineer during <code>/alfred-dev:audit</code>. Spins up Docker, runs the scanner end-to-end and integrates findings into its security report.',
+        '<strong>SonarQube moved to security-officer</strong> -- the SonarQube analysis is now run by the security-officer instead of the qa-engineer during <code>/alfred-dev:audit</code>. When Docker is operational or authorized, it runs the scanner and integrates findings into its security report.',
         '<strong>Imperative instructions</strong> -- the subagent receives explicit, sequential steps (read the skill, execute all 7 steps, integrate results) instead of a textual reference that could be ignored.',
       ],
     },
@@ -1761,7 +1786,7 @@ personalidad:
         '<strong>Command nomenclature</strong> -- all web commands updated from <code>/alfred X</code> to <code>/alfred-dev:X</code> to reflect the actual Claude Code convention.',
         '<strong>Stats corrected</strong> -- skills from 56 to 59, commands from 10 to 11, hooks from 7 to 11. Aligned with actual implementation.',
         '<strong>Command /alfred-dev:gui visible</strong> -- added to the public commands table in both languages.',
-        '<strong>SonarQube integrated in audit</strong> -- the security-officer runs the SonarQube skill as a default step. Verified end-to-end with Docker.',
+        '<strong>SonarQube integrated in audit</strong> -- the security-officer runs the SonarQube skill after the audit preflight confirms Docker is operational or the user authorizes preparing it.',
         '<strong>Dashboard port file</strong> -- <code>session-start.sh</code> creates <code>.claude/alfred-gui-port</code> and verifies real server connection instead of relying on <code>kill -0</code>.',
         '<strong>Optional agent colours</strong> -- the 5 agents without colour in their frontmatter now have assigned colours for the dashboard.',
       ],
@@ -1940,11 +1965,11 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.5.2',
+    version: 'v0.6.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Claude Code plugin. 19 agents. Published catalog of 61 skills. 13 hooks. 26 commands. 10 design systems with Selina. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
+    tagline: 'Claude Code plugin. 19 agents. Published catalog of 62 skills. 13 hooks. 25 namespaced commands + /alfred. 10 design systems with Selina. Local Memory UI. Persistent memory. Operational continuity. Operational PM. From idea to production.',
     slogan: 'Automated software engineering for Claude Code.',
     disclaimer: {
       linkText: 'Disclaimer',

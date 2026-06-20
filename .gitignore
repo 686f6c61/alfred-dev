@@ -3,6 +3,15 @@
 .claude/
 .tmp/
 site/test-results/
+.crupier/
+docs/project/
+docs/manual-smoke*.json
+docs/manual-smoke*.md
+docs/manual-review-packet-*.md
+docs/manual-review-worksheet-*.md
+docs/release-operator-handoff-*.md
+docs/external-live-smoke*.json
+docs/claude-auth-recovery*.json
 
 # Artefactos locales de Python y testing
 __pycache__/

@@ -7,6 +7,7 @@ coincidan entre el estado real del repo y la documentacion/manifiestos
 que se publican al usuario.
 """
 
+from collections import Counter
 import json
 import os
 import re
@@ -15,6 +16,81 @@ import unittest
 
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
+SKILL_SUPPORTED_FIELDS = {
+    "name",
+    "description",
+    "when_to_use",
+    "argument-hint",
+    "arguments",
+    "disable-model-invocation",
+    "user-invocable",
+    "allowed-tools",
+    "disallowed-tools",
+    "model",
+    "effort",
+    "context",
+    "agent",
+    "hooks",
+    "paths",
+    "shell",
+}
+SKILL_BOOLEAN_FIELDS = {"disable-model-invocation", "user-invocable"}
+SKILL_BOOLEAN_VALUES = {"true", "false"}
+SKILL_CONTEXT_VALUES = {"fork"}
+SKILL_EFFORT_VALUES = {"low", "medium", "high", "xhigh", "max"}
+SKILL_LISTING_TEXT_LIMIT = 1536
+SKILL_SHELL_VALUES = {"bash", "powershell"}
+COMMAND_SUPPORTED_FIELDS = {
+    "allowed-tools",
+    "argument-hint",
+    "description",
+    "disallowed-tools",
+    "model",
+}
+AGENT_MODEL_ALIASES = {"sonnet", "opus", "haiku", "fable", "inherit"}
+AGENT_MODEL_ID_RE = re.compile(r"^claude-[a-z0-9]+(?:-[a-z0-9]+)*$")
+ALFRED_AGENT_MODEL_POLICY = Counter({"opus": 7, "sonnet": 12})
+AGENT_COLOR_VALUES = {"red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"}
+CLAUDE_TOOL_NAMES = {
+    "Agent",
+    "Artifact",
+    "AskUserQuestion",
+    "Bash",
+    "CronCreate",
+    "CronDelete",
+    "CronList",
+    "Edit",
+    "EnterPlanMode",
+    "EnterWorktree",
+    "ExitPlanMode",
+    "ExitWorktree",
+    "Glob",
+    "Grep",
+    "ListMcpResourcesTool",
+    "LSP",
+    "Monitor",
+    "NotebookEdit",
+    "PowerShell",
+    "PushNotification",
+    "Read",
+    "ReadMcpResourceTool",
+    "RemoteTrigger",
+    "SendMessage",
+    "ShareOnboardingGuide",
+    "WaitForMcpServers",
+    "WebFetch",
+    "WebSearch",
+    "Workflow",
+    "Write",
+}
+CLAUDE_PERMISSION_RULE_NAMES = CLAUDE_TOOL_NAMES | {"Skill"}
+SUBAGENT_UNAVAILABLE_TOOLS = {
+    "AskUserQuestion",
+    "EnterPlanMode",
+    "ExitPlanMode",
+    "ScheduleWakeup",
+    "WaitForMcpServers",
+}
 
 
 def _read(relative_path: str) -> str:
@@ -57,6 +133,22 @@ def _count_skill_domains() -> int:
     return len(domains)
 
 
+def _count_agent_files() -> int:
+    count = 0
+    for dirpath, _dirnames, filenames in os.walk(os.path.join(ROOT, "agents")):
+        count += sum(1 for filename in filenames if filename.endswith(".md"))
+    return count
+
+
+def _iter_agent_files():
+    agent_files = []
+    for dirpath, _dirnames, filenames in os.walk(os.path.join(ROOT, "agents")):
+        for filename in filenames:
+            if filename.endswith(".md"):
+                agent_files.append(os.path.join(dirpath, filename))
+    return sorted(agent_files)
+
+
 def _iter_manifest_skill_files():
     plugin = _read_json(".claude-plugin/plugin.json")
     skill_files = []
@@ -75,6 +167,14 @@ def _iter_manifest_skill_files():
     return sorted(skill_files)
 
 
+def _iter_manifest_command_files():
+    plugin = _read_json(".claude-plugin/plugin.json")
+    return [
+        os.path.join(ROOT, relative_path.lstrip("./"))
+        for relative_path in plugin["commands"]
+    ]
+
+
 def _parse_frontmatter_fields(path: str):
     if not os.path.isabs(path):
         path = os.path.normpath(os.path.join(ROOT, path))
@@ -89,11 +189,44 @@ def _parse_frontmatter_fields(path: str):
     for line in text.splitlines()[1:]:
         if line.strip() == "---":
             break
-        if ":" not in line:
+        match = re.match(r"^([A-Za-z][A-Za-z_-]*)\s*:\s*(.*)$", line)
+        if not match:
             continue
-        key, value = line.split(":", 1)
+        key, value = match.groups()
         fields[key.strip()] = value.strip().strip('"').strip("'")
     return fields
+
+
+def _frontmatter_field_text(path: str, field: str) -> str:
+    if not os.path.isabs(path):
+        path = os.path.normpath(os.path.join(ROOT, path))
+
+    with open(path, "r", encoding="utf-8") as fh:
+        text = fh.read()
+
+    if not text.startswith("---\n"):
+        return ""
+
+    lines = text.split("---", 2)[1].splitlines()
+    for index, line in enumerate(lines):
+        match = re.match(r"^([A-Za-z][A-Za-z_-]*)\s*:\s*(.*)$", line)
+        if not match:
+            continue
+        key, value = match.groups()
+        if key != field:
+            continue
+        stripped_value = value.strip()
+        if stripped_value not in {"|", ">"}:
+            return stripped_value.strip('"').strip("'")
+
+        collected = []
+        for following in lines[index + 1:]:
+            if re.match(r"^[A-Za-z][A-Za-z_-]*\s*:", following):
+                break
+            if following.startswith((" ", "\t")):
+                collected.append(following.strip())
+        return "\n".join(collected)
+    return ""
 
 
 def _extract_site_skill_names(relative_path: str):
@@ -104,28 +237,99 @@ def _extract_site_skill_names(relative_path: str):
     return set(re.findall(r"\{ name: '([^']+)'", section))
 
 
+def _is_supported_agent_model(model: str) -> bool:
+    return model in AGENT_MODEL_ALIASES or AGENT_MODEL_ID_RE.fullmatch(model) is not None
+
+
+def _frontmatter_tool_names(tools: str):
+    names = set()
+    for item in tools.split(","):
+        name = item.strip()
+        if not name:
+            continue
+        names.add(re.split(r"[\s(]", name, maxsplit=1)[0])
+    return names
+
+
+def _frontmatter_tool_rule_names(rules: str):
+    return set(
+        re.findall(r"(?:^|[\s,])([A-Za-z][A-Za-z0-9_]*)(?:\(|(?=$|[\s,]))", rules)
+    )
+
+
+def _frontmatter_field_rule_text(path: str, field: str):
+    if not os.path.isabs(path):
+        path = os.path.normpath(os.path.join(ROOT, path))
+
+    with open(path, "r", encoding="utf-8") as fh:
+        text = fh.read()
+
+    if not text.startswith("---\n"):
+        return ""
+
+    lines = text.split("---", 2)[1].splitlines()
+    values = []
+    collecting = False
+    for line in lines:
+        top_level = re.match(r"^([A-Za-z][A-Za-z_-]*)\s*:\s*(.*)$", line)
+        if top_level:
+            key, value = top_level.groups()
+            collecting = key == field
+            if collecting and value.strip():
+                values.append(value.strip().strip("[]").strip('"').strip("'"))
+            continue
+        if collecting:
+            list_item = re.match(r"^\s*-\s*(.+?)\s*$", line)
+            if list_item:
+                values.append(list_item.group(1))
+    return " ".join(values)
+
+
+def _is_known_agent_tool_name(tool_name: str) -> bool:
+    return tool_name in CLAUDE_TOOL_NAMES or tool_name.startswith("mcp__")
+
+
+def _is_known_permission_rule_name(tool_name: str) -> bool:
+    return tool_name in CLAUDE_PERMISSION_RULE_NAMES or tool_name.startswith("mcp__")
+
+
 class TestRuntimeSurfaceCounts(unittest.TestCase):
     def test_manifest_and_filesystem_reflect_current_counts(self):
         plugin = _read_json(".claude-plugin/plugin.json")
         published_skill_files = _iter_manifest_skill_files()
 
-        self.assertEqual(len(plugin["commands"]), 26)
-        self.assertEqual(len(plugin["agents"]), 19)
-        self.assertEqual(_count_skill_files(), 61)
-        self.assertEqual(_count_skill_domains(), 14)
-        self.assertEqual(len(published_skill_files), 61)
-        self.assertEqual(len(set(published_skill_files)), 61)
+        self.assertEqual(len(plugin["commands"]), 25)
+        self.assertNotIn("agents", plugin)
+        self.assertEqual(_count_agent_files(), 19)
+        self.assertNotIn("mcpServers", plugin)
+        self.assertEqual(_count_skill_files(), 62)
+        self.assertEqual(_count_skill_domains(), 15)
+        self.assertEqual(len(published_skill_files), 62)
+        self.assertEqual(len(set(published_skill_files)), 62)
 
-        for relative_path in plugin["commands"] + plugin["agents"] + plugin["skills"]:
+        for relative_path in plugin["commands"] + plugin["skills"]:
             absolute = os.path.join(ROOT, relative_path.lstrip("./"))
             self.assertTrue(
                 os.path.exists(absolute),
                 f"No existe el recurso declarado en plugin.json: {relative_path}",
             )
+        self.assertTrue(os.path.exists(os.path.join(ROOT, ".mcp.json")))
+        mcp = _read_json(".mcp.json")
+        alfred_memory = mcp["mcpServers"]["alfred-memory"]
+        self.assertEqual(alfred_memory["command"], "python3")
+        self.assertEqual(alfred_memory["args"][0], "-c")
+        self.assertIn("CLAUDE_PLUGIN_ROOT", alfred_memory["args"][1])
+        self.assertIn("runpy.run_path", alfred_memory["args"][1])
 
     def test_published_skills_have_canonical_frontmatter(self):
+        skill_names = {}
         for skill_path in _iter_manifest_skill_files():
             frontmatter = _parse_frontmatter_fields(skill_path)
+            unknown = set(frontmatter) - SKILL_SUPPORTED_FIELDS
+            self.assertFalse(
+                unknown,
+                f"Campos de frontmatter de skill no soportados en {skill_path}: {unknown}",
+            )
             self.assertTrue(
                 frontmatter.get("name"),
                 f"Falta `name` en el frontmatter de {skill_path}",
@@ -134,6 +338,180 @@ class TestRuntimeSurfaceCounts(unittest.TestCase):
                 frontmatter.get("description"),
                 f"Falta `description` en el frontmatter de {skill_path}",
             )
+            listing_text_length = len(
+                _frontmatter_field_text(skill_path, "description")
+                + _frontmatter_field_text(skill_path, "when_to_use")
+            )
+            self.assertLessEqual(
+                listing_text_length,
+                SKILL_LISTING_TEXT_LIMIT,
+                f"description + when_to_use excede el limite de listing de Claude Code en {skill_path}: {listing_text_length}",
+            )
+            expected_name = os.path.basename(os.path.dirname(skill_path))
+            self.assertEqual(
+                frontmatter.get("name"),
+                expected_name,
+                f"El name del skill debe coincidir con su directorio en {skill_path}",
+            )
+            for boolean_field in SKILL_BOOLEAN_FIELDS:
+                value = frontmatter.get(boolean_field)
+                if value:
+                    self.assertIn(
+                        value.lower(),
+                        SKILL_BOOLEAN_VALUES,
+                        f"{boolean_field} debe ser booleano en {skill_path}: {value}",
+                    )
+            model = frontmatter.get("model")
+            if model:
+                self.assertTrue(
+                    _is_supported_agent_model(model),
+                    f"Modelo de skill no soportado por Claude Code actual en {skill_path}: {model}",
+                )
+            effort = frontmatter.get("effort")
+            if effort:
+                self.assertIn(
+                    effort,
+                    SKILL_EFFORT_VALUES,
+                    f"Effort de skill no soportado por Claude Code actual en {skill_path}: {effort}",
+                )
+            context = frontmatter.get("context")
+            if context:
+                self.assertIn(
+                    context,
+                    SKILL_CONTEXT_VALUES,
+                    f"Context de skill no soportado por Claude Code actual en {skill_path}: {context}",
+                )
+            if frontmatter.get("agent"):
+                self.assertEqual(
+                    context,
+                    "fork",
+                    f"El campo agent solo debe usarse con context: fork en {skill_path}",
+                )
+            shell = frontmatter.get("shell")
+            if shell:
+                self.assertIn(
+                    shell,
+                    SKILL_SHELL_VALUES,
+                    f"Shell de skill no soportado por Claude Code actual en {skill_path}: {shell}",
+                )
+            for tools_field in ("allowed-tools", "disallowed-tools"):
+                unknown_tools = [
+                    tool_name
+                    for tool_name in _frontmatter_tool_rule_names(
+                        _frontmatter_field_rule_text(skill_path, tools_field)
+                    )
+                    if not _is_known_permission_rule_name(tool_name)
+                ]
+                self.assertFalse(
+                    unknown_tools,
+                    f"{tools_field} de skill declara herramientas desconocidas en {skill_path}: {unknown_tools}",
+                )
+            skill_names.setdefault(frontmatter["name"], []).append(skill_path)
+        duplicated = {
+            name: paths for name, paths in skill_names.items() if len(paths) > 1
+        }
+        self.assertFalse(duplicated, f"Skills con name duplicado: {duplicated}")
+
+    def test_published_commands_have_current_frontmatter_fields(self):
+        for command_path in _iter_manifest_command_files():
+            frontmatter = _parse_frontmatter_fields(command_path)
+            unknown = set(frontmatter) - COMMAND_SUPPORTED_FIELDS
+            self.assertFalse(
+                unknown,
+                f"Campos de frontmatter de comando no soportados en {command_path}: {unknown}",
+            )
+            self.assertTrue(
+                frontmatter.get("description"),
+                f"Falta `description` en el frontmatter de {command_path}",
+            )
+            model = frontmatter.get("model")
+            if model:
+                self.assertTrue(
+                    _is_supported_agent_model(model),
+                    f"Modelo de comando no soportado por Claude Code actual en {command_path}: {model}",
+                )
+            for tools_field in ("allowed-tools", "disallowed-tools"):
+                unknown_tools = [
+                    tool_name
+                    for tool_name in _frontmatter_tool_rule_names(
+                        _frontmatter_field_rule_text(command_path, tools_field)
+                    )
+                    if not _is_known_permission_rule_name(tool_name)
+                ]
+                self.assertFalse(
+                    unknown_tools,
+                    f"{tools_field} de comando declara herramientas desconocidas en {command_path}: {unknown_tools}",
+                )
+
+    def test_plugin_agent_frontmatter_avoids_fields_ignored_by_claude_plugins(self):
+        supported = {
+            "name",
+            "description",
+            "prompt",
+            "tools",
+            "disallowedTools",
+            "model",
+            "maxTurns",
+            "skills",
+            "initialPrompt",
+            "memory",
+            "effort",
+            "background",
+            "isolation",
+            "color",
+        }
+        ignored_by_plugin_agents = {"hooks", "mcpServers", "permissionMode"}
+        model_counts = Counter()
+
+        for agent_path in _iter_agent_files():
+            frontmatter = _parse_frontmatter_fields(agent_path)
+            field_names = set(frontmatter)
+            self.assertTrue(
+                {"name", "description", "model"}.issubset(field_names),
+                f"El agente {agent_path} debe declarar name, description y model",
+            )
+            self.assertFalse(
+                field_names & ignored_by_plugin_agents,
+                f"Claude ignora estos campos en agentes de plugin: {agent_path}",
+            )
+            self.assertFalse(
+                field_names - supported - ignored_by_plugin_agents,
+                f"Campos de frontmatter no soportados en {agent_path}",
+            )
+            model = frontmatter["model"]
+            model_counts[model] += 1
+            self.assertTrue(
+                _is_supported_agent_model(model),
+                f"Modelo no soportado por Claude Code actual en {agent_path}: {model}",
+            )
+            color = frontmatter.get("color")
+            self.assertTrue(color, f"El agente {agent_path} debe declarar color")
+            self.assertIn(
+                color,
+                AGENT_COLOR_VALUES,
+                f"Color no soportado por Claude Code actual en {agent_path}: {color}",
+            )
+            self.assertFalse(
+                _frontmatter_tool_names(frontmatter.get("tools", ""))
+                & SUBAGENT_UNAVAILABLE_TOOLS,
+                f"El agente {agent_path} lista herramientas no disponibles en subagentes",
+            )
+            unknown_tools = [
+                tool_name
+                for tool_name in _frontmatter_tool_names(frontmatter.get("tools", ""))
+                if not _is_known_agent_tool_name(tool_name)
+            ]
+            self.assertFalse(
+                unknown_tools,
+                f"El agente {agent_path} lista herramientas desconocidas: {unknown_tools}",
+            )
+            agent_text = _read(os.path.relpath(agent_path, ROOT))
+            self.assertFalse(
+                [tool for tool in SUBAGENT_UNAVAILABLE_TOOLS if tool in agent_text],
+                f"El agente {agent_path} instruye herramientas no disponibles en subagentes",
+            )
+
+        self.assertEqual(model_counts, ALFRED_AGENT_MODEL_POLICY)
 
     def test_manual_only_skills_keep_explicit_disable_model_invocation(self):
         manual_only = [
@@ -154,7 +532,7 @@ class TestRuntimeSurfaceCounts(unittest.TestCase):
                 f"El skill manual {relative_path} debe mantener disable-model-invocation: true",
             )
 
-    def test_published_skill_names_do_not_shadow_commands(self):
+    def test_alfred_global_alias_is_not_shadowed_by_command(self):
         plugin = _read_json(".claude-plugin/plugin.json")
         command_names = {
             os.path.splitext(os.path.basename(relative_path))[0]
@@ -165,19 +543,35 @@ class TestRuntimeSurfaceCounts(unittest.TestCase):
             for skill_path in _iter_manifest_skill_files()
         }
         collisions = sorted(name for name in (skill_names & command_names) if name)
-        self.assertFalse(
-            collisions,
-            f"Las skills publicadas no deben sombrear comandos existentes: {collisions}",
-        )
+        self.assertEqual(collisions, [])
+        self.assertNotIn("alfred", command_names)
+        self.assertNotIn("./commands/alfred.md", plugin["commands"])
+
+        alias_path = "skills/alfred/alfred/SKILL.md"
+        frontmatter = _parse_frontmatter_fields(alias_path)
+        self.assertEqual(frontmatter.get("disable-model-invocation"), "true")
+        self.assertEqual(frontmatter.get("user-invocable"), "false")
+        alias_text = _read(alias_path)
+        self.assertIn("commands/alfred.md", alias_text)
+        self.assertIn("Alfred Dev global alias", alias_text)
+        self.assertIn("queda oculto cuando se carga desde el plugin", alias_text)
+        self.assertIn("cambiando `user-invocable` a `true`", alias_text)
+        self.assertIn("elimina el shim personal obsoleto", alias_text)
+        self.assertIn("~/.claude/skills/alfred/SKILL.md", alias_text)
+        self.assertIn("~/.claude/commands/alfred.md", alias_text)
+        self.assertIn("No presentes `/alfred-dev:alfred`", alias_text)
+        self.assertIn("/alfred-dev:next", alias_text)
 
 
 class TestReadmeAndDocsSurface(unittest.TestCase):
     def test_readme_matches_current_public_claims(self):
         readme = _read("README.md")
-        self.assertIn("catalogo publicado de 61 skills en 14 dominios", _normalize(readme))
+        self.assertIn("catalogo publicado de 62 skills en 15 dominios", _normalize(readme))
         self.assertIn("Ciclo completo de hasta 7 fases", readme)
         self.assertIn("Python 3.10+ (para hooks, core y MCP en macOS, Linux y Windows).", readme)
-        self.assertIn("historico por version", _normalize(readme))
+        self.assertIn("Novedades en v0.6.0", readme)
+        self.assertNotIn("Novedades en v0.5", readme)
+        self.assertNotIn("Novedades de v0.4", readme)
 
     def test_docs_readme_and_architecture_match_current_surface(self):
         docs_readme = _read("docs/README.md")
@@ -185,9 +579,9 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         agents_readme = _read("docs/agents/README.md")
 
         self.assertIn("feature -- hasta 7 fases", docs_readme)
-        self.assertIn("Catalogo publicado de 61 skills en 14 dominios", docs_readme)
-        self.assertIn("26 comandos registrados en `plugin.json`", architecture)
-        self.assertIn("Por que los agentes de nucleo tambien aparecen en `plugin.json`", architecture)
+        self.assertIn("Catalogo publicado de 62 skills en 15 dominios", docs_readme)
+        self.assertIn("25 comandos registrados en `plugin.json` y una ruta global `/alfred` instalada como skill personal global sin shim de comando duplicado", architecture)
+        self.assertIn("El manifiesto no declara la clave `agents`", architecture)
         self.assertIn("Agentes opcionales** (9)", architecture)
         self.assertIn("optional_agents.py", architecture)
         self.assertIn("build_optional_agent_group_menus()", architecture)
@@ -197,11 +591,11 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         self.assertIn("publica el catalogo completo por dominios", _normalize(_read("docs/skills.md")))
 
     def test_every_manifest_agent_has_public_docs_page(self):
-        plugin = _read_json(".claude-plugin/plugin.json")
         docs_readme = _read("docs/README.md")
         agents_index = _read("docs/agents/README.md")
 
-        for relative_path in plugin["agents"]:
+        for absolute_agent in _iter_agent_files():
+            relative_path = os.path.relpath(absolute_agent, ROOT)
             agent_name = os.path.splitext(os.path.basename(relative_path))[0]
             public_doc = f"docs/agents/{agent_name}.md"
             absolute_doc = os.path.join(ROOT, public_doc)
@@ -352,6 +746,10 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
             config_command_norm,
         )
         self.assertIn("principal navegable", config_command_norm)
+        self.assertIn("modo no interactivo", config_command_norm)
+        self.assertIn("config_headless_menu", config_command_norm)
+        self.assertIn("vuelve cancelada", config_command_norm)
+        self.assertIn("core/config_cli.py", config_command_norm)
         self.assertIn("3 menus navegables", config_command_norm)
         self.assertIn("uno por interaccion", config_command_norm)
         self.assertIn("build_config_section_summaries()", config_command_norm)
@@ -404,7 +802,7 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         self.assertIn("/alfred-dev:status", help_command)
         self.assertIn('python3 .claude/alfred-continuity.py next "$PWD" --json', help_command)
         self.assertIn("foco operativo actual", help_command)
-        self.assertIn("| `/alfred-dev:alfred` | [petición opcional] |", help_command)
+        self.assertIn("| `/alfred` | [petición opcional] |", help_command)
         self.assertIn("composición dinámica", help_command)
         self.assertIn("remote GitHub", help_command)
         self.assertIn("solo bajo demanda", help_command)
@@ -412,6 +810,9 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         self.assertIn("focus", sync_github_command)
         self.assertIn("directive", sync_github_command)
         self.assertIn("úsala como respuesta final y termina", sync_github_command)
+        self.assertIn("menos de 12 líneas", sync_github_command)
+        self.assertIn("no añadas bloques `Insight`", sync_github_command)
+        self.assertIn("no sigas explorando", sync_github_command)
         self.assertIn('python3 .claude/alfred-continuity.py pause "$PWD"', pause_command)
         self.assertIn("Primero ejecuta el helper determinista", pause_command)
         self.assertIn("Solo si el helper falla, cae al modo manual", pause_command)
@@ -426,6 +827,61 @@ class TestReadmeAndDocsSurface(unittest.TestCase):
         self.assertIn("## Cierre canónico del comando", update_command)
         self.assertIn("un único menú seleccionable real", update_command)
 
+    def test_long_flows_are_helper_first_for_headless_runs(self):
+        activity_capture = _read("hooks/activity-capture.py")
+        prefetch_guard = _read("hooks/prefetch-finish-guard.py")
+        session_start = _read("hooks/session-start.sh")
+
+        self.assertIn("start_flow_session", activity_capture)
+        self.assertIn('"audit"', activity_capture)
+        self.assertIn('"feature"', activity_capture)
+        self.assertIn('"fix"', activity_capture)
+        self.assertIn('"spike"', activity_capture)
+        self.assertIn('"ship"', activity_capture)
+        self.assertIn('"feature"', prefetch_guard)
+        self.assertIn("feature, fix, spike, ship, audit", session_start)
+
+        markers = {
+            "audit": "AUDIT_HEADLESS_START",
+            "feature": "FEATURE_HEADLESS_START",
+            "fix": "FIX_HEADLESS_START",
+            "spike": "SPIKE_HEADLESS_START",
+            "ship": "SHIP_HEADLESS_START",
+        }
+        for command, marker in markers.items():
+            command_doc = _read(f"commands/{command}.md")
+            self.assertIn("consume-prefetch", command_doc)
+            self.assertIn("start-flow", command_doc)
+            self.assertIn("--command " + command, command_doc)
+            self.assertIn("modo headless", _normalize(command_doc))
+            self.assertIn(marker, command_doc)
+            self.assertIn("NO", command_doc)
+            self.assertIn("llames agentes", command_doc)
+
+        audit_command = _read("commands/audit.md")
+        self.assertIn("AUDIT_DOCKER_INSTALL_MENU_HEADLESS", audit_command)
+        self.assertIn("AUDIT_DOCKER_START_MENU_HEADLESS", audit_command)
+        self.assertIn("no autoelijas", audit_command)
+
+    def test_lucius_is_helper_first_for_headless_runs(self):
+        activity_capture = _read("hooks/activity-capture.py")
+        prefetch_guard = _read("hooks/prefetch-finish-guard.py")
+        session_start = _read("hooks/session-start.sh")
+        lucius_command = _read("commands/lucius.md")
+
+        self.assertIn('"lucius"', activity_capture)
+        self.assertIn("prepare_lucius_review", activity_capture)
+        self.assertIn('"lucius"', prefetch_guard)
+        self.assertIn("lucius", session_start)
+        self.assertIn("consume-prefetch", lucius_command)
+        self.assertIn('python3 .claude/alfred-continuity.py lucius "$PWD" --raw "$ARGUMENTS"', lucius_command)
+        self.assertIn("modo headless", _normalize(lucius_command))
+        self.assertIn("LUCIUS_HEADLESS_START", lucius_command)
+        self.assertIn("LUCIUS_INVALID_SCOPE", lucius_command)
+        self.assertIn("NO lances Agent", lucius_command)
+        self.assertIn("ejecutes `codex exec`", lucius_command)
+        self.assertIn("NO presentes una revisión como hecha", lucius_command)
+
 
 class TestInstallSurfaceContracts(unittest.TestCase):
     def test_windows_installation_requires_and_patches_python(self):
@@ -434,37 +890,81 @@ class TestInstallSurfaceContracts(unittest.TestCase):
 
         self.assertIn("Get-CompatiblePython", install_ps1)
         self.assertIn("Get-InstalledPluginRoot", install_ps1)
+        self.assertIn("Install-GlobalAlfredAlias", install_ps1)
+        self.assertIn('Join-Path $ClaudeDir "skills/alfred"', install_ps1)
         self.assertIn('Write-Ok "hooks.json parcheado', install_ps1)
-        self.assertIn('Write-Ok "mcp.json parcheado', install_ps1)
+        self.assertIn('Write-Ok ".mcp.json parcheado', install_ps1)
         self.assertIn("Python 3.10+", install_doc)
         self.assertIn("hooks, core y MCP", install_doc)
-        self.assertIn("actualiza `hooks.json` y `mcp.json`", install_doc)
+        self.assertIn("actualiza `hooks.json` y `.mcp.json`", install_doc)
 
     def test_linux_installation_patches_hooks_and_mcp(self):
         install_sh = _read("install.sh")
         self.assertIn("Parchear hooks y MCP", install_sh)
         self.assertIn("MCP_JSON", install_sh)
-        self.assertIn('ok "mcp.json parcheado', install_sh)
+        self.assertIn("mcpServers", install_sh)
+        self.assertIn('ok ".mcp.json parcheado', install_sh)
         self.assertIn("resolve_installed_plugin_root", install_sh)
+        self.assertIn("install_global_alfred_alias", install_sh)
+        self.assertIn('alias_dir="${HOME}/.claude/skills/alfred"', install_sh)
+
+    def test_quick_headless_closes_compactly_after_helper_first(self):
+        quick = _read("commands/quick.md")
+        guard = _read("hooks/prefetch-finish-guard.py")
+
+        self.assertIn("cierra con ese resumen y termina", quick)
+        self.assertIn("menos de 20 líneas", quick)
+        self.assertIn("sin bloques `Insight`", quick)
+        self.assertIn("No añadas bloques Insight", guard)
 
     def test_installation_docs_describe_claude_cli_based_flow(self):
         install_doc = _read("docs/installation.md")
         readme = _read("README.md")
         update_command = _read("commands/update.md")
+        docs_readme = _read("docs/README.md")
 
-        self.assertIn("claude plugin marketplace add 686f6c61/alfred-dev", install_doc)
-        self.assertIn("claude plugin install alfred-dev@alfred-dev", install_doc)
+        self.assertIn("claude plugin marketplace add 686f6c61/alfred-dev --scope user", install_doc)
+        self.assertIn("claude plugin install alfred-dev@alfred-dev --scope user", install_doc)
+        self.assertIn("claude plugin uninstall alfred-dev@alfred-dev --scope local", install_doc)
+        self.assertIn("claude plugin uninstall alfred-dev@alfred-dev --scope project", install_doc)
+        self.assertIn('claude plugin marketplace add "$PWD" --scope user', install_doc)
+        self.assertIn("~/.claude/skills/alfred/SKILL.md", install_doc)
+        self.assertIn("~/.claude/commands/alfred.md", install_doc)
         self.assertIn("bash ./install.sh", install_doc)
         self.assertIn("bash ./install.sh", readme)
         self.assertIn("bash ./uninstall.sh", install_doc)
         self.assertIn("bash ./uninstall.sh", readme)
+        self.assertIn("https://code.claude.com/docs/en/overview", readme)
+        self.assertNotIn("https://docs.anthropic.com/en/docs/claude-code", readme)
+        self.assertIn("/reload-plugins", readme)
+        self.assertIn("/reload-plugins", install_doc)
+        self.assertIn("/reload-plugins --force", install_doc)
+        self.assertIn("/reload-plugins", update_command)
+        self.assertIn("claude plugin details alfred-dev@alfred-dev", install_doc)
+        self.assertIn("claude plugin validate . --strict", install_doc)
+        self.assertIn("claude --debug", install_doc)
+        self.assertIn("/plugin validate", install_doc)
+        self.assertNotIn("Claude Code no ofrece diagnosticos", install_doc)
+        self.assertNotIn("completamente silencioso", install_doc)
         self.assertIn("hooks.json", install_doc)
-        self.assertIn("mcp.json", install_doc)
+        self.assertIn(".mcp.json", install_doc)
         self.assertIn("fuente github propia", _normalize(install_doc))
         self.assertIn("no oficial", _normalize(install_doc))
         self.assertIn("fuente github global", _normalize(readme))
         self.assertIn("unico menu seleccionable", _normalize(install_doc))
         self.assertIn("un unico `askuserquestion`", _normalize(update_command))
+        self.assertIn("claude plugin list --json", update_command)
+        self.assertIn("normaliza a `--scope user`", update_command)
+        self.assertIn("alias personal global `/alfred`", update_command)
+        self.assertIn("~/.claude/skills/alfred/SKILL.md", install_doc)
+        self.assertIn("~/.claude/commands/alfred.md", update_command)
+        self.assertIn("no se usa `--scope local` como ruta soportada", install_doc)
+        self.assertIn("limpia primero cualquier rastro `local` o `project`", install_doc)
+        self.assertIn("No uses `claude plugin update --scope local`", update_command)
+        self.assertIn("plugin:alfred-dev:alfred-memory", install_doc)
+        self.assertIn("Pending approval", install_doc)
+        self.assertIn("release-audit-0.6.0.md", readme)
+        self.assertIn("release-audit-0.6.0.md", docs_readme)
         self.assertIn("Nunca", update_command)
         self.assertIn("0.10.0", update_command)
         self.assertIn('echo \'{"version":2,"plugins":{}}\'', install_doc)
@@ -479,23 +979,45 @@ class TestInstallSurfaceContracts(unittest.TestCase):
         plugin = _read_json(".claude-plugin/plugin.json")
         es_site = _read("site/src/i18n/data.es.ts")
         en_site = _read("site/src/i18n/data.en.ts")
+        changelog = _read("CHANGELOG.md")
         landing_component = _read("site/src/components/BrutalistLandingPage.astro")
         site_ui = _read("site/src/i18n/ui.ts")
         changelog_modal = _read("site/src/components/ChangelogModal.astro")
 
         expected_version = plugin["version"]
+        expected_display_name = plugin["displayName"]
         self.assertIn("softwareVersion: data.footer.version.replace(/^v/i, '')", landing_component)
         self.assertIn(f"version: 'v{expected_version}'", es_site)
         self.assertIn(f"version: 'v{expected_version}'", en_site)
+        self.assertIn(f'displayName: "{expected_display_name}"', es_site)
+        self.assertIn(f'displayName: "{expected_display_name}"', en_site)
+        self.assertIn(f'displayName: "{expected_display_name}"', changelog)
+        self.assertIn(f"{expected_display_name} (alfred-dev)", es_site)
+        self.assertIn(f"{expected_display_name} (alfred-dev)", en_site)
+        self.assertIn(f"{expected_display_name} (alfred-dev)", changelog)
 
         self.assertIn("Python 3.10+", es_site)
         self.assertIn("Python 3.10+", en_site)
+        self.assertIn("/reload-plugins", es_site)
+        self.assertIn("/reload-plugins", en_site)
+        self.assertIn("Claude Code 2.1.183", es_site)
+        self.assertIn("Claude Code 2.1.183", en_site)
+        self.assertIn("plugins/skills/hooks/MCP", es_site)
+        self.assertIn("plugins/skills/hooks/MCP", en_site)
+        self.assertIn("plugins, skills, hooks y MCP", es_site)
+        self.assertIn("plugins, skills, hooks, and MCP", en_site)
+        self.assertIn("claude update", es_site)
+        self.assertIn("claude update", en_site)
         self.assertNotIn("git, Python 3.10+", es_site)
         self.assertNotIn("git, Python 3.10+", en_site)
         self.assertNotIn("No necesita Python", es_site)
         self.assertNotIn("Python not required", en_site)
-        self.assertIn("catalogo publicado de 61 skills", _normalize(es_site))
-        self.assertIn("published catalog of 61 skills", en_site)
+        self.assertNotIn("No hay requisito de versión mínima específica", es_site)
+        self.assertNotIn("There is no specific minimum version requirement", en_site)
+        self.assertNotIn("Cualquier versión de Claude Code", es_site)
+        self.assertNotIn("Any version of Claude Code", en_site)
+        self.assertIn("catalogo publicado de 62 skills", _normalize(es_site))
+        self.assertIn("published catalog of 62 skills", en_site)
         self.assertIn("publica el catalogo completo", _normalize(es_site))
         self.assertIn("publishes the full catalog", en_site)
         self.assertIn("changelogHistoryNote", site_ui)
@@ -520,16 +1042,23 @@ class TestInstallSurfaceContracts(unittest.TestCase):
         uninstall_ps1 = _read("uninstall.ps1")
         install_doc = _read("docs/installation.md")
         readme = _read("README.md")
+        site = _read("site/src/components/BrutalistLandingPage.astro")
 
-        self.assertIn('claude plugin uninstall "${PLUGIN_KEY}"', uninstall_sh)
-        self.assertIn('claude plugin marketplace remove "${PLUGIN_NAME}"', uninstall_sh)
+        self.assertIn('claude plugin uninstall "${PLUGIN_KEY}" --scope user', uninstall_sh)
+        self.assertIn('claude plugin marketplace remove "${PLUGIN_NAME}" --scope user', uninstall_sh)
         self.assertIn("find_compatible_python", uninstall_sh)
-        self.assertIn("& claude plugin uninstall $PluginKey", uninstall_ps1)
-        self.assertIn("& claude plugin marketplace remove $PluginName", uninstall_ps1)
+        self.assertIn("remove_global_alfred_alias", uninstall_sh)
+        self.assertIn("Alias global /alfred eliminado", uninstall_sh)
+        self.assertIn("& claude plugin uninstall $PluginKey --scope user", uninstall_ps1)
+        self.assertIn("& claude plugin marketplace remove $PluginName --scope user", uninstall_ps1)
+        self.assertIn("Remove-GlobalAlfredAlias", uninstall_ps1)
+        self.assertIn("Alias global /alfred eliminado", uninstall_ps1)
         self.assertIn("cli nativa de claude code", _normalize(install_doc))
-        self.assertIn("claude plugin uninstall alfred-dev@alfred-dev", _normalize(install_doc))
-        self.assertIn("claude plugin marketplace remove alfred-dev", _normalize(install_doc))
+        self.assertIn("claude plugin uninstall alfred-dev@alfred-dev --scope user", _normalize(install_doc))
+        self.assertIn("claude plugin marketplace remove alfred-dev --scope user", _normalize(install_doc))
         self.assertIn("cli nativa de claude code", _normalize(readme))
+        self.assertIn("claude plugin uninstall alfred-dev@alfred-dev --scope user", site)
+        self.assertIn("claude plugin marketplace remove alfred-dev --scope user", site)
 
     def test_site_job_is_validated_in_ci(self):
         workflow = _read(".github/workflows/test.yml")
@@ -640,20 +1169,20 @@ class TestOptionalAgentsContracts(unittest.TestCase):
 class TestLandingSurfaceContracts(unittest.TestCase):
     def test_spanish_landing_uses_current_counts(self):
         es = _read("site/src/i18n/data.es.ts")
-        self.assertIn("catalogo publicado de 61 skills", _normalize(es))
-        self.assertIn("61 skills en 14 dominios", es)
-        self.assertIn("{ number: 61, label: 'Skills' }", es)
+        self.assertIn("catalogo publicado de 62 skills", _normalize(es))
+        self.assertIn("62 skills en 15 dominios", es)
+        self.assertIn("{ number: 62, label: 'Skills' }", es)
         self.assertIn("Son 9 agentes especializados", es)
-        self.assertIn("19 agentes. catalogo publicado de 61 skills. 13 hooks. 26 comandos.", _normalize(es))
+        self.assertIn("19 agentes. catalogo publicado de 62 skills. 13 hooks. 25 comandos namespaced + /alfred.", _normalize(es))
         self.assertIn("Lucius", es)
 
     def test_english_landing_uses_current_counts(self):
         en = _read("site/src/i18n/data.en.ts")
-        self.assertIn("published catalog of 61 skills", en)
-        self.assertIn("61 skills across 14 domains", en)
-        self.assertIn("{ number: 61, label: 'Skills' }", en)
+        self.assertIn("published catalog of 62 skills", en)
+        self.assertIn("62 skills across 15 domains", en)
+        self.assertIn("{ number: 62, label: 'Skills' }", en)
         self.assertIn("They are 9 specialised agents", en)
-        self.assertIn("19 agents. Published catalog of 61 skills. 13 hooks. 26 commands.", en)
+        self.assertIn("19 agents. Published catalog of 62 skills. 13 hooks. 25 namespaced commands + /alfred.", en)
         self.assertIn("Lucius", en)
 
 

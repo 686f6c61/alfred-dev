@@ -2,8 +2,8 @@
 name: devops-engineer
 description: |
   Usar para configuración de Docker, pipelines de CI/CD, estrategias de despliegue
-  y setup de monitoring/observabilidad. Se activa en la fase 6 (entrega) de /alfred
-  feature, en /alfred ship (empaquetado y despliegue) y en /alfred audit (revisión de
+  y setup de monitoring/observabilidad. Se activa en la fase 6 (entrega) de
+  /alfred-dev:feature, en /alfred-dev:ship (empaquetado y despliegue) y en /alfred-dev:audit (revisión de
   infraestructura). También se puede invocar directamente para dockerizar un proyecto,
   configurar un pipeline o preparar un entorno de despliegue.
 

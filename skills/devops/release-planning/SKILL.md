@@ -12,7 +12,7 @@ El usuario quiere preparar una release del proyecto. Este skill guia el proceso 
 
 ## Resumen
 
-Una release bien planificada no es solo un `git tag`. Requiere revisar que se incluye, comunicar los cambios a los usuarios y garantizar que la version sigue un esquema coherente. Este skill sistematiza ese proceso para que ninguna release salga sin changelog, sin notas o con una version incoherente.
+Una release bien planificada no es solo un `git tag`. Requiere revisar que se incluye, comunicar los cambios a los usuarios y verificar que la version sigue un esquema coherente. Este skill sistematiza ese proceso para reducir el riesgo de publicar sin changelog, sin notas o con una version incoherente.
 
 ## Proceso
 

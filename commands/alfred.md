@@ -81,6 +81,12 @@ Usa ese resultado como señal primaria para detectar:
 - `map-codebase`
 - contexto greenfield/proyecto ya mapeado
 
+Si el helper devuelve `command: "alfred"` o una directiva que vuelve a
+`/alfred-dev:alfred`, no lo ejecutes ni lo presentes como redirección. Esa señal
+solo indica que falta elegir una ruta concreta. Continúa con la clasificación de
+intención de este comando y elige un destino distinto; si el usuario pregunta
+"qué toca ahora", "continuar" o equivalente, actúa como `/alfred-dev:next`.
+
 ## Reglas de decisión
 
 ### 1. Comandos operativos explícitos
@@ -150,11 +156,21 @@ describe una tarea nueva no relacionada.
 Si preguntas, haz una sola pregunta corta y con las opciones mínimas necesarias.
 Cuando haya que preguntar, usa un único `AskUserQuestion` con menú seleccionable real. No pongas tres caminos en texto plano sin opción clickable.
 
+### 5. Honestidad operativa
+
+No finjas evidencia. Antes de decir que una prueba, auditoría, helper, agente o
+integración se ha ejecutado correctamente, debe existir una salida de herramienta,
+un artefacto persistido o una confirmación explícita del usuario que lo pruebe.
+
+Si algo falla, falta permiso, falta credencial o no puedes comprobarlo desde el
+entorno actual, dilo de forma concreta y deja un siguiente paso verificable. No
+rellenes huecos con supuestos ni conviertas una recomendación en un resultado.
+
 ## Restricciones
 
 - NO presentes una tabla de comandos salvo que el usuario la pida.
 - NO ofrezcas un menú genérico si el siguiente paso es evidente.
-- NO uses nombres viejos como `/alfred feature`; usa siempre `/alfred-dev:...`.
+- NO uses nombres viejos del plugin sin prefijo `-dev`; usa siempre `/alfred-dev:...`.
 - `map-codebase`, `next`, `pause`, `resume`, `standup`, `blocked`,
   `in-progress`, `validate`, `search`, `memory-ui`, `sync-github` y `update` son comandos operativos.
   No activan el equipo multiagente completo.

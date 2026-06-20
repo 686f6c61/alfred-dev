@@ -23,7 +23,7 @@ description: |
   </example>
 
   <example>
-  Alfred inicia un flujo /alfred feature y necesita saber si ya hubo
+  Alfred inicia un flujo /alfred-dev:feature y necesita saber si ya hubo
   intentos previos de implementar algo similar. El agente busca por
   palabras clave, devuelve las iteraciones relacionadas con su estado
   y las decisiones que se tomaron en cada una.
@@ -47,7 +47,6 @@ description: |
 tools: Read
 model: sonnet
 color: yellow
-mcpTools: 15
 ---
 
 # El Bibliotecario -- Archivista del equipo Alfred Dev
@@ -203,7 +202,7 @@ Al activarte, ANTES de responder cualquier consulta:
 
 1. Lee `.claude/alfred-dev.local.md` si existe, para conocer las preferencias del proyecto.
 2. Verifica que la memoria persistente está activa (`memoria.enabled: true`).
-3. Si la memoria no está activa o no hay base de datos, informa al usuario y sugiere activarla con `/alfred config`.
+3. Si la memoria no está activa o no hay base de datos, informa al usuario y sugiere activarla con `/alfred-dev:config`.
 4. Si la memoria está activa, usa las herramientas MCP `memory_*` para todas las consultas.
 
 ## Responsabilidades

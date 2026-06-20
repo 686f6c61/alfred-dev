@@ -234,7 +234,7 @@ export interface InfraGroup {
 
 /** Comando de la interfaz de Alfred Dev. */
 export interface Command {
-  /** Texto del comando (/alfred-dev:alfred, /alfred-dev:feature...). */
+  /** Texto del comando (/alfred, /alfred-dev:feature...). */
   command: string;
   /** Descripcion de lo que hace. */
   description: string;

@@ -196,7 +196,7 @@ Los siguientes campos de la base de datos pasan por `sanitize_content()` antes d
 
 ## Servidor MCP
 
-El servidor MCP (Model Context Protocol) es el proceso que expone la memoria persistente como herramientas invocables por los agentes de Claude Code. Se comunica mediante JSON-RPC 2.0 sobre stdin/stdout con encabezados `Content-Length`, un formato identico al de LSP (Language Server Protocol).
+El servidor MCP (Model Context Protocol) es el proceso que expone la memoria persistente como herramientas invocables por los agentes de Claude Code. Se comunica mediante JSON-RPC 2.0 sobre stdin/stdout en formato MCP actual (un mensaje JSON por linea), con lectura compatible para el framing historico `Content-Length`.
 
 La razon de implementar un servidor MCP en lugar de acceder a la DB directamente desde los agentes es el modelo de ejecución de Claude Code: los agentes no ejecutan Python arbitrario, sino que invocan herramientas definidas en un protocolo estandarizado. El servidor traduce las invocaciones MCP en llamadas a la API de `MemoryDB`.
 
@@ -320,7 +320,7 @@ Exporta decisiones a un fichero Markdown con formato ADR-like (Architecture Deci
 | Parámetro | Tipo | Obligatorio | Descripción |
 |-----------|------|-------------|-------------|
 | `format` | string | si | Formato de exportacion (actualmente solo `markdown`) |
-| `path` | string | no | Ruta del fichero de salida |
+| `path` | string | no | Ruta del fichero de salida, siempre dentro del proyecto actual |
 | `iteration_id` | integer | no | Exportar solo decisiones de una iteracion concreta |
 
 #### `memory_import(source, path?, limit?)`
@@ -330,8 +330,8 @@ Importa datos desde fuentes externas a la memoria persistente. Admite dos fuente
 | Parámetro | Tipo | Obligatorio | Descripción |
 |-----------|------|-------------|-------------|
 | `source` | string | si | Fuente de importacion: `git` o `adr` |
-| `path` | string | no | Ruta del repositorio (git) o directorio de ADRs (adr) |
-| `limit` | integer | no | Máximo de registros a importar (por defecto 100, solo git) |
+| `path` | string | no | Ruta del repositorio (git) o directorio de ADRs (adr), siempre dentro del proyecto actual |
+| `limit` | integer | no | Máximo de registros a importar (por defecto 100, maximo 1000, solo git) |
 
 
 ## El Bibliotecario
@@ -371,7 +371,7 @@ Desde v0.3.6 la captura automática esta centralizada en un único hook: `activi
 
 ### activity-capture.py (captura centralizada)
 
-Este script se ejecuta como hook `PostToolUse` para practicamente todas las herramientas de Claude Code (Write, Edit, Bash, Read, Glob, Grep, Agent, WebFetch, WebSearch, NotebookEdit), además de `UserPromptSubmit`, `PreCompact` y `Stop`. Actua como un hook fail-open: no bloquea la operación ni interfiere con el flujo de trabajo, pero en `UserPromptSubmit` puede preparar por adelantado artefactos helper-first de continuidad (`map-codebase`, `discuss`, `quick` y el caso brownfield de `/alfred-dev:alfred`) antes del razonamiento principal. Si algo falla --DB inexistente, JSON corrupto, configuración ausente--, imprime un aviso en stderr y sale con `exit 0`.
+Este script se ejecuta como hook `PostToolUse` para practicamente todas las herramientas de Claude Code (Write, Edit, Bash, Read, Glob, Grep, Agent, WebFetch, WebSearch, NotebookEdit), además de `UserPromptSubmit`, `UserPromptExpansion`, `PreCompact` y `Stop`. Actua como un hook fail-open: no bloquea la operación ni interfiere con el flujo de trabajo, pero en `UserPromptSubmit` y `UserPromptExpansion` puede preparar por adelantado artefactos helper-first de continuidad (`map-codebase`, `discuss`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit`, `lucius` y el caso brownfield de `/alfred`) antes del razonamiento principal. Si algo falla --DB inexistente, JSON corrupto, configuración ausente--, imprime un aviso en stderr y sale con `exit 0`.
 
 La razon de automatizar la captura en lugar de depender de que los agentes registren eventos manualmente es la fiabilidad: un agente puede olvidarse de llamar a `memory_log_event()`, pero el hook siempre se ejecuta porque esta conectado al ciclo de vida de las herramientas.
 
@@ -542,4 +542,4 @@ Activar el agente `librarian` junto con la memoria es la combinación recomendad
 | `mcp/memory_server.py` | Clase `MemoryMCPServer`, 15 herramientas MCP, transporte JSON-RPC stdio |
 | `hooks/activity-capture.py` | Hook centralizado de captura: registra ficheros, comandos, busquedas, subagentes, prompts, compactaciones y cierre de sesión. Incluye la lógica de seguimiento de iteraciones/fases y la captura de commits. |
 | `hooks/memory-compact.py` | Hook PreCompact, inyección de decisiones críticas como contexto protegido |
-| `agents/optional/librarian.md` | Definición del agente Bibliotecario, 15 herramientas, gestion de ciclo de vida, citas verificables |
+| `agents/librarian.md` | Definición del agente Bibliotecario, 15 herramientas, gestion de ciclo de vida, citas verificables |

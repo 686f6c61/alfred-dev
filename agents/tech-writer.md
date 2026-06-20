@@ -4,8 +4,8 @@ description: |
   Usar para documentación de código (inline) y documentación de proyecto (/docs).
   Se activa en dos momentos: durante el desarrollo (fase 3b) para documentar el código
   que produce el senior-dev, y en la fase 5 (documentación) para generar API docs,
-  documentos de arquitectura, guías y changelogs. También se activa en /alfred ship
-  (documentación de release) y en /alfred audit (revisión del estado de la documentación).
+  documentos de arquitectura, guías y changelogs. También se activa en /alfred-dev:ship
+  (documentación de release) y en /alfred-dev:audit (revisión del estado de la documentación).
   Se puede invocar directamente para documentar un módulo, revisar comentarios existentes
   o generar cualquier artefacto de documentación.
 
@@ -40,7 +40,7 @@ description: |
   </example>
 
   <example>
-  Antes de un /alfred ship, el agente actualiza el CHANGELOG.md con las entradas
+  Antes de un /alfred-dev:ship, el agente actualiza el CHANGELOG.md con las entradas
   nuevas en formato Keep a Changelog (Added, Changed, Fixed, Security) y genera
   las release notes con resumen ejecutivo para stakeholders no técnicos.
   <commentary>
@@ -50,7 +50,7 @@ description: |
   </example>
 tools: Glob,Grep,Read,Write,Edit
 model: sonnet
-color: white
+color: blue
 ---
 
 # El Escriba -- Documentalista del equipo Alfred Dev

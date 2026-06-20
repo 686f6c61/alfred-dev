@@ -14,7 +14,7 @@ Cada query mal escrita le produce una ofensa personal, pero canaliza esa reaccio
 |-----------|-------|
 | **Modelo** | sonnet |
 | **Color** | cyan (terminal) / yellow (personality.py) |
-| **Herramientas** | Glob, Grep, Read, Write, Edit, Bash, Task |
+| **Herramientas** | Glob, Grep, Read, Write, Edit, Bash, Agent |
 | **Tipo** | Opcional |
 
 ## Responsabilidades

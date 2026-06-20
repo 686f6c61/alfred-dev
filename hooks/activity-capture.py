@@ -23,6 +23,7 @@ Eventos gestionados:
     - PostToolUse WebSearch: busqueda web.
     - PostToolUse NotebookEdit: edicion de notebook Jupyter.
     - UserPromptSubmit: prompt del usuario.
+    - UserPromptExpansion: slash command o prompt MCP expandido.
     - PreCompact: marcador de compactacion de contexto.
     - Stop: cierre de sesion.
 
@@ -77,9 +78,15 @@ _TRIVIAL_COMMANDS = frozenset({
 # el modelo intente resolver el prompt por si mismo.
 _ALFRED_PREFETCH_COMMANDS = frozenset({
     "alfred",
+    "audit",
     "map-codebase",
     "discuss",
+    "feature",
+    "fix",
     "quick",
+    "lucius",
+    "ship",
+    "spike",
     "memory-ui",
 })
 
@@ -132,6 +139,7 @@ def _build_dispatcher_table():
         "WebSearch": _dispatch_web_search,
         "NotebookEdit": _dispatch_notebook,
         "UserPromptSubmit": _dispatch_prompt,
+        "UserPromptExpansion": _dispatch_prompt,
         "PreCompact": _dispatch_compact,
         "Stop": _dispatch_stop,
     }
@@ -504,10 +512,22 @@ def _load_state_file(file_path: str) -> Optional[dict]:
 def _parse_alfred_prefetch_prompt(prompt_text: str) -> Optional[dict]:
     """Extrae el slash command de Alfred si admite preparación helper-first."""
     normalized = (prompt_text or "").strip()
+    first_line = normalized.splitlines()[0].strip()
+    alias_match = re.match(
+        r"^/alfred(?:\s+(?P<rest>.*))?$",
+        first_line,
+        flags=re.IGNORECASE,
+    )
+    if alias_match:
+        raw_request = " ".join((alias_match.group("rest") or "").split()).strip()
+        return {
+            "source_command": "alfred",
+            "raw_request": raw_request,
+        }
+
     if not normalized.startswith("/alfred-dev:"):
         return None
 
-    first_line = normalized.splitlines()[0].strip()
     match = re.match(
         r"^/alfred-dev:(?P<command>[a-z0-9-]+)\b(?P<rest>.*)$",
         first_line,
@@ -538,7 +558,9 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
         from core.continuity import (
             launch_memory_ui,
             needs_codebase_map,
+            prepare_lucius_review,
             save_prefetch_result,
+            start_flow_session,
             start_quick_session,
             suggest_verify_action,
             write_codebase_map_files,
@@ -571,6 +593,14 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
         action = write_discovery_files
     elif source_command == "quick":
         action = start_quick_session
+    elif source_command == "lucius":
+        action = prepare_lucius_review
+    elif source_command in {"feature", "fix", "spike", "ship", "audit"}:
+        action = lambda project_dir, raw_request: start_flow_session(
+            project_dir,
+            command=source_command,
+            raw_request=raw_request,
+        )
     elif source_command == "memory-ui":
         action = lambda project_dir, raw_request: launch_memory_ui(
             project_dir,
@@ -584,13 +614,13 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
         result = action(project_dir, raw_request)
     except RuntimeError as exc:
         print(
-            f"{_LOG_PREFIX} Aviso: prefetch /alfred-dev:{source_command} omitido: {exc}",
+            f"{_LOG_PREFIX} Aviso: prefetch /{source_command if source_command == 'alfred' else 'alfred-dev:' + source_command} omitido: {exc}",
             file=sys.stderr,
         )
         return None
     except Exception as exc:
         print(
-            f"{_LOG_PREFIX} Aviso: fallo en prefetch /alfred-dev:{source_command}: {exc}",
+            f"{_LOG_PREFIX} Aviso: fallo en prefetch /{source_command if source_command == 'alfred' else 'alfred-dev:' + source_command}: {exc}",
             file=sys.stderr,
         )
         return None
@@ -615,7 +645,8 @@ def _log_prefetch_event(db, project_dir: str, payload: dict) -> None:
             continue
         artifacts.append(_relative_path(value, project_dir))
 
-    summary = f"Prefetch Alfred: /alfred-dev:{source_command}"
+    source_label = "/alfred" if source_command == "alfred" else f"/alfred-dev:{source_command}"
+    summary = f"Prefetch Alfred: {source_label}"
     if source_command != command:
         summary += f" preparó /alfred-dev:{command}"
     else:
@@ -1222,7 +1253,7 @@ def _dispatch_prompt(db, data: dict) -> None:
 
     Args:
         db: instancia de MemoryDB ya abierta.
-        data: datos del hook UserPromptSubmit.
+        data: datos del hook UserPromptSubmit o UserPromptExpansion.
     """
     prompt_text = data.get("prompt", "") or data.get("content", "")
     if not prompt_text:
@@ -1249,10 +1280,18 @@ def _dispatch_prompt(db, data: dict) -> None:
     if len(prompt_text) > len(first_line):
         summary += "..."
 
+    payload = {
+        "length": len(prompt_text),
+        "source": data.get("hook_event_name", "UserPromptSubmit"),
+    }
+    for key in ("expansion_type", "command_name", "command_source"):
+        if data.get(key):
+            payload[key] = data[key]
+
     db.log_event(
         event_type="user_prompt",
         summary=summary,
-        payload={"length": len(prompt_text)},
+        payload=payload,
         content=prompt_text,
     )
 

@@ -39,8 +39,9 @@ Si el helper devuelve salida válida:
 - entiende que ya ha escrito `.claude/alfred-github-sync.json` y `docs/project/github-sync.md`;
 - asume que también puede haber retirado issues Alfred previamente sincronizados si ya no existen en SonIA local;
 - conserva visibles `focus`, `source`, `command`, `directive` y `reason` si el helper los expone;
-- no sigas explorando, no rehagas el sync a mano y no añadas una segunda narración
-  por encima del resumen del helper.
+- en `claude -p` o auditoría headless, mantén el cierre en menos de 12 líneas;
+- no añadas bloques `Insight`, tablas, explicación pedagógica ni lecturas adicionales;
+- no sigas explorando, no rehagas el sync a mano y no añadas una segunda narración por encima del resumen del helper.
 
 Solo si el helper falla o `gh` no está listo, cae al modo manual. En manual:
 

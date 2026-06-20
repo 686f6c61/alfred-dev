@@ -7,12 +7,52 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.0] - 2026-06-19
+
+### Changed
+
+- **Agentes cargados desde la raíz**: los 9 agentes opcionales pasan de `agents/optional/` a `agents/` para que Claude Code los descubra junto a los 10 agentes de núcleo.
+- **MCP compatible con la CLI actual**: `alfred-memory` vuelve al `.mcp.json` raíz autodetectado por Claude Code, con un lanzador portable que usa `CLAUDE_PLUGIN_ROOT` cuando existe y cae al directorio de trabajo en desarrollo local.
+- **Nomenclatura actual de Claude Code**: comandos, agentes y documentación operativa usan `Agent` donde antes quedaban referencias obsoletas a `Task`.
+- **Nombre humano en UI de Claude Code**: `plugin.json` y `marketplace.json` declaran `displayName: "Alfred Dev"` para que el inventario muestre `Alfred Dev (alfred-dev)` sin cambiar el namespace técnico.
+- **Release de estabilización 0.6.0**: `plugin.json` queda como fuente canónica de version; instaladores, paquetes, sitio, memoria MCP y session report se alinean con ese valor, y el marketplace no duplica `version`.
+- **Contrato de transporte MCP actualizado**: el servidor de memoria habla JSONL MCP moderno por stdio y mantiene lectura compatible con el framing `Content-Length` heredado.
+- **Matriz de auditoría 0.6.0**: se abre un checklist verificable para contrastar lo que promete el plugin con pruebas de terminal, inventario real de Claude Code y comportamiento humano-operativo.
+- **Auditor de release reproducible**: `npm run release:audit:*` agrupa contratos locales, smokes de continuidad, las 15 tools MCP, contratos externos y full audit antes de publicar.
+- **Contratos externos explícitos**: Docker/SonarQube, GitHub Sync, Lucius y deploy mantienen límites humanos verificables: pedir permiso, no tocar sistemas externos a ciegas y no fingir ejecución.
+- **Contratos humanos y antifingimiento**: `npm run release:audit:human` protege el uso correcto de `AskUserQuestion`, UAT explícita, helpers sin doble resumen y reglas centrales para no inventar evidencia.
+- **Catálogo público verificado**: el audit base comprueba que `plugin.json`, `/alfred-dev:help` y `docs/architecture.md` enumeran los mismos 26 comandos sin duplicados ni entradas fantasma.
+- **Contratos de ejecución de comandos**: el audit base comprueba argumentos, helpers deterministas, cierres canónicos de los seis flujos principales y contratos interactivos de `config`, `lucius` y `update`.
+- **Matriz promesa-evidencia**: `docs/promise-evidence-0.6.0.md` cruza claims públicos contra pruebas, smokes y bloqueos externos para distinguir lo cubierto de lo pendiente.
+- **Claims públicos vigilados**: el audit base bloquea contadores obsoletos, comandos legacy `/alfred ...` en prompts runtime y pins de modelo antiguos en Lucius.
+- **Smokes sin cache stale accidental**: el runner manual usa el worktree por defecto, exige `--installed` para probar la cache instalada y el full audit compara la instalacion global de usuario con las superficies criticas del worktree.
+- **Smoke de continuidad ampliado**: `npm run release:audit:continuity` recorre también prefetch, handoff explícito, bypass del stop hook, normalización de kanban, Memory UI sin abrir navegador y cierre seguro de sync-github sin tablero.
+- **Hooks en formato exec**: `hooks.json` usa `command` + `args` para resolver `${CLAUDE_PLUGIN_ROOT}` sin tokenizacion shell y con rutas que contienen espacios.
+- **Wrapper helper-first resiliente**: `.claude/alfred-continuity.py` ya no queda atado solo a una ruta de cache embebida; resuelve `CLAUDE_PLUGIN_ROOT` y puede localizar la cache activa del plugin.
+- **Runner de matriz manual humana**: `npm run release:audit:manual` ejecuta prompts con `claude -p`, fixtures temporales y salida JSON para revisar humanidad, honestidad y promesas reales antes de publicar; la matriz cubre los 26 comandos públicos, 40 opciones públicas y 4 contratos runtime de `/update`, y falla en el audit si queda alguna fuera.
+- **Config interactiva cerrada como contrato**: las 7 secciones de `/alfred-dev:config` quedan cubiertas por preview antes/después y round-trip de persistencia en tests y auditoría de release.
+- **Empaquetado publicable auditado**: `npm run release:audit` ejecuta `npm pack --dry-run --json` y verifica que el paquete contiene la superficie real del plugin sin caches, sesiones locales, tests ni builds generados.
+- **Autopilot sin opciones fantasma**: README, web y prompts aclaran que autopilot se activa por configuración/estado, no con un flag público inexistente, y que deploy sigue exigiendo confirmación humana.
+
+### Fixed
+
+- **Inventario de plugin incompleto**: Claude Code ya puede mostrar los 19 agentes del plugin en `claude plugin details`.
+- **Inventario MCP restaurado**: Claude Code vuelve a contar `alfred-memory` dentro del inventario del plugin.
+- **Health-check MCP rojo**: `claude mcp get plugin:alfred-dev:alfred-memory` pasa a conectar correctamente contra el servidor real.
+- **MCP que listaba pero no ejecutaba**: `tools/call` enlaza correctamente los handlers de `alfred-memory`; las 15 tools se invocan ahora en el smoke de release contra SQLite temporal.
+- **`/alfred-dev:quick` demasiado maquinal**: el helper CLI devuelve Markdown humano por defecto y reserva JSON para `--json`, igual que el resto de helpers operativos.
+- **Ayuda duplicada**: `/alfred-dev:help` deja de repetir el bloque de orientación contextual y la lista de prioridades.
+- **Guards de seguridad neutralizados**: `secret-guard.sh`, `dangerous-command-guard.py` y `prefetch-finish-guard.py` ya no quedan envueltos en `|| true`, por lo que sus bloqueos `exit 2` llegan a Claude Code.
+- **`/alfred-dev:lucius` no recibía argumentos explícitos**: el comando ahora declara `argument-hint` e inserta `$ARGUMENTS`, por lo que rutas y `--scope` llegan al agente externo.
+- **`/alfred-dev:spike` sin cierre operativo**: el flujo de investigación queda obligado a cerrar con ADR/recomendación, gate humana si aplica y una única salida accionable sin implementar producción.
+- **Smoke instalado vulnerable a marketplace stale**: la guía de release ahora fuerza `marketplace remove --scope user` + `marketplace add "$PWD" --scope user` + reinstalación global de usuario para que `claude plugin details` lea el worktree 0.6.0 y no una copia GitHub antigua.
+
 ## [0.5.2] - 2026-04-11
 
 ### Added
 
-- **Catalogo completo de skills publicado en Claude Code**: `plugin.json` deja de enumerar solo 5 skills y pasa a exponer los 14 dominios completos de `skills/`, alineando la superficie pública con las 61 capacidades reales del repositorio.
-- **Contratos de superficie para skills publicadas**: la suite valida ahora que el manifiesto publique exactamente las 61 skills esperadas, que cada skill publicada tenga `name` y `description`, y que no existan colisiones de nombres con los slash commands del plugin.
+- **Catalogo completo de skills publicado en Claude Code**: `plugin.json` deja de enumerar solo 5 skills y pasa a exponer los 15 dominios completos de `skills/`, alineando la superficie pública con las 62 capacidades reales del repositorio.
+- **Contratos de superficie para skills publicadas**: la suite valida ahora que el manifiesto publique exactamente las 62 skills esperadas, que cada skill publicada tenga `name` y `description`, y que la unica colision permitida con slash commands sea el alias auditado `/alfred`.
 - **Flujo guiado real para Selina**: la fase visual puede arrancar ahora por sistema de diseño base, fijar pairing tipográfico + gama cromática y solo después generar tres propuestas finales comparables dentro de esa misma familia.
 
 ### Changed
@@ -52,11 +92,11 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ### Added
 
-- **Lucius — El Director Técnico**: nuevo agente opcional que actúa como segunda opinión técnica externa. Invoca el Codex CLI de OpenAI (`codex review`) con GPT-5.4 para auditar el código del proyecto desde una perspectiva externa, sin modificar ningún fichero. Requiere Codex CLI instalado y suscripción activa de OpenAI (Plus o Pro).
+- **Lucius — El Director Técnico**: nuevo agente opcional que actúa como segunda opinión técnica externa. Invoca Codex CLI en modo no interactivo con sandbox de solo lectura y el modelo configurado por el usuario para auditar el código del proyecto desde una perspectiva externa, sin modificar ningún fichero. Requiere Codex CLI instalado y acceso activo a Codex.
 - **Comando `/alfred-dev:lucius`**: punto de entrada para invocar la auditoría. Acepta directorio objetivo y scope opcionales (`all`, `security`, `tests`, `architecture`, `performance`).
 - **Informe estructurado por ítem**: Lucius devuelve diagnóstico + prescripción + esfuerzo (S/M/L) + sugerencia de con quién implementar (Alfred o Codex) en cuatro secciones: Crítico, Relevante, Oportunidades y Lo que está bien.
 - **Preflight de prerequisitos**: verifica que `codex` está en el PATH y autenticado. Si falta algún requisito, para con instrucciones claras de instalación.
-- **HARD-GATE sin modificaciones**: el subcomando `codex review` activa `sandbox: read-only` y `approval: never` de forma nativa, garantizando que ningún fichero se toca.
+- **HARD-GATE sin modificaciones**: Lucius compara el estado Git antes y después de ejecutar Codex CLI en `--sandbox read-only`; si detecta diferencias, lo reporta y no oculta el problema.
 - **Selina — La Estilista**: nuevo agente de núcleo (10.º) que ocupa la fase 1b del flujo `feature`. Presenta tres direcciones de estilo visual en el navegador antes de que el architect diseñe componentes. Solo se activa si el proyecto tiene interfaz de usuario.
 - **Servidor visual local**: servidor HTTP + WebSocket de dependencias cero (`visual/scripts/server.cjs`) para renderizar opciones de estilo en tres columnas. Gestiona sesiones por proyecto, hot-reload vía `fs.watch`, registro de clics en `state/events` y cierre limpio ante `SIGTERM`.
 - **Skill de estilo visual** (`skills/estilo/style-direction/SKILL.md`): guía completa para que Selina arranque el servidor, escriba el HTML de opciones con `.style-grid`, lea la elección del usuario y genere `docs/style-direction.md`.
@@ -78,7 +118,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 - **`catch` sin variable no usada**: el bloque `catch (e)` en `serveStaticFile` pasa a `catch {}` eliminando la variable no referenciada.
 - **Complejidad cognitiva en `config_loader.py`**: `_count_source_files` (38 → ~6) y `suggest_optional_agents` (18 → ~3) resueltas extrayendo `_scan_dir_for_sources` (recursivo, reemplaza el triple bucle manual) y `_build_suggestion_checks` (lista de checks, elimina las 8 ramas if/elif).
 - **Skill de SonarQube registrado en `plugin.json`**: el fichero `skills/calidad/sonarqube/SKILL.md` existía en disco pero no estaba en el array `skills` del manifiesto del plugin, por lo que Claude Code no lo cargaba.
-- **Permisos de Docker en subagentes**: los comandos Docker añadidos a `~/.claude/settings.json` como entradas `Bash(docker ...)` permiten que el `security-officer` arranque SonarQube sin prompt de confirmación al usuario.
+- **Ejecución de Docker en subagentes**: los comandos Docker añadidos a `~/.claude/settings.json` como entradas `Bash(docker ...)` permiten que el `security-officer` ejecute SonarQube después del preflight de `/alfred-dev:audit`, cuando Docker ya está operativo o el usuario autoriza prepararlo.
 
 ---
 
@@ -309,7 +349,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ### Changed
 
-- **SonarQube movido al security-officer**: el análisis de SonarQube lo ejecuta ahora el security-officer en lugar del qa-engineer durante `/alfred-dev:audit`. El security-officer levanta Docker, ejecuta el scanner end-to-end e integra los hallazgos en su informe de seguridad. Si Docker no está disponible, informa al usuario y continúa sin SonarQube.
+- **SonarQube movido al security-officer**: el análisis de SonarQube lo ejecuta ahora el security-officer en lugar del qa-engineer durante `/alfred-dev:audit`. Si Docker está operativo o autorizado, ejecuta el scanner e integra los hallazgos en su informe de seguridad; si Docker no está disponible, informa al usuario y continúa sin SonarQube.
 - **Instrucciones imperativas para SonarQube**: el subagente recibe pasos explícitos y secuenciales (leer el skill con Read, ejecutar los 7 pasos, integrar resultados) en lugar de una referencia textual que podía ignorarse.
 
 ## [0.3.4] - 2026-03-03
@@ -544,7 +584,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 - 8 agentes especializados con personalidad propia (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, orquestación).
 - 5 flujos de trabajo: feature (6 fases), fix (3 fases), spike (2 fases), ship (4 fases), audit (paralelo).
 - 29 skills organizados en 7 dominios.
-- Quality gates infranqueables en cada fase.
+- Quality gates verificables en cada fase.
 - Compliance RGPD/NIS2/CRA integrado.
 - 5 hooks de protección automática (secretos, calidad, dependencias, parada, arranque).
 - Detección automática de stack tecnológico (Node.js, Python, Rust, Go, Ruby, Elixir, Java, PHP, C#, Swift).

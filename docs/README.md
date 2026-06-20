@@ -4,7 +4,7 @@ Esta documentación esta pensada para desarrolladores que necesitan entender com
 
 En la rama `Alfred-Astro`, este repositorio conserva también `site/` para construir y desplegar la landing pública desde Coolify. La rama `main` sigue siendo la rama canónica del plugin y su runtime.
 
-Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 19 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates infranqueables. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
+Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 19 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates verificables con evidencia. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
 
 El código fuente es la referencia definitiva, pero esta documentación explica el **por que** detrás de cada decisión: por que Python y no JavaScript, por que SQLite y no JSON, por que 19 agentes y no uno solo, por que quality gates en cada transición. Un junior debe poder leer esta documentación de principio a fin y entender el proyecto sin ayuda externa.
 
@@ -31,13 +31,13 @@ mindmap
       9 agentes opcionales
       Motor de personalidad
     Capacidades
-      Catalogo publicado de 61 skills en 14 dominios
+      Catalogo publicado de 62 skills en 15 dominios
       13 hooks del ciclo de vida
       Memoria persistente SQLite
     Operaciones
       Instalación y carga
       Configuración por proyecto
-      Tests unitarios
+      Tests y gates de release
 ```
 
 ---
@@ -51,13 +51,17 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseño fundamentales |
 | [flows.md](flows.md) | Los 6 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
 | [agents/README.md](agents/README.md) | Vision general del equipo de 19 agentes, modelo de colaboración, distribución de modelos |
-| [skills.md](skills.md) | Catalogo de 61 skills organizados en 14 dominios, junto con las reglas de publicación y activación manual de los skills más delicados |
+| [skills.md](skills.md) | Catalogo de 62 skills organizados en 15 dominios, junto con las reglas de publicación y activación manual de los skills más delicados |
 | [hooks.md](hooks.md) | Los 13 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
 | [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
 | [configuration.md](configuration.md) | Detección de stack, fichero .local.md, niveles de autonomía, agentes opcionales, composicion dinámica de equipo |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalación, troubleshooting |
 | [personality.md](personality.md) | Motor de personalidad: frases, sarcasmo, veredictos, distribución de modelos |
-| [testing.md](testing.md) | Tests unitarios: cobertura por modulo, patrones de testing, como contribuir |
+| [testing.md](testing.md) | Tests, auditorías reproducibles, smokes de Claude CLI, revisión humana y limites honestos de cobertura |
+| [release-audit-0.6.0.md](release-audit-0.6.0.md) | Matriz viva de auditoría previa a publicar 0.6.0: claims, evidencia, smoke terminal y pruebas humanas |
+| [promise-evidence-0.6.0.md](promise-evidence-0.6.0.md) | Matriz de promesas públicas contra evidencia canónica: qué está cubierto, qué es parcial y qué depende de servicios externos |
+| [release-readiness-0.6.0.md](release-readiness-0.6.0.md) | Resumen de salida: qué está probado, qué bloquea publicar y qué revisión humana/external sigue pendiente |
+| [manual-review-0.6.0.md](manual-review-0.6.0.md) | Runbook de revisión humana: criterios por caso, bloqueos obligatorios y comandos finales |
 
 ### Fichas individuales de agentes
 

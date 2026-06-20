@@ -1,7 +1,7 @@
 {
   "name": "alfred-dev-site",
   "type": "module",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -9,9 +9,15 @@
     "check": "astro check"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.8",
-    "@astrojs/sitemap": "^3.7.2",
-    "astro": "^6.1.5",
-    "typescript": "^5.9.3"
+    "@astrojs/check": "^0.9.9",
+    "@astrojs/sitemap": "^3.7.3",
+    "astro": "^6.4.8",
+    "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1",
+    "volar-service-yaml": "0.0.71",
+    "yaml-language-server": "^1.23.0",
+    "yaml": "^2.9.0"
   }
 }

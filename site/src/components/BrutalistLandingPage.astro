@@ -203,7 +203,7 @@ const uiText = {
   manifestoLeadSuffix: tr('para trabajar con método', 'for working with rigor'),
   manifestoHighlights: [
     { label: tr('19 agentes', '19 agents'), className: 'mini-tag mini-tag--peach' },
-    { label: tr('26 comandos', '26 commands'), className: 'mini-tag mini-tag--sky' },
+    { label: tr('25 + /alfred', '25 + /alfred'), className: 'mini-tag mini-tag--sky' },
     { label: tr('memoria local', 'local memory'), className: 'mini-tag mini-tag--butter' },
     { label: 'quality gates', className: 'mini-tag mini-tag--pink' },
   ],
@@ -233,14 +233,14 @@ const uiText = {
   openSheet: tr('Abrir ficha', 'Open profile'),
   commandsTitle: tr('Comandos', 'Commands'),
   commandsNote: tr(
-    'Los 26 comandos públicos del plugin, agrupados por entrada, orientación, construcción, control y operación.',
-    'The 26 public plugin commands, grouped by entry, orientation, build, control, and operations.',
+    'Las 26 rutas públicas del plugin, agrupadas por entrada, orientación, construcción, control y operación.',
+    'The 26 public plugin routes, grouped by entry, orientation, build, control, and operations.',
   ),
   openCommandAriaPrefix: tr('Abrir ficha de', 'Open profile for'),
   skillsTitle: tr('Skills y playbooks', 'Skills and playbooks'),
-  skillsBadge: tr('61 publicadas / 14 dominios', '61 published / 14 domains'),
+  skillsBadge: tr('62 publicadas / 15 dominios', '62 published / 15 domains'),
   publishedSkillsLabel: tr('skills publicadas', 'published skills'),
-  domainsCovered: tr('14 dominios cubiertos', '14 domains covered'),
+  domainsCovered: tr('15 dominios cubiertos', '15 domains covered'),
   skillsBody: tr(
     'El catálogo publicado encapsula decisiones repetibles para incidentes, releases, dependencias, estilo, QA, seguridad y entrega.',
     'The published catalog encapsulates repeatable decisions for incidents, releases, dependencies, style, QA, security, and delivery.',
@@ -309,8 +309,8 @@ const uiText = {
     'If you want full cleanup for a specific project, delete those files manually inside each repo where you used Alfred Dev.',
   ),
   uninstallFinalNote: tr(
-    'Después de desinstalar, reinicia Claude Code para que el cambio se aplique de verdad.',
-    'After uninstalling, restart Claude Code so the change is really applied.',
+    'Después de desinstalar, ejecuta /reload-plugins; si Alfred sigue visible, reinicia Claude Code.',
+    'After uninstalling, run /reload-plugins; if Alfred is still visible, restart Claude Code.',
   ),
   fullChangelog: tr('Changelog completo', 'Full changelog'),
   added: tr('Añadido', 'Added'),
@@ -383,8 +383,8 @@ const uninstallGuides = {
   manual: {
     title: tr('Manual', 'Manual'),
     commands: [
-      'claude plugin uninstall alfred-dev@alfred-dev',
-      'claude plugin marketplace remove alfred-dev',
+      'claude plugin uninstall alfred-dev@alfred-dev --scope user',
+      'claude plugin marketplace remove alfred-dev --scope user',
     ],
     cleanup: [
       '~/.claude/plugins/cache/alfred-dev/',
@@ -1008,7 +1008,7 @@ const commandRuntimeMeta: Record<string, CommandRuntimeMeta> = {
     detail:
       'Invoca una segunda opinión técnica externa vía Codex CLI en modo read-only para contrastar el trabajo hecho.',
     notes: [
-      'Usa codex review con GPT-5.4 y devuelve diagnóstico más prescripción por ítem.',
+      'Usa codex exec con sandbox read-only y el modelo configurado en Codex CLI; después compara el estado Git antes/después.',
       'No sustituye el sign-off canónico del flujo principal.',
       'Puede centrarse en all, security, tests, architecture o performance.',
     ],
@@ -1022,7 +1022,7 @@ const commandRuntimeMeta: Record<string, CommandRuntimeMeta> = {
     notes: [
       'Lee la versión instalada desde la caché del plugin y la compara con GitHub Releases.',
       'Si hay versión nueva, ofrece actualizar ahora o dejarlo para luego.',
-      'Tras actualizar, recuerda reiniciar Claude Code para cargar el plugin nuevo.',
+      'Tras actualizar, recuerda ejecutar /reload-plugins; reinicia solo si MCP/caché lo exige o el inventario no cambia.',
     ],
     coreAgents: ['alfred'],
   },
@@ -1330,7 +1330,7 @@ const commandRuntimeMetaEn: Record<string, CommandRuntimeMeta> = {
     detail:
       'Invokes an external technical second opinion through Codex CLI in read-only mode to contrast the work already done.',
     notes: [
-      'Uses codex review with GPT-5.4 and returns diagnosis plus prescription per item.',
+      'Uses codex exec with a read-only sandbox and the configured Codex CLI model; then compares Git status before and after.',
       'It does not replace the canonical sign-off of the main workflow.',
     ],
     coreAgents: ['alfred', 'architect'],
@@ -1339,9 +1339,10 @@ const commandRuntimeMetaEn: Record<string, CommandRuntimeMeta> = {
   update: {
     mode: 'Maintenance',
     detail:
-      'Checks the latest GitHub release, compares real semver, and runs the correct installer if the user accepts the update.',
+      'Checks the latest GitHub release, compares real semver, and updates through the safe route for the detected plugin scope.',
     notes: [
-      'Reads the installed version from plugin cache and compares it with GitHub Releases.',
+      'Reads the installed version and scope from claude plugin list --json, with cache fallback only if the CLI cannot report it.',
+      'User, local and project installs use the idempotent installer and normalize to user scope; managed installs stay under admin policy.',
       'After updating, it reminds you to restart Claude Code so the new plugin loads.',
     ],
     coreAgents: ['alfred'],
@@ -1563,7 +1564,7 @@ const technicalVision = {
   title: 'Visión técnica del plugin',
   repoUrl: 'https://github.com/686f6c61/alfred-dev',
   lead:
-    'Alfred no es un prompt pack. Es un sistema de orquestación de ingeniería con 19 agentes, 26 comandos, seis flujos principales y quality gates automáticas que obligan a demostrar el trabajo antes de avanzar.',
+    'Alfred no es un prompt pack. Es un sistema de orquestación de ingeniería con 19 agentes, 25 comandos namespaced + /alfred, seis flujos principales y quality gates automáticas que obligan a demostrar el trabajo antes de avanzar.',
   summary:
     'Opera sobre tres capas coordinadas: un core Python que orquesta y persiste estado, una superficie pública en Astro y una capa visual de Node.js nativo para Selina. El orquestador es la única fuente de verdad del flujo.',
   highlights: [
@@ -1665,7 +1666,7 @@ const technicalVision = {
   ],
   principles: [
     'El orchestrator es la única fuente de verdad del estado.',
-    'Los quality gates son infranqueables sin evidencia.',
+    'Los quality gates se cierran con evidencia verificable.',
     'Seguridad aparece de forma transversal en arquitectura, calidad y entrega.',
     'La memoria y la continuidad evitan perder contexto entre sesiones.',
     'Los agentes de núcleo no deben invocarse fuera del flujo orquestado.',
@@ -1713,7 +1714,7 @@ const technicalVisionEn = {
   title: 'Plugin technical vision',
   repoUrl: 'https://github.com/686f6c61/alfred-dev',
   lead:
-    'Alfred is not a prompt pack. It is an engineering orchestration system with 19 agents, 26 commands, six main workflows, and automatic quality gates that force work to be demonstrated before it can advance.',
+    'Alfred is not a prompt pack. It is an engineering orchestration system with 19 agents, 25 namespaced commands + /alfred, six main workflows, and automatic quality gates that force work to be demonstrated before it can advance.',
   summary:
     'It operates over three coordinated layers: a Python core that orchestrates and persists state, a public Astro surface, and a native Node.js visual layer for Selina. The orchestrator is the only source of truth for the flow.',
   highlights: [
@@ -2030,14 +2031,14 @@ const organizationLd = JSON.stringify({
         <h1>{tr('UN SISTEMA DE TRABAJO PARA CLAUDE CODE', 'A WORK SYSTEM FOR CLAUDE CODE')}</h1>
         <p class="hero-copy__body">
           {tr(
-            '19 agentes reales, 26 comandos, 61 skills publicadas, memoria SQLite por proyecto y PM operativo. Alfred convierte Claude Code en un flujo con continuidad, contexto y gates de calidad.',
-            '19 real agents, 26 commands, 61 published skills, per-project SQLite memory, and operational PM. Alfred turns Claude Code into a flow with continuity, context, and quality gates.',
+            '19 agentes reales, 25 comandos namespaced + /alfred, 62 skills publicadas, memoria SQLite por proyecto y PM operativo. Alfred convierte Claude Code en un flujo con continuidad, contexto y gates de calidad.',
+            '19 real agents, 25 namespaced commands + /alfred, 62 published skills, per-project SQLite memory, and operational PM. Alfred turns Claude Code into a flow with continuity, context, and quality gates.',
           )}
         </p>
 
         <div class="hero-stats">
           <span class="hero-chip hero-chip--butter">{tr('19 agentes', '19 agents')}</span>
-          <span class="hero-chip hero-chip--mint">{tr('26 comandos', '26 commands')}</span>
+          <span class="hero-chip hero-chip--mint">{tr('25 + /alfred', '25 + /alfred')}</span>
           <span class="hero-chip hero-chip--sky">{tr('SQLite + PM', 'SQLite + PM')}</span>
         </div>
 
@@ -2333,12 +2334,12 @@ const organizationLd = JSON.stringify({
             <strong>03</strong>
             <div>
               <h4>{tr('Entra por el comando correcto', 'Enter through the right command')}</h4>
-              <p>{tr('Nuevo repo: ', 'New repo: ')}<code>/alfred-dev:alfred</code>. {tr('Repo existente: ', 'Existing repo: ')}<code>/alfred-dev:map-codebase</code> {tr('y', 'and')} <code>/alfred-dev:discuss</code>.</p>
+              <p>{tr('Nuevo repo: ', 'New repo: ')}<code>/alfred</code>. {tr('Repo existente: ', 'Existing repo: ')}<code>/alfred-dev:map-codebase</code> {tr('y', 'and')} <code>/alfred-dev:discuss</code>.</p>
             </div>
           </div>
 
           <div class="start-card__footer">
-            {tr('Brownfield primero: ', 'Brownfield first: ')}<code>/map-codebase</code> {tr('y', 'and')} <code>/discuss</code>. {tr('Greenfield', 'Greenfield')}: <code>/alfred-dev:alfred</code>.
+            {tr('Brownfield primero: ', 'Brownfield first: ')}<code>/map-codebase</code> {tr('y', 'and')} <code>/discuss</code>. {tr('Greenfield', 'Greenfield')}: <code>/alfred</code>.
           </div>
         </article>
 
