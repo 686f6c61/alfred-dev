@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.6.0"
+$Version = "0.6.1"
 
 # -- Funciones auxiliares ---------------------------------------------------
 
@@ -175,6 +175,31 @@ function Normalize-ToUserScopeInstallation {
     & claude plugin marketplace remove $PluginName --scope local 2>&1 | Out-Null
     & claude plugin marketplace remove $PluginName --scope project 2>&1 | Out-Null
     Write-Ok "Scopes local/project normalizados; Alfred se instalara como usuario global"
+}
+
+function Remove-StaleUserMarketplaceCheckout {
+    param(
+        [string]$ClaudeDir,
+        [string]$PluginName
+    )
+
+    $marketplaceDir = Join-Path $ClaudeDir "plugins/marketplaces/$PluginName"
+    if (Test-Path $marketplaceDir -PathType Container) {
+        Remove-Item -Path $marketplaceDir -Recurse -Force
+        Write-Ok "Checkout local del marketplace limpiado para evitar cache obsoleta"
+    }
+}
+
+function Update-UserMarketplace {
+    param([string]$PluginName)
+
+    $updateResult = & claude plugin marketplace update $PluginName 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Ok "Marketplace local actualizado"
+    }
+    else {
+        Write-Info "No se pudo ejecutar 'claude plugin marketplace update'; continuo con el checkout recien registrado"
+    }
 }
 
 function Install-GlobalAlfredAlias {
@@ -356,6 +381,7 @@ $marketplaceList = & claude plugin marketplace list 2>&1
 if ($marketplaceList -match $PluginName) {
     & claude plugin marketplace remove $PluginName --scope user 2>&1 | Out-Null
 }
+Remove-StaleUserMarketplaceCheckout -ClaudeDir $ClaudeDir -PluginName $PluginName
 
 $marketplaceResult = & claude plugin marketplace add $Repo --scope user 2>&1
 if ($LASTEXITCODE -eq 0) {
@@ -387,6 +413,8 @@ else {
         exit 1
     }
 }
+
+Update-UserMarketplace -PluginName $PluginName
 
 # -- 2. Instalar plugin -----------------------------------------------------
 

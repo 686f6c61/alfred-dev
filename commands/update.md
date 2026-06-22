@@ -121,7 +121,8 @@ y `/alfred-dev:*` funcionen en cualquier proyecto del usuario.
 Para instalaciones de usuario, locales, de proyecto o con scope desconocido,
 usa el instalador soportado de Alfred Dev. Esta ruta vuelve a registrar la
 fuente GitHub con `--scope user`, reinstala mediante la CLI nativa de Claude
-Code, rematerializa el alias personal global `/alfred` en
+Code, limpia/refresca el checkout local del marketplace para evitar caches
+obsoletas, rematerializa el alias personal global `/alfred` en
 `~/.claude/skills/alfred/SKILL.md`, elimina el shim personal obsoleto
 `~/.claude/commands/alfred.md` si existe y vuelve a aplicar el parche de Python compatible
 en `hooks.json` y `.mcp.json` cuando hace falta.
@@ -171,6 +172,8 @@ Claude Code.
 
 - Los instaladores son idempotentes: sobreescriben la instalacion anterior sin conflictos.
 - No hace falta desinstalar primero en scope `user`.
+- No sustituyas esta ruta por `claude plugin update` directo salvo reparación
+  manual: el instalador existe para evitar marketplaces locales obsoletos.
 - En scope `local` o `project`, no conserves el scope: convierte a instalacion
   global de usuario con el instalador para que el alias personal global
   `/alfred` exista en cualquier proyecto como skill personal invocable y para

@@ -22,7 +22,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.6.0"
+VERSION="0.6.1"
 
 # -- Colores ----------------------------------------------------------------
 
@@ -122,6 +122,26 @@ normalize_to_user_scope_installation() {
     claude plugin marketplace remove "${PLUGIN_NAME}" --scope local >/dev/null 2>&1 || true
     claude plugin marketplace remove "${PLUGIN_NAME}" --scope project >/dev/null 2>&1 || true
     ok "Scopes local/project normalizados; Alfred se instalara como usuario global"
+}
+
+remove_stale_user_marketplace_checkout() {
+    local marketplace_dir="${HOME}/.claude/plugins/marketplaces/${PLUGIN_NAME}"
+
+    if [[ -d "${marketplace_dir}" ]]; then
+        rm -rf "${marketplace_dir}"
+        ok "Checkout local del marketplace limpiado para evitar cache obsoleta"
+    fi
+}
+
+refresh_user_marketplace() {
+    # Claude Code puede conservar un clon local obsoleto del marketplace aunque
+    # 'plugin install' termine correctamente. Forzamos refresh antes de instalar
+    # para que cache/alfred-dev materialice la version publicada actual.
+    if claude plugin marketplace update "${PLUGIN_NAME}" 2>&1; then
+        ok "Marketplace local actualizado"
+    else
+        info "No se pudo ejecutar 'claude plugin marketplace update'; continuo con el checkout recien registrado"
+    fi
 }
 
 install_global_alfred_alias() {
@@ -373,6 +393,7 @@ fi
 if claude plugin marketplace list 2>/dev/null | grep -q "${PLUGIN_NAME}"; then
     claude plugin marketplace remove "${PLUGIN_NAME}" --scope user >/dev/null 2>&1 || true
 fi
+remove_stale_user_marketplace_checkout
 
 if claude plugin marketplace add "${REPO}" --scope user 2>&1; then
     ok "Fuente GitHub declarada"
@@ -401,6 +422,8 @@ else
         exit 1
     fi
 fi
+
+refresh_user_marketplace
 
 # -- 2. Instalar plugin -----------------------------------------------------
 

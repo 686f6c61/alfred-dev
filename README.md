@@ -87,7 +87,9 @@ fuente GitHub global para Alfred Dev, instala el plugin, crea el alias personal
 global invocable `~/.claude/skills/alfred/SKILL.md` y elimina el shim personal
 obsoleto `~/.claude/commands/alfred.md` si existe, para que `/alfred` salga una
 sola vez en cualquier proyecto,
-y parchea hooks/MCP si el `python3` por defecto no es compatible. La
+y parchea hooks/MCP si el `python3` por defecto no es compatible. Desde
+`0.6.1` tambien limpia y refresca el checkout local del marketplace antes de
+instalar, para evitar updates que vuelvan a materializar una cache antigua. La
 instalación soportada es siempre global de usuario: si existían rastros
 `local` o `project` del propio Alfred Dev, el instalador los normaliza antes de
 reinstalar con `--scope user`. No usa un marketplace oficial de Anthropic: usa
@@ -118,7 +120,7 @@ irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex
 ```
 
 Requisitos:
-- [Claude Code](https://code.claude.com/docs/en/overview) instalado, configurado y actualizado. Alfred Dev 0.6.0 se audita contra Claude Code 2.1.183 y requiere una CLI con sistema de plugins, skills, hooks y MCP.
+- [Claude Code](https://code.claude.com/docs/en/overview) instalado, configurado y actualizado. Alfred Dev 0.6.x se audita contra Claude Code 2.1.183 y requiere una CLI con sistema de plugins, skills, hooks y MCP.
 - Python 3.10+ (para hooks, core y MCP en macOS, Linux y Windows).
 
 Para desinstalar:
@@ -154,6 +156,15 @@ Una vez instalado, estos tres pasos muestran Alfred Dev en accion:
 ```
 
 Alfred activara el flujo de hasta 7 fases (producto, estilo visual*, arquitectura, desarrollo, calidad, documentacion, entrega) y respetara el modo configurado en `/alfred-dev:config`: en modo interactivo pedira confirmacion en las gates de usuario; en autopilot autoaprueba solo esas gates, sin saltarse tests, seguridad ni evidencia. El despliegue a produccion sigue requiriendo confirmacion humana explicita incluso en autopilot. La fase de estilo visual se activa solo en proyectos con interfaz de usuario. Para una tarea mas rapida, prueba `/alfred-dev:quick` para cambios pequenos, `/alfred-dev:fix` para un bug o `/alfred-dev:spike` para investigar una tecnologia sin compromiso de implementacion.
+
+## Novedades en v0.6.1
+
+La v0.6.1 es una patch release de instalación. Corrige un caso observado en
+actualizaciones reales: Claude Code podia conservar un marketplace local
+obsoleto, informar `Successfully installed plugin: alfred-dev@alfred-dev` y
+terminar reinstalando una cache vieja. El instalador ahora fuerza limpieza y
+refresh del marketplace antes de instalar, y vuelve a crear `/alfred` desde la
+cache correcta.
 
 ## Novedades en v0.6.0
 

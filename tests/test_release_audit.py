@@ -1495,7 +1495,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         result = release_audit.check_packaging_contracts()
 
-        self.assertIn("npm pack dry-run 0.6.0 valido", result)
+        self.assertIn(f"npm pack dry-run {release_audit.VERSION} valido", result)
         self.assertIn("paquete sin caches locales ni tests", result)
         self.assertIn("paquete sin .claude/.crupier ni evidencias manuales", result)
         self.assertIn("paquete sin symlinks publicables fuera del plugin", result)

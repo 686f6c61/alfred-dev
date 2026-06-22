@@ -37,6 +37,11 @@ class TestInstallSh(unittest.TestCase):
 
             fake_bin.mkdir(parents=True)
             marketplace_dir.parent.mkdir(parents=True, exist_ok=True)
+            (marketplace_dir / ".claude-plugin").mkdir(parents=True, exist_ok=True)
+            (marketplace_dir / ".claude-plugin" / "plugin.json").write_text(
+                '{"name":"alfred-dev","version":"0.5.2"}\n',
+                encoding="utf-8",
+            )
             cache_dir.mkdir(parents=True, exist_ok=True)
             known_marketplaces.write_text("{}", encoding="utf-8")
             state_file.write_text("installed=1\nmarketplace=1\n", encoding="utf-8")
@@ -224,12 +229,18 @@ class TestInstallSh(unittest.TestCase):
                           remove)
                             if [ "${{6:-user}}" = "user" ]; then
                               marketplace=0
-                              rm -rf "$MARKETPLACE_DIR"
                               printf '{{}}' > "$KNOWN_MARKETPLACES"
                             fi
                             ;;
                           add)
                             marketplace=1
+                            mkdir -p "$MARKETPLACE_DIR/.claude-plugin"
+                            cat > "$MARKETPLACE_DIR/.claude-plugin/plugin.json" <<'EOF'
+                    {{
+                      "name": "alfred-dev",
+                      "version": "{PLUGIN_VERSION}"
+                    }}
+                    EOF
                             cat > "$KNOWN_MARKETPLACES" <<'EOF'
                     {{
                       "alfred-dev": {{
@@ -240,6 +251,15 @@ class TestInstallSh(unittest.TestCase):
                         "installLocation": "{marketplace_dir}",
                         "lastUpdated": "2026-04-10T00:00:00.000Z"
                       }}
+                    }}
+                    EOF
+                            ;;
+                          update)
+                            mkdir -p "$MARKETPLACE_DIR/.claude-plugin"
+                            cat > "$MARKETPLACE_DIR/.claude-plugin/plugin.json" <<'EOF'
+                    {{
+                      "name": "alfred-dev",
+                      "version": "{PLUGIN_VERSION}"
                     }}
                     EOF
                             ;;
@@ -311,9 +331,16 @@ class TestInstallSh(unittest.TestCase):
             self.assertIn("plugin uninstall alfred-dev@alfred-dev --scope user", calls)
             self.assertIn("plugin marketplace remove alfred-dev --scope user", calls)
             self.assertIn("plugin install alfred-dev@alfred-dev --scope user", calls)
+            self.assertIn("plugin marketplace update alfred-dev", calls)
             self.assertIn("plugin list --json", calls)
             self.assertEqual(registered["alfred-dev"]["source"]["source"], "github")
             self.assertEqual(registered["alfred-dev"]["source"]["repo"], "686f6c61/alfred-dev")
+            marketplace_plugin = json.loads(
+                (marketplace_dir / ".claude-plugin" / "plugin.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(marketplace_plugin["version"], PLUGIN_VERSION)
             self.assertIn(str(fake_bin / "python3.13"), hooks_json)
             self.assertIn(str(fake_bin / "python3.13"), mcp_json)
             self.assertIn("Alfred Dev global alias", global_alias)

@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-VERSION = "0.6.0"
+VERSION = "0.6.1"
 OLD_VERSION = "0.5" + ".3"
 INSTALLED_PLUGIN_DIR = Path.home() / ".claude" / "plugins" / "cache" / "alfred-dev" / "alfred-dev" / VERSION
 GLOBAL_ALFRED_ALIAS_FILE = Path.home() / ".claude" / "skills" / "alfred" / "SKILL.md"
@@ -2691,7 +2691,7 @@ def check_packaging_contracts() -> list[str]:
         )
 
     return [
-        "npm pack dry-run 0.6.0 valido",
+        f"npm pack dry-run {VERSION} valido",
         "paquete sin caches locales ni tests",
         "paquete sin .claude/.crupier ni evidencias manuales",
         "paquete sin symlinks publicables fuera del plugin",
@@ -4453,7 +4453,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FAIL release-audit: {exc}", file=sys.stderr)
         return 1
 
-    print("release-audit 0.6.0 ok")
+    print(f"release-audit {VERSION} ok")
     return 0
 
 

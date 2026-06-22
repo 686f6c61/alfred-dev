@@ -360,7 +360,9 @@ la ruta global de usuario salvo en instalaciones `managed`:
 - En scope `user`, `local`, `project` o desconocido, detecta la plataforma
   (`uname -s`) y ejecuta el instalador correspondiente. Esta ruta reinstala
   mediante la CLI nativa de Claude Code con `--scope user`, limpia primero
-  cualquier rastro `local` o `project` de Alfred Dev en el contexto actual y
+  cualquier rastro `local` o `project` de Alfred Dev en el contexto actual,
+  borra el checkout local obsoleto del marketplace si existe, ejecuta
+  `claude plugin marketplace update alfred-dev` cuando la CLI lo permite y
   mantiene el parche de Python compatible para hooks y MCP. También refresca
   `~/.claude/skills/alfred/SKILL.md`, el alias personal global que hace visible
   `/alfred` sin namespace, y elimina el shim obsoleto de commands si existe. Si
@@ -375,9 +377,9 @@ la ruta global de usuario salvo en instalaciones `managed`:
   controla una política de administrador.
 
 Los instaladores son idempotentes: vuelven a registrar el marketplace,
-reinstalan el plugin mediante la CLI nativa de Claude Code y mantienen la
-habilitación activa. No es necesario desinstalar antes de actualizar en scope
-`user`.
+refrescan el checkout local del marketplace, reinstalan el plugin mediante la
+CLI nativa de Claude Code y mantienen la habilitación activa. No es necesario
+desinstalar antes de actualizar en scope `user`.
 
 Tras la actualización, el usuario debe ejecutar `/reload-plugins` para cargar la
 nueva versión en la sesión actual. Si Claude Code avisa por MCP/caché o el
@@ -441,6 +443,31 @@ señalado por la CLI.
 
 Si `known_marketplaces.json` no contiene la entrada `alfred-dev`, Claude Code no sabe donde buscar el plugin. Esto puede ocurrir si el fichero se reinicio o si otra herramienta lo sobreescribio. La solucion es ejecutar de nuevo el instalador, que registra el marketplace de forma idempotente.
 
+### La actualización dice "Successfully installed" pero sigue en una versión antigua
+
+Ese caso suele indicar que `~/.claude/plugins/marketplaces/alfred-dev` era un
+clon local obsoleto. Claude Code puede instalar correctamente desde ese clon,
+pero si el clon seguía en una release vieja, la cache resultante también queda
+vieja. Desde `0.6.1`, los instaladores soportados limpian ese checkout local,
+vuelven a registrar la fuente GitHub y ejecutan `claude plugin marketplace
+update alfred-dev` antes de instalar.
+
+La recuperación recomendada es ejecutar otra vez el instalador:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash
+```
+
+Si necesitas repararlo manualmente, el flujo equivalente es:
+
+```bash
+claude plugin marketplace update alfred-dev
+claude plugin update alfred-dev@alfred-dev
+```
+
+Comprueba después `installed_plugins.json` o `claude plugin list --json` y
+ejecuta `/reload-plugins` o reinicia Claude Code.
+
 ### El plugin no se carga tras instalar
 
 Si el plugin se acaba de instalar mientras Claude Code ya estaba ejecutandose,
@@ -488,6 +515,7 @@ que la CLI de Claude Code reconstruya las entradas del plugin.
 | Plugin invisible en Claude Code | Validación fallida, sesión sin recargar o falta algun eslabon | `claude plugin list/details`, `/plugin`, `/reload-plugins`, luego verificar los 5 eslabones |
 | `/alfred` no aparece en el menú | Falta `~/.claude/skills/alfred/SKILL.md`, la copia personal no tiene `user-invocable: true` o la sesión arrancó antes de que existiera la carpeta personal de skills | Reinstalar con `install.sh`, ejecutar `/reload-plugins --force`; si el menú sigue sin vigilar la carpeta nueva, reiniciar Claude Code |
 | "marketplace no registrado" | `known_marketplaces.json` sin la entrada | Reinstalar con `install.sh` |
+| Update dice OK pero sigue una versión antigua | Checkout local del marketplace obsoleto | Reinstalar con `install.sh`; manualmente, `claude plugin marketplace update alfred-dev` y `claude plugin update alfred-dev@alfred-dev` |
 | Plugin instalado pero no aparece | Sesión sin recargar plugins | Ejecutar `/reload-plugins`; reiniciar si MCP/caché lo exige |
 | Error de manifest/frontmatter/hooks | Schema o sintaxis incompatible | `claude plugin validate . --strict` o `/plugin validate` |
 | Script no se ejecuta en macOS | Sin permisos de ejecución | `chmod +x install.sh` |

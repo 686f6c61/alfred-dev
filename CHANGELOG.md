@@ -7,6 +7,13 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.1] - 2026-06-22
+
+### Fixed
+
+- **Actualización resistente a marketplace stale**: los instaladores Bash y PowerShell limpian el checkout local `~/.claude/plugins/marketplaces/alfred-dev`, vuelven a registrar la fuente GitHub, ejecutan `claude plugin marketplace update alfred-dev` cuando la CLI lo permite y solo después instalan el plugin. Esto evita el caso donde Claude Code imprime `Successfully installed plugin: alfred-dev@alfred-dev` pero materializa otra vez una caché antigua como `0.5.2`.
+- **Alias `/alfred` tras update**: al forzar que la cache instalada corresponda a la version publicada actual, el instalador puede resolver de forma determinista `skills/alfred/alfred/SKILL.md` y recrear el alias personal global.
+
 ## [0.6.0] - 2026-06-19
 
 ### Changed
