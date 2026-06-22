@@ -3,7 +3,7 @@
  *
  * Este fichero es la fuente de contenido en castellano para la web. Los
  * claims publicos deben mantenerse alineados con plugin.json, README.md y la
- * matriz docs/promise-evidence-0.6.0.md antes de publicar.
+ * matriz docs/promise-evidence-0.6.1.md antes de publicar.
  *
  * @module i18n/data.es
  */
@@ -1487,7 +1487,7 @@ personalidad:
       {
         svgContent: '<polyline points="20 6 9 17 4 12"/>',
         question: 'Qué versiones de Claude Code soporta?',
-        answerHtml: 'Alfred Dev 0.6.0 se audita contra Claude Code 2.1.183 y requiere una CLI reciente con sistema de plugins, skills, hooks y MCP. Si tu instalación puede instalar plugins pero falla en modo headless o autenticación, actualiza Claude Code con <code>claude update</code>, reinicia la sesión y repite la verificación.',
+        answerHtml: 'Alfred Dev 0.6.1 se audita contra Claude Code 2.1.186 y requiere una CLI reciente con sistema de plugins, skills, hooks y MCP. Si tu instalación puede instalar plugins pero falla en modo headless o autenticación, actualiza Claude Code con <code>claude update</code>, reinicia la sesión y repite la verificación.',
       },
       {
         svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -1512,7 +1512,7 @@ personalidad:
       {
         svgContent: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
         question: 'Funciona con OpenCode?',
-        answerHtml: 'Todavía no como soporte publicado. Alfred Dev 0.6.0 está auditado para Claude Code. OpenCode tiene su propio sistema de plugins y la compatibilidad se mantiene en investigación; si llega una versión compatible, se anunciará como release separada en el repositorio.',
+        answerHtml: 'Todavía no como soporte publicado. Alfred Dev 0.6.1 está auditado para Claude Code. OpenCode tiene su propio sistema de plugins y la compatibilidad se mantiene en investigación; si llega una versión compatible, se anunciará como release separada en el repositorio.',
       },
     ],
   },
@@ -1522,6 +1522,18 @@ personalidad:
   // ----------------------------------------------------------------
 
   changelog: [
+    {
+      version: '0.6.1',
+      date: '2026-06-22',
+      changed: [
+        '<strong>Instaladores más resistentes</strong>: Bash y PowerShell limpian checkouts locales obsoletos del marketplace de Claude Code antes de reinstalar.',
+        '<strong>Actualización global normalizada</strong>: el flujo vuelve a registrar la fuente GitHub, refresca el marketplace <code>alfred-dev</code> y mantiene la instalación en scope <code>user</code>.',
+      ],
+      fixed: [
+        'Corrige el caso donde Claude Code mostraba <code>Successfully installed plugin: alfred-dev@alfred-dev</code>, pero la caché instalada seguía resolviendo una versión antigua como <code>0.5.2</code>.',
+        'El alias <code>/alfred</code> vuelve a materializarse desde la raíz correcta del plugin tras actualizar desde versiones antiguas o cachés locales heredadas.',
+      ],
+    },
     {
       version: '0.6.0',
       date: '2026-06-19',
@@ -1965,7 +1977,7 @@ personalidad:
   // ----------------------------------------------------------------
 
   footer: {
-    version: 'v0.6.0',
+    version: 'v0.6.1',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
