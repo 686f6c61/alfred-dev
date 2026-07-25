@@ -141,6 +141,17 @@ const appleTouchIconHref = `/apple-touch-icon.png?v=${assetVersion}`;
   <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 
+  <!-- Analítica privada, sin cookies ni parámetros de búsqueda -->
+  <script
+    is:inline
+    defer
+    src="https://analytics.686f6c61.dev/script.js"
+    data-website-id="e24c53bd-3aa2-48c6-af65-38fb3ce5ccbf"
+    data-domains="alfred-dev.com,www.alfred-dev.com"
+    data-do-not-track="true"
+    data-exclude-search="true"
+  ></script>
+
   <!-- Google Analytics (carga diferida tras el primer paint o la primera interacción) -->
   <script is:inline>
     window.dataLayer = window.dataLayer || [];
@@ -172,7 +183,7 @@ const appleTouchIconHref = `/apple-touch-icon.png?v=${assetVersion}`;
   </script>
 
   <!-- Seguridad -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.googletagmanager.com; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://analytics.686f6c61.dev https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.googletagmanager.com; connect-src 'self' https://analytics.686f6c61.dev https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
   <!-- Slot para JSON-LD y otros bloques especificos del head -->
