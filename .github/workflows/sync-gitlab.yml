@@ -14,5 +14,5 @@ jobs:
         env:
           GL_TOKEN: ${{ secrets.GL_TOKEN }}
         run: |
-          git remote add gitlab "https://oauth2:${GL_TOKEN}@gitlab.com/686f6c61/${GITHUB_REPOSITORY#*/}.git"
+          git remote add gitlab "https://oauth2:${GL_TOKEN}@gitlab.com/686f6c61-gr/github/${GITHUB_REPOSITORY#*/}.git"
           git push --mirror gitlab
