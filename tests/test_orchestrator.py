@@ -292,14 +292,6 @@ class TestSession(unittest.TestCase):
             session["fase_numero"] = 4
             session["equipo_sesion"] = {
                 "opcionales_activos": {
-                    "data-engineer": False,
-                    "performance-engineer": True,
-                    "github-manager": False,
-                    "librarian": False,
-                    "ux-reviewer": True,
-                    "seo-specialist": True,
-                    "copywriter": False,
-                    "i18n-specialist": False,
                     "lucius": True,
                 },
                 "infra": {
@@ -319,16 +311,12 @@ class TestSession(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertIn(
-            "Especialistas opcionales activos: paralelo: `performance-engineer`, `ux-reviewer`, `seo-specialist`; secuencial: `lucius`.",
+            "Especialistas opcionales activos: secuencial: `lucius`.",
             current,
         )
         self.assertIn(
-            "`calidad` -> `en curso` · gate `automatico+seguridad` · opcionales paralelo: `performance-engineer`, `ux-reviewer`, `seo-specialist`; secuencial: `lucius`",
+            "`calidad` -> `en curso` · gate `automatico+seguridad` · opcionales secuencial: `lucius`",
             progress,
-        )
-        self.assertIn(
-            "- Opcionales en paralelo: `performance-engineer`, `ux-reviewer`, `seo-specialist`.",
-            traceability,
         )
         self.assertIn("- Opcionales secuenciales: `lucius`.", traceability)
 
@@ -339,14 +327,6 @@ class TestSession(unittest.TestCase):
             session = create_session("ship", "Release 1.2.0")
             session["equipo_sesion"] = {
                 "opcionales_activos": {
-                    "data-engineer": False,
-                    "performance-engineer": False,
-                    "github-manager": True,
-                    "librarian": False,
-                    "ux-reviewer": False,
-                    "seo-specialist": False,
-                    "copywriter": True,
-                    "i18n-specialist": False,
                     "lucius": True,
                 },
                 "infra": {
@@ -358,8 +338,6 @@ class TestSession(unittest.TestCase):
 
             expectations = [
                 ("auditoria_final", 0, "secuencial: `lucius`"),
-                ("documentacion", 1, "paralelo: `copywriter`"),
-                ("empaquetado", 2, "secuencial: `github-manager`"),
             ]
 
             for phase_name, phase_number, expected_summary in expectations:
@@ -403,7 +381,7 @@ class TestSession(unittest.TestCase):
                 )
             _save_project_config_with_optionals(
                 tmpdir,
-                ["data-engineer", "ux-reviewer", "i18n-specialist"],
+                ["lucius"],
             )
             state_path = os.path.join(tmpdir, ".claude", "alfred-dev-state.json")
 
@@ -419,42 +397,23 @@ class TestSession(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertEqual(persisted["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["data-engineer"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["ux-reviewer"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["i18n-specialist"])
+        self.assertEqual(set(persisted["equipo_sesion"]["opcionales_activos"]), {"lucius"})
+        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertIn("- Origen del equipo runtime: configuración persistida.", current)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", progress)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", traceability)
-        self.assertIn("Especialistas opcionales activos: paralelo: `ux-reviewer`.", current)
         self.assertIn(
-            "`arquitectura` -> `pendiente` · gate `usuario+seguridad` · opcionales paralelo: `data-engineer`",
+            "`calidad` -> `pendiente` · gate `automatico+seguridad` · opcionales secuencial: `lucius`",
             progress,
         )
-        self.assertIn(
-            "`desarrollo` -> `pendiente` · gate `automatico` · opcionales paralelo: `data-engineer`, `i18n-specialist`",
-            progress,
-        )
-        self.assertIn(
-            "`calidad` -> `pendiente` · gate `automatico+seguridad` · opcionales paralelo: `ux-reviewer`, `i18n-specialist`",
-            progress,
-        )
-        self.assertIn("- Opcionales en paralelo: `ux-reviewer`.", traceability)
-        self.assertIn("- Opcionales en paralelo: `data-engineer`.", traceability)
-        self.assertIn("- Opcionales en paralelo: `data-engineer`, `i18n-specialist`.", traceability)
-        self.assertIn("- Opcionales en paralelo: `ux-reviewer`, `i18n-specialist`.", traceability)
+        self.assertIn("- Opcionales secuenciales: `lucius`.", traceability)
 
     def test_fix_flow_uses_persisted_optional_agents_end_to_end(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
             _save_project_config_with_optionals(
                 tmpdir,
-                [
-                    "performance-engineer",
-                    "github-manager",
-                    "librarian",
-                    "seo-specialist",
-                    "lucius",
-                ],
+                ["lucius"],
             )
             state_path = os.path.join(tmpdir, ".claude", "alfred-dev-state.json")
 
@@ -470,33 +429,15 @@ class TestSession(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertEqual(persisted["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["performance-engineer"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["github-manager"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["librarian"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["seo-specialist"])
+        self.assertEqual(set(persisted["equipo_sesion"]["opcionales_activos"]), {"lucius"})
         self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertIn("- Origen del equipo runtime: configuración persistida.", current)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", progress)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", traceability)
-        self.assertIn("Especialistas opcionales activos: paralelo: `performance-engineer`.", current)
         self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `github-manager`, `librarian`.",
-            current,
-        )
-        self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `github-manager`, `librarian`.",
+            "`validacion` -> `pendiente` · gate `automatico+seguridad` · opcionales secuencial: `lucius`",
             progress,
         )
-        self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `github-manager`, `librarian`.",
-            traceability,
-        )
-        self.assertIn(
-            "`validacion` -> `pendiente` · gate `automatico+seguridad` · opcionales paralelo: `performance-engineer`, `seo-specialist`; secuencial: `lucius`",
-            progress,
-        )
-        self.assertIn("- Opcionales en paralelo: `performance-engineer`.", traceability)
-        self.assertIn("- Opcionales en paralelo: `performance-engineer`, `seo-specialist`.", traceability)
         self.assertIn("- Opcionales secuenciales: `lucius`.", traceability)
 
     def test_ship_flow_uses_persisted_optional_agents_end_to_end(self):
@@ -504,7 +445,7 @@ class TestSession(unittest.TestCase):
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
             _save_project_config_with_optionals(
                 tmpdir,
-                ["github-manager", "copywriter", "lucius"],
+                ["lucius"],
             )
             state_path = os.path.join(tmpdir, ".claude", "alfred-dev-state.json")
 
@@ -520,43 +461,24 @@ class TestSession(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertEqual(persisted["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["github-manager"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["copywriter"])
+        self.assertEqual(set(persisted["equipo_sesion"]["opcionales_activos"]), {"lucius"})
         self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertIn("- Origen del equipo runtime: configuración persistida.", current)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", progress)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", traceability)
         self.assertIn("Especialistas opcionales activos: secuencial: `lucius`.", current)
         self.assertIn(
-            "`documentacion` -> `pendiente` · gate `libre` · opcionales paralelo: `copywriter`",
-            progress,
-        )
-        self.assertIn(
-            "`empaquetado` -> `pendiente` · gate `automatico+seguridad` · opcionales secuencial: `github-manager`",
-            progress,
-        )
-        self.assertIn(
-            "`despliegue` -> `pendiente` · gate `usuario+seguridad` · opcionales secuencial: `github-manager`",
+            "`auditoria_final` -> `en curso` · gate `automatico+seguridad` · opcionales secuencial: `lucius`",
             progress,
         )
         self.assertIn("- Opcionales secuenciales: `lucius`.", traceability)
-        self.assertIn("- Opcionales en paralelo: `copywriter`.", traceability)
-        self.assertIn("- Opcionales secuenciales: `github-manager`.", traceability)
 
     def test_quick_flow_uses_persisted_optional_agents_end_to_end(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
             _save_project_config_with_optionals(
                 tmpdir,
-                [
-                    "data-engineer",
-                    "copywriter",
-                    "ux-reviewer",
-                    "performance-engineer",
-                    "github-manager",
-                    "librarian",
-                    "lucius",
-                ],
+                ["lucius"],
             )
             state_path = os.path.join(tmpdir, ".claude", "alfred-dev-state.json")
 
@@ -572,30 +494,15 @@ class TestSession(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertEqual(persisted["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["data-engineer"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["github-manager"])
+        self.assertEqual(set(persisted["equipo_sesion"]["opcionales_activos"]), {"lucius"})
         self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertIn("- Origen del equipo runtime: configuración persistida.", current)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", progress)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", traceability)
         self.assertIn(
-            "Especialistas opcionales activos: paralelo: `data-engineer`, `ux-reviewer`, `copywriter`.",
-            current,
-        )
-        self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `github-manager`, `librarian`.",
-            current,
-        )
-        self.assertIn(
-            "`ejecucion_acotada` -> `en curso` · gate `automatico` · opcionales paralelo: `data-engineer`, `ux-reviewer`, `copywriter`",
+            "`validacion_rapida` -> `pendiente` · gate `automatico+seguridad` · opcionales secuencial: `lucius`",
             progress,
         )
-        self.assertIn(
-            "`validacion_rapida` -> `pendiente` · gate `automatico+seguridad` · opcionales paralelo: `performance-engineer`, `ux-reviewer`; secuencial: `lucius`",
-            progress,
-        )
-        self.assertIn("- Opcionales en paralelo: `data-engineer`, `ux-reviewer`, `copywriter`.", traceability)
-        self.assertIn("- Opcionales en paralelo: `performance-engineer`, `ux-reviewer`.", traceability)
         self.assertIn("- Opcionales secuenciales: `lucius`.", traceability)
 
     def test_audit_flow_uses_persisted_optional_agents_end_to_end(self):
@@ -603,7 +510,7 @@ class TestSession(unittest.TestCase):
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
             _save_project_config_with_optionals(
                 tmpdir,
-                ["github-manager", "librarian", "seo-specialist", "lucius"],
+                ["lucius"],
             )
             state_path = os.path.join(tmpdir, ".claude", "alfred-dev-state.json")
 
@@ -619,25 +526,12 @@ class TestSession(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertEqual(persisted["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["github-manager"])
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["seo-specialist"])
+        self.assertEqual(set(persisted["equipo_sesion"]["opcionales_activos"]), {"lucius"})
         self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertIn("- Origen del equipo runtime: configuración persistida.", current)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", progress)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", traceability)
         self.assertIn("Especialistas opcionales activos: secuencial: `lucius`.", current)
-        self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `github-manager`, `librarian`, `seo-specialist`.",
-            current,
-        )
-        self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `github-manager`, `librarian`, `seo-specialist`.",
-            progress,
-        )
-        self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `github-manager`, `librarian`, `seo-specialist`.",
-            traceability,
-        )
         self.assertIn(
             "`auditoria_paralela` -> `en curso` · gate `automatico+seguridad` · opcionales secuencial: `lucius`",
             progress,
@@ -649,7 +543,7 @@ class TestSession(unittest.TestCase):
             os.makedirs(os.path.join(tmpdir, ".claude"), exist_ok=True)
             _save_project_config_with_optionals(
                 tmpdir,
-                ["data-engineer", "ux-reviewer", "github-manager", "librarian", "lucius"],
+                ["lucius"],
             )
             state_path = os.path.join(tmpdir, ".claude", "alfred-dev-state.json")
 
@@ -665,21 +559,21 @@ class TestSession(unittest.TestCase):
                 traceability = fh.read()
 
         self.assertEqual(persisted["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["data-engineer"])
+        self.assertEqual(set(persisted["equipo_sesion"]["opcionales_activos"]), {"lucius"})
         self.assertTrue(persisted["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertIn("- Origen del equipo runtime: configuración persistida.", current)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", progress)
         self.assertIn("- Origen del equipo runtime: configuración persistida.", traceability)
         self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `data-engineer`, `github-manager`, `librarian`, `ux-reviewer`, `lucius`.",
+            "- Opcionales activos solo bajo demanda en este flujo: `lucius`.",
             current,
         )
         self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `data-engineer`, `github-manager`, `librarian`, `ux-reviewer`, `lucius`.",
+            "- Opcionales activos solo bajo demanda en este flujo: `lucius`.",
             progress,
         )
         self.assertIn(
-            "- Opcionales activos solo bajo demanda en este flujo: `data-engineer`, `github-manager`, `librarian`, `ux-reviewer`, `lucius`.",
+            "- Opcionales activos solo bajo demanda en este flujo: `lucius`.",
             traceability,
         )
         self.assertIn("`exploracion` -> `en curso` · gate `libre`", progress)
@@ -694,14 +588,6 @@ class TestSession(unittest.TestCase):
             session["fase_numero"] = 0
             session["equipo_sesion"] = {
                 "opcionales_activos": {
-                    "data-engineer": False,
-                    "performance-engineer": False,
-                    "github-manager": False,
-                    "librarian": False,
-                    "ux-reviewer": False,
-                    "seo-specialist": False,
-                    "copywriter": False,
-                    "i18n-specialist": False,
                     "lucius": True,
                 },
                 "infra": {
@@ -749,22 +635,13 @@ class TestSession(unittest.TestCase):
         self.assertIn("Estado de fase: saltada", estilo["body"])
         self.assertTrue(any(task["title"].startswith("feature:arquitectura") for task in board["in-progress"]))
 
-    def test_ship_empaquetado_includes_github_manager_when_active(self):
+    def test_ship_empaquetado_has_no_optional_agents(self):
         effective = get_effective_agents(
             "empaquetado",
-            {
-                "data-engineer": False,
-                "performance-engineer": False,
-                "github-manager": True,
-                "librarian": False,
-                "ux-reviewer": False,
-                "seo-specialist": False,
-                "copywriter": False,
-                "i18n-specialist": False,
-                "lucius": False,
-            },
+            {"lucius": True},
         )
-        self.assertIn("github-manager", effective["secuencial"])
+        self.assertEqual(effective["paralelo"], [])
+        self.assertEqual(effective["secuencial"], [])
 
     def test_ship_empaquetado_gate_is_automatico_seguridad(self):
         empaquetado = FLOWS["ship"]["fases"][2]
@@ -904,15 +781,7 @@ class TestAdvancePhase(unittest.TestCase):
 # Se usa como referencia en los tests de validación y run_flow.
 VALID_EQUIPO_SESION = {
     "opcionales_activos": {
-        "data-engineer": True,
-        "performance-engineer": False,
-        "github-manager": True,
-        "librarian": False,
-        "ux-reviewer": False,
-        "seo-specialist": False,
-        "copywriter": False,
-        "i18n-specialist": False,
-        "lucius": False,
+        "lucius": True,
     },
     "infra": {
         "memoria": True,
@@ -953,14 +822,14 @@ class TestValidateEquipoSesion(unittest.TestCase):
         """TC-22b: si falta un agente conocido, devuelve False."""
         import copy
         malo = copy.deepcopy(VALID_EQUIPO_SESION)
-        del malo["opcionales_activos"]["data-engineer"]
+        del malo["opcionales_activos"]["lucius"]
         self.assertFalse(_validate_equipo_sesion(malo))
 
     def test_tc23_valor_no_bool_en_opcionales(self):
         """TC-23: un valor no booleano en opcionales devuelve False."""
         import copy
         malo = copy.deepcopy(VALID_EQUIPO_SESION)
-        malo["opcionales_activos"]["data-engineer"] = "si"
+        malo["opcionales_activos"]["lucius"] = "si"
         self.assertFalse(_validate_equipo_sesion(malo))
 
     def test_tc23b_fuente_persistida_tambien_es_valida(self):
@@ -1019,12 +888,11 @@ class TestRunFlow(unittest.TestCase):
         """TC-19: run_flow -> extraer opcionales -> get_effective_agents."""
         session = run_flow("feature", "Nuevo módulo", equipo_sesion=VALID_EQUIPO_SESION)
         opcionales = session["equipo_sesion"]["opcionales_activos"]
-        effective = get_effective_agents("arquitectura", opcionales)
-        # data-engineer está activo y participa en "arquitectura" en paralelo
-        self.assertIn("data-engineer", effective["paralelo"])
-        # github-manager está activo pero no participa en "arquitectura"
-        self.assertNotIn("github-manager", effective["paralelo"])
-        self.assertNotIn("github-manager", effective["secuencial"])
+        arquitectura = get_effective_agents("arquitectura", opcionales)
+        calidad = get_effective_agents("calidad", opcionales)
+        self.assertEqual(arquitectura["paralelo"], [])
+        self.assertEqual(arquitectura["secuencial"], [])
+        self.assertIn("lucius", calidad["secuencial"])
 
     def test_tc24_retrocompatibilidad_get_effective_agents_con_none(self):
         """TC-24: get_effective_agents(fase, None) sigue funcionando."""
@@ -1064,7 +932,6 @@ class TestRunFlow(unittest.TestCase):
                 fh.write(
                     "---\n"
                     "agentes_opcionales:\n"
-                    "  github-manager: true\n"
                     "  lucius: true\n"
                     "memoria:\n"
                     "  enabled: true\n"
@@ -1079,7 +946,7 @@ class TestRunFlow(unittest.TestCase):
 
         self.assertIsNotNone(session["equipo_sesion"])
         self.assertEqual(session["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(session["equipo_sesion"]["opcionales_activos"]["github-manager"])
+        self.assertEqual(set(session["equipo_sesion"]["opcionales_activos"]), {"lucius"})
         self.assertTrue(session["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertTrue(session["equipo_sesion"]["infra"]["memoria"])
 
@@ -1095,7 +962,7 @@ class TestRunFlow(unittest.TestCase):
                 fh.write(
                     "---\n"
                     "agentes_opcionales:\n"
-                    "  github-manager: true\n"
+                    "  lucius: true\n"
                     "---\n"
                 )
 
@@ -1107,50 +974,51 @@ class TestRunFlow(unittest.TestCase):
             )
 
         self.assertEqual(session["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(session["equipo_sesion"]["opcionales_activos"]["github-manager"])
+        self.assertTrue(session["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertIsNotNone(session["equipo_sesion_error"])
         self.assertIn("Se aplicó la configuración persistida", session["equipo_sesion_error"])
 
     def test_quick_flow_uses_optional_agents_on_light_phases(self):
-        """quick integra opcionales relevantes en sus dos fases ligeras."""
+        """quick integra Lucius solo en la validación rápida."""
         opcionales = {
             **VALID_EQUIPO_SESION["opcionales_activos"],
-            "ux-reviewer": True,
-            "copywriter": True,
-            "i18n-specialist": True,
+            "lucius": True,
         }
         ejecucion = get_effective_agents("ejecucion_acotada", opcionales)
         validacion = get_effective_agents("validacion_rapida", opcionales)
-        self.assertIn("data-engineer", ejecucion["paralelo"])
-        self.assertIn("copywriter", ejecucion["paralelo"])
-        self.assertIn("ux-reviewer", validacion["paralelo"])
-        self.assertIn("i18n-specialist", validacion["paralelo"])
+        self.assertEqual(ejecucion["paralelo"], [])
+        self.assertEqual(ejecucion["secuencial"], [])
+        self.assertIn("lucius", validacion["secuencial"])
 
     def test_fix_flow_uses_optional_agents_on_bug_phases(self):
-        """fix integra especialistas en diagnostico, correccion y validacion."""
+        """fix integra Lucius solo en validacion."""
         opcionales = {
             **VALID_EQUIPO_SESION["opcionales_activos"],
-            "performance-engineer": True,
-            "ux-reviewer": True,
-            "seo-specialist": True,
-            "copywriter": True,
-            "i18n-specialist": True,
             "lucius": True,
         }
         diagnostico = get_effective_agents("diagnostico", opcionales)
         correccion = get_effective_agents("correccion", opcionales)
         validacion = get_effective_agents("validacion", opcionales)
 
-        self.assertIn("data-engineer", diagnostico["paralelo"])
-        self.assertIn("performance-engineer", diagnostico["paralelo"])
-        self.assertIn("ux-reviewer", diagnostico["paralelo"])
-        self.assertIn("copywriter", correccion["paralelo"])
-        self.assertIn("i18n-specialist", correccion["paralelo"])
-        self.assertIn("performance-engineer", validacion["paralelo"])
-        self.assertIn("ux-reviewer", validacion["paralelo"])
-        self.assertIn("seo-specialist", validacion["paralelo"])
-        self.assertIn("i18n-specialist", validacion["paralelo"])
+        self.assertEqual(diagnostico["paralelo"], [])
+        self.assertEqual(diagnostico["secuencial"], [])
+        self.assertEqual(correccion["paralelo"], [])
+        self.assertEqual(correccion["secuencial"], [])
         self.assertIn("lucius", validacion["secuencial"])
+
+    def test_unknown_optional_flags_are_ignored_by_effective_agents(self):
+        """Los opcionales recortados no reaparecen aunque vengan en el estado."""
+        opcionales = {
+            "lucius": True,
+            "copywriter": True,
+            "github-manager": True,
+        }
+        calidad = get_effective_agents("calidad", opcionales)
+        documentacion = get_effective_agents("documentacion", opcionales)
+        empaquetado = get_effective_agents("empaquetado", opcionales)
+        self.assertEqual(calidad["secuencial"], ["lucius"])
+        self.assertEqual(documentacion["paralelo"], [])
+        self.assertEqual(empaquetado["secuencial"], [])
 
     def test_lucius_runs_as_external_audit_in_quality_closures(self):
         """Lucius se integra al cierre como auditoría secuencial externa."""
@@ -1164,11 +1032,9 @@ class TestRunFlow(unittest.TestCase):
         self.assertIn("lucius", auditoria["secuencial"])
 
     def test_ship_and_audit_use_release_optional_agents(self):
-        """ship y audit integran los opcionales de cierre/release esperados."""
+        """ship y audit integran Lucius en las fases de auditoria."""
         opcionales = {
             **VALID_EQUIPO_SESION["opcionales_activos"],
-            "copywriter": True,
-            "github-manager": True,
             "lucius": True,
         }
         auditoria_final = get_effective_agents("auditoria_final", opcionales)
@@ -1178,9 +1044,9 @@ class TestRunFlow(unittest.TestCase):
         auditoria_paralela = get_effective_agents("auditoria_paralela", opcionales)
 
         self.assertIn("lucius", auditoria_final["secuencial"])
-        self.assertIn("copywriter", documentacion["paralelo"])
-        self.assertIn("github-manager", empaquetado["secuencial"])
-        self.assertIn("github-manager", despliegue["secuencial"])
+        self.assertEqual(documentacion["paralelo"], [])
+        self.assertEqual(empaquetado["secuencial"], [])
+        self.assertEqual(despliegue["secuencial"], [])
         self.assertIn("lucius", auditoria_paralela["secuencial"])
 
 
@@ -1267,7 +1133,7 @@ class TestAutopilot(unittest.TestCase):
                 fh.write(
                     "---\n"
                     "agentes_opcionales:\n"
-                    "  github-manager: true\n"
+                    "  lucius: true\n"
                     "---\n"
                 )
 
@@ -1275,7 +1141,7 @@ class TestAutopilot(unittest.TestCase):
 
         self.assertTrue(session["autopilot"])
         self.assertEqual(session["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(session["equipo_sesion"]["opcionales_activos"]["github-manager"])
+        self.assertTrue(session["equipo_sesion"]["opcionales_activos"]["lucius"])
         self.assertEqual(session["iteraciones_fase"], 0)
         self.assertEqual(session["max_iteraciones_fase"], MAX_PHASE_ITERATIONS)
 

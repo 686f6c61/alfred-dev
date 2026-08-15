@@ -6,9 +6,9 @@ Esta documentación esta pensada para desarrolladores que necesitan entender com
 
 La rama `main` contiene el plugin y su runtime. La landing publica vive en la rama `Alfred-Astro` y se despliega desde Coolify sobre el VPS.
 
-Alfred Dev es un plugin de Claude Code que transforma el CLI en un equipo de 19 agentes especializados. Cada agente tiene un rol definido (producto, arquitectura, desarrollo, seguridad, QA, DevOps, documentación, gestion de proyecto, internacionalizacion), herramientas restringidas y quality gates verificables con evidencia. El plugin se organiza en 4 capas (comandos, agentes, core Python, integración) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente.
+Alfred Dev es un plugin de Claude Code con un equipo de 10 agentes (8 de nucleo, Selina si hay frontend y Lucius bajo demanda). Cada agente tiene un rol definido y quality gates verificables con evidencia, y el plugin se organiza en 4 capas (comandos, agentes, core Python, integracion) que se coordinan a traves de un fichero de estado JSON y una base de datos SQLite para memoria persistente. Publica 11 skills de proceso.
 
-El código fuente es la referencia definitiva, pero esta documentación explica el **por que** detrás de cada decisión: por que Python y no JavaScript, por que SQLite y no JSON, por que 19 agentes y no uno solo, por que quality gates en cada transición. Un junior debe poder leer esta documentación de principio a fin y entender el proyecto sin ayuda externa.
+El código fuente es la referencia definitiva, pero esta documentación explica el **por que** detrás de cada decisión: por que Python y no JavaScript, por que SQLite y no JSON, por que 10 agentes y no uno solo, por que quality gates en cada transición. Un junior debe poder leer esta documentación de principio a fin y entender el proyecto sin ayuda externa.
 
 ---
 
@@ -29,12 +29,12 @@ mindmap
       audit -- 1 fase
       quick -- 2 fases
     El equipo
-      10 agentes de nucleo
-      9 agentes opcionales
+      8 agentes de nucleo + Selina
+      Lucius opcional
       Motor de personalidad
     Capacidades
-      Catalogo publicado de 62 skills en 15 dominios
-      13 hooks del ciclo de vida
+      Catalogo publicado de 11 skills de proceso
+      10 hooks del ciclo de vida
       Memoria persistente SQLite
     Operaciones
       Instalación y carga
@@ -52,24 +52,21 @@ La documentación se organiza de lo general a lo específico. Se recomienda leer
 |---------|-------------|
 | [architecture.md](architecture.md) | Las 4 capas del sistema, diagramas C4 y de secuencia, decisiones de diseño fundamentales |
 | [flows.md](flows.md) | Los 6 flujos de trabajo con diagramas de estado, quality gates y formato de veredicto |
-| [commands.md](commands.md) | Referencia de los 26 comandos publicados por el plugin, agrupados por uso real |
-| [agents/README.md](agents/README.md) | Vision general del equipo de 19 agentes, modelo de colaboración, distribución de modelos |
-| [skills.md](skills.md) | Catalogo de 62 skills organizados en 15 dominios, junto con las reglas de publicación y activación manual de los skills más delicados |
+| [commands.md](commands.md) | Referencia de los 18 comandos publicados por el plugin, agrupados por uso real |
+| [agents/README.md](agents/README.md) | Vision general del equipo de 10 agentes, modelo de colaboración, distribución de modelos |
+| [skills.md](skills.md) | Catalogo de 11 skills planas y reglas de activación manual de los skills más delicados |
 | [visual.md](visual.md) | Runtime visual local de Selina: servidor, scripts, eventos, hardening y empaquetado |
-| [hooks.md](hooks.md) | Los 13 hooks que conectan Alfred con Claude Code, diagrama de secuencia, guia para crear nuevos |
-| [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion, el Bibliotecario |
+| [hooks.md](hooks.md) | Los 10 scripts de hooks que conectan Alfred con Claude Code |
+| [memory.md](memory.md) | Memoria persistente: esquema SQLite, FTS5, servidor MCP, sanitizacion |
 | [configuration.md](configuration.md) | Detección de stack, fichero .local.md, niveles de autonomía, agentes opcionales, composicion dinámica de equipo |
 | [installation.md](installation.md) | Cadena de carga de plugins en Claude Code, scripts de instalación, troubleshooting |
 | [personality.md](personality.md) | Motor de personalidad: frases, sarcasmo, veredictos, distribución de modelos |
 | [testing.md](testing.md) | Tests, auditorías reproducibles, smokes de Claude CLI, revisión humana y limites honestos de cobertura |
-| [operations.md](operations.md) | Continuidad, SonIA, handoff, UAT, `docs/project/` y sync con GitHub |
+| [operations.md](operations.md) | Continuidad, kanban, handoff, UAT, `docs/project/` y sync con GitHub |
+| [release.md](release.md) | Auditoría viva 0.7.0: inventario, gates, matriz manual y revisión humana |
 | [mcp.md](mcp.md) | Servidor MCP de memoria, Memory UI local y cómo encajan con SQLite y continuidad |
 | [contributing.md](contributing.md) | Cómo cambiar prompts, runtime, documentación y releases sin dejar drift |
 | [repository.md](repository.md) | Mapa del repo: dónde vive cada subsistema y qué documento explica cada zona |
-| [release-audit-0.6.0.md](release-audit-0.6.0.md) | Matriz viva de auditoría previa a publicar 0.6.0: claims, evidencia, smoke terminal y pruebas humanas |
-| [promise-evidence-0.6.0.md](promise-evidence-0.6.0.md) | Matriz de promesas públicas contra evidencia canónica: qué está cubierto, qué es parcial y qué depende de servicios externos |
-| [release-readiness-0.6.0.md](release-readiness-0.6.0.md) | Resumen de salida: qué está probado, qué bloquea publicar y qué revisión humana/external sigue pendiente |
-| [manual-review-0.6.0.md](manual-review-0.6.0.md) | Runbook de revisión humana: criterios por caso, bloqueos obligatorios y comandos finales |
 
 ### Fichas individuales de agentes
 
@@ -85,16 +82,7 @@ Cada agente tiene su propia ficha con personalidad, responsabilidades, quality g
 | [qa-engineer.md](agents/qa-engineer.md) | El Rompe-cosas | Nucleo |
 | [devops-engineer.md](agents/devops-engineer.md) | El Fontanero | Nucleo |
 | [tech-writer.md](agents/tech-writer.md) | El Traductor | Nucleo |
-| [project-manager.md](agents/project-manager.md) | SonIA | Nucleo |
-| [data-engineer.md](agents/data-engineer.md) | El Fontanero de Datos | Opcional |
-| [ux-reviewer.md](agents/ux-reviewer.md) | El Abogado del Usuario | Opcional |
-| [performance-engineer.md](agents/performance-engineer.md) | El Cronometro | Opcional |
-| [github-manager.md](agents/github-manager.md) | El Conserje del Repo | Opcional |
-| [seo-specialist.md](agents/seo-specialist.md) | El Rastreador | Opcional |
-| [copywriter.md](agents/copywriter.md) | El Pluma | Opcional |
-| [selina.md](agents/selina.md) | Selina — La Estilista | Nucleo |
-| [librarian.md](agents/librarian.md) | El Bibliotecario | Opcional |
-| [i18n-specialist.md](agents/i18n-specialist.md) | La Interprete | Opcional |
+| [selina.md](agents/selina.md) | Selina — La Estilista | Nucleo (si hay frontend) |
 | [lucius.md](agents/lucius.md) | Lucius — El Director Técnico Externo | Opcional |
 
 ---
@@ -117,7 +105,7 @@ La ruta de lectura depende de lo que necesites:
 
 **Quiero configurar Alfred para mi proyecto.** Lee [configuration.md](configuration.md) para todas las opciones disponibles: detección de stack, niveles de autonomía, agentes opcionales, memoria persistente y personalidad.
 
-**Quiero entender la operación continua del plugin.** Lee [operations.md](operations.md) y luego [mcp.md](mcp.md). Ahí está la relación entre continuidad, SonIA, `docs/project/`, memoria, búsqueda y la UI local.
+**Quiero entender la operación continua del plugin.** Lee [operations.md](operations.md) y luego [mcp.md](mcp.md). Ahí está la relación entre continuidad, `docs/project/`, memoria, búsqueda y la UI local.
 
 ---
 

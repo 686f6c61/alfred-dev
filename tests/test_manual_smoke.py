@@ -49,35 +49,37 @@ class TestManualSmokeRunner(unittest.TestCase):
 
         self.assertEqual(len(case_ids), len(set(case_ids)))
         self.assertGreaterEqual(len(case_ids), 36)
-        self.assertIn("/alfred-dev:help", prompts)
-        self.assertIn("/alfred-dev:config", prompts)
+        self.assertIn("/alfred-dev:alfred", prompts)
+        self.assertIn("/alfred-dev:ajustes", prompts)
         self.assertIn("/alfred-dev:feature sistema de login con email y password", prompts)
         self.assertIn("/alfred-dev:quick cambia el texto del CTA", prompts)
         self.assertIn("/alfred-dev:fix el login falla con password correcta", prompts)
         self.assertIn("/alfred-dev:spike compara SQLite y Postgres", prompts)
         self.assertIn("/alfred-dev:audit", prompts)
-        self.assertIn("/alfred-dev:verify aprobado por usuario", prompts)
-        self.assertIn("/alfred-dev:verify rechazado falta revisar copy", prompts)
-        self.assertIn("/alfred-dev:verify pendiente esperando validacion de negocio", prompts)
+        self.assertIn("/alfred-dev:uat aprobado por usuario", prompts)
+        self.assertIn("/alfred-dev:uat rechazado falta revisar copy", prompts)
+        self.assertIn("/alfred-dev:uat pendiente esperando validacion de negocio", prompts)
         self.assertIn("/alfred-dev:lucius src/ --scope security", prompts)
         self.assertIn("/alfred-dev:lucius --scope architecture", prompts)
         self.assertIn("/alfred-dev:lucius --scope performance", prompts)
         self.assertIn("/alfred-dev:lucius --scope bananas", prompts)
-        self.assertIn("/alfred-dev:verify", prompts)
+        self.assertIn("/alfred-dev:uat", prompts)
 
     def test_manual_matrix_covers_every_public_command(self):
         manual_smoke = _load_manual_smoke_module()
 
         coverage = manual_smoke._case_command_coverage()
+        aliases = getattr(manual_smoke, "_PUBLIC_COMMAND_ALIASES", {})
         missing = [name for name, case_ids in coverage.items() if not case_ids]
         unknown = sorted({
             command_name
             for case in manual_smoke.CASES
             for command_name in case.commands
-            if command_name not in coverage
+            if aliases.get(command_name, command_name) not in coverage
+            and command_name not in coverage
         })
 
-        self.assertEqual(len(coverage), 26)
+        self.assertEqual(len(coverage), 18)
         self.assertEqual(missing, [])
         self.assertEqual(unknown, [])
 
@@ -103,14 +105,14 @@ class TestManualSmokeRunner(unittest.TestCase):
         self.assertIn("fix:user-gate-menu", coverage)
         self.assertIn("spike:conclusion-review-menu", coverage)
         self.assertIn("discuss:route-menu", coverage)
-        self.assertIn("next:route-menu", coverage)
+        self.assertIn("alfred:route-menu", coverage)
         self.assertIn("update:confirm-update-menu", coverage)
         self.assertIn("lucius:scope-security", coverage)
         self.assertIn("lucius:invalid-scope", coverage)
         self.assertIn("verify:no-argument", coverage)
         self.assertIn("feature:description", coverage)
         self.assertIn("verify:rejected", coverage)
-        self.assertIn("search:empty-query", coverage)
+        self.assertIn("alfred:optional-prompt", coverage)
         self.assertIn("config:exit-without-changes", coverage)
         self.assertIn("config:autonomia", coverage)
         self.assertIn("config:personalidad", coverage)

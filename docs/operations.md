@@ -42,26 +42,25 @@ Aquí viven las proyecciones Markdown que ayudan al usuario y a los comandos a o
 
 | Comando | Qué deja o consume |
 |---|---|
+| `alfred` | Decide si mapear, retomar, abrir un flujo o responder en corto |
 | `map-codebase` | Siembra `docs/project/codebase-map.md` y contexto brownfield |
 | `discuss` | Siembra o actualiza `docs/project/discovery.md` |
-| `progress` | Resume `progress.md`, trazabilidad, kanban y UAT |
-| `next` | Usa estado, handoff, discovery y kanban para proponer el siguiente paso |
+| `progress` | Resume `progress.md`, trazabilidad, kanban y UAT. Absorbe standup, blocked, in-progress y validate |
 | `pause` | Genera `.claude/alfred-handoff.json` y `docs/project/handoff.md` |
-| `resume` | Reanuda una sesión pausada y resuelve el handoff |
-| `verify` | Crea o actualiza la UAT del último entregable |
-| `standup` | Genera un resumen operativo breve desde el kanban y la UAT |
-| `blocked` | Muestra solo la lane bloqueada |
-| `in-progress` | Muestra solo la lane en curso |
-| `validate` | Revisa la salud operativa de artefactos y tablero |
-| `search` | Busca en `docs/project/` y memoria SQLite |
+| `retomar` | Reanuda una sesión pausada y resuelve el handoff |
+| `uat` | Crea o actualiza la UAT del último entregable |
 | `sync-github` | Refleja el tablero local en GitHub Issues |
 | `memory-ui` | Expone memoria y artefactos operativos en una UI local |
 
+`next` y `search` existen como helpers internos (`commands/next.md`, `commands/search.md`) y no se publican en `plugin.json`. El runtime de continuidad (`core/continuity.py`) sigue implementando resume/verify/standup para esos helpers y para `progress`.
+
 ---
 
-## SonIA y el tablero operativo
+## Tablero operativo
 
-El agente `project-manager` materializa la capa PM del plugin, conocida en la documentación pública como SonIA. Su trabajo no es redefinir producto ni arquitectura, sino mantener visibilidad y continuidad operativa:
+No hay agente `project-manager`. El kanban y la trazabilidad los escribe el runtime (`core/continuity.py`): snapshots, Markdown, validación de artefactos, siguiente paso y sync con GitHub.
+
+Esa capa deja visible:
 
 - qué está en backlog;
 - qué está en curso;
@@ -69,8 +68,6 @@ El agente `project-manager` materializa la capa PM del plugin, conocida en la do
 - qué está hecho;
 - qué UAT queda pendiente;
 - qué huecos de trazabilidad siguen abiertos.
-
-La implementación real de esta capa vive sobre todo en `core/continuity.py`, que genera snapshots, renderiza Markdown, valida artefactos, calcula el siguiente paso y coordina el sync con GitHub.
 
 ---
 
@@ -82,7 +79,7 @@ El handoff existe para que una sesión pueda detenerse sin perder el hilo técni
 2. construye un resumen de fase, gates, artefactos y siguiente paso;
 3. lo guarda en JSON para el runtime y en Markdown para lectura humana.
 
-Cuando el usuario ejecuta `resume`, el plugin:
+Cuando el usuario ejecuta `retomar`, el plugin:
 
 1. carga el handoff pendiente;
 2. recupera el comando y la fase;
@@ -98,7 +95,7 @@ Esto evita dos fallos frecuentes en entornos CLI:
 
 ## UAT y validación manual
 
-Alfred separa expresamente la evidencia automática de la validación humana. Los tests pueden estar verdes y, aun así, faltar confirmación funcional. Por eso `verify` mantiene una pieza propia de estado:
+Alfred separa expresamente la evidencia automática de la validación humana. Los tests pueden estar verdes y, aun así, faltar confirmación funcional. Por eso `uat` mantiene una pieza propia de estado:
 
 - `pending`: falta revisar el entregable;
 - `approved`: la validación humana está cerrada;
@@ -115,7 +112,7 @@ La UAT afecta a la capa operativa y a los informes de sesión. Un flujo puede es
 El flujo esperado es:
 
 1. el estado operativo se mantiene en `docs/project/` y `.claude/`;
-2. `validate` comprueba consistencia local;
+2. `progress` comprueba consistencia local;
 3. `sync-github` refleja esa realidad en GitHub usando `gh`;
 4. `github-sync.md` deja rastro de la sincronización.
 

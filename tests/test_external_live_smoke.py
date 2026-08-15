@@ -50,7 +50,7 @@ class TestExternalLiveSmoke(unittest.TestCase):
             payload = json.loads(output.read_text(encoding="utf-8"))
             mode = output.stat().st_mode & 0o777
 
-        self.assertEqual(payload["version"], "0.6.0")
+        self.assertEqual(payload["version"], "0.7.0")
         self.assertEqual(payload["mode"], "preflight")
         self.assertEqual(payload["counts"]["ready"], 3)
         self.assertEqual(payload["counts"]["blocked"], 0)

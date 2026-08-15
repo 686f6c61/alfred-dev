@@ -1083,6 +1083,40 @@ class TestHookScriptRuntime(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue(os.path.isfile(os.path.join(self._tmpdir, ".claude", "alfred-memory-ui.json")))
 
+    def test_script_prefetches_memory_ui_stop(self):
+        """`/alfred-dev:memory-ui stop` no debe arrancar la UI, sino cerrarla."""
+        from core.continuity import launch_memory_ui, stop_memory_ui
+
+        launched = launch_memory_ui(
+            self._tmpdir,
+            open_browser_window=False,
+            preferred_port=4580,
+        )
+        self.addCleanup(lambda: stop_memory_ui(self._tmpdir))
+        payload = {
+            "session_id": "runtime-prefetch-memory-ui-stop",
+            "transcript_path": os.path.join(self._tmpdir, "runtime-prefetch-memory-ui-stop.jsonl"),
+            "cwd": self._tmpdir,
+            "permission_mode": "default",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "/alfred-dev:memory-ui stop",
+        }
+
+        proc = subprocess.run(
+            ["python3", self._hook_path],
+            input=json.dumps(payload),
+            text=True,
+            cwd=self._tmpdir,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertFalse(
+            os.path.isfile(os.path.join(self._tmpdir, ".claude", "alfred-memory-ui.json"))
+        )
+        self.assertIn("url", launched)
+
 
 # ---------------------------------------------------------------------------
 # TestDispatchCompact

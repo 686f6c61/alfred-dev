@@ -1,6 +1,8 @@
 ---
 description: "Segunda opinión técnica externa vía Codex CLI — diagnóstico y prescripción por ítem"
 argument-hint: "[directorio opcional] [--scope all|security|tests|architecture|performance]"
+disable-model-invocation: true
+allowed-tools: Bash(python3 .claude/alfred-continuity.py *), Read, Agent
 ---
 
 # /alfred-dev:lucius

@@ -314,9 +314,7 @@ class TestInstallSh(unittest.TestCase):
                 / PLUGIN_VERSION
                 / ".mcp.json"
             ).read_text(encoding="utf-8")
-            global_alias = (
-                home / ".claude" / "skills" / "alfred" / "SKILL.md"
-            ).read_text(encoding="utf-8")
+            global_alias_path = home / ".claude" / "skills" / "alfred" / "SKILL.md"
             global_command_alias_path = home / ".claude" / "commands" / "alfred.md"
             calls = calls_file.read_text(encoding="utf-8")
             registered = json.loads(known_marketplaces.read_text(encoding="utf-8"))
@@ -343,16 +341,13 @@ class TestInstallSh(unittest.TestCase):
             self.assertEqual(marketplace_plugin["version"], PLUGIN_VERSION)
             self.assertIn(str(fake_bin / "python3.13"), hooks_json)
             self.assertIn(str(fake_bin / "python3.13"), mcp_json)
-            self.assertIn("Alfred Dev global alias", global_alias)
-            self.assertIn("name: alfred", global_alias)
-            self.assertIn("user-invocable: true", global_alias)
-            self.assertNotIn("user-invocable: false", global_alias)
+            self.assertFalse(global_alias_path.exists())
             self.assertFalse(global_command_alias_path.exists())
             self.assertNotIn(str(fake_bin / "python3.13"), stale_hooks_after)
             self.assertNotIn(str(fake_bin / "python3.13"), stale_mcp_after)
             self.assertIn("Instalacion global de usuario confirmada (--scope user)", result.stdout)
             self.assertIn("Scopes local/project normalizados", result.stdout)
-            self.assertIn("Alias global /alfred instalado", result.stdout)
+            self.assertIn("No se pisa ~/.claude/skills", result.stdout)
             self.assertIn("Instalacion completada", result.stdout)
 
 

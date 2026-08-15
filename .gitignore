@@ -20,3 +20,13 @@ __pycache__/
 .pytest_cache/
 .coverage
 coverage-html/
+.venv/
+venv/
+*.egg-info/
+
+# Dependencias y secretos que no deben subirse
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store

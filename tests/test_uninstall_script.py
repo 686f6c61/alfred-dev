@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -120,6 +121,30 @@ class TestUninstallSh(unittest.TestCase):
             self.assertNotIn("alfred-dev@alfred-dev", installed.get("plugins", {}))
             self.assertNotIn("alfred-dev@alfred-dev", settings.get("enabledPlugins", {}))
             self.assertIn("Alfred Dev desinstalado", result.stdout)
+
+
+class TestUninstallPs1(unittest.TestCase):
+    def test_uninstall_ps1_does_not_feed_and_to_test_path(self):
+        text = (PROJECT_ROOT / "uninstall.ps1").read_text(encoding="utf-8")
+        self.assertIsNone(
+            re.search(r"if\s*\(\s*Test-Path\b[^\n]*\s-and\b", text),
+            "PowerShell trata `if (Test-Path ... -and` como parametros de Test-Path. "
+            "Envuelve Test-Path entre parentesis o extrae un helper.",
+        )
+        self.assertIn("function Test-EmptyDirectory", text)
+        self.assertIn("Alias global /alfred eliminado", text)
+        self.assertIn("Shim de comando global /alfred eliminado", text)
+
+    def test_powershell_scripts_do_not_use_bare_colon_after_variables(self):
+        pattern = re.compile(r'"[^"\n]*\$([A-Za-z_][A-Za-z0-9_]*)\:')
+        for name in ("uninstall.ps1", "install.ps1"):
+            text = (PROJECT_ROOT / name).read_text(encoding="utf-8")
+            bad = [match.group(1) for match in pattern.finditer(text) if match.group(1).lower() != "env"]
+            self.assertEqual(
+                bad,
+                [],
+                f"{name}: PowerShell lee $var: como ambito. Usa ${{var}}.",
+            )
 
 
 if __name__ == "__main__":

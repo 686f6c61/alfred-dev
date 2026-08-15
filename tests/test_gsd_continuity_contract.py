@@ -16,15 +16,15 @@ def _read(relative_path: str) -> str:
 
 class TestHelpListsContinuityCommands(unittest.TestCase):
     def test_help_includes_new_commands(self):
-        help_md = _read("commands/help.md")
+        help_md = _read("commands/alfred.md")
         self.assertIn("/alfred-dev:discuss", help_md)
         self.assertIn("/alfred-dev:map-codebase", help_md)
-        self.assertIn("/alfred-dev:next", help_md)
+        self.assertIn("/alfred-dev:retomar", help_md)
         self.assertIn("/alfred-dev:pause", help_md)
         self.assertIn("/alfred-dev:progress", help_md)
         self.assertIn("/alfred-dev:quick", help_md)
-        self.assertIn("/alfred-dev:resume", help_md)
-        self.assertIn("/alfred-dev:verify", help_md)
+        self.assertIn("/alfred-dev:retomar", help_md)
+        self.assertIn("/alfred-dev:uat", help_md)
 
 
 class TestMapCodebaseContract(unittest.TestCase):
@@ -44,9 +44,9 @@ class TestNextContract(unittest.TestCase):
         self.assertIn(".claude/alfred-handoff.json", command)
         self.assertIn(".claude/alfred-uat.json", command)
         self.assertIn("docs/project/discovery.md", command)
-        self.assertIn("actúa como `/alfred-dev:resume`", command)
-        self.assertIn("actúa como `/alfred-dev:verify`", command)
-        self.assertIn("allow-stop-once", command)
+        self.assertIn("actúa como `/alfred-dev:retomar`", command)
+        self.assertIn("actúa como `/alfred-dev:uat`", command)
+        self.assertNotIn("allow-stop-once", command)
         self.assertIn("actúa como `/alfred-dev:map-codebase`", command)
         self.assertIn("fuente es `discovery`", command)
         self.assertIn("AskUserQuestion", command)
@@ -65,7 +65,7 @@ class TestPauseResumeContract(unittest.TestCase):
         self.assertIn("NO marques la sesión como completada", command)
 
     def test_resume_uses_state_then_handoff(self):
-        command = _read("commands/resume.md")
+        command = _read("commands/retomar.md")
         self.assertIn(".claude/alfred-dev-state.json", command)
         self.assertIn(".claude/alfred-handoff.json", command)
         self.assertIn("Prioridad de reanudación", command)
@@ -73,12 +73,12 @@ class TestPauseResumeContract(unittest.TestCase):
         self.assertIn('python3 .claude/alfred-continuity.py resume "$PWD"', command)
         self.assertIn("No la reenvuelvas con un segundo resumen", command)
         self.assertIn("NO uses `AskUserQuestion` dentro de `/alfred-dev:resume`", command)
-        self.assertIn("/alfred-dev:next", command)
+        self.assertIn("/alfred-dev:alfred", command)
 
 
 class TestVerifyContract(unittest.TestCase):
     def test_verify_uses_continuity_helper_and_uat_artifacts(self):
-        command = _read("commands/verify.md")
+        command = _read("commands/uat.md")
         self.assertIn(".claude/alfred-uat.json", command)
         self.assertIn("docs/project/uat.md", command)
         self.assertIn('python3 .claude/alfred-continuity.py verify "$PWD" --raw "$ARGUMENTS"', command)
@@ -92,8 +92,7 @@ class TestQuickContract(unittest.TestCase):
         self.assertIn("ejecucion_acotada", command)
         self.assertIn("validacion_rapida", command)
         self.assertIn('python3 .claude/alfred-continuity.py quick "$PWD" --raw "$ARGUMENTS"', command)
-        self.assertIn("bypass transitorio del stop hook", command)
-        self.assertIn("Al terminar, deja visible que el siguiente paso esperado es `/alfred-dev:verify`", command)
+        self.assertIn("Al terminar, deja visible que el siguiente paso esperado es `/alfred-dev:uat`", command)
 
 
 class TestDiscussContract(unittest.TestCase):

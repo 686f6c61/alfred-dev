@@ -29,7 +29,7 @@ class TestCompositionContract(unittest.TestCase):
         self.assertIn("entrega: autonomo", self.command)
 
     def test_bootstrap_points_to_current_config_command(self):
-        self.assertIn("/alfred-dev:config", self.command)
+        self.assertIn("/alfred-dev:ajustes", self.command)
         self.assertIn("/alfred-dev:quick", self.command)
         self.assertNotIn("/alfred config", self.command)
 

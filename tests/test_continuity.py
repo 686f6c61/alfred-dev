@@ -136,7 +136,6 @@ class TestContinuitySuggestions(unittest.TestCase):
                 fh.write(
                     "---\n"
                     "agentes_opcionales:\n"
-                    "  copywriter: true\n"
                     "  lucius: true\n"
                     "---\n"
                 )
@@ -157,9 +156,8 @@ class TestContinuitySuggestions(unittest.TestCase):
 
         self.assertEqual(result["command"], "quick")
         self.assertEqual(state["equipo_sesion"]["fuente"], "config_persistida")
-        self.assertTrue(state["equipo_sesion"]["opcionales_activos"]["copywriter"])
+        self.assertEqual(set(state["equipo_sesion"]["opcionales_activos"]), {"lucius"})
         self.assertTrue(state["equipo_sesion"]["opcionales_activos"]["lucius"])
-        self.assertIn("Opcionales en paralelo: `copywriter`.", traceability)
         self.assertIn("Opcionales secuenciales: `lucius`.", traceability)
 
     def test_active_state_has_priority_over_brownfield_map(self):
@@ -1766,21 +1764,13 @@ class TestContinuityHelpers(unittest.TestCase):
             with open(os.path.join(tmpdir, STATE_RELATIVE_PATH), "w", encoding="utf-8") as fh:
                 json.dump(
                     {
-                        "comando": "fix",
-                        "descripcion": "Regresión en checkout",
-                        "fase_actual": "diagnostico",
+                        "comando": "spike",
+                        "descripcion": "Evaluar Bun para jobs",
+                        "fase_actual": "exploracion",
                         "fase_numero": 0,
                         "fases_completadas": [],
                         "equipo_sesion": {
                             "opcionales_activos": {
-                                "data-engineer": False,
-                                "performance-engineer": True,
-                                "github-manager": True,
-                                "librarian": True,
-                                "ux-reviewer": False,
-                                "seo-specialist": True,
-                                "copywriter": False,
-                                "i18n-specialist": False,
                                 "lucius": True,
                             },
                             "infra": {"memoria": False},
@@ -1798,7 +1788,7 @@ class TestContinuityHelpers(unittest.TestCase):
         )
         self.assertIn("Origen runtime: configuración persistida.", team_card["items"])
         self.assertIn(
-            "Opcionales solo bajo demanda en este flujo: `github-manager`, `librarian`.",
+            "Opcionales solo bajo demanda en este flujo: `lucius`.",
             team_card["items"],
         )
 

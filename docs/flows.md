@@ -364,11 +364,11 @@ stateDiagram-v2
 
 El flujo quick existe para cambios pequeños, locales y de riesgo acotado donde abrir un `feature` completo sería desproporcionado. Su objetivo es mantener la disciplina técnica --estado persistente, tests, seguridad y verify posterior-- sin introducir la ceremonia de discovery, arquitectura formal o documentación amplia cuando no aportan valor.
 
-Antes de la primera fase, Alfred prepara la sesión con el helper de continuidad y resuelve el `equipo_sesion` real. Ese equipo puede venir de composición dinámica efímera o, si no existe, del fallback persistido en `.claude/alfred-dev.local.md`. En ambos casos, `equipo_sesion` es la fuente runtime canónica. Los opcionales que no participan en ninguna de las dos fases (`github-manager`, `librarian` y cualquier otro sin integración directa) no desaparecen: se consideran explícitamente **bajo demanda** y se reflejan así en `current.md`, `progress.md` y `traceability.md`.
+Antes de la primera fase, Alfred prepara la sesión con el helper de continuidad y resuelve el `equipo_sesion` real. Ese equipo puede venir de composición dinámica efímera o, si no existe, del fallback persistido en `.claude/alfred-dev.local.md`. En ambos casos, `equipo_sesion` es la fuente runtime canónica. El único opcional es Lucius; si no entra en las fases, queda bajo demanda y se refleja así en `current.md`, `progress.md` y `traceability.md`.
 
 ### Fase 1: ejecución acotada
 
-`senior-dev` lidera la implementación del cambio. La fase acepta opcionales pegados a la superficie real del ajuste: `data-engineer` si toca persistencia, `ux-reviewer` si toca UI, `copywriter` si cambia copy visible e `i18n-specialist` si afecta a textos multiidioma. La gate es de tipo `automático` porque el criterio sigue siendo objetivo: cambio local, checks verdes y sin bloquear continuidad.
+`senior-dev` lidera la implementación del cambio. La fase no suma especialistas 0.6: el único opcional del runtime es Lucius, y entra en validación si está activo. La gate es de tipo `automático` porque el criterio sigue siendo objetivo: cambio local, checks verdes y sin bloquear continuidad.
 
 | Propiedad | Valor |
 |-----------|-------|
@@ -380,7 +380,7 @@ Antes de la primera fase, Alfred prepara la sesión con el helper de continuidad
 
 ### Fase 2: validación rápida
 
-La segunda fase comprueba que el cambio pequeño sigue siendo seguro y no regresa en la zona tocada. `qa-engineer` y `security-officer` trabajan en paralelo, y pueden sumarse `ux-reviewer`, `performance-engineer`, `seo-specialist` o `i18n-specialist` si aportan señal real. Si `lucius` está activo en `equipo_sesion`, entra después como revisión secuencial externa de cierre.
+La segunda fase comprueba que el cambio pequeño sigue siendo seguro y no regresa en la zona tocada. `qa-engineer` y `security-officer` trabajan en paralelo. Si `lucius` está activo en `equipo_sesion`, entra después como revisión secuencial externa de cierre.
 
 | Propiedad | Valor |
 |-----------|-------|
@@ -507,9 +507,6 @@ secuencial para contrastar este cierre antes de pasar al empaquetado.
 
 El agente `tech-writer` redacta la documentación de release: changelog, guias de migración, notas de versión y cualquier otro documento que los usuarios necesiten para adoptar la nueva versión. La gate es de tipo `libre` porque no hay código que validar, solo prosa.
 
-Si `copywriter` está activo, colabora en esta fase para pulir release notes,
-mensajes orientados a usuario y copy visible asociado a la publicación.
-
 | Propiedad | Valor |
 |-----------|-------|
 | Agentes | `tech-writer` |
@@ -522,8 +519,7 @@ mensajes orientados a usuario y copy visible asociado a la publicación.
 
 `devops-engineer` y `security-officer` generan el artefacto de release versionado y firmado. La participacion del security-officer en esta fase asegura que el artefacto empaquetado no incluye dependencias vulnerables ni secretos filtrados. La gate es de tipo `automático+seguridad`: el empaquetado debe generar artefacto verificable y, además, la validación de seguridad y firma tiene que ser favorable.
 
-Si `github-manager` está activo, entra después del núcleo para publicar tag,
-release y artefactos públicos del repositorio.
+El espejo remoto, si hace falta, lo hace `/alfred-dev:sync-github` sobre el tablero local. No hay agente `github-manager`.
 
 | Propiedad | Valor |
 |-----------|-------|
@@ -537,8 +533,7 @@ release y artefactos públicos del repositorio.
 
 El agente `devops-engineer` ejecuta el despliegue a produccion con validación post-deploy y rollback preparado. La gate es de tipo `usuario+seguridad` porque el despliegue es el punto de no retorno: una vez publicado, los usuarios pueden descargarlo. Se exige aprobacion explícita del usuario (que confirme que quiere desplegar) y seguridad OK (que confirme que todo esta limpio). Incluso en modo autopilot, esta confirmación humana se mantiene: el flujo puede automatizar toda la preparación, pero no el acto final de publicar.
 
-Si `github-manager` está activo, puede cerrar la release o dejar el repositorio
-sincronizado después del despliegue, pero nunca sustituye la confirmación humana.
+`sync-github` puede dejar el tablero remoto alineado después del despliegue, pero nunca sustituye la confirmación humana.
 
 | Propiedad | Valor |
 |-----------|-------|

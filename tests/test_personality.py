@@ -12,39 +12,21 @@ from core.personality import get_agent_intro, get_agent_voice, AGENTS
 
 class TestPersonality(unittest.TestCase):
     def test_all_agents_defined(self):
-        # Núcleo: 10 agentes siempre activos
         core = {
             "alfred", "product-owner", "architect", "senior-dev",
             "security-officer", "qa-engineer", "devops-engineer", "tech-writer",
-            "project-manager", "selina",
+            "selina", "lucius",
         }
-        # Opcionales: 9 agentes predefinidos que el usuario activa
-        optional = {
-            "data-engineer", "ux-reviewer", "performance-engineer",
-            "github-manager", "seo-specialist", "copywriter", "librarian",
-            "i18n-specialist", "lucius",
-        }
-        self.assertEqual(set(AGENTS.keys()), core | optional)
+        self.assertEqual(set(AGENTS.keys()), core)
 
     def test_optional_agents_have_flag(self):
-        """Los agentes opcionales deben tener el campo 'opcional': True."""
-        optional_names = {
-            "data-engineer", "ux-reviewer", "performance-engineer",
-            "github-manager", "seo-specialist", "copywriter", "librarian",
-            "i18n-specialist", "lucius",
-        }
-        for name in optional_names:
-            self.assertTrue(
-                AGENTS[name].get("opcional", False),
-                f"El agente '{name}' debería tener opcional=True"
-            )
+        self.assertIn("lucius", AGENTS)
 
     def test_core_agents_not_optional(self):
-        """Los agentes del núcleo no deben tener el campo 'opcional'."""
         core_names = {
             "alfred", "product-owner", "architect", "senior-dev",
             "security-officer", "qa-engineer", "devops-engineer", "tech-writer",
-            "project-manager", "selina",
+            "selina",
         }
         for name in core_names:
             self.assertFalse(

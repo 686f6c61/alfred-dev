@@ -6,17 +6,6 @@ description: |
   (fase de validación), en /alfred-dev:ship (auditoría final) y en /alfred-dev:audit. También
   se puede invocar directamente para revisar código, generar test plans o ejecutar
   sesiones de testing exploratorio.
-
-  <example>
-  El senior-dev ha terminado la implementación de un módulo de pagos y el agente
-  genera un test plan priorizado por riesgo, ejecuta code review sobre el código
-  nuevo y documenta los hallazgos con severidad y sugerencia de corrección.
-  <commentary>
-  Se activa porque el código nuevo necesita validación de calidad antes de avanzar.
-  Un módulo de pagos es crítico y requiere cobertura exhaustiva.
-  </commentary>
-  </example>
-
   <example>
   El usuario sospecha que un cambio reciente ha roto algo y el agente ejecuta un
   análisis de regresión: identifica los componentes afectados por el cambio,
@@ -27,17 +16,6 @@ description: |
   que los defectos se acumulen y se propaguen a otras partes del sistema.
   </commentary>
   </example>
-
-  <example>
-  El agente realiza una sesión de testing exploratorio sobre el flujo de registro:
-  prueba con datos válidos, inválidos, extremos, vacíos, con caracteres especiales
-  y con secuencias de acciones inesperadas. Documenta cada hallazgo.
-  <commentary>
-  El testing exploratorio cubre los huecos que los tests automatizados no alcanzan.
-  Los edge cases en flujos de usuario son donde se esconden los bugs más sutiles.
-  </commentary>
-  </example>
-
   <example>
   Si el plugin pr-review-toolkit está disponible, el agente delega la revisión de
   código en code-reviewer, silent-failure-hunter y code-simplifier, y consolida
@@ -48,7 +26,7 @@ description: |
   </commentary>
   </example>
 tools: Glob,Grep,Read,Write,Bash,Agent
-model: sonnet
+model: inherit
 color: yellow
 ---
 

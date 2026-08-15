@@ -51,10 +51,10 @@ La automatización de GitHub vive en `.github/workflows/test.yml`.
 Hoy la CI:
 
 - se ejecuta en `push` y `pull_request` sobre `main`;
-- prueba Python `3.10`, `3.11`, `3.12` y `3.13`;
-- instala `pytest`;
-- ejecuta la suite completa;
-- genera cobertura en `3.12` y exige un mínimo del 60%.
+- job `test`: Python `3.10`–`3.13`, `pytest`, y en `3.12` `release_audit` + cobertura 60%;
+- job `plugin`: misma secuencia en Ubuntu, macOS y Windows (`fail-fast: false`); instala Claude CLI, valida, instala 0.7.0 desde el checkout, enseña el inventario y desinstala;
+- no instala FastMCP (el servidor local tiene fallback);
+- no usa el `curl` de GitHub `main`; instala el checkout de la CI.
 
 Esto convierte la matriz de Python en parte del contrato del repo: si añades una dependencia o sintaxis no compatible con alguno de esos intérpretes, rompes la release.
 

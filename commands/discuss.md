@@ -16,6 +16,9 @@ Crear o actualizar estos artefactos de refinado:
 
 - `docs/project/discovery.md`
 - `docs/project/current.md`
+- índice de `docs/project/README.md` (vía `sync-project-docs`)
+
+Lee `${CLAUDE_PLUGIN_ROOT}/commands/_docs_vivas.md` si caes a modo manual.
 
 El resultado debe dejar claro:
 
@@ -95,11 +98,10 @@ Solo en modo manual lee, en este orden:
    producto que realmente no puedas cerrar tú solo, lanza al `product-owner`
    como apoyo puntual.
 
-3. Si la petición toca interfaz, copy o localización, añade solo los agentes
-   opcionales que aporten de verdad y evita abrir más de uno si no es necesario:
-   - `ux-reviewer`
-   - `copywriter`
-   - `i18n-specialist`
+3. Si la petición toca interfaz, copy o localización, resuélvelo tú o con
+   `product-owner`. No invoques ux-reviewer, copywriter ni i18n-specialist:
+   esos agentes no existen. El único opcional del runtime es lucius, y no
+   entra en `discuss`.
 
 4. Trabaja con estas reglas:
    - si `Bash` fue denegado, no vuelvas a intentarlo en este comando;

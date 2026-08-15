@@ -1,8 +1,8 @@
 # Referencia de comandos
 
-Esta página documenta la superficie operativa real del plugin publicada en `.claude-plugin/plugin.json`. En la rama `main`, Alfred Dev expone **26 comandos**. Algunos lanzan flujos multiagente; otros son vistas operativas, utilidades de continuidad o integraciones especializadas.
+Esta página documenta la superficie publicada en `.claude-plugin/plugin.json`: **18 comandos**. `next` y `search` quedan como helpers internos, no como slash commands.
 
-La regla práctica es esta: si el trabajo requiere fases, gates y artefactos, usa un flujo. Si solo necesitas contexto, estado o una operación puntual, usa un comando operativo.
+La continuidad pública es `/alfred-dev:alfred`, `/alfred-dev:progress` y `/alfred-dev:retomar`.
 
 ---
 
@@ -10,11 +10,10 @@ La regla práctica es esta: si el trabajo requiere fases, gates y artefactos, us
 
 | Grupo | Comandos |
 |---|---|
-| Orquestación y ayuda | `alfred`, `help`, `config`, `update` |
-| Flujos de trabajo | `feature`, `quick`, `fix`, `spike`, `audit`, `ship` |
-| Continuidad | `map-codebase`, `discuss`, `next`, `status`, `progress`, `pause`, `resume`, `verify` |
-| Operación PM (SonIA) | `standup`, `blocked`, `in-progress`, `validate`, `search`, `sync-github` |
-| Especializados | `memory-ui`, `lucius` |
+| Orquestación | `alfred`, `ajustes`, `update` |
+| Flujos | `feature`, `quick`, `fix`, `spike`, `audit`, `ship` |
+| Continuidad | `progress`, `retomar`, `pause`, `map-codebase`, `discuss` |
+| Operación | `uat`, `sync-github`, `memory-ui`, `lucius` |
 
 ---
 
@@ -24,13 +23,9 @@ La regla práctica es esta: si el trabajo requiere fases, gates y artefactos, us
 
 Entrada contextual del plugin. Decide si conviene mapear el repo, retomar una sesión, abrir un flujo completo o responder con una acción más pequeña. Es el comando correcto cuando el usuario todavía no sabe qué comando quiere, pero sí qué problema tiene.
 
-### `/alfred-dev:help`
+### `/alfred-dev:ajustes`
 
-Resumen operativo de comandos, agentes y reglas de uso. Es la referencia rápida dentro de Claude Code.
-
-### `/alfred-dev:config`
-
-Configura el proyecto: autonomía, stack detectado, memoria, personalidad y activación de agentes opcionales. Es el primer comando recomendable al entrar en un repo nuevo.
+Configura el proyecto: autonomía, stack detectado, memoria, personalidad y el único opcional (Lucius). Es el primer comando recomendable al entrar en un repo nuevo. No ofrece el catálogo 0.6.
 
 ### `/alfred-dev:update`
 
@@ -76,53 +71,27 @@ Analiza un repo existente y deja artefactos de descubrimiento para trabajar en b
 
 Refina una idea, una mejora o una fase concreta antes de abrir un flujo grande. Genera descubrimiento persistente.
 
-### `/alfred-dev:next`
-
-Dice cuál es el siguiente paso lógico según el estado actual del proyecto, la sesión activa y los artefactos disponibles.
-
-### `/alfred-dev:status`
-
-Muestra el estado de la sesión: fase actual, gates pendientes, fases completadas y señales útiles de continuidad.
-
 ### `/alfred-dev:progress`
 
-Vista operativa más amplia del proyecto: progreso, bloqueos, trazabilidad, UAT y situación del trabajo en curso.
+Vista operativa del proyecto: progreso, bloqueos, trazabilidad, UAT y situación del trabajo en curso. Absorbé status, standup, blocked, in-progress y validate.
 
 ### `/alfred-dev:pause`
 
 Pausa el trabajo actual y deja handoff persistente para retomarlo más tarde sin perder continuidad.
 
-### `/alfred-dev:resume`
+### `/alfred-dev:retomar`
 
 Recupera una sesión pausada usando el estado y el handoff guardados.
 
-### `/alfred-dev:verify`
+### `/alfred-dev:uat`
 
 Separa la validación humana o UAT de la validación automática. Es el comando correcto cuando el código y los tests están, pero falta confirmación funcional.
 
 ---
 
-## Operación PM y SonIA
+## Operación
 
-### `/alfred-dev:standup`
-
-Resumen breve y accionable del estado operativo del proyecto: qué está en curso, qué está bloqueado y qué toca después.
-
-### `/alfred-dev:blocked`
-
-Lista únicamente el trabajo bloqueado junto con su dependencia o causa visible.
-
-### `/alfred-dev:in-progress`
-
-Lista el trabajo actualmente en marcha.
-
-### `/alfred-dev:validate`
-
-Valida la integridad operativa del proyecto: duplicados, trazabilidad incompleta, evidencia ausente, UAT pendiente o desalineaciones del tablero local.
-
-### `/alfred-dev:search <texto>`
-
-Busca de forma unificada en artefactos operativos y memoria persistente.
+`next` y `search` existen como helpers internos (`commands/next.md`, `commands/search.md`) y no se publican en `plugin.json`.
 
 ### `/alfred-dev:sync-github [owner/repo]`
 
@@ -153,10 +122,10 @@ Pide una segunda opinión técnica externa vía Codex CLI. Es una auditoría esp
 | Cambio pequeño | `quick` |
 | Bug concreto | `fix` |
 | Investigación | `spike` |
-| Estado operativo | `progress` o `standup` |
-| Saber el siguiente paso | `next` |
-| Retomar una sesión | `resume` |
-| Validación humana | `verify` |
+| Estado operativo | `progress` |
+| Saber el siguiente paso | `progress` o el helper interno `next` |
+| Retomar una sesión | `retomar` |
+| Validación humana | `uat` |
 | Auditoría profunda | `audit` |
 | Release | `ship` |
 | Memoria histórica | `memory-ui` o `search` |

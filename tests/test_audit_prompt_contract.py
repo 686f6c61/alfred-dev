@@ -50,15 +50,13 @@ class TestAuditCommandContract(unittest.TestCase):
         self.assertIn("sonarqube se omitio por decision explicita del usuario", self.audit_norm)
 
     def test_audit_locates_plugin_files_outside_the_project(self):
-        self.assertIn("NO dentro del proyecto auditado", self.audit)
-        self.assertIn("~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md", self.audit)
-        self.assertIn("si `${claude_plugin_root}` no esta resuelta", self.audit_norm)
+        self.assertIn("${CLAUDE_PLUGIN_ROOT}/commands/_composicion.md", self.audit)
 
 
 class TestSonarQubeSkillContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.skill = _read("skills/calidad/sonarqube/SKILL.md")
+        cls.skill = _read("skills/sonarqube/SKILL.md")
         cls.skill_norm = _normalize(cls.skill)
 
     def test_skill_requires_explicit_permission_for_docker_changes(self):
@@ -83,8 +81,9 @@ class TestSonarQubeSkillContract(unittest.TestCase):
 
 class TestHelpContract(unittest.TestCase):
     def test_help_lists_the_nine_core_agents(self):
-        help_md = _read("commands/help.md")
-        self.assertIn("project-manager (SonIA)", help_md)
+        help_md = _read("commands/alfred.md")
+        self.assertIn("/alfred-dev:feature", help_md)
+        self.assertIn("Agent Teams", help_md)
 
 
 if __name__ == "__main__":

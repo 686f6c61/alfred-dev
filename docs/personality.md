@@ -27,9 +27,9 @@ La razón de usar un diccionario plano en lugar de clases u objetos más elabora
 | `personalidad` | `str` | Párrafo que define el tono, la actitud y los rasgos de carácter del agente. Se inyecta en el system prompt para que el modelo de lenguaje mantenga la voz a lo largo de la sesión. | *(ver fichero fuente)* |
 | `frases` | `List[str]` | Lista de frases base que representan la voz del agente en niveles de sarcasmo normales (<= 3). Son frases con personalidad pero dentro de un registro profesional. | `["Venga, vamos a ello. Ya tengo un plan."]` |
 | `frases_sarcasmo_alto` | `List[str]` | Frases adicionales que se incorporan al pool cuando el nivel de sarcasmo es >= 4. El tono sube, pero sin cruzar la línea del insulto. | `["A ver, esa idea... cómo te lo digo suave... es terrible."]` |
-| `opcional` | `bool` | Solo presente (y con valor `True`) en los 9 agentes opcionales. Los agentes opcionales están predefinidos en el diccionario pero no participan en los flujos a menos que el usuario los active explícitamente en su configuración local (`alfred-dev.local.md`). Si el campo no existe, el agente es obligatorio. | `True` |
+| `opcional` | `bool` | Solo presente (y con valor `True`) en Lucius. Si el campo no existe, el agente es de nucleo. | `True` |
 
-Los 10 agentes obligatorios (los que no llevan `opcional: True`) participan siempre en los flujos del plugin. Los 9 opcionales son especialistas de dominio que el usuario activa según las necesidades de su proyecto: un proyecto sin base de datos no necesita a `data-engineer`, una CLI sin interfaz web no necesita a `seo-specialist`, y no todos los equipos necesitan la perspectiva externa de `lucius`.
+Los 9 agentes de nucleo (8 más Selina) participan en los flujos del plugin. El único opcional es `lucius`.
 
 ---
 
@@ -126,7 +126,7 @@ Función auxiliar que comprueba si el nombre del agente existe en `AGENTS` y dev
 
 ## Distribución de criticidad y autonomía de los agentes
 
-El siguiente diagrama posiciona a los 19 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
+El siguiente diagrama posiciona a los 10 agentes en un espacio de dos dimensiones: la criticidad de las tareas que manejan (eje horizontal) y el grado de autonomía con el que operan (eje vertical). La posición de cada agente no es arbitraria; refleja cómo encaja su función en el flujo de trabajo del plugin.
 
 Los agentes con alta criticidad y baja autonomía (esquina inferior derecha) son los que trabajan con restricciones estrictas: El Paranoico (seguridad) no puede aprobar por su cuenta, necesita que el orquestador confirme. Los de alta criticidad y alta autonomía (esquina superior derecha) son los que toman decisiones de diseño y escriben código sin pedir permiso en cada línea. Los de baja criticidad y alta autonomía (esquina superior izquierda) son agentes de soporte que pueden operar de forma independiente sin riesgo para el sistema.
 
@@ -138,22 +138,13 @@ quadrantChart
 
     "El Traductor (tech-writer)": [0.20, 0.70]
     "El Fontanero (devops)": [0.30, 0.75]
-    "El Pluma (copywriter)": [0.15, 0.65]
-    "El Abogado del Usuario (ux)": [0.25, 0.35]
-    "El Rastreador (seo)": [0.20, 0.30]
-    "El Conserje del Repo (github)": [0.35, 0.60]
-    "El Cronómetro (perf)": [0.45, 0.55]
-    "El Fontanero de Datos (data)": [0.55, 0.50]
     "El Rompe-cosas (qa)": [0.60, 0.45]
-    "El Bibliotecario (librarian)": [0.40, 0.40]
     "Alfred (orquestador)": [0.55, 0.55]
     "El Buscador de Problemas (po)": [0.75, 0.30]
     "El Paranoico (security)": [0.80, 0.25]
     "El Artesano (senior-dev)": [0.85, 0.80]
     "El Dibujante de Cajas (architect)": [0.80, 0.75]
     "El Director Técnico Externo (lucius)": [0.70, 0.50]
-    "La Interprete (i18n)": [0.30, 0.55]
-    "SonIA (project-manager)": [0.45, 0.65]
     "Selina (estilista)": [0.25, 0.60]
 ```
 
@@ -190,9 +181,9 @@ La razón de tener tres niveles en lugar de un simple binario (aprobado/rechazad
 
 ## Distribución de modelos
 
-De los 19 agentes, 7 usan el modelo `opus` y los 12 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
+De los 10 agentes, 7 usan el modelo `opus` y los 3 restantes usan `sonnet`. La distribución no es uniforme a propósito: cada modelo tiene un coste y un perfil de rendimiento distinto, y asignar opus a todos los agentes sería un desperdicio de recursos sin ganancia proporcional.
 
-Claude Code también acepta aliases como `haiku`, `fable` e `inherit`, además de IDs completos de modelo. Alfred Dev 0.6.0 los considera válidos a nivel de compatibilidad, pero conserva deliberadamente la política operativa `opus`/`sonnet` mientras no haya una reasignación explícita del equipo.
+Claude Code también acepta aliases como `haiku`, `fable` e `inherit`, además de IDs completos de modelo. Alfred Dev 0.7.0 los considera válidos a nivel de compatibilidad, pero conserva deliberadamente la política operativa `opus`/`sonnet` mientras no haya una reasignación explícita del equipo.
 
 ### Criterio de asignación
 
@@ -212,22 +203,13 @@ Una decisión de arquitectura mal tomada puede costar días de refactorización;
 | Selina | `selina` | Define dirección visual y sistema de diseño en proyectos con UI. Sus decisiones afectan tipografía, paleta, densidad y experiencia de primera impresión. |
 | El Director Técnico Externo | `lucius` | Coordina la auditoría externa vía Codex CLI y sintetiza el informe final. Necesita razonamiento profundo para interpretar el output del modelo configurado en Codex CLI y convertirlo en prescripciones accionables sin sustituir el sign-off canónico del flujo. |
 
-### Agentes con sonnet (12)
+### Agentes con sonnet (3)
 
 | Agente | Identificador | Justificación |
 |---|---|---|
 | El Rompe-cosas | `qa-engineer` | Ejecuta verificaciones sobre criterios definidos. La tarea es más mecánica que creativa. |
 | El Fontanero | `devops-engineer` | Gestiona pipelines e infraestructura con patrones bien establecidos. |
 | El Traductor | `tech-writer` | Genera documentación. La velocidad de generación es más valiosa que la profundidad. |
-| El Fontanero de Datos | `data-engineer` | Trabaja con esquemas y queries siguiendo reglas conocidas. |
-| El Abogado del Usuario | `ux-reviewer` | Revisa accesibilidad y flujos UX con listas de verificación estándar. |
-| El Cronómetro | `performance-engineer` | Analiza métricas de rendimiento, tarea basada en umbrales objetivos. |
-| El Conserje del Repo | `github-manager` | Gestiona issues, PRs y releases con operaciones predecibles. |
-| El Rastreador | `seo-specialist` | Verifica meta tags y datos estructurados contra especificaciones conocidas. |
-| El Pluma | `copywriter` | Genera y revisa textos. Sonnet es suficiente para mantener coherencia de tono. |
-| El Bibliotecario | `librarian` | Consulta y mantiene la memoria del proyecto. Opera sobre datos existentes sin generar decisiones de diseño. |
-| SonIA | `project-manager` | Gestiona kanban, trazabilidad y seguimiento entre fases. Opera sobre artefactos y estados definidos. |
-| La Interprete | `i18n-specialist` | Audita claves i18n y detecta cadenas hardcodeadas siguiendo patrones bien definidos. |
 
 ---
 

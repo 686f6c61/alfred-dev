@@ -92,6 +92,24 @@ class TestSecretGuard(unittest.TestCase):
         self.assertIn("Clave privada", result.stderr)
         self.assertNotIn("grep:", result.stderr)
 
+    def test_bash_command_blocks_secret(self):
+        fake_key = "sk-" + "e" * 24
+        result = self._run_hook(raw_input=json.dumps({
+            "tool_name": "Bash",
+            "tool_input": {"command": f'echo "{fake_key}" > /tmp/key.txt'},
+        }))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("ALERTA DE SEGURIDAD", result.stderr)
+
+    def test_mcp_write_payload_blocks_secret(self):
+        fake_key = "sk-ant-" + "f" * 24
+        result = self._run_hook(raw_input=json.dumps({
+            "tool_name": "mcp__other__write_file",
+            "tool_input": {"content": fake_key},
+        }))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("ALERTA DE SEGURIDAD", result.stderr)
+
     def test_invalid_json_blocks_fail_closed(self):
         """Si no puede parsear la entrada debe bloquear por precaucion."""
         result = self._run_hook(raw_input="{esto no es json")

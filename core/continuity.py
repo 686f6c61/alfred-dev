@@ -36,6 +36,14 @@ if __package__ in {None, ""}:
 
 from core.config_loader import detect_stack
 from core.optional_agents import order_optional_agent_names
+from core.project_docs import (
+    check_project_docs,
+    ensure_project_docs,
+    render_adr_markdown,
+    render_check_markdown,
+    render_sync_markdown,
+    scaffold_adr,
+)
 from core.orchestrator import (
     FLOWS,
     OPTIONAL_INTEGRATIONS,
@@ -3211,6 +3219,7 @@ def launch_memory_ui(
 ) -> Dict[str, Any]:
     from core.memory import MemoryDB
 
+    host = assert_memory_ui_loopback_host(host)
     os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
     db_path = _project_path(project_dir, os.path.join(".claude", "alfred-memory.db"))
     db = MemoryDB(db_path)
@@ -3344,7 +3353,50 @@ def stop_memory_ui(project_dir: str) -> Dict[str, Any]:
     }
 
 
+_MEMORY_UI_STOP_TOKENS = frozenset({"stop", "cerrar", "detener", "off", "halt"})
+_MEMORY_UI_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+
+
+def is_memory_ui_stop_request(raw_request: str = "") -> bool:
+    """Detecta si el usuario pide cerrar la UI, no abrirla."""
+    token = str(raw_request or "").strip().lower().split()
+    if not token:
+        return False
+    first = token[0].strip("-/")
+    return first in _MEMORY_UI_STOP_TOKENS
+
+
+def assert_memory_ui_loopback_host(host: str) -> str:
+    """La UI solo puede escucharse en loopback."""
+    normalized = str(host or "").strip().lower()
+    if normalized not in _MEMORY_UI_LOOPBACK_HOSTS:
+        raise RuntimeError(
+            "Memory UI solo acepta host de loopback "
+            f"(127.0.0.1, ::1 o localhost), no {host!r}."
+        )
+    return host
+
+
+def render_memory_ui_stop_markdown(result: Dict[str, Any]) -> str:
+    if result.get("stopped"):
+        return (
+            "## Memory UI detenida\n\n"
+            f"- PID: {result.get('pid', 'desconocido')}\n"
+            f"- URL previa: {result.get('url', 'desconocida')}\n"
+        )
+    reason = str(result.get("reason") or "not-running")
+    if reason == "stale-state":
+        return (
+            "## Memory UI no estaba en ejecución\n\n"
+            "- Había un estado local obsoleto y se ha limpiado.\n"
+        )
+    return "## Memory UI no estaba en ejecución\n"
+
+
 def render_memory_ui_markdown(result: Dict[str, Any]) -> str:
+    if result.get("stopped") or result.get("reason") in {"not-running", "stale-state"}:
+        return render_memory_ui_stop_markdown(result)
+
     reused = bool(result.get("reused"))
     lines = [
         "## Memory UI lista",
@@ -3352,8 +3404,10 @@ def render_memory_ui_markdown(result: Dict[str, Any]) -> str:
         f"- URL: {result.get('url', 'desconocida')}",
         f"- SQLite: `{result.get('db_path', '.claude/alfred-memory.db')}`",
         f"- Estado: {'reutilizada' if reused else 'arrancada ahora'}",
-        "- Refresco automático: cada 4 segundos",
+        "- Refresco automático: cada 8 segundos",
         "- Vistas: overview, timeline, decisiones, grafo, commits y búsqueda",
+        "- Para cerrarla ahora: `/alfred-dev:memory-ui stop`",
+        "- Al terminar la sesión de Claude se detiene sola",
         "",
         "### Qué verás",
         "",
@@ -5040,6 +5094,7 @@ def start_flow_session(project_dir: str, command: str, raw_request: str = "") ->
 
     os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
     os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
+    docs_sync = ensure_project_docs(project_dir)
     bypass_path = arm_stop_hook_bypass(project_dir, f"/alfred-dev:{normalized_command}")
 
     pending_gate = get_pending_gate(session)
@@ -5067,6 +5122,7 @@ def start_flow_session(project_dir: str, command: str, raw_request: str = "") ->
             CURRENT_RELATIVE_PATH,
             PROGRESS_MD_RELATIVE_PATH,
             TRACEABILITY_MD_RELATIVE_PATH,
+            docs_sync.get("index", os.path.join("docs", "project", "README.md")),
         ],
         "already_active": False,
         "bypass_path": bypass_path,
@@ -5148,6 +5204,8 @@ def render_prefetch_response(payload: Dict[str, Any]) -> str:
         return render_lucius_summary(payload)
 
     if prefetched_command == "memory-ui":
+        if payload.get("stopped") or payload.get("reason") in {"not-running", "stale-state"}:
+            return render_memory_ui_stop_markdown(payload)
         return render_memory_ui_markdown(payload)
 
     return ""
@@ -5199,6 +5257,7 @@ def write_codebase_map_files(project_dir: str, raw_request: str = "") -> Dict[st
     }
 
     os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
+    ensure_project_docs(project_dir)
 
     codebase_map_path = _project_path(project_dir, CODEBASE_MAP_RELATIVE_PATH)
     current_path = _project_path(project_dir, CURRENT_RELATIVE_PATH)
@@ -6383,6 +6442,7 @@ def write_discovery_files(project_dir: str, raw_request: str = "") -> Dict[str, 
     }
 
     os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
+    ensure_project_docs(project_dir)
 
     discovery_path = _project_path(project_dir, DISCOVERY_MD_RELATIVE_PATH)
     current_path = _project_path(project_dir, CURRENT_RELATIVE_PATH)
@@ -6498,6 +6558,7 @@ def start_quick_session(project_dir: str, raw_request: str = "") -> Dict[str, An
     os.makedirs(_project_path(project_dir, ".claude"), exist_ok=True)
     bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:quick")
     os.makedirs(_project_path(project_dir, os.path.join("docs", "project")), exist_ok=True)
+    ensure_project_docs(project_dir)
 
     quick_record = {
         "description": session["descripcion"],
@@ -6961,6 +7022,19 @@ def render_resume_markdown(result: Dict[str, Any]) -> str:
         if result.get("handoff_path")
         else ""
     )
+    memory_note = ""
+    last_title = result.get("last_decision_title") or ""
+    if last_title:
+        chosen = result.get("last_decision_chosen") or ""
+        memory_note = (
+            f"- Última decisión: {last_title}"
+            + (f" → {chosen}" if chosen else "")
+            + "\n"
+        )
+    adr_note = ""
+    accepted = result.get("accepted_adrs") or ""
+    if accepted:
+        adr_note = f"- ADRs aceptados: {accepted}\n"
     return (
         "## Sesión reanudada\n\n"
         f"- Flujo: `{result.get('command', '-')}`\n"
@@ -6968,6 +7042,8 @@ def render_resume_markdown(result: Dict[str, Any]) -> str:
         f"- Fase actual: `{result.get('phase', '-')}`\n"
         f"- Gate pendiente: {gate}\n"
         f"{handoff_note}"
+        f"{memory_note}"
+        f"{adr_note}"
         f"- Estado activo: `{STATE_RELATIVE_PATH}`\n"
         f"- Siguiente acción: {next_step}\n"
     )
@@ -7070,6 +7146,19 @@ def resume_session(project_dir: str) -> Optional[Dict[str, str]]:
 
     bypass_path = arm_stop_hook_bypass(project_dir, "/alfred-dev:resume")
     result["bypass_path"] = bypass_path
+    try:
+        from core.session_brief import build_session_brief
+
+        brief = build_session_brief(project_dir)
+        decisions = brief.get("decisions") or []
+        if decisions:
+            result["last_decision_title"] = decisions[0].get("title", "")
+            result["last_decision_chosen"] = decisions[0].get("chosen", "")
+        accepted = brief.get("accepted_adrs") or []
+        if accepted:
+            result["accepted_adrs"] = "; ".join(accepted[:3])
+    except Exception:
+        pass
     return result
 
 
@@ -7182,6 +7271,12 @@ def _build_parser() -> argparse.ArgumentParser:
     memory_ui_parser.add_argument("--json", action="store_true", dest="as_json")
     memory_ui_parser.add_argument("--no-open", action="store_true", dest="no_open")
     memory_ui_parser.add_argument("--stop", action="store_true", dest="stop")
+    memory_ui_parser.add_argument(
+        "--raw",
+        default="",
+        dest="raw_request",
+        help="stop|cerrar|detener para apagar la UI",
+    )
 
     map_parser = subparsers.add_parser(
         "map-codebase",
@@ -7266,6 +7361,52 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="expected_command",
         help="Comando que espera consumir el prefetch",
     )
+
+    brief_parser = subparsers.add_parser(
+        "session-brief",
+        help="Briefing de sesión: estado, UAT y última decisión",
+    )
+    brief_parser.add_argument("project_dir", nargs="?", default=".")
+    brief_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    hygiene_parser = subparsers.add_parser(
+        "hygiene",
+        help="Avisos de UAT, threat-model, compliance y dependencias",
+    )
+    hygiene_parser.add_argument("project_dir", nargs="?", default=".")
+    hygiene_parser.add_argument("--command", default="", dest="hygiene_command")
+    hygiene_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    cierre_parser = subparsers.add_parser(
+        "cierre",
+        help="Cierre enseñable de la sesión (qué, evidencia, pendiente)",
+    )
+    cierre_parser.add_argument("project_dir", nargs="?", default=".")
+    cierre_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    docs_sync_parser = subparsers.add_parser(
+        "sync-project-docs",
+        help="Crea el esqueleto de docs/project y refresca el índice",
+    )
+    docs_sync_parser.add_argument("project_dir", nargs="?", default=".")
+    docs_sync_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    docs_check_parser = subparsers.add_parser(
+        "check-project-docs",
+        help="Comprueba los docs exigidos por comando y fase",
+    )
+    docs_check_parser.add_argument("project_dir", nargs="?", default=".")
+    docs_check_parser.add_argument("--command", required=True, dest="docs_command")
+    docs_check_parser.add_argument("--phase", default="", dest="docs_phase")
+    docs_check_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    adr_parser = subparsers.add_parser(
+        "next-adr",
+        help="Crea el esqueleto del siguiente ADR",
+    )
+    adr_parser.add_argument("project_dir", nargs="?", default=".")
+    adr_parser.add_argument("--title", default="Decisión", dest="adr_title")
+    adr_parser.add_argument("--json", action="store_true", dest="as_json")
 
     allow_stop_parser = subparsers.add_parser(
         "allow-stop-once",
@@ -7409,7 +7550,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "memory-ui":
         try:
-            if args.stop:
+            if args.stop or is_memory_ui_stop_request(getattr(args, "raw_request", "")):
                 result = stop_memory_ui(project_dir)
             else:
                 result = launch_memory_ui(
@@ -7422,17 +7563,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.as_json:
             print(json.dumps(result, ensure_ascii=False))
         else:
-            if args.stop:
-                if result.get("stopped"):
-                    print(
-                        "## Memory UI detenida\n\n"
-                        f"- PID: {result.get('pid', 'desconocido')}\n"
-                        f"- URL previa: {result.get('url', 'desconocida')}\n"
-                    )
-                else:
-                    print("La Memory UI no estaba en ejecución.\n")
-            else:
-                print(render_memory_ui_markdown(result))
+            print(render_memory_ui_markdown(result))
         return 0
 
     if args.command == "map-codebase":
@@ -7500,6 +7631,60 @@ def main(argv: Optional[List[str]] = None) -> int:
         if payload is None:
             return 1
         print(payload.get("response_text", ""))
+        return 0
+
+    if args.command == "session-brief":
+        from core.session_brief import build_session_brief, render_brief_lines
+
+        brief = build_session_brief(project_dir)
+        if args.as_json:
+            print(json.dumps(brief, ensure_ascii=False))
+        else:
+            print(render_brief_lines(brief))
+        return 0
+
+    if args.command == "hygiene":
+        from core.hygiene import render_hygiene_markdown, run_hygiene
+
+        result = run_hygiene(project_dir, args.hygiene_command)
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_hygiene_markdown(result))
+        return 0 if result["passed"] else 1
+
+    if args.command == "cierre":
+        from core.hygiene import build_cierre, render_cierre_markdown
+
+        result = build_cierre(project_dir)
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_cierre_markdown(result))
+        return 0
+
+    if args.command == "sync-project-docs":
+        result = ensure_project_docs(project_dir)
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_sync_markdown(result))
+        return 0
+
+    if args.command == "check-project-docs":
+        result = check_project_docs(project_dir, args.docs_command, args.docs_phase)
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_check_markdown(result))
+        return 0 if result["passed"] else 1
+
+    if args.command == "next-adr":
+        result = scaffold_adr(project_dir, args.adr_title)
+        if args.as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(render_adr_markdown(result))
         return 0
 
     if args.command == "allow-stop-once":

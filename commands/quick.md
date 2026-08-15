@@ -24,8 +24,7 @@ python3 .claude/alfred-continuity.py quick "$PWD" --raw "$ARGUMENTS"
 Ese helper debe:
 - bloquear si hay handoff o UAT pendientes;
 - crear `.claude/alfred-dev-state.json` con el flujo `quick`;
-- armar un bypass transitorio del stop hook para que el comando pueda cerrar limpio en CLI;
-- dejar la sesión lista para `pause`, `resume`, `next` y `verify`.
+- dejar la sesión lista para `pause`, `retomar` y `uat`.
 
 Si el helper devuelve una salida de preparación (`## Quick preparado`) o el hook
 `prefetch-finish-guard` indica que el helper-first ya devolvió una respuesta
@@ -34,7 +33,7 @@ final lista, **cierra con ese resumen y termina**. No añadas bloques
 en `claude -p` el cierre debe ser breve, operativo y de menos de 20 líneas.
 
 2. Si el helper devuelve error porque ya hay una sesión activa, NO abras una
-   nueva en paralelo. Actúa como `/alfred-dev:next`.
+   nueva en paralelo. Actúa como `/alfred-dev:retomar`.
 
 3. Después del helper, lee:
    - `.claude/alfred-dev-state.json`
@@ -51,28 +50,30 @@ en `claude -p` el cierre debe ser breve, operativo y de menos de 20 líneas.
 5. Antes de ejecutar la fase 1, localiza el fichero compartido de composición
    dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces
    la ruta exacta, búscala primero en la instalación del plugin (por ejemplo,
-   bajo `~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y
-   léela desde ahí. Después sigue el protocolo de composición dinámica. Si no
-   consigues localizar ese fichero, continúa con el equipo de núcleo por
-   defecto, deja constancia breve de la degradación y usa solo los agentes
-   opcionales que de verdad aporten a este cambio pequeño.
+   bajo `${CLAUDE_PLUGIN_ROOT}/commands/_composicion.md`) y
+   léela desde ahí. En `quick` **no** uses `AskUserQuestion` para Lucius ni
+   para opcionales. Núcleo y a programar. Si no consigues localizar ese
+   fichero, continúa con el equipo de núcleo.
 
 6. Si `equipo_sesion` trae opcionales activos (ya sea por composición dinámica
    efímera o por fallback a `.claude/alfred-dev.local.md`), consúltalo siempre
    como fuente runtime canónica antes de cada fase. Si un opcional no entra en
    el loop estándar de `quick`, déjalo explícitamente como “bajo demanda”.
 
+7. Lee `${CLAUDE_PLUGIN_ROOT}/commands/_docs_vivas.md`. Sync mínimo: índice y
+   `current.md`. Antes de cerrar `validacion_rapida`:
+
+```bash
+python3 .claude/alfred-continuity.py check-project-docs "$PWD" --command quick --phase validacion_rapida
+```
+
 ## Flujo ligero de 2 fases
 
 ### Fase 1: Ejecución acotada (`ejecucion_acotada`)
 
-Activa `senior-dev` como agente principal. Añade opcionales solo si el cambio
-lo justifica claramente:
-
-- `data-engineer` si tocas esquema, queries o persistencia
-- `ux-reviewer` si tocas UI o flujo de usuario
-- `copywriter` si cambias copy visible
-- `i18n-specialist` si tocas textos multiidioma
+Activa `senior-dev` como agente principal. El único opcional del runtime
+es **lucius**; no invoques data-engineer, ux-reviewer, copywriter ni
+i18n-specialist.
 
 Reglas:
 - Mantén la superficie del cambio pequeña y local.
@@ -84,11 +85,9 @@ Reglas:
 
 ### Fase 2: Validación rápida (`validacion_rapida`)
 
-Activa `qa-engineer` y `security-officer` en paralelo. Añade opcionales de
-calidad solo si aportan señal real (`ux-reviewer`, `performance-engineer`,
-`seo-specialist`, `i18n-specialist`). Si `lucius` está activo, úsalo como
-revisión secuencial externa de cierre cuando una segunda opinión técnica aporte
-señal real al cambio.
+Activa `qa-engineer` y `security-officer` en paralelo. Si `lucius` está
+activo, úsalo como revisión secuencial externa de cierre cuando una segunda
+opinión técnica aporte señal real al cambio.
 
 Reglas:
 - Revisa regresión local de la superficie tocada.
@@ -116,7 +115,13 @@ En ese caso:
 - NO uses `AskUserQuestion` por defecto dentro de `/alfred-dev:quick`.
 - NO conviertas quick en un `feature` abreviado “porque sí”.
 - NO cierres sin dejar `.claude/alfred-dev-state.json` coherente.
-- Al terminar, deja visible que el siguiente paso esperado es `/alfred-dev:verify`.
+- Al terminar el trabajo (no el helper-first), ejecuta el cierre enseñable:
+
+```bash
+python3 .claude/alfred-continuity.py cierre "$PWD"
+```
+
+  Usa esa salida como bloque final. Al terminar, deja visible que el siguiente paso esperado es `/alfred-dev:uat`.
 
 ## Cierre canónico del comando
 
@@ -129,6 +134,6 @@ En ese caso:
   - cambio acotado en curso
   - fase actual
   - opcionales activos o bajo demanda
-  - siguiente paso esperado (`/alfred-dev:verify`)
+  - siguiente paso esperado (`/alfred-dev:uat`)
 - Si detectas que quick ya no es quick, no cierres con varias rutas ambiguas:
   deja una única redirección accionable a `feature`, `fix` o `spike`.

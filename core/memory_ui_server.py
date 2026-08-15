@@ -20,7 +20,8 @@ if __package__ in {None, ""}:
 from core.memory import MemoryDB
 
 
-UI_VERSION = "0.0.2"
+UI_VERSION = "0.0.4"
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 
 _EVENT_TYPE_LABELS = {
     "session_started": "Sesión",
@@ -563,13 +564,14 @@ HTML_TEMPLATE = """<!doctype html>
       <article class="panel" data-span="5" id="graphPanel">
         <h2>Grafo de decisiones</h2>
         <div class="legend">
-          <span><i style="background:#54c4ff"></i> accepted</span>
-          <span><i style="background:#ffcb6b"></i> proposed</span>
-          <span><i style="background:#ff7a90"></i> rejected/superseded</span>
+          <span><i style="background:#54c4ff"></i> activa</span>
+          <span><i style="background:#ffcb6b"></i> reemplazada</span>
+          <span><i style="background:#ff7a90"></i> obsoleta</span>
         </div>
         <div class="graph-shell">
           <svg id="graph" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
+        <div id="graphDetail" class="empty" style="margin-top:12px;">Haz clic en una decisión del grafo para ver el detalle.</div>
       </article>
 
       <article class="panel" data-span="6" id="commitsPanel">
@@ -584,7 +586,7 @@ HTML_TEMPLATE = """<!doctype html>
         <ul class="search-results" id="searchResults">
           <li class="hint-card">
             <strong>Escribe algo para buscar en memoria y artefactos.</strong><br />
-            Prueba con <code>health</code>, <code>auth</code>, <code>oauth</code>, <code>qa</code> o el nombre de un fichero reciente.
+            Cuando haya memoria, busca por una decisión, un commit o un término de <code>docs/project/</code>.
           </li>
         </ul>
       </article>
@@ -592,9 +594,10 @@ HTML_TEMPLATE = """<!doctype html>
   </div>
 
   <script>
-    const refreshEveryMs = 4000;
+    const refreshEveryMs = 8000;
     const state = {
       selectedIterationId: null,
+      selectedGraphNodeId: null,
       graph: { nodes: [], edges: [] },
     };
 
@@ -631,6 +634,7 @@ HTML_TEMPLATE = """<!doctype html>
       proposed: "propuesta",
       rejected: "rechazada",
       superseded: "reemplazada",
+      deprecated: "obsoleta",
       unknown: "sin estado",
       warning: "aviso",
     });
@@ -654,7 +658,7 @@ HTML_TEMPLATE = """<!doctype html>
         ? "ok"
         : /warning|pending|proposed/.test(raw)
           ? "warn"
-          : /error|rejected|superseded|blocked/.test(raw)
+          : /error|rejected|superseded|blocked|deprecated/.test(raw)
             ? "danger"
             : "";
       return `<span class="chip ${kind}">${value}</span>`;
@@ -729,22 +733,10 @@ HTML_TEMPLATE = """<!doctype html>
         return;
       }
 
-      const samplePaths = (workspace.sample_paths || []).slice(0, 4);
-      const sampleText = samplePaths.length
-        ? `<br /><span style="color:var(--muted)">Contenido visible: ${samplePaths.map((item) => `<code>${esc(item)}</code>`).join(", ")}</span>`
-        : "";
-
-      let title = "Este workspace todavía no tiene memoria útil.";
-      let body = "Ejecuta Alfred sobre este proyecto y vuelve a refrescar para ver timeline, decisiones y actividad.";
-
-      if (!workspace.is_git_repo && !workspace.has_codebase) {
-        title = "Este workspace parece temporal o vacío.";
-        body = "No es un repositorio Git y no se detecta código claro. La SQLite existe, pero Alfred todavía no ha trabajado aquí de forma real.";
-      } else if (workspace.is_git_repo || workspace.has_codebase) {
-        body = "El proyecto existe, pero Alfred aún no ha sembrado memoria suficiente. Prueba con `/alfred-dev:map-codebase`, `/alfred-dev:discuss` o `/alfred-dev:quick` y refresca.";
-      }
-
-      element.innerHTML = `<strong>${title}</strong>${body}${sampleText}`;
+      element.innerHTML = `
+        <strong>No hay memoria de Alfred en este proyecto.</strong>
+        Aquí solo aparece lo que Alfred ha registrado: sesiones, decisiones, eventos y commits enlazados. El historial de Git no se importa al abrir la UI.
+      `;
       element.classList.remove("is-hidden");
     }
 
@@ -758,7 +750,14 @@ HTML_TEMPLATE = """<!doctype html>
       renderStats(data);
       renderWorkspaceNotice(data);
 
-      const progress = data.progress || {};
+      const memoryEmpty = data.memory_empty === true
+        || (
+          !Number((data.stats || {}).total_iterations || 0)
+          && !Number((data.stats || {}).total_decisions || 0)
+          && !Number((data.stats || {}).total_commits || 0)
+          && !Number((data.stats || {}).total_events || 0)
+        );
+      const progress = memoryEmpty ? {} : (data.progress || {});
       const nextAction = progress.next_action || {};
       const overviewCards = (progress.overview_cards || []).filter(
         (card) => card.label !== "Siguiente paso recomendado"
@@ -767,7 +766,7 @@ HTML_TEMPLATE = """<!doctype html>
       const issues = health.issues || [];
       const lines = [];
 
-      if (nextAction.command) {
+      if (!memoryEmpty && nextAction.command) {
         lines.push(`
           <li>
             <small>Acción inmediata</small>
@@ -800,7 +799,7 @@ HTML_TEMPLATE = """<!doctype html>
         <li>
           <small>Salud de memoria</small>
           <div class="chip-row">${statusChip(health.status || "unknown")}</div>
-          <div class="event-body">${issues.length ? issues.join("\\n") : "Sin incidencias detectadas."}</div>
+          <div class="event-body">${issues.length ? issues.map((issue) => esc(issue)).join("\\n") : "Sin incidencias detectadas."}</div>
         </li>
       `);
 
@@ -859,6 +858,10 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function renderProjectSignals(data) {
+      if (data.memory_empty === true) {
+        togglePanel("projectSignalsPanel", false);
+        return;
+      }
       const progress = data.progress || {};
       const kanban = progress.kanban || {};
       const cards = (progress.project_signal_cards && progress.project_signal_cards.length)
@@ -983,12 +986,12 @@ HTML_TEMPLATE = """<!doctype html>
           <small>Decisión #${item.id} · ${formatDate(item.decided_at)}</small>
           <div class="decision-title">${esc(item.title || "Sin título")}</div>
           <div class="chip-row">
-            ${statusChip(item.status || "accepted")}
+            ${statusChip(item.status || "active")}
             ${(item.tags || []).map((tag) => `<span class="chip">${esc(tag)}</span>`).join("")}
           </div>
           <div class="kv" style="margin-top: 12px;">
             <div><strong>Elegido</strong><div class="decision-body">${esc(item.chosen || "—")}</div></div>
-            ${item.rationale ? `<div><strong>Rationale</strong><div class="decision-body">${esc(item.rationale)}</div></div>` : ""}
+            ${item.rationale ? `<div><strong>Justificación</strong><div class="decision-body">${esc(item.rationale)}</div></div>` : ""}
             ${item.links && item.links.length ? `<div><strong>Relaciones</strong><div class="decision-body">${item.links.map((link) => `${esc(link.direction)} ${esc(link.link_type)} → ${esc(link.title)}`).join("\\n")}</div></div>` : ""}
           </div>
         </li>
@@ -1044,6 +1047,33 @@ HTML_TEMPLATE = """<!doctype html>
       document.getElementById("searchResults").innerHTML = items.join("");
     }
 
+    function graphStatusFill(status) {
+      const raw = String(status || "active").toLowerCase();
+      if (raw === "superseded") return "#ffcb6b";
+      if (raw === "deprecated") return "#ff7a90";
+      return "#54c4ff";
+    }
+
+    function showGraphDetail(node) {
+      const element = document.getElementById("graphDetail");
+      if (!element) return;
+      if (!node) {
+        element.className = "empty";
+        element.textContent = "Haz clic en una decisión del grafo para ver el detalle.";
+        return;
+      }
+      element.className = "";
+      element.innerHTML = `
+        <small>Decisión #${esc(node.decision_id || "")}</small>
+        <div class="decision-title">${esc(node.title || node.label || "Decisión")}</div>
+        <div class="chip-row">${statusChip(node.status || "active")}</div>
+        <div class="kv" style="margin-top:12px;">
+          <div><strong>Elegido</strong><div class="decision-body">${esc(node.chosen || "—")}</div></div>
+          ${node.rationale ? `<div><strong>Justificación</strong><div class="decision-body">${esc(node.rationale)}</div></div>` : ""}
+        </div>
+      `;
+    }
+
     function renderGraph(data) {
       state.graph = data || { nodes: [], edges: [] };
       const svg = document.getElementById("graph");
@@ -1054,6 +1084,7 @@ HTML_TEMPLATE = """<!doctype html>
       if (!nodes.length) {
         togglePanel("graphPanel", false);
         svg.innerHTML = "";
+        showGraphDetail(null);
         return;
       }
       togglePanel("graphPanel", true);
@@ -1081,46 +1112,47 @@ HTML_TEMPLATE = """<!doctype html>
       }).join("");
       const nodeMarkup = nodes.map((node) => {
         const point = positions.get(node.id);
-        const fill = node.status === "accepted"
-          ? "#54c4ff"
-          : node.status === "proposed"
-            ? "#ffcb6b"
-            : "#ff7a90";
+        const fill = graphStatusFill(node.status);
         return `
-          <g>
+          <g data-node-id="${esc(node.id)}" style="cursor:pointer">
             <circle cx="${point.x}" cy="${point.y}" r="18" fill="${fill}" fill-opacity="0.95" />
             <text x="${point.x}" y="${point.y + 40}" text-anchor="middle" fill="#f4f7fb" font-size="12">${esc(node.label)}</text>
           </g>
         `;
       }).join("");
       svg.innerHTML = edgeMarkup + nodeMarkup;
+      svg.onclick = (event) => {
+        const target = event.target.closest("[data-node-id]");
+        if (!target) return;
+        const nodeId = target.getAttribute("data-node-id");
+        state.selectedGraphNodeId = nodeId;
+        showGraphDetail(nodes.find((item) => String(item.id) === String(nodeId)) || null);
+      };
+      const selected = nodes.find(
+        (item) => String(item.id) === String(state.selectedGraphNodeId || "")
+      ) || null;
+      if (!selected) {
+        state.selectedGraphNodeId = null;
+      }
+      showGraphDetail(selected);
     }
 
     async function refreshOverview() {
-      const [overview, iterations, decisions, commits, graph, activity] = await Promise.all([
-        fetchJson("/api/overview"),
-        fetchJson("/api/iterations"),
-        fetchJson("/api/decisions"),
-        fetchJson("/api/commits"),
-        fetchJson("/api/graph"),
-        fetchJson("/api/activity"),
-      ]);
-      renderOverview(overview);
-      renderIterations(iterations.items || []);
-      renderSessions(iterations);
-      renderActivity(activity);
-      renderProjectSignals(overview);
-      renderDecisions(decisions);
-      renderCommits(commits);
-      renderGraph(graph);
-      await refreshTimeline();
-    }
-
-    async function refreshTimeline() {
       const iterationId = state.selectedIterationId || "";
       const suffix = iterationId ? `?iteration_id=${encodeURIComponent(iterationId)}` : "";
-      const data = await fetchJson(`/api/timeline${suffix}`);
-      renderTimeline(data);
+      const snapshot = await fetchJson(`/api/snapshot${suffix}`);
+      if (snapshot.selected_iteration_id && !state.selectedIterationId) {
+        state.selectedIterationId = String(snapshot.selected_iteration_id);
+      }
+      renderOverview(snapshot.overview || {});
+      renderIterations((snapshot.iterations && snapshot.iterations.items) || []);
+      renderSessions(snapshot.iterations || {});
+      renderActivity(snapshot.activity || {});
+      renderProjectSignals(snapshot.overview || {});
+      renderDecisions(snapshot.decisions || {});
+      renderCommits(snapshot.commits || {});
+      renderGraph(snapshot.graph || {});
+      renderTimeline(snapshot.timeline || {});
     }
 
     async function runSearch(query) {
@@ -1129,8 +1161,7 @@ HTML_TEMPLATE = """<!doctype html>
         document.getElementById("searchResults").innerHTML = `
           <li class="hint-card">
             <strong>Escribe algo para buscar en memoria y artefactos.</strong><br />
-            Prueba con términos como <code>health</code>, <code>auth</code>, <code>oauth</code>, <code>qa</code>,
-            <code>security</code> o el nombre de un fichero que se haya tocado recientemente.
+            Cuando haya memoria, busca por una decisión, un commit o un término de <code>docs/project/</code>.
           </li>
         `;
         return;
@@ -1149,7 +1180,7 @@ HTML_TEMPLATE = """<!doctype html>
 
     document.getElementById("iterationSelect").addEventListener("change", async (event) => {
       state.selectedIterationId = event.target.value;
-      await refreshTimeline();
+      await refreshAll();
     });
 
     document.getElementById("refreshButton").addEventListener("click", async () => {
@@ -1519,16 +1550,6 @@ def _workspace_summary(project_dir: str, db: Optional[MemoryDB] = None) -> Dict[
     return summary
 
 
-def _maybe_import_git_history(project_dir: str, db: MemoryDB, limit: int = 20) -> int:
-    try:
-        stats = db.get_stats()
-        if int(stats.get("total_commits", 0) or 0) > 0:
-            return 0
-        return int(db.import_git_history(project_dir, limit=limit) or 0)
-    except Exception:
-        return 0
-
-
 def _list_iterations(db: MemoryDB, limit: int = 50) -> List[Dict[str, Any]]:
     return db.get_iterations(limit=limit)
 
@@ -1537,7 +1558,16 @@ def build_overview_payload(project_dir: str, db_path: str, host: str, port: int)
     db = MemoryDB(db_path)
     try:
         plugin_meta = _load_plugin_metadata()
-        _maybe_import_git_history(project_dir, db)
+        stats = db.get_stats()
+        memory_empty = not any(
+            int(stats.get(key, 0) or 0)
+            for key in (
+                "total_iterations",
+                "total_decisions",
+                "total_commits",
+                "total_events",
+            )
+        )
         return {
             "plugin_name": plugin_meta["display_name"],
             "plugin_version": plugin_meta["version"],
@@ -1546,12 +1576,13 @@ def build_overview_payload(project_dir: str, db_path: str, host: str, port: int)
             "project_dir": project_dir,
             "db_path": db_path,
             "refreshed_at": _iso_now(),
-            "stats": db.get_stats(),
+            "stats": stats,
             "health": db.check_health(),
             "workspace": _workspace_summary(project_dir, db=db),
             "active_iteration": db.get_active_iteration(),
             "latest_iteration": db.get_latest_iteration(),
-            "progress": _build_progress(project_dir),
+            "memory_empty": memory_empty,
+            "progress": {} if memory_empty else _build_progress(project_dir),
             "server": {
                 "host": host,
                 "port": port,
@@ -1632,16 +1663,24 @@ def build_decisions_payload(
         db.close()
 
 
-def build_graph_payload(db_path: str, limit: int = 18) -> Dict[str, Any]:
+def build_graph_payload(
+    db_path: str,
+    limit: int = 18,
+    iteration_id: Optional[int] = None,
+) -> Dict[str, Any]:
     db = MemoryDB(db_path)
     try:
-        decisions = db.get_decisions(limit=limit)
+        decisions = db.get_decisions(limit=limit, iteration_id=iteration_id)
         decision_ids = {int(item["id"]) for item in decisions}
         nodes = [
             {
                 "id": f"d{item['id']}",
-                "label": (item.get("title", f"D#{item['id']}"))[:18],
-                "status": item.get("status", "accepted"),
+                "decision_id": int(item["id"]),
+                "label": (item.get("title", f"D#{item['id']}"))[:28],
+                "title": item.get("title", f"Decisión #{item['id']}"),
+                "status": item.get("status") or "active",
+                "chosen": item.get("chosen") or "",
+                "rationale": item.get("rationale") or "",
             }
             for item in decisions
         ]
@@ -1677,7 +1716,6 @@ def build_commits_payload(
 ) -> Dict[str, Any]:
     db = MemoryDB(db_path)
     try:
-        _maybe_import_git_history(project_dir, db)
         raw_items = db.get_commits(limit=limit, iteration_id=iteration_id)
         iteration_ids = {
             int(item["iteration_id"])
@@ -1727,6 +1765,52 @@ def _recent_event_counts(events: List[Dict[str, Any]], limit: int = 8) -> List[D
         counts.values(),
         key=lambda item: (-int(item.get("total", 0) or 0), str(item.get("label", ""))),
     )[:limit]
+
+
+def _resolve_snapshot_iteration_id(
+    iterations_payload: Dict[str, Any],
+    iteration_id: Optional[int],
+) -> Optional[int]:
+    if iteration_id is not None:
+        return iteration_id
+    items = iterations_payload.get("items") or []
+    active = next((item for item in items if item.get("is_active")), None)
+    chosen = active or (items[0] if items else None)
+    if chosen is None:
+        return None
+    return int(chosen["id"])
+
+
+def build_snapshot_payload(
+    project_dir: str,
+    db_path: str,
+    host: str,
+    port: int,
+    iteration_id: Optional[int] = None,
+) -> Dict[str, Any]:
+    overview = build_overview_payload(project_dir, db_path, host, port)
+    iterations = build_iterations_payload(db_path)
+    selected_iteration_id = _resolve_snapshot_iteration_id(iterations, iteration_id)
+    return {
+        "overview": overview,
+        "iterations": iterations,
+        "decisions": build_decisions_payload(
+            db_path,
+            iteration_id=selected_iteration_id,
+        ),
+        "commits": build_commits_payload(
+            db_path,
+            project_dir,
+            iteration_id=selected_iteration_id,
+        ),
+        "graph": build_graph_payload(
+            db_path,
+            iteration_id=selected_iteration_id,
+        ),
+        "activity": build_activity_payload(db_path),
+        "timeline": build_timeline_payload(db_path, selected_iteration_id),
+        "selected_iteration_id": selected_iteration_id,
+    }
 
 
 def build_activity_payload(db_path: str, limit: int = 18) -> Dict[str, Any]:
@@ -1833,8 +1917,29 @@ class AlfredMemoryUIHandler(BaseHTTPRequestHandler):
                 )
                 return
             if parsed.path == "/api/graph":
+                raw_iteration = (params.get("iteration_id") or [None])[0]
+                iteration_id = int(raw_iteration) if raw_iteration and raw_iteration.isdigit() else None
                 limit = _safe_int((params.get("limit") or [None])[0], default=18, maximum=40)
-                self._send_json(build_graph_payload(server.db_path, limit=limit))
+                self._send_json(
+                    build_graph_payload(
+                        server.db_path,
+                        limit=limit,
+                        iteration_id=iteration_id,
+                    )
+                )
+                return
+            if parsed.path == "/api/snapshot":
+                raw_iteration = (params.get("iteration_id") or [None])[0]
+                iteration_id = int(raw_iteration) if raw_iteration and raw_iteration.isdigit() else None
+                self._send_json(
+                    build_snapshot_payload(
+                        server.project_dir,
+                        server.db_path,
+                        server.host,
+                        server.port,
+                        iteration_id=iteration_id,
+                    )
+                )
                 return
             if parsed.path == "/api/commits":
                 raw_iteration = (params.get("iteration_id") or [None])[0]
@@ -1866,7 +1971,18 @@ class AlfredMemoryUIHandler(BaseHTTPRequestHandler):
             self._send_json({"error": str(exc)}, status=500)
 
 
+def _assert_loopback_host(host: str) -> str:
+    normalized = str(host or "").strip().lower()
+    if normalized not in _LOOPBACK_HOSTS:
+        raise ValueError(
+            "Memory UI solo acepta host de loopback "
+            f"(127.0.0.1, ::1 o localhost), no {host!r}."
+        )
+    return host
+
+
 def run_server(project_dir: str, db_path: str, host: str, port: int) -> int:
+    host = _assert_loopback_host(host)
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     db = MemoryDB(db_path)
     db.close()
@@ -1892,10 +2008,15 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    try:
+        host = _assert_loopback_host(args.host)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     return run_server(
         project_dir=os.path.abspath(args.project_dir),
         db_path=os.path.abspath(args.db_path),
-        host=args.host,
+        host=host,
         port=args.port,
     )
 

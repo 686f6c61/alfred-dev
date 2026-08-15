@@ -24,7 +24,7 @@ def _load_report_module():
 class TestManualReviewReport(unittest.TestCase):
     def _evidence(self):
         return {
-            "version": "0.6.0",
+            "version": "0.7.0",
             "plugin_dir": str(ROOT),
             "plugin_source": "worktree",
             "plugin_surface": {"sha256": "abc123", "file_count": 1},

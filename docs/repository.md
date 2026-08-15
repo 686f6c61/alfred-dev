@@ -10,12 +10,12 @@ La rama `main` documentada aquí corresponde al plugin. La landing pública vive
 
 | Ruta | Qué contiene | Estado documental |
 |---|---|---|
-| `agents/` | Prompts de los 19 agentes publicados | Bien cubierto en `docs/agents/` |
+| `agents/` | Prompts de los 10 agentes publicados | Bien cubierto en `docs/agents/` |
 | `commands/` | Slash commands del plugin | Cubierto ahora en [commands.md](commands.md) |
 | `core/` | Runtime Python: orquestación, memoria, configuración, Selina | Cubierto por temas; faltan páginas por subsistema |
 | `hooks/` | Hooks del ciclo de vida y guards | Cubierto en `hooks.md` |
 | `mcp/` | Servidor MCP de memoria | Cobertura insuficiente |
-| `skills/` | Catálogo de 62 skills por dominio | Cubierto en `skills.md` |
+| `skills/` | Catálogo de 11 skills planas | Cubierto en `skills.md` |
 | `tests/` | Suite de tests y contratos | Cubierto en `testing.md`, con margen de mejora |
 | `visual/` | Scripts visuales de Selina y servidor local | Cubierto en [visual.md](visual.md) |
 | `templates/` | Plantillas de artefactos y salidas | Sin página propia |
@@ -27,7 +27,7 @@ La rama `main` documentada aquí corresponde al plugin. La landing pública vive
 
 ### `agents/`
 
-Aquí viven los prompts fuente que Claude Code descubre desde el directorio `agents/`. Desde 0.6.0 todos los agentes publicados están en `agents/*.md`; la diferencia entre núcleo y opcionales se documenta en sus fichas y en el motor de personalidad, no mediante un subdirectorio `agents/optional/`.
+Aquí viven los prompts fuente que Claude Code descubre desde el directorio `agents/`. Los 10 agentes publicados están en `agents/*.md`; el único opcional es Lucius. La diferencia se documenta en sus fichas y en el motor de personalidad, no mediante un subdirectorio `agents/optional/`.
 
 La documentación humana equivalente está en `docs/agents/`. Si cambias un agente fuente, conviene revisar su ficha en `docs/agents/` y cualquier mención en `docs/README.md`, `docs/personality.md` o `docs/flows.md`.
 
@@ -36,7 +36,8 @@ La documentación humana equivalente está en `docs/agents/`. Si cambias un agen
 Contiene los prompts de todos los slash commands. Hay dos tipos:
 
 - comandos de flujo, como `feature.md`, `fix.md`, `ship.md`;
-- comandos operativos, como `progress.md`, `validate.md`, `search.md`, `memory-ui.md`.
+- comandos operativos publicados, como `progress.md`, `retomar.md`, `memory-ui.md`;
+- helpers internos no publicados: `next.md`, `search.md`, `_composicion.md`, `_docs_vivas.md`.
 
 Si una release añade o elimina un comando, hay que alinear cuatro superficies:
 

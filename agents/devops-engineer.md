@@ -6,16 +6,6 @@ description: |
   /alfred-dev:feature, en /alfred-dev:ship (empaquetado y despliegue) y en /alfred-dev:audit (revisión de
   infraestructura). También se puede invocar directamente para dockerizar un proyecto,
   configurar un pipeline o preparar un entorno de despliegue.
-
-  <example>
-  El proyecto necesita un Dockerfile y el agente genera uno multi-stage con imagen
-  base mínima, usuario no-root, .dockerignore optimizado y health check configurado.
-  <commentary>
-  Se activa porque un proyecto sin contenerización no es reproducible. El Dockerfile
-  es la base de toda la cadena de entrega.
-  </commentary>
-  </example>
-
   <example>
   El proyecto usa GitHub Actions y el agente genera un pipeline completo: lint, test,
   build, security scan, deploy a staging, aprobación manual y deploy a producción.
@@ -24,16 +14,6 @@ description: |
   Sin pipeline, cada deploy es una apuesta.
   </commentary>
   </example>
-
-  <example>
-  El usuario quiere desplegar en Vercel y el agente configura vercel.json, variables
-  de entorno, dominio personalizado y preview deployments para cada PR.
-  <commentary>
-  Se activa porque el despliegue requiere configuración específica de la plataforma.
-  Cada hosting tiene sus particularidades que el agente conoce.
-  </commentary>
-  </example>
-
   <example>
   El agente configura monitoring con logging estructurado (JSON), error tracking con
   Sentry y alertas básicas para errores 5xx y latencia alta.
@@ -43,7 +23,7 @@ description: |
   </commentary>
   </example>
 tools: Glob,Grep,Read,Write,Edit,Bash
-model: sonnet
+model: inherit
 color: cyan
 ---
 

@@ -8,8 +8,8 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra globalmente en Claude Code la fuente GitHub del plugin
 #   3. Instala el plugin con claude plugin install
-#   4. Instala el alias personal global /alfred y elimina shims obsoletos
-#   5. Listo para usar: /alfred
+#   4. No pisa ~/.claude/skills ni instala alias global /alfred
+#   5. Listo para usar: /alfred-dev:alfred
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para registrar una
@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = "686f6c61/alfred-dev"
 $PluginName = "alfred-dev"
-$Version = "0.6.1"
+$Version = "0.7.0"
 
 # -- Funciones auxiliares ---------------------------------------------------
 
@@ -202,80 +202,6 @@ function Update-UserMarketplace {
     }
 }
 
-function Install-GlobalAlfredAlias {
-    param(
-        [string]$ClaudeDir,
-        [string]$PluginRoot
-    )
-
-    if (-not $PluginRoot) {
-        Write-Err "No se pudo resolver la raiz del plugin instalado para crear /alfred"
-        exit 1
-    }
-
-    $sourceAlias = Join-Path $PluginRoot "skills/alfred/alfred/SKILL.md"
-    if (-not (Test-Path $sourceAlias -PathType Leaf)) {
-        Write-Err "No se encontro el skill de alias global en la instalacion:"
-        Write-Err "  $sourceAlias"
-        exit 1
-    }
-
-    $aliasDir = Join-Path $ClaudeDir "skills/alfred"
-    $aliasFile = Join-Path $aliasDir "SKILL.md"
-    $commandAliasDir = Join-Path $ClaudeDir "commands"
-    $commandAliasFile = Join-Path $commandAliasDir "alfred.md"
-    New-Item -ItemType Directory -Path $aliasDir -Force | Out-Null
-
-    function Write-AlfredAlias {
-        param(
-            [string]$Source,
-            [string]$Target,
-            [bool]$Invocable
-        )
-
-        $content = Get-Content $Source -Raw -Encoding UTF8
-        $value = if ($Invocable) { "true" } else { "false" }
-        if ($content -match '(?m)^user-invocable:\s*(true|false)\s*$') {
-            $content = [regex]::Replace(
-                $content,
-                '(?m)^user-invocable:\s*(true|false)\s*$',
-                "user-invocable: $value",
-                1
-            )
-        }
-        elseif ($content.StartsWith("---`n")) {
-            $content = "---`nuser-invocable: $value`n" + $content.Substring(4)
-        }
-
-        Write-TextFileAtomic -Path $Target -Content $content
-    }
-
-    if (Test-Path $aliasFile -PathType Leaf) {
-        $existing = Get-Content $aliasFile -Raw -Encoding UTF8
-        if ($existing -notmatch "Alfred Dev global alias") {
-            $backup = "$aliasFile.before-alfred-dev.$(Get-Date -Format 'yyyyMMddHHmmss')"
-            Copy-Item $aliasFile $backup -Force
-            Write-Info "Skill /alfred existente respaldado en $backup"
-        }
-    }
-
-    Write-AlfredAlias -Source $sourceAlias -Target $aliasFile -Invocable $true
-    Write-Ok "Alias global /alfred instalado en $aliasFile"
-
-    if (Test-Path $commandAliasFile -PathType Leaf) {
-        $existing = Get-Content $commandAliasFile -Raw -Encoding UTF8
-        if ($existing -match "Alfred Dev global alias") {
-            Remove-Item $commandAliasFile -Force
-            Write-Ok "Shim de comando global /alfred obsoleto eliminado en $commandAliasFile"
-        }
-        else {
-            $backup = "$commandAliasFile.before-alfred-dev.$(Get-Date -Format 'yyyyMMddHHmmss')"
-            Move-Item $commandAliasFile $backup -Force
-            Write-Info "Comando /alfred existente movido a $backup para evitar duplicados"
-        }
-    }
-}
-
 function Assert-UserScopeInstallation {
     param([string]$PluginKey)
 
@@ -438,7 +364,7 @@ $PluginRoot = Get-InstalledPluginRoot -ClaudeDir $ClaudeDir -PluginName $PluginN
 $hooksJson = $null
 $mcpJson = $null
 
-Install-GlobalAlfredAlias -ClaudeDir $ClaudeDir -PluginRoot $PluginRoot
+Write-Info "Usa /alfred-dev:alfred o /alfred-dev:feature. No se pisa ~/.claude/skills."
 Assert-UserScopeInstallation -PluginKey $pluginKey
 
 if ($PluginRoot) {
@@ -506,8 +432,8 @@ Write-Host ""
 Write-Host "Instalacion completada" -ForegroundColor Green
 Write-Host ""
 Write-Host "  En Claude Code, ejecuta /reload-plugins y despues:"
-Write-Host "  /alfred" -ForegroundColor White
-Write-Host "  Ayuda completa: /alfred-dev:help" -ForegroundColor DarkGray
+Write-Host "  /alfred-dev:alfred" -ForegroundColor White
+Write-Host "  Estado: /alfred-dev:progress · retomar: /alfred-dev:retomar" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Si /reload-plugins avisa por MCP/coste de cache o no aparece el plugin, reinicia Claude Code." -ForegroundColor DarkGray
 Write-Host "  Repositorio: https://github.com/$Repo" -ForegroundColor DarkGray

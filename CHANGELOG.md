@@ -7,6 +7,22 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 
 ---
 
+## [0.7.0] - 2026-08-15
+
+Corte alineado con el SDK de Claude Code. Rompe superficie publica.
+
+- 10 agentes (`model: inherit`): 8 de nucleo, Selina si hay frontend, Lucius opcional.
+- 11 skills planas en `skills/<nombre>/SKILL.md`.
+- Documentación viva en `docs/project/`: índice, arquitectura, compliance, threat-model y dependencias. El Escriba sincroniza por fase. ADRs en `docs/adr/`.
+- SessionStart inyecta briefing real y el protocolo de hablar sin slash. `retomar` trae la última decisión. `hygiene` bloquea ship si la UAT está abierta o los docs vivos siguen en esqueleto. `cierre` deja un bloque pegable tras quick/fix.
+- UserPromptSubmit (`prompt-route.py`) sugiere la ruta si el texto no trae slash. SessionEnd escribe `.claude/alfred-last-cierre.md` al salir.
+- 18 comandos publicados, incluido `/alfred-dev:alfred`. Continuidad pública: `alfred`, `progress` y `retomar`. `next` y `search` quedan internos. `resume` pasa a `retomar`, `verify` a `uat`, `config` a `ajustes`.
+- Sin stop-hook Ralph. SessionStart no reescribe `settings.json` ni `Bash(python3 *)`.
+- Secret-guard cubre Write, Edit, Bash y tools MCP de escritura.
+- MCP arranca `mcp/memory_server.py` con FastMCP si el paquete `mcp` esta instalado.
+- Agent Teams solo si el usuario ya lo tiene activo. El plugin no escribe esa variable.
+- Memory UI 0.0.4: no importa el historial de Git al abrir; si no hay sesiones ni decisiones, no mezcla consejos operativos. `/alfred-dev:memory-ui stop` cierra el servidor y `SessionEnd` lo detiene al salir.
+
 ## [0.6.1] - 2026-06-22
 
 ### Fixed
@@ -36,7 +52,7 @@ y el proyecto usa [versionado semántico](https://semver.org/lang/es/).
 - **Smoke de continuidad ampliado**: `npm run release:audit:continuity` recorre también prefetch, handoff explícito, bypass del stop hook, normalización de kanban, Memory UI sin abrir navegador y cierre seguro de sync-github sin tablero.
 - **Hooks en formato exec**: `hooks.json` usa `command` + `args` para resolver `${CLAUDE_PLUGIN_ROOT}` sin tokenizacion shell y con rutas que contienen espacios.
 - **Wrapper helper-first resiliente**: `.claude/alfred-continuity.py` ya no queda atado solo a una ruta de cache embebida; resuelve `CLAUDE_PLUGIN_ROOT` y puede localizar la cache activa del plugin.
-- **Runner de matriz manual humana**: `npm run release:audit:manual` ejecuta prompts con `claude -p`, fixtures temporales y salida JSON para revisar humanidad, honestidad y promesas reales antes de publicar; la matriz cubre los 26 comandos públicos, 40 opciones públicas y 4 contratos runtime de `/update`, y falla en el audit si queda alguna fuera.
+- **Runner de matriz manual humana**: `npm run release:audit:manual` ejecuta prompts con `claude -p`, fixtures temporales y salida JSON para revisar humanidad, honestidad y promesas reales antes de publicar; la matriz cubre los 20 comandos públicos, 42 opciones públicas y 4 contratos runtime de `/update`, y falla en el audit si queda alguna fuera.
 - **Config interactiva cerrada como contrato**: las 7 secciones de `/alfred-dev:config` quedan cubiertas por preview antes/después y round-trip de persistencia en tests y auditoría de release.
 - **Empaquetado publicable auditado**: `npm run release:audit` ejecuta `npm pack --dry-run --json` y verifica que el paquete contiene la superficie real del plugin sin caches, sesiones locales, tests ni builds generados.
 - **Autopilot sin opciones fantasma**: README, web y prompts aclaran que autopilot se activa por configuración/estado, no con un flag público inexistente, y que deploy sigue exigiendo confirmación humana.

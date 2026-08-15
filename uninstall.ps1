@@ -64,6 +64,14 @@ function Write-JsonFileAtomic {
     }
 }
 
+function Test-EmptyDirectory {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return $false
+    }
+    return $null -eq (Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue)
+}
+
 function Remove-GlobalAlfredAlias {
     $removed = $false
 
@@ -71,15 +79,14 @@ function Remove-GlobalAlfredAlias {
         $content = Get-Content $GlobalAliasFile -Raw -Encoding UTF8
         if ($content -match "Alfred Dev global alias") {
             Remove-Item $GlobalAliasFile -Force
-            if (Test-Path $GlobalAliasDir -PathType Container -and
-                -not (Get-ChildItem $GlobalAliasDir -Force -ErrorAction SilentlyContinue)) {
+            if (Test-EmptyDirectory $GlobalAliasDir) {
                 Remove-Item $GlobalAliasDir -Force
             }
             Write-Ok "Alias global /alfred eliminado"
             $removed = $true
         }
         else {
-            Write-Info "Se conserva $GlobalAliasFile: no parece ser el alias de Alfred Dev"
+            Write-Info "Se conserva ${GlobalAliasFile}: no parece ser el alias de Alfred Dev"
         }
     }
 
@@ -87,15 +94,14 @@ function Remove-GlobalAlfredAlias {
         $content = Get-Content $GlobalCommandAliasFile -Raw -Encoding UTF8
         if ($content -match "Alfred Dev global alias") {
             Remove-Item $GlobalCommandAliasFile -Force
-            if (Test-Path $GlobalCommandAliasDir -PathType Container -and
-                -not (Get-ChildItem $GlobalCommandAliasDir -Force -ErrorAction SilentlyContinue)) {
+            if (Test-EmptyDirectory $GlobalCommandAliasDir) {
                 Remove-Item $GlobalCommandAliasDir -Force
             }
             Write-Ok "Shim de comando global /alfred eliminado"
             $removed = $true
         }
         else {
-            Write-Info "Se conserva $GlobalCommandAliasFile: no parece ser el alias de Alfred Dev"
+            Write-Info "Se conserva ${GlobalCommandAliasFile}: no parece ser el alias de Alfred Dev"
         }
     }
 

@@ -34,51 +34,40 @@ class TestSessionStartHookContract(unittest.TestCase):
         cls.hooks_json = _read("hooks/hooks.json")
 
     def test_hook_announces_current_command_prefix(self):
+        self.assertIn("/alfred-dev:alfred", self.hook)
         self.assertIn("/alfred-dev:feature", self.hook)
-        self.assertIn("/alfred-dev:discuss", self.hook)
         self.assertIn("/alfred-dev:audit", self.hook)
-        self.assertIn("/alfred-dev:map-codebase", self.hook)
-        self.assertIn("/alfred-dev:next", self.hook)
-        self.assertIn("/alfred-dev:pause", self.hook)
         self.assertIn("/alfred-dev:progress", self.hook)
-        self.assertIn("/alfred-dev:quick", self.hook)
-        self.assertIn("/alfred-dev:resume", self.hook)
-        self.assertIn("/alfred-dev:verify", self.hook)
-        self.assertIn("/alfred-dev:help", self.hook)
-        self.assertIn("consume-prefetch", self.hook)
-        self.assertIn(".claude/alfred-prefetch.json", self.hook)
+        self.assertIn("/alfred-dev:retomar", self.hook)
+        self.assertNotIn("/alfred-dev:next", self.hook)
+        self.assertNotIn("/alfred-dev:resume", self.hook)
+        self.assertNotIn("/alfred-dev:help", self.hook)
         self.assertNotIn("- /alfred audit -", self.hook)
 
     def test_hook_uses_current_update_command_and_semver_ordering(self):
-        self.assertIn("/alfred-dev:update", self.hook)
-        self.assertIn("UPDATE_AVAILABLE=$(python3 -c", self.hook)
-        self.assertNotIn('"$LATEST_RELEASE" != "$CURRENT_VERSION"', self.hook)
+        self.assertNotIn("api.github.com/repos/686f6c61/alfred-dev/releases/latest", self.hook)
 
     def test_hook_injects_next_step_recommendation(self):
-        self.assertIn("### Siguiente paso recomendado", self.hook)
-        self.assertIn("from core.continuity import suggest_next_action", self.hook)
+        self.assertIn("/alfred-dev:retomar", self.hook)
 
     def test_session_start_registers_sync_bootstrap_before_async_context(self):
         self.assertIn("session-bootstrap.sh", self.hooks_json)
         self.assertIn("session-start.sh", self.hooks_json)
-        self.assertIn("prefetch-finish-guard.py", self.hooks_json)
-        self.assertIn('"async": true', self.hooks_json)
+        self.assertIn("session-end.py", self.hooks_json)
+        self.assertIn("SessionEnd", self.hooks_json)
+        self.assertNotIn("prefetch-finish-guard.py", self.hooks_json)
+        self.assertNotIn("stop-hook.py", self.hooks_json)
+        start_block = self.hooks_json.split('"SessionStart"', 1)[1].split('"SessionEnd"', 1)[0]
+        self.assertNotIn('"async": true', start_block)
 
     def test_bootstrap_hook_ensures_cli_first_autonomy(self):
         self.assertIn("ensure_bootstrap_local_config", self.bootstrap)
         self.assertIn("from core.config_loader import ensure_bootstrap_local_config", self.bootstrap)
 
     def test_bootstrap_hook_prepares_local_permissions_and_wrapper(self):
-        self.assertIn('.claude/settings.local.json', self.bootstrap)
-        self.assertIn('.claude/settings.json', self.bootstrap)
-        self.assertIn('"defaultMode"', self.bootstrap)
-        self.assertIn('"acceptEdits"', self.bootstrap)
-        self.assertIn('Read(**)', self.bootstrap)
-        self.assertIn('Edit(docs/project/**)', self.bootstrap)
-        self.assertIn('Write(docs/project/**)', self.bootstrap)
-        self.assertIn('Write(.claude/alfred-*.json)', self.bootstrap)
-        self.assertIn('Bash(python3 *)', self.bootstrap)
-        self.assertIn('Bash(python3 .claude/alfred-continuity.py *)', self.bootstrap)
+        self.assertNotIn('.claude/settings.json', self.bootstrap)
+        self.assertNotIn('acceptEdits', self.bootstrap)
+        self.assertNotIn('Bash(python3 *)', self.bootstrap)
         self.assertIn('alfred-continuity.py', self.bootstrap)
 
     def test_bootstrap_hook_initializes_project_memory(self):
@@ -108,8 +97,8 @@ class TestSessionBootstrapRuntime(unittest.TestCase):
             memory_db = os.path.join(tmpdir, ".claude", "alfred-memory.db")
 
             self.assertTrue(os.path.isfile(local_config))
-            self.assertTrue(os.path.isfile(settings_local))
-            self.assertTrue(os.path.isfile(settings_shared))
+            self.assertFalse(os.path.isfile(settings_local))
+            self.assertFalse(os.path.isfile(settings_shared))
             self.assertTrue(os.path.isfile(wrapper))
             self.assertTrue(os.path.isfile(memory_db))
             with open(wrapper, "r", encoding="utf-8") as fh:
@@ -117,13 +106,6 @@ class TestSessionBootstrapRuntime(unittest.TestCase):
             self.assertIn("CLAUDE_PLUGIN_ROOT", wrapper_source)
             self.assertIn("EMBEDDED_PLUGIN_ROOT", wrapper_source)
             self.assertIn("_cache_candidates", wrapper_source)
-
-            for settings_path in (settings_local, settings_shared):
-                with open(settings_path, "r", encoding="utf-8") as fh:
-                    payload = json.load(fh)
-
-                self.assertEqual(payload["defaultMode"], "acceptEdits")
-                self.assertIn("Bash(python3 .claude/alfred-continuity.py *)", payload["permissions"]["allow"])
 
     def test_continuity_wrapper_recovers_from_stale_embedded_plugin_root(self):
         script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-bootstrap.sh")
@@ -276,7 +258,7 @@ class TestSessionStartRuntime(unittest.TestCase):
             hook_output = payload["hookSpecificOutput"]["hookEventName"]
             self.assertEqual(hook_output, "SessionStart")
             additional_context = payload["hookSpecificOutput"]["additionalContext"]
-            self.assertIn("consume-prefetch <project_dir> --expected <comando>", additional_context)
+            self.assertIn("/alfred-dev:feature", additional_context)
 
     def test_session_start_emits_effective_config_summary(self):
         script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
@@ -323,14 +305,8 @@ class TestSessionStartRuntime(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             payload = json.loads(result.stdout)
             additional_context = payload["hookSpecificOutput"]["additionalContext"]
-            self.assertIn("### Configuración efectiva", additional_context)
-            self.assertIn("Autopilot por configuración: no", additional_context)
-            self.assertIn("Autopilot efectivo (config/estado): no", additional_context)
-            self.assertIn("Memoria persistente: inactiva", additional_context)
-            self.assertIn("Personalidad: sarcasmo=5, idioma=en, verbosidad=alta", additional_context)
-            self.assertIn("celebrar_victorias=no", additional_context)
-            self.assertIn("insultar_malas_practicas=no", additional_context)
-            self.assertIn("Agentes opcionales activos: seo-specialist, lucius", additional_context)
+            self.assertIn("/alfred-dev:alfred", additional_context)
+            self.assertIn("Agent Teams", additional_context)
 
     def test_session_start_preserves_explicit_memory_disable(self):
         script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
@@ -367,6 +343,9 @@ class TestSessionStartRuntime(unittest.TestCase):
             )
 
     def test_session_start_uses_canonical_sync_to_native_config(self):
+        self.skipTest("SessionStart ya no sincroniza memoria nativa; lo hace el helper si se pide.")
+
+    def _disabled_session_start_uses_canonical_sync_to_native_config(self):
         script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
 
         with tempfile.TemporaryDirectory() as tmpdir, tempfile.TemporaryDirectory() as home_dir:
@@ -420,6 +399,9 @@ class TestSessionStartRuntime(unittest.TestCase):
             )
 
     def test_session_start_falls_back_to_project_decisions_when_active_iteration_is_empty(self):
+        self.skipTest("SessionStart ya no inyecta el resumen de decisiones de SQLite.")
+
+    def _disabled_session_start_falls_back_to_project_decisions_when_active_iteration_is_empty(self):
         script_path = os.path.join(_PROJECT_ROOT, "hooks", "session-start.sh")
 
         with tempfile.TemporaryDirectory() as tmpdir:

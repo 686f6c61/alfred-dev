@@ -31,7 +31,7 @@ class TestManualReviewGate(unittest.TestCase):
         case_ids = [case["case_id"] for case in cases]
         plugin_dir = Path(ROOT).resolve()
         evidence = {
-            "version": "0.6.0",
+            "version": "0.7.0",
             "plugin_dir": str(plugin_dir),
             "plugin_source": "worktree",
             "plugin_surface": manual_smoke._plugin_surface_snapshot(plugin_dir),
@@ -54,7 +54,7 @@ class TestManualReviewGate(unittest.TestCase):
             "runtime_coverage": manual_smoke._case_runtime_coverage(),
         }
         review = {
-            "version": "0.6.0",
+            "version": "0.7.0",
             "evidence_file": "",
             "evidence_sha256": "",
             "approved": True,

@@ -4,12 +4,9 @@ Alfred Dev ya no instala el plugin copiando repositorios ni editando a mano los
 JSON internos de Claude Code. El flujo actual delega la instalación en la CLI
 nativa de Claude Code y solo añade una capa de verificación y parcheo donde el
 plugin lo necesita de verdad: detección de Python 3.10+ y ajuste de `hooks.json`
-y de `.mcp.json` cuando `python3` del sistema no es compatible. Además
-materializa el alias corto `/alfred` como skill personal global invocable en
-`~/.claude/skills/alfred/SKILL.md` y elimina el shim personal obsoleto
-`~/.claude/commands/alfred.md` si existe, porque los skills empaquetados en un plugin se
-cargan con namespace (`/alfred-dev:*`) y el comando corto debe existir fuera del
-paquete.
+y de `.mcp.json` cuando `python3` del sistema no es compatible. No pisa
+`~/.claude/skills` ni crea `~/.claude/commands/alfred.md`. La entrada es
+`/alfred-dev:alfred`.
 
 Esto importa porque la cadena de carga sigue existiendo, pero el responsable de
 materializarla ya no es un script artesanal del plugin, sino `claude plugin
@@ -59,9 +56,8 @@ forma silenciosa, pero el contrato del instalador actual es este:
 - verificar requisitos locales mínimos;
 - registrar o refrescar la fuente GitHub global de Alfred Dev;
 - reinstalar o actualizar el plugin mediante la CLI nativa;
-- crear o refrescar el alias personal global `/alfred`;
-- eliminar o mover el shim personal obsoleto `~/.claude/commands/alfred.md`
-  para evitar duplicados en el menú de slash commands;
+- no pisar `~/.claude/skills` ni crear `~/.claude/skills/alfred/SKILL.md`;
+- no crear `~/.claude/commands/alfred.md`;
 - parchear la instalación para usar un Python compatible si hace falta;
 - recordar que `/reload-plugins` aplica los cambios en la sesión actual, con
   reinicio de Claude Code como fallback si MCP/caché lo exige o el plugin no
@@ -77,14 +73,10 @@ forma silenciosa, pero el contrato del instalador actual es este:
 | 4 | Registro de instalación | `installed_plugins.json` | `claude plugin install/uninstall` |
 | 5 | Habilitación | `settings.json > enabledPlugins` | `claude plugin install/uninstall` |
 
-El alias corto no forma parte de esos cinco eslabones del plugin: es un skill
-personal global invocable en `~/.claude/skills/alfred/SKILL.md`. El plugin
-empaqueta `skills/alfred/alfred/SKILL.md` como fuente oculta
-(`user-invocable: false`) y el instalador materializa la copia personal con
-`user-invocable: true` para que `/alfred` aparezca una sola vez en el menú de
-cualquier proyecto sin depender del namespace del plugin. Si queda un
-`~/.claude/commands/alfred.md` de instalaciones anteriores, se elimina o se
-mueve a backup para no duplicar el selector.
+No hay alias corto. La entrada es `/alfred-dev:alfred`. El instalador no
+escribe `~/.claude/skills/alfred/SKILL.md` ni `~/.claude/commands/alfred.md`.
+Si queda un shim de instalaciones 0.6, el desinstalador puede retirarlo; el
+instalador no lo recrea.
 
 ---
 
@@ -103,7 +95,7 @@ sequenceDiagram
     end
     box rgb(50, 40, 60) Ficheros locales
         participant P as "~/.claude/plugins/"
-        participant A as "~/.claude/skills/alfred/"
+        participant A as "~/.claude/skills/ (sin tocar)"
     end
 
     U->>S: Ejecutar instalador remoto
@@ -115,7 +107,7 @@ sequenceDiagram
     C-->>P: Registrar fuente global en known_marketplaces.json
     S->>C: claude plugin install alfred-dev@alfred-dev --scope user
     C-->>P: Refrescar cache + installed_plugins + enabledPlugins
-    S->>A: Copiar SKILL.md invocable y eliminar shim obsoleto de /alfred
+    S->>A: No pisa ~/.claude/skills ni crea alias /alfred
     S->>P: Parchar hooks.json / .mcp.json si python3 no sirve
     S-->>U: Ejecuta /reload-plugins; reinicia si MCP/caché lo exige
 ```
@@ -171,10 +163,8 @@ Una vez verificado el entorno:
 5. ejecuta `claude plugin marketplace add 686f6c61/alfred-dev --scope user`;
 6. confirma que Claude Code dejó registrada la fuente GitHub en `known_marketplaces.json`;
 7. ejecuta `claude plugin install alfred-dev@alfred-dev --scope user`;
-8. copia `skills/alfred/alfred/SKILL.md` desde la caché instalada a
-   `~/.claude/skills/alfred/SKILL.md` con `user-invocable: true` y elimina o
-   mueve `~/.claude/commands/alfred.md` para que `/alfred` sea global sin
-   duplicarse en el selector;
+8. no pisa `~/.claude/skills` ni crea `~/.claude/skills/alfred/SKILL.md` ni
+   `~/.claude/commands/alfred.md`;
 9. si el `python3` por defecto no es válido pero sí hay otro Python
    compatible, parchea la instalación para que hooks y MCP usen esa ruta.
 
@@ -183,12 +173,9 @@ El instalador público normaliza la instalación a **global de usuario**
 `project`, los elimina primero y luego reinstala por la ruta global. Incluso
 cuando se audita una copia local del worktree, la fuente debe registrarse con
 `claude plugin marketplace add "$PWD" --scope user` y la instalación debe
-hacerse con `claude plugin install alfred-dev@alfred-dev --scope user`; no se usa `--scope local` como ruta soportada. Si
-instalas el worktree a mano con esos comandos directos, rematerializa también
-el alias personal global desde `skills/alfred/alfred/SKILL.md` a
-`~/.claude/skills/alfred/SKILL.md`, cambiando `user-invocable: false` por
-`user-invocable: true`, y elimina `~/.claude/commands/alfred.md` si es el shim
-obsoleto de Alfred Dev. Si
+hacerse con `claude plugin install alfred-dev@alfred-dev --scope user`; no se usa `--scope local` como ruta soportada. Esos comandos
+directos tampoco crean `~/.claude/skills/alfred/SKILL.md` ni
+`~/.claude/commands/alfred.md`. Si
 `/alfred-dev:update` detecta una
 instalación `local` o `project` heredada, avisa y la convierte a instalación
 global de usuario en vez de conservar ese scope.
@@ -234,8 +221,8 @@ claude mcp get plugin:alfred-dev:alfred-memory
 Debe aparecer como `Status: ✔ Connected`. En una instalación global de usuario
 `--scope user`, `claude mcp list` desde otro directorio permite ver la lista sin
 el duplicado de proyecto. Durante una auditoría del worktree, registra también
-la fuente local con `--scope user`; así `/alfred` y `/alfred-dev:*` siguen
-disponibles fuera del repo.
+la fuente local con `--scope user`; así `/alfred-dev:*` sigue
+disponible fuera del repo.
 
 ---
 
@@ -363,9 +350,9 @@ la ruta global de usuario salvo en instalaciones `managed`:
   cualquier rastro `local` o `project` de Alfred Dev en el contexto actual,
   borra el checkout local obsoleto del marketplace si existe, ejecuta
   `claude plugin marketplace update alfred-dev` cuando la CLI lo permite y
-  mantiene el parche de Python compatible para hooks y MCP. También refresca
-  `~/.claude/skills/alfred/SKILL.md`, el alias personal global que hace visible
-  `/alfred` sin namespace, y elimina el shim obsoleto de commands si existe. Si
+  mantiene el parche de Python compatible para hooks y MCP. No recrea
+  `~/.claude/skills/alfred/SKILL.md` ni un alias `/alfred`. Si queda un shim
+  0.6 en `~/.claude/commands/alfred.md`, el desinstalador puede retirarlo. Si
   el scope detectado era `local` o `project`, el
   comando lo explica antes: la actualización normaliza a instalación global de
   usuario.
@@ -513,7 +500,7 @@ que la CLI de Claude Code reconstruya las entradas del plugin.
 | Sintoma | Causa probable | Solucion |
 |---------|---------------|----------|
 | Plugin invisible en Claude Code | Validación fallida, sesión sin recargar o falta algun eslabon | `claude plugin list/details`, `/plugin`, `/reload-plugins`, luego verificar los 5 eslabones |
-| `/alfred` no aparece en el menú | Falta `~/.claude/skills/alfred/SKILL.md`, la copia personal no tiene `user-invocable: true` o la sesión arrancó antes de que existiera la carpeta personal de skills | Reinstalar con `install.sh`, ejecutar `/reload-plugins --force`; si el menú sigue sin vigilar la carpeta nueva, reiniciar Claude Code |
+| `/alfred-dev:alfred` no aparece en el menú | Plugin no habilitado, sesión sin recargar o marketplace stale | `claude plugin details alfred-dev@alfred-dev`, `/reload-plugins --force`; reinstalar con `install.sh` si la caché está vieja |
 | "marketplace no registrado" | `known_marketplaces.json` sin la entrada | Reinstalar con `install.sh` |
 | Update dice OK pero sigue una versión antigua | Checkout local del marketplace obsoleto | Reinstalar con `install.sh`; manualmente, `claude plugin marketplace update alfred-dev` y `claude plugin update alfred-dev@alfred-dev` |
 | Plugin instalado pero no aparece | Sesión sin recargar plugins | Ejecutar `/reload-plugins`; reiniciar si MCP/caché lo exige |

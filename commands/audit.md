@@ -1,5 +1,7 @@
 ---
 description: "Auditoría completa del proyecto con 4 agentes en paralelo"
+disable-model-invocation: true
+allowed-tools: Bash(python3 .claude/alfred-continuity.py *), Read, Write, Edit, Agent
 ---
 
 # /alfred-dev:audit
@@ -36,7 +38,7 @@ ejecutar la auditoría respetando el preflight y las gates.
 
 ## Composición dinámica de equipo
 
-Antes de lanzar la auditoría, localiza el fichero compartido de composición dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces la ruta exacta, búscala primero en la instalación del plugin (por ejemplo, bajo `~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y léela desde ahí.
+Antes de lanzar la auditoría, lee `${CLAUDE_PLUGIN_ROOT}/commands/_composicion.md`. Si `CLAUDE_PLUGIN_ROOT` no está, busca `commands/_composicion.md` en la instalación del plugin.
 
 Después, sigue el protocolo de composición dinámica (pasos 1 a 4). Si por cualquier motivo no consigues localizar ese fichero, NO bloquees `/alfred-dev:audit` solo por esa búsqueda: continúa con el equipo de núcleo por defecto (qa-engineer, security-officer, architect, tech-writer) y deja constancia breve de la degradación.
 
@@ -45,6 +47,14 @@ efímera o por fallback a `.claude/alfred-dev.local.md`), consúltalo siempre
 como fuente runtime canónica antes de ejecutar la auditoría. En `audit`, salvo
 `lucius`, el resto de opcionales quedan fuera del loop estándar y deben
 tratarse explícitamente como “bajo demanda”.
+
+Lee `${CLAUDE_PLUGIN_ROOT}/commands/_docs_vivas.md`. El `security-officer`
+rellena `docs/project/compliance.md` y actualiza el threat-model si el mapa
+cambió. Antes de cerrar:
+
+```bash
+python3 .claude/alfred-continuity.py check-project-docs "$PWD" --command audit
+```
 
 ## Preflight de SonarQube
 

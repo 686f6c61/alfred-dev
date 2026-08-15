@@ -37,7 +37,7 @@ class TestProgressCommandContract(unittest.TestCase):
 class TestStatusCommandContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.command = _read("commands/status.md")
+        cls.command = _read("commands/progress.md")
 
     def test_status_mentions_sonia_sources(self):
         self.assertIn("docs/project/discovery.md", self.command)
@@ -45,9 +45,8 @@ class TestStatusCommandContract(unittest.TestCase):
         self.assertIn("docs/project/traceability.md", self.command)
         self.assertIn("docs/project/kanban/in-progress.md", self.command)
         self.assertIn("docs/project/kanban/blocked.md", self.command)
-        self.assertIn('allow-stop-once "$PWD" --command "/alfred-dev:status"', self.command)
-        self.assertIn('python3 .claude/alfred-continuity.py', self.command)
-        self.assertIn("/alfred-dev:progress", self.command)
+        self.assertIn('python3 .claude/alfred-continuity.py progress "$PWD"', self.command)
+        self.assertIn("docs/project/kanban", self.command)
 
 
 if __name__ == "__main__":

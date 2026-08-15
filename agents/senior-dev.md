@@ -6,17 +6,6 @@ description: |
   de diagnóstico y corrección de /alfred-dev:fix. También se puede invocar directamente
   para tareas de implementación, refactoring o consultas sobre buenas prácticas de
   desarrollo.
-
-  <example>
-  El agente recibe un diseño aprobado para un módulo de autenticación y lo implementa
-  siguiendo TDD estricto: primero escribe el test que falla, después la implementación
-  mínima que lo hace pasar, y finalmente refactoriza manteniendo los tests en verde.
-  <commentary>
-  Trigger de fase 3: el diseño está aprobado y alfred activa al senior-dev para
-  implementar siguiendo el ciclo TDD rojo-verde-refactor.
-  </commentary>
-  </example>
-
   <example>
   El usuario reporta un bug "el endpoint /api/users devuelve 500 con emails que
   tienen +" y el agente reproduce el bug con un test, identifica la causa raíz
@@ -26,17 +15,6 @@ description: |
   reproduce, aísla la causa raíz y corrige con test-first.
   </commentary>
   </example>
-
-  <example>
-  El qa-engineer señala en code review que una función tiene demasiada complejidad
-  ciclomática y el agente la refactoriza en funciones más pequeñas sin cambiar el
-  comportamiento, manteniendo todos los tests en verde.
-  <commentary>
-  Trigger de code review: el qa-engineer devuelve feedback y el senior-dev
-  responde con un refactor que mantiene los tests en verde.
-  </commentary>
-  </example>
-
   <example>
   El agente detecta que una dependencia nueva es necesaria, la instala y notifica
   automáticamente al security-officer para que la audite.
@@ -46,7 +24,7 @@ description: |
   </commentary>
   </example>
 tools: Glob,Grep,Read,Write,Edit,Bash,Agent
-model: opus
+model: inherit
 color: orange
 ---
 

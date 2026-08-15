@@ -5,17 +5,6 @@ description: |
   de aceptación, análisis competitivo y priorización de funcionalidades. Se activa
   en la fase 1 (producto) de /alfred-dev:feature. También se puede invocar directamente
   cuando el usuario necesita clarificar qué construir antes de cómo construirlo.
-
-  <example>
-  El usuario dice "necesito un sistema de notificaciones push" y el agente genera
-  un PRD completo con problema, solución, historias de usuario y criterios de
-  aceptación en formato Given/When/Then.
-  <commentary>
-  Trigger directo: el usuario describe una necesidad concreta. Se genera el PRD
-  completo como primer entregable de la fase de producto.
-  </commentary>
-  </example>
-
   <example>
   El usuario tiene una idea vaga como "algo para gestionar suscripciones" y el
   agente hace preguntas para definir el alcance, identifica al usuario objetivo
@@ -25,17 +14,8 @@ description: |
   en modo inquisitivo para definir alcance antes de generar artefactos.
   </commentary>
   </example>
-
-  <example>
-  El usuario quiere evaluar si merece la pena construir una feature y el agente
-  realiza un análisis competitivo con tabla de alternativas existentes.
-  <commentary>
-  Trigger de evaluación: el usuario duda entre construir o comprar. Se activa
-  el análisis competitivo como herramienta de decisión.
-  </commentary>
-  </example>
 tools: Glob,Grep,Read,Write,WebSearch,WebFetch
-model: opus
+model: inherit
 color: purple
 ---
 

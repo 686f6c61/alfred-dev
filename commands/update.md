@@ -1,5 +1,7 @@
 ---
 description: "Comprueba y aplica actualizaciones del plugin Alfred Dev"
+disable-model-invocation: true
+allowed-tools: Bash, Read
 ---
 
 # /alfred-dev:update
@@ -113,8 +115,9 @@ Informa de que no hay actualizaciones disponibles y muestra la version actual. F
 
 Si el usuario acepta, usa siempre la ruta global de usuario salvo que el scope
 sea `managed`. Alfred Dev no conserva instalaciones `local` ni `project` al
-actualizar desde este comando: las normaliza a `--scope user` para que `/alfred`
-y `/alfred-dev:*` funcionen en cualquier proyecto del usuario.
+actualizar desde este comando: las normaliza a `--scope user` para que
+`/alfred-dev:*` funcione en cualquier proyecto del usuario. No rematerializa
+un alias global `/alfred` ni pisa `~/.claude/skills`.
 
 ### Scope user, local, project o desconocido
 
@@ -122,9 +125,7 @@ Para instalaciones de usuario, locales, de proyecto o con scope desconocido,
 usa el instalador soportado de Alfred Dev. Esta ruta vuelve a registrar la
 fuente GitHub con `--scope user`, reinstala mediante la CLI nativa de Claude
 Code, limpia/refresca el checkout local del marketplace para evitar caches
-obsoletas, rematerializa el alias personal global `/alfred` en
-`~/.claude/skills/alfred/SKILL.md`, elimina el shim personal obsoleto
-`~/.claude/commands/alfred.md` si existe y vuelve a aplicar el parche de Python compatible
+obsoletas y no pisa `~/.claude/skills`. Vuelve a aplicar el parche de Python compatible
 en `hooks.json` y `.mcp.json` cuando hace falta.
 
 Si el scope detectado era `local` o `project`, dilo antes de ejecutar: la
@@ -175,9 +176,8 @@ Claude Code.
 - No sustituyas esta ruta por `claude plugin update` directo salvo reparación
   manual: el instalador existe para evitar marketplaces locales obsoletos.
 - En scope `local` o `project`, no conserves el scope: convierte a instalacion
-  global de usuario con el instalador para que el alias personal global
-  `/alfred` exista en cualquier proyecto como skill personal invocable y para
-  que cualquier shim personal de comando heredado se elimine o respalde.
+  global de usuario con el instalador. No crees `~/.claude/commands/alfred.md`
+  ni un skill personal `/alfred`. La entrada es `/alfred-dev:alfred`.
 - Si el script de instalacion falla, muestra el error completo al usuario.
 - En Windows tambien funciona con WSL o Git Bash usando el instalador bash.
 

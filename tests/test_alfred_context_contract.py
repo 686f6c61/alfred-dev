@@ -31,11 +31,10 @@ class TestAlfredContextContract(unittest.TestCase):
         self.assertIn('python3 .claude/alfred-continuity.py next "$PWD" --json', self.command)
 
     def test_routes_to_operational_commands_first(self):
-        self.assertIn("actúa como `/alfred-dev:status`", self.command)
-        self.assertIn("actúa como `/alfred-dev:next`", self.command)
+        self.assertIn("actúa como `/alfred-dev:retomar`", self.command)
         self.assertIn("actúa como `/alfred-dev:pause`", self.command)
         self.assertIn("actúa como `/alfred-dev:progress`", self.command)
-        self.assertIn("actúa como `/alfred-dev:verify`", self.command)
+        self.assertIn("actúa como `/alfred-dev:uat`", self.command)
         self.assertIn("actúa como `/alfred-dev:update`", self.command)
         self.assertIn("actúa como `/alfred-dev:lucius`", self.command)
         self.assertIn("actúa como `/alfred-dev:discuss`", self.command)
@@ -51,7 +50,7 @@ class TestAlfredContextContract(unittest.TestCase):
         self.assertIn("/alfred-dev:fix", self.command)
         self.assertIn("/alfred-dev:spike", self.command)
         self.assertIn("/alfred-dev:audit", self.command)
-        self.assertIn("/alfred-dev:verify", self.command)
+        self.assertIn("/alfred-dev:uat", self.command)
         self.assertIn("/alfred-dev:ship", self.command)
         self.assertIn("/alfred-dev:lucius", self.command)
         self.assertIn("/alfred-dev:update", self.command)

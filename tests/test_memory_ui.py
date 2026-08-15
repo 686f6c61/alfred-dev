@@ -16,13 +16,22 @@ import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core.continuity import launch_memory_ui, stop_memory_ui, _save_memory_ui_state
+from core.continuity import (
+    assert_memory_ui_loopback_host,
+    is_memory_ui_stop_request,
+    launch_memory_ui,
+    render_memory_ui_markdown,
+    stop_memory_ui,
+    _save_memory_ui_state,
+)
 from core.memory import MemoryDB
 from core.memory_ui_server import (
     build_activity_payload,
     build_commits_payload,
+    build_graph_payload,
     build_iterations_payload,
     build_overview_payload,
+    build_snapshot_payload,
     build_timeline_payload,
 )
 
@@ -103,7 +112,7 @@ class TestMemoryUI(unittest.TestCase):
         self.assertIn("url", result)
         overview = self._get_json(f"{result['url']}/api/overview")
         self.assertEqual(overview["plugin_name"], "Alfred Dev")
-        self.assertEqual(overview["ui_version"], "0.0.2")
+        self.assertEqual(overview["ui_version"], "0.0.4")
         self.assertEqual(overview["stats"]["total_decisions"], 2)
         self.assertEqual(overview["stats"]["total_commits"], 1)
         self.assertEqual(overview["health"]["status"], "healthy")
@@ -310,21 +319,13 @@ class TestMemoryUI(unittest.TestCase):
         ) as fh:
             json.dump(
                 {
-                    "comando": "fix",
+                    "comando": "spike",
                     "descripcion": "Checkout roto",
-                    "fase_actual": "diagnostico",
+                    "fase_actual": "exploracion",
                     "fase_numero": 0,
                     "fases_completadas": [],
                     "equipo_sesion": {
                         "opcionales_activos": {
-                            "data-engineer": False,
-                            "performance-engineer": True,
-                            "github-manager": True,
-                            "librarian": True,
-                            "ux-reviewer": False,
-                            "seo-specialist": True,
-                            "copywriter": False,
-                            "i18n-specialist": False,
                             "lucius": True,
                         },
                         "infra": {"memoria": False},
@@ -346,7 +347,7 @@ class TestMemoryUI(unittest.TestCase):
         )
         self.assertIn("Origen runtime: configuración persistida.", team_card["items"])
         self.assertIn(
-            "Opcionales solo bajo demanda en este flujo: `github-manager`, `librarian`.",
+            "Opcionales solo bajo demanda en este flujo: `lucius`.",
             team_card["items"],
         )
 
@@ -641,7 +642,7 @@ class TestMemoryUI(unittest.TestCase):
         self.assertIn("url", payload)
         self.assertTrue(payload["url"].startswith("http://127.0.0.1:"))
 
-    def test_memory_ui_imports_recent_git_history_when_commits_are_missing(self):
+    def test_memory_ui_does_not_import_git_history_into_sqlite(self):
         repo = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(repo, ignore_errors=True))
         os.makedirs(os.path.join(repo, ".claude"), exist_ok=True)
@@ -663,8 +664,10 @@ class TestMemoryUI(unittest.TestCase):
         overview = self._get_json(f"{result['url']}/api/overview")
         commits = self._get_json(f"{result['url']}/api/commits")
 
-        self.assertGreaterEqual(overview["stats"]["total_commits"], 1)
-        self.assertEqual(commits["items"][0]["message"], "feat: crear demo base")
+        self.assertEqual(overview["stats"]["total_commits"], 0)
+        self.assertTrue(overview["memory_empty"])
+        self.assertEqual(overview["progress"], {})
+        self.assertEqual(commits["items"], [])
 
     def test_overview_describes_empty_non_git_workspace(self):
         empty_repo = tempfile.mkdtemp()
@@ -681,3 +684,127 @@ class TestMemoryUI(unittest.TestCase):
         overview = self._get_json(f"{result['url']}/api/overview")
         self.assertFalse(overview["workspace"]["is_git_repo"])
         self.assertFalse(overview["workspace"]["has_codebase"])
+        self.assertTrue(overview["memory_empty"])
+        self.assertEqual(overview["progress"], {})
+        self.assertEqual(overview["stats"]["total_commits"], 0)
+
+    def test_snapshot_filters_by_iteration_and_uses_active_graph_status(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        db = MemoryDB(db_path)
+        first_id = int(db.get_active_iteration()["id"])
+        second_id = db.start_iteration("fix", "Regresión de checkout")
+        db.log_decision(
+            title="Aislar el checkout",
+            chosen="Reproducir en fixture local",
+            rationale="Evita ruido de otros flujos",
+            iteration_id=second_id,
+        )
+        db.close()
+
+        snapshot = build_snapshot_payload(
+            self.tmpdir,
+            db_path,
+            host="127.0.0.1",
+            port=4560,
+            iteration_id=second_id,
+        )
+        titles = [item["title"] for item in snapshot["decisions"]["items"]]
+        graph_titles = [node["title"] for node in snapshot["graph"]["nodes"]]
+        self.assertEqual(snapshot["selected_iteration_id"], second_id)
+        self.assertIn("Aislar el checkout", titles)
+        self.assertNotIn("Usar OAuth 2.1", titles)
+        self.assertIn("Aislar el checkout", graph_titles)
+        self.assertTrue(all(node["status"] == "active" for node in snapshot["graph"]["nodes"]))
+        self.assertEqual(snapshot["timeline"]["iteration"]["id"], second_id)
+
+        first_snapshot = build_snapshot_payload(
+            self.tmpdir,
+            db_path,
+            host="127.0.0.1",
+            port=4560,
+            iteration_id=first_id,
+        )
+        first_titles = [item["title"] for item in first_snapshot["decisions"]["items"]]
+        self.assertIn("Usar OAuth 2.1", first_titles)
+        self.assertNotIn("Aislar el checkout", first_titles)
+
+    def test_graph_payload_defaults_to_active_status(self):
+        db_path = os.path.join(self.tmpdir, ".claude", "alfred-memory.db")
+        payload = build_graph_payload(db_path)
+        self.assertGreaterEqual(len(payload["nodes"]), 2)
+        self.assertTrue(all(node["status"] == "active" for node in payload["nodes"]))
+        self.assertIn("decision_id", payload["nodes"][0])
+        self.assertIn("chosen", payload["nodes"][0])
+
+    def test_loopback_host_is_required(self):
+        with self.assertRaises(RuntimeError):
+            assert_memory_ui_loopback_host("0.0.0.0")
+        with self.assertRaises(RuntimeError):
+            launch_memory_ui(
+                self.tmpdir,
+                open_browser_window=False,
+                host="0.0.0.0",
+                preferred_port=4570,
+            )
+        self.assertEqual(assert_memory_ui_loopback_host("127.0.0.1"), "127.0.0.1")
+
+    def test_stop_request_tokens_and_cli_raw_stop(self):
+        self.assertTrue(is_memory_ui_stop_request("stop"))
+        self.assertTrue(is_memory_ui_stop_request("cerrar ahora"))
+        self.assertFalse(is_memory_ui_stop_request(""))
+        self.assertFalse(is_memory_ui_stop_request("abrir"))
+
+        launched = launch_memory_ui(
+            self.tmpdir,
+            open_browser_window=False,
+            preferred_port=4571,
+        )
+        continuity_script = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "core",
+            "continuity.py",
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                continuity_script,
+                "memory-ui",
+                self.tmpdir,
+                "--json",
+                "--raw",
+                "cerrar",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertTrue(payload.get("stopped"))
+        self.assertIn("detenida", render_memory_ui_markdown(payload).lower())
+        self.assertFalse(
+            os.path.exists(os.path.join(self.tmpdir, ".claude", "alfred-memory-ui.json"))
+        )
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            try:
+                urllib.request.urlopen(f"{launched['url']}/api/healthz", timeout=0.3)
+            except Exception:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail("La Memory UI siguió respondiendo tras /memory-ui cerrar.")
+
+    def test_snapshot_endpoint_is_exposed(self):
+        result = launch_memory_ui(
+            self.tmpdir,
+            open_browser_window=False,
+            preferred_port=4572,
+        )
+        snapshot = self._get_json(f"{result['url']}/api/snapshot")
+        self.assertEqual(snapshot["overview"]["ui_version"], "0.0.4")
+        self.assertIn("items", snapshot["iterations"])
+        self.assertIn("nodes", snapshot["graph"])
+        self.assertIn("events", snapshot["timeline"])
+        self.assertTrue(snapshot["selected_iteration_id"])

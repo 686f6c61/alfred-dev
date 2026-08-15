@@ -2,7 +2,7 @@
 
 Los hooks son la pieza que conecta Alfred Dev con el ciclo de vida de Claude Code. Claude Code emite eventos en momentos clave de la sesión --al arrancar, antes de usar una herramienta, despues de usarla, al intentar parar-- y permite que los plugins registren scripts que se ejecutan en respuesta a esos eventos. Es, en esencia, un sistema de observadores tipificados: cada hook se suscribe a un tipo de evento concreto, con un filtro opcional (matcher) que restringe sobre que herramientas actua, y Claude Code se encarga de invocarlo en el momento preciso.
 
-Para Alfred Dev, los hooks son el sistema nervioso del plugin. Son lo que permite inyectar contexto al arrancar la sesión para que Claude sepa quien es Alfred y que puede hacer, bloquear escrituras que contengan secretos antes de que lleguen al disco, vigilar que los tests pasen despues de cada ejecución, detectar cambios en dependencias, corregir tildes, capturar eventos en la memoria persistente y evitar que el usuario cierre la sesión con trabajo pendiente. Sin los hooks, Alfred seria un conjunto de skills pasivos esperando a que alguien los invoque; con ellos, es un sistema proactivo que vigila, informa y protege en tiempo real.
+Para Alfred Dev, los hooks inyectan contexto al arrancar, bloquean secretos y comandos peligrosos, vigilan tests y evidencia, capturan memoria útil y cierran Memory UI al salir. No hay stop-hook Ralph ni hooks de ortografía o dependencias.
 
 ---
 
@@ -34,7 +34,7 @@ Los hooks se declaran en el fichero `hooks/hooks.json` del repositorio. Cada ent
 }
 ```
 
-El campo `matcher` solo debe usarse en eventos donde Claude Code lo soporta. En Alfred se usa para filtrar nombre de herramienta (`PreToolUse` y `PostToolUse`) o tipo de sesión (`SessionStart`). `UserPromptExpansion` también soporta filtrar por `command_name`, pero Alfred lo omite deliberadamente para capturar todos los slash commands y prompts MCP expandidos con el mismo hook fail-open. Si no se específica matcher, el hook se ejecuta para todas las invocaciones de ese evento. Esta distinción es importante: un hook de `PostToolUse` sin matcher se ejecutaria despues de cada operación de cualquier herramienta, lo que generaria un coste de rendimiento innecesario. En eventos como `UserPromptSubmit`, `Stop`, `PostToolBatch`, `TaskCreated`, `TaskCompleted`, `WorktreeCreate`, `WorktreeRemove`, `CwdChanged`, `MessageDisplay` y `TeammateIdle`, Claude Code ignora `matcher`; `release:audit` falla si Alfred declara un matcher ahí para no crear una falsa sensación de filtrado. El campo `if` solo se evalua en eventos de herramientas (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest` y `PermissionDenied`); en cualquier otro evento no debe usarse porque el handler no se ejecutaria.
+El campo `matcher` solo debe usarse en eventos donde Claude Code lo soporta. En Alfred se usa para filtrar nombre de herramienta (`PreToolUse` y `PostToolUse`) o tipo de sesión (`SessionStart`). Si no se específica matcher, el hook se ejecuta para todas las invocaciones de ese evento. Esta distinción es importante: un hook de `PostToolUse` sin matcher se ejecutaria despues de cada operación de cualquier herramienta, lo que generaria un coste de rendimiento innecesario. En eventos como `UserPromptSubmit`, `Stop`, `PostToolBatch`, `TaskCreated`, `TaskCompleted`, `WorktreeCreate`, `WorktreeRemove`, `CwdChanged`, `MessageDisplay` y `TeammateIdle`, Claude Code ignora `matcher`; `release:audit` falla si Alfred declara un matcher ahí para no crear una falsa sensación de filtrado. Este plugin no registra `Stop`, `UserPromptExpansion` ni `PreCompact`. Si se registrara `PreCompact`, el matcher `manual\|auto` omitido para cubrir ambos tipos de compactación. El campo `if` solo se evalua en eventos de herramientas (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest` y `PermissionDenied`); en cualquier otro evento no debe usarse porque el handler no se ejecutaria.
 
 ### Invocación
 
@@ -50,21 +50,21 @@ El script responde a traves de tres canales:
 
 | Canal | Propósito |
 |-------|-----------|
-| **stdout** | Respuesta estructurada (JSON). Claude Code lo interpreta segun el tipo de evento. En `SessionStart` y `PreCompact`, el campo `hookSpecificOutput.additionalContext` se inyecta como contexto de la conversacion. En `Stop`, un objeto con `"decision": "block"` impide que Claude se detenga. Cuando el aviso debe ser estructurado para el usuario, el JSON puede incluir `systemMessage`. |
-| **stderr** | Mensajes breves de diagnostico o aviso. Claude Code los muestra segun el evento; Alfred lo mantiene para avisos informativos de hooks existentes como calidad, dependencias y ortografia. |
+| **stdout** | Respuesta estructurada (JSON). Claude Code lo interpreta segun el tipo de evento. En `SessionStart` y `PreCompact`, el campo `hookSpecificOutput.additionalContext` se inyecta como contexto de la conversacion. El JSON debe incluir `hookSpecificOutput.hookEventName`. En `Stop`, un objeto con `"decision": "block"` impide que Claude se detenga. Cuando el aviso debe ser estructurado para el usuario, el JSON puede incluir `systemMessage`. |
+| **stderr** | Mensajes breves de diagnostico o aviso. Claude Code los muestra segun el evento; Alfred lo mantiene para avisos informativos de quality-gate y lecturas sensibles. |
 | **Exit code** | `0` indica operación permitida, `2` indica bloqueo (solo relevante en `PreToolUse`). Cualquier otro código no cero se trata como error del hook y se ignora. |
 
 ### Modos de ejecución
 
-Los hooks pueden ser **sincronos** o **asincronos**. En modo síncrono (por defecto), Claude Code espera a que el script termine antes de continuar. Esto es imprescindible para hooks que necesitan bloquear una operación, como `secret-guard.sh`. En modo asíncrono (`"async": true`), Claude Code lanza el script y continua sin esperar el resultado, lo que es apropiado para hooks de inyección de contexto como `session-start.sh`.
+Los hooks pueden ser **sincronos** o **asincronos**. En modo síncrono (por defecto), Claude Code espera a que el script termine antes de continuar. Esto es imprescindible para hooks que necesitan bloquear una operación, como `secret-guard.py`. En modo asíncrono (`"async": true`), Claude Code lanza el script y continua sin esperar el resultado, lo que es apropiado para hooks de inyección de contexto como `session-start.sh`.
 
 Cada hook tiene un **timeout configurable** en segundos. Si el script no termina dentro del plazo, Claude Code lo mata y continua como si no existiera. Este mecanismo protege contra scripts colgados que podrian bloquear la sesión indefinidamente.
 
 ---
 
-## Los 13 hooks de Alfred Dev
+## Los hooks de Alfred Dev 0.7.0
 
-Alfred Dev registra trece hooks visibles que cubren los eventos del ciclo de vida: arranque de sesión, envio de prompt, parada, antes de usar una herramienta, despues de usarla y compactación. Cada hook tiene una responsabilidad única y esta disenado para fallar de forma segura: si algo va mal internamente, el hook sale con código 0 (sin bloquear) excepto en los casos donde la politica de seguridad exige fail-closed.
+Alfred Dev registra diez scripts visibles en `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `PreToolUse` y `PostToolUse`. No hay stop-hook Ralph ni hooks de compactación o ortografía. Cada hook tiene una responsabilidad única y falla de forma segura: exit 0 salvo los bloqueos de secretos y comandos peligrosos.
 
 ### session-bootstrap.sh
 
@@ -86,49 +86,43 @@ embebido y, si esa instalación ya fue rotada, busca la cache activa de
 
 No inyecta contexto adicional en Claude ni hace llamadas de red. Precisamente por eso es síncrono: tiene que terminar antes de que el primer slash command dependa de esos artefactos.
 
+### prompt-route.py
+
+**Evento:** `UserPromptSubmit` -- **Matcher:** ninguno -- **Timeout:** 5 s -- **Asíncrono:** no
+
+Si el usuario escribe en castellano sin slash, clasifica la petición
+(`fix`, `quick`, `retomar`, `ship`…) e inyecta `additionalContext` para
+que Claude actúe como ese comando. Si ya hay `/alfred-dev:` o no hay
+señal, no dice nada. Fail-open.
+
+### session-end.py
+
+**Evento:** `SessionEnd` -- **Asíncrono:** si
+
+Detiene Memory UI y, si hubo sesión o evidencia de tests, escribe
+`.claude/alfred-last-cierre.md` con el bloque pegable. No inventa trabajo.
+
 ### session-start.sh
 
 **Evento:** `SessionStart` -- **Matcher:** `startup|resume|clear|compact` -- **Asíncrono:** si
 
-Este es el hook mas complejo del plugin y se ejecuta justo despues del bootstrap síncrono. Su misión es construir el contexto inicial que Claude recibe al arrancar, de modo que sepa quien es Alfred, que comandos tiene disponibles, cual es la configuración del proyecto y si hay una sesión de trabajo activa que retomar.
+Se ejecuta justo despues del bootstrap. Inyecta el protocolo de hablar sin
+slash y un briefing de tres lineas: sesion/handoff/UAT, ultima decision y
+ADRs aceptados. Si el helper falla, usa un fallback corto.
 
-El script recorre cinco fuentes de información, cada una opcional y con fallo silencioso:
+El briefing se construye en `core/session_brief.py` (estado, handoff, UAT,
+memoria y ADRs). No llama a GitHub. Las quality gates verificables con evidencia
+siguen en los flujos, no en este hook.
 
-1. **Presentacion del plugin.** Un bloque estático que describe el equipo de agentes (incluyendo SonIA), las rutas disponibles (`/alfred`, `map-codebase`, `discuss`, `next`, `pause`, `resume`, `progress`, `verify`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit`, `lucius`, `config`, `status`, `update`, `help`) y las reglas de operación (quality gates verificables con evidencia, TDD estricto, auditoria de seguridad por fase).
+La salida es un JSON con la clave `hookSpecificOutput.additionalContext` que Claude Code inyecta como contexto del sistema.
 
-2. **Configuración local del proyecto.** Lee `.claude/alfred-dev.local.md` si existe. Este fichero permite al usuario definir preferencias por proyecto (lenguaje, framework, convenciones específicas) que Claude incorpora a su comportamiento.
+### secret-guard.py
 
-3. **Estado de sesión activa.** Lee `.claude/alfred-dev-state.json` para detectar si hay un flujo en curso (feature, fix, spike...). Si lo hay y no esta completado, extrae el comando activo, la fase actual, la descripción y las fases completadas. Esto permite que Claude retome el trabajo donde lo dejo.
+**Evento:** `PreToolUse` -- **Matcher:** `Write|Edit|Bash|mcp__.*` -- **Timeout:** 5 s
 
-4. **Memoria persistente.** Si existe `.claude/alfred-memory.db`, consulta la base de datos SQLite a traves del modulo `core.memory` para obtener las ultimas cinco decisiones registradas y la iteracion activa, si la hay. Esto proporciona contexto histórico sin necesidad de releer toda la conversacion anterior.
+Este es el hook que bloquea escrituras de secretos. Se ejecuta **antes** de Write, Edit, Bash o una tool MCP de escritura, analiza el contenido y, si detecta un patron de secreto, impide la operación con exit code 2.
 
-5. **Comprobacion de actualizaciones.** Consulta la API de GitHub (`https://api.github.com/repos/686f6c61/alfred-dev/releases/latest`) con un timeout de 3 segundos. Si hay una versión nueva con formato semántico válido distinta de la actual, añade un aviso al contexto. La validación del formato de versión (`^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$`) evita inyección de contenido arbitrario desde la respuesta de la API.
-
-La salida es un JSON con la clave `hookSpecificOutput.additionalContext` que Claude Code inyecta como contexto del sistema. Para generar JSON seguro, el contenido se escapa a traves de `python3 -c "import json..."` en lugar de hacerlo con manipulación de cadenas en bash, lo que evita problemas con caracteres especiales.
-
-### stop-hook.py
-
-**Evento:** `Stop` -- **Matcher:** ninguno -- **Timeout:** 10 s
-
-El hook de Stop implementa un patron tomado del plugin ralph-loop: cuando Claude intenta detenerse, comprueba si hay trabajo pendiente y, en caso afirmativo, bloquea la parada con un mensaje que explica por que debe seguir.
-
-El mecanismo funciona así: lee `alfred-dev-state.json`, extrae la fase actual y la compara con la definición del flujo importada desde `core.orchestrator.FLOWS`. Si la sesión existe, no esta completada y la fase tiene una quality gate pendiente, emite un JSON con `"decision": "block"` y un mensaje que incluye:
-
-- El nombre del flujo activo y su descripción.
-- La fase actual con sus agentes asignados.
-- El tipo de gate pendiente (automático, seguridad, usuario, libre) con instrucciones específicas para cada caso.
-
-La razon de este hook es evitar que el usuario cierre Claude Code a mitad de un flujo, perdiendo el contexto de trabajo. El tono del mensaje es deliberadamente directo ("Eh eh eh, para el carro") porque la experiencia demuestra que los mensajes educados se ignoran con mas facilidad.
-
-Si no hay sesión activa, la sesión esta completada o el estado es incoherente, el hook sale con código 0 sin salida, dejando que Claude pare normalmente.
-
-### secret-guard.sh
-
-**Evento:** `PreToolUse` -- **Matcher:** `Write|Edit` -- **Timeout:** 5 s
-
-Este es el único hook que bloquea operaciones de forma activa. Se ejecuta **antes** de que Claude escriba o edite un fichero, analiza el contenido que pretende escribir y, si detecta un patron de secreto, impide la operación con exit code 2.
-
-La politica de seguridad es **fail-closed**: si el script no puede parsear la entrada de stdin o no puede cargar la fuente canónica de patrones (`core/secrets.py`), bloquea por precaucion. Esta decisión es deliberada: es preferible un falso positivo que obliga a reintentar a un falso negativo que deja un secreto expuesto en el repositorio.
+La politica de este hook es **fail-closed**: si el script no puede parsear la entrada de stdin o no puede cargar la fuente canónica de patrones (`core/secrets.py`), bloquea por precaucion. Esta decisión es deliberada: es preferible un falso positivo que obliga a reintentar a un falso negativo que deja un secreto expuesto en el repositorio.
 
 El script detecta 12 familias de patrones de secretos, mas un patron genérico de asignación de credenciales:
 
@@ -163,7 +157,7 @@ deterministas locales de Alfred (`python3 .claude/alfred-continuity.py ...`)
 para que los comandos helper-first puedan arrancar en headless sin pedir
 permiso manual en su primer uso.
 
-A diferencia de los hooks informativos, la politica de este hook es **fail-closed**: si no puede parsear la entrada, bloquea por precaucion. La razon es la misma que en `secret-guard.sh`: un guard de seguridad que falla en abierto deja la puerta abierta justo en el peor momento.
+A diferencia de los hooks informativos, la politica de este hook es **fail-closed**: si no puede parsear la entrada, bloquea por precaucion. La razon es la misma que en `secret-guard.py`: un guard de seguridad que falla en abierto deja la puerta abierta justo en el peor momento.
 
 El hook vigila 10 familias de patrones peligrosos:
 
@@ -196,29 +190,11 @@ El hook reconoce dos tipos de patrones:
 
 La politica es estrictamente informativa: siempre sale con exit 0. Si no puede parsear la entrada, sale silenciosamente sin avisar.
 
-### prefetch-finish-guard.py
-
-**Evento:** `PreToolUse` -- **Matcher:** `Read|Write|Edit|Glob|Grep` -- **Timeout:** 5 s
-
-Este hook cubre dos situaciones complementarias:
-
-1. si existe un prefetch helper-first pendiente para `alfred`, `map-codebase`,
-   `discuss`, `feature`, `fix`, `spike`, `ship`, `audit`, `lucius` o `memory-ui`,
-   bloquea lecturas y exploracion hasta que Claude ejecute `consume-prefetch`;
-2. justo despues de consumir con exito `.claude/alfred-prefetch.json`, bloquea
-   temporalmente lecturas, escrituras y exploracion adicional para forzar que
-   Claude responda con el resultado ya preparado por el helper en vez de rehacer
-   el trabajo manualmente.
-
-La barrera es transitoria: se limpia al llegar un prompt nuevo y tambien al
-cierre de sesion. Si el marcador ha expirado o esta corrupto, el hook lo borra
-y permite seguir sin bloquear.
-
 ### quality-gate.py
 
 **Evento:** `PostToolUse` -- **Matcher:** `Bash` -- **Timeout:** 10 s
 
-Este hook vigila la salida de los comandos Bash para detectar ejecuciones de tests con resultados fallidos. A diferencia de `secret-guard.sh`, no bloquea: informa por stderr con la voz de "El Rompe-cosas" para que Claude sepa que debe corregir los fallos antes de avanzar.
+Este hook vigila la salida de los comandos Bash para detectar ejecuciones de tests con resultados fallidos. A diferencia de `secret-guard.py`, no bloquea: informa por stderr con la voz de "El Rompe-cosas" para que Claude sepa que debe corregir los fallos antes de avanzar.
 
 El hook opera en dos fases. Primero determina si el comando ejecutado corresponde a un runner de tests, comparando la cadena del comando contra una lista de 17 patrones regex que cubren los ecosistemas mas comunes:
 
@@ -228,46 +204,17 @@ Los runners de una sola palabra (`pytest`, `jest`, `vitest`, `mocha`, etc.) usan
 
 Si el comando es un runner de tests, la segunda fase analiza stdout y stderr buscando patrones de fallo. Si la salida no permite decidir pero el runner devolvio `exit_code != 0`, tambien se considera fallo. El hook tolera tanto el payload historico `tool_output` como el payload actual `tool_result`, para no depender de una sola variante del runtime.
 
-### dependency-watch.py
+### evidence-guard.py
 
-**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit` -- **Timeout:** 10 s
+**Evento:** `PostToolUse` -- **Matcher:** `Bash` -- **Timeout:** 10 s
 
-Cada nueva dependencia es una superficie de ataque que el proyecto acepta de forma implícita. Este hook existe para hacer explícita esa decisión: cuando Claude modifica un manifiesto o lockfile de dependencias, emite un aviso en la voz de "El Paranoico" que invita a reflexionar sobre la necesidad, el mantenimiento y las implicaciones de seguridad de la dependencia anadida.
-
-El hook reconoce manifiestos de dependencias de 11 ecosistemas: Node.js (`package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `bun.lock`, `pnpm-workspace.yaml`), Python (`pyproject.toml`, `requirements.txt` y variantes, `requirements.in`, `constraints.txt` y variantes, `setup.py`, `setup.cfg`, `Pipfile`, `Pipfile.lock`, `poetry.lock`, `uv.lock`), Rust (`Cargo.toml`, `Cargo.lock`), Go (`go.mod`, `go.sum`), Ruby (`Gemfile`, `Gemfile.lock`), Elixir (`mix.exs`, `mix.lock`), PHP (`composer.json`, `composer.lock`), Java/Kotlin/Scala (`pom.xml`, `build.gradle`, `build.gradle.kts`), .NET (`packages.config`, `packages.lock.json`, `Directory.Packages.props`, `.csproj`, `.fsproj`, `.vbproj`) y Swift (`Package.swift`, `Package.resolved`).
-
-La detección se basa en el nombre base del fichero (sin ruta), lo que la hace independiente de la estructura de directorios del proyecto. En manifests mixtos como `package.json` o `pyproject.toml`, el hook intenta reducir ruido: si una edición solo toca metadata lateral (`scripts`, `version`, etc.) y no una sección de dependencias, permanece en silencio.
-
-### spelling-guard.py
-
-**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit` -- **Timeout:** 10 s
-
-Los proyectos que documentan en castellano necesitan coherencia ortografica, y las tildes son el error mas frecuente. Este hook actua como un corrector pasivo: despues de cada escritura o edicion, analiza el contenido buscando palabras castellanas comunes escritas sin tilde y emite un aviso si encuentra alguna.
-
-El diccionario contiene aproximadamente 80 pares de palabras agrupados por terminación (`-cion`, `-ia`, `-ico/-ica`, `-as/-en/-es/-on`), con un filtrado automático que elimina las entradas donde la forma sin tilde es correcta (como "estrategia" o "dependencia"). Algunos ejemplos del diccionario:
-
-| Sin tilde | Con tilde |
-|-----------|-----------|
-| `función` | `función` |
-| `método` | `método` |
-| `código` | `código` |
-| `parámetro` | `parámetro` |
-| `automático` | `automático` |
-| `configuración` | `configuración` |
-| `sesión` | `sesión` |
-| `análisis` | `análisis` |
-
-Los patrones se compilan en una única expresión regular con limites de palabra y busqueda case-insensitive para capturar variantes como "Función", "FUNCIÓN" o "función". El umbral mínimo de hallazgos para emitir aviso es de 1 palabra (configurable via `MIN_FINDINGS`).
-
-El hook solo inspecciona ficheros con extensiones de texto donde es probable encontrar castellano: `.md`, `.txt`, `.html`, `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.vue`, `.svelte`, `.astro`, `.sh`, `.bash`, `.zsh`, `.css`, `.scss`, `.xml`, `.svg`, `.rst`, `.adoc` y `.toml`. Ignora rutas dentro de `node_modules`, `.git`, `dist`, `build`, `__pycache__`, `.next`, `.nuxt`, `.venv`, `venv` y `env`.
-
-Para reducir ruido, no revisa el contenido tal cual: en Markdown ignora bloques y spans de código, en HTML/XML/SVG elimina tags y se queda con texto visible y atributos de interfaz (`aria-label`, `title`, `placeholder`, `alt`), en CSS/SCSS revisa solo comentarios, en TOML ignora claves técnicas y mira comentarios/valores, y de forma global descarta URLs, rutas, flags largos (`--version`) y tokens tipo path. Eso evita avisos molestos por ejemplos de CLI, selectores CSS o rutas como `/api/version/publico`.
+Registra evidencia de runners de tests para que las quality gates no se cierren con una afirmación verbal. Fail-open: nunca bloquea el flujo.
 
 ### activity-capture.py
 
-**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit|Bash|Read|Glob|Grep|Agent|WebFetch|WebSearch|NotebookEdit` + `UserPromptSubmit` + `UserPromptExpansion` + `PreCompact` + `Stop` -- **Timeout:** 10 s
+**Evento:** `PostToolUse` -- **Matcher:** `Write|Edit` y `Bash` -- más `UserPromptSubmit` -- **Timeout:** 10 s
 
-Este hook centraliza toda la captura de actividad en un único punto de entrada. Sustituye a los antiguos `memory-capture.py` y `commit-capture.py` (unificados en v0.3.6) y además amplia la cobertura a practicamente todas las herramientas de Claude Code, los prompts del usuario, la expansion directa de slash commands, la compactación de contexto y el cierre de sesión. En `UserPromptSubmit` y `UserPromptExpansion` también hace una preparación helper-first muy acotada para continuidad: puede dejar listo `map-codebase`, `discuss`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit` o `lucius` antes de que el modelo entre en el razonamiento principal, e incluso preparar `map-codebase` cuando `/alfred` entra por un repo brownfield sin mapa previo.
+Este hook centraliza la captura de actividad en los eventos que el plugin registra. No está suscrito a `UserPromptExpansion`, `PreCompact` ni `Stop`. En `UserPromptSubmit` registra el prompt y, si aplica, deja rastro de continuidad. En `Write`/`Edit`/`Bash` captura ficheros, comandos y commits.
 
 El hook registra cada evento en la base de datos SQLite de memoria persistente (`alfred-memory.db`) con tres niveles de detalle:
 
@@ -284,17 +231,7 @@ La tabla de dispatchers mapea cada tipo de evento a su función de procesamiento
 | `Write` | PostToolUse | Fichero escrito: ruta, extensión, lineas y contenido completo. Si el fichero es `alfred-dev-state.json`, dispara además la lógica de seguimiento de iteraciones y fases. |
 | `Edit` | PostToolUse | Fichero editado: diff old/new con conteo de lineas. |
 | `Bash` | PostToolUse | Comando ejecutado: comando, exit code, stdout y stderr completos. Si detecta un `git commit` exitoso, captura además los metadatos del commit (SHA, mensaje, autor, ficheros). |
-| `Read` | PostToolUse | Fichero leido: ruta y rango de lineas solicitado (sin contenido duplicado). |
-| `Glob` | PostToolUse | Busqueda por patron: patron, directorio y número de resultados. Si la lista es enorme, guarda solo un preview con marca de recorte. |
-| `Grep` | PostToolUse | Busqueda de contenido: patron regex, directorio, modo y coincidencias. Si la salida es masiva, guarda preview + metadatos de truncado. |
-| `Agent` | PostToolUse | Subagente lanzado: tipo, descripción, prompt y resultado completo. |
-| `WebFetch` | PostToolUse | Peticion HTTP: URL y respuesta. Las respuestas muy grandes se recortan con metadatos de volumen. |
-| `WebSearch` | PostToolUse | Busqueda web: query y resultados. Los resultados muy grandes se guardan como preview. |
-| `NotebookEdit` | PostToolUse | Edicion de notebook Jupyter: ruta y comando. |
-| `UserPromptSubmit` | Evento propio | Prompt del usuario: texto completo. Si es un slash command helper-first de Alfred, prepara antes los artefactos de continuidad y registra `alfred_prefetched`. |
-| `UserPromptExpansion` | Evento propio | Slash command o prompt MCP expandido antes de llegar a Claude. Registra `expansion_type`, `command_name` y `command_source` cuando Claude los entrega, y cubre la ruta directa `/alfred` que no pasa por `PreToolUse`. |
-| `PreCompact` | Evento propio | Marcador de compactación de contexto. |
-| `Stop` | Evento propio | Cierre de sesión: marca el fin y cierra la iteracion activa si existe. |
+| `UserPromptSubmit` | Evento propio | Prompt del usuario: texto completo. |
 
 La memoria solo esta activa si el usuario la ha habilitado explícitamente en `.claude/alfred-dev.local.md` con la sección `memoria: enabled: true`. El hook comprueba esta configuración antes de hacer nada, y si no esta habilitada, sale inmediatamente.
 
@@ -306,29 +243,17 @@ La detección de commits (heredada de `commit-capture.py`) se basa en la regex `
 
 La politica es **fail-open**: cualquier error se imprime en stderr con prefijo `[activity-capture]` y el hook sale con código 0 sin bloquear el flujo.
 
-### memory-compact.py
-
-**Evento:** `PreCompact` -- **Matcher:** ninguno -- **Timeout:** 10 s
-
-Cuando Claude Code compacta el contexto de la conversacion para liberar espacio en la ventana, el contexto histórico acumulado durante la sesión se pierde o se resume de forma genérica. Este hook protege las decisiones críticas de la sesión inyectandolas como contexto adicional que sobrevive a la compactación.
-
-El mecanismo funciona así: al recibir el evento PreCompact, el hook consulta la memoria persistente para obtener las decisiones relevantes. Si hay una iteracion activa, obtiene las decisiones de esa iteracion; si no, obtiene las 5 ultimas decisiones globales. Con esa lista, genera un bloque de texto Markdown que resume cada decisión (titulo, opcion elegida, fecha) y lo emite como JSON con `hookSpecificOutput.hookEventName: "PreCompact"` y `hookSpecificOutput.additionalContext`.
-
-Claude Code incorpora este texto como contexto del sistema en la conversacion compactada, asegurando que las decisiones del proyecto no se pierdan aunque el contexto de conversacion se reduzca.
-
-La politica es **fail-open**: si la memoria no esta disponible, no hay decisiones o cualquier error ocurre, el hook sale con código 0 sin salida, y la compactación procede normalmente sin contexto adicional.
-
 ---
 
 ## Diagrama de interacción
 
-El siguiente diagrama muestra como interactuan los hooks con Claude Code durante una sesión típica. Los cuatro hooks representados cubren los cuatro eventos del ciclo de vida; los otros (`stop-hook.py`, `dangerous-command-guard.py`, `sensitive-read-guard.py`, `dependency-watch.py` y `spelling-guard.py`) siguen patrones analogos a los representados.
+El siguiente diagrama muestra como interactuan los hooks con Claude Code durante una sesión típica. Los cuatro hooks representados cubren arranque, bloqueo de secretos, quality gates y captura; `prompt-route.py`, `session-end.py`, `dangerous-command-guard.py`, `sensitive-read-guard.py` y `evidence-guard.py` siguen patrones analogos.
 
 ```mermaid
 sequenceDiagram
     participant CC as Claude Code
     participant SS as session-start.sh
-    participant SG as secret-guard.sh
+    participant SG as secret-guard.py
     participant QG as quality-gate.py
     participant AC as activity-capture.py
 
@@ -380,18 +305,18 @@ sequenceDiagram
 
 | Evento | Matcher | Script | Timeout | Asíncrono | Bloquea | Que vigila |
 |--------|---------|--------|---------|-----------|---------|------------|
-| `SessionStart` | `startup\|resume\|clear\|compact` | `session-bootstrap.sh` | 10 s | No | No | Bootstrap síncrono del proyecto: config local, memoria, permisos y wrapper helper-first. |
-| `SessionStart` | `startup\|resume\|clear\|compact` | `session-start.sh` | -- | Si | No | Inyección de contexto al arrancar: presentacion, configuración, estado de sesión, memoria y actualizaciones. |
-| `Stop` | _(ninguno)_ | `stop-hook.py` | 10 s | No | Si | Sesiones activas con gates pendientes. Impide cerrar Claude Code con trabajo sin terminar. |
-| `PreToolUse` | `Read\|Write\|Edit\|Glob\|Grep` | `prefetch-finish-guard.py` | 5 s | No | Si | Evita deriva tras `consume-prefetch`: si el helper-first ya resolvió el comando, bloquea exploración y reescrituras adicionales. |
-| `PreToolUse` | `Write\|Edit` | `secret-guard.sh` | 5 s | No | Si | Secretos en el contenido de ficheros: claves API, tokens, credenciales hardcodeadas, connection strings, webhooks. |
-| `PreToolUse` | `Bash` | `dangerous-command-guard.py` | 5 s | No | Si | Comandos destructivos: rm -rf /, force push, DROP DATABASE, docker prune, fork bombs, escritura a dispositivos. |
-| `PreToolUse` | `Read` | `sensitive-read-guard.py` | 5 s | No | No | Lectura de ficheros sensibles: claves privadas, .env, credenciales. Avisa sin bloquear. |
-| `PostToolUse` | `Bash` | `quality-gate.py` | 10 s | No | No | Resultado de ejecuciones de tests. Detecta fallos en 17 runners de tests y avisa sin bloquear. |
-| `PostToolUse` | `Write\|Edit` | `dependency-watch.py` | 10 s | No | No | Modificaciones en manifiestos de dependencias. Sugiere revision de seguridad de las dependencias anadidas. |
-| `PostToolUse` | `Write\|Edit` | `spelling-guard.py` | 10 s | No | No | Palabras castellanas sin tilde en ficheros de texto. Detecta ~80 errores comunes y avisa sin bloquear. |
-| `PostToolUse` | `Write\|Edit\|Bash\|Read\|Glob\|Grep\|Agent\|WebFetch\|WebSearch\|NotebookEdit` + `UserPromptSubmit` + `UserPromptExpansion` + `PreCompact` + `Stop` | `activity-capture.py` | 10 s | No | No | Captura centralizada de toda la actividad: ficheros, comandos, busquedas, subagentes, prompts, slash commands expandidos, compactaciones y cierre de sesión. Registra en SQLite con tres niveles de detalle (summary, payload, content). |
-| `PreCompact` | `manual\|auto` omitido para cubrir ambos | `memory-compact.py` | 10 s | No | No | Compactación de contexto. Inyecta decisiones críticas como contexto protegido para que sobrevivan a la compactación. |
+| `SessionStart` | `startup\|resume\|clear\|compact\|fork` | `session-bootstrap.sh` | 10 s | No | No | Bootstrap síncrono del proyecto: config local, memoria, permisos y wrapper helper-first. |
+| `SessionStart` | `startup\|resume\|clear\|compact\|fork` | `session-start.sh` | 5 s | Si | No | Briefing de sesión y protocolo de hablar sin slash. |
+| `SessionEnd` | _(ninguno)_ | `session-end.py` | -- | Si | No | Detiene Memory UI y escribe el cierre. Fail-open. |
+| `UserPromptSubmit` | _(ninguno)_ | `activity-capture.py` | 10 s | No | No | Captura el prompt. Fail-open. |
+| `UserPromptSubmit` | _(ninguno)_ | `prompt-route.py` | 5 s | No | No | Sugiere fix/quick/retomar si el texto no trae slash. |
+| `PreToolUse` | `Write\|Edit\|Bash\|mcp__.*` | `secret-guard.py` | 5 s | No | Si | Secretos en ficheros, comandos y tools MCP de escritura. |
+| `PreToolUse` | `Bash` | `dangerous-command-guard.py` | 5 s | No | Si | Comandos destructivos: rm -rf /, force push, DROP DATABASE, docker prune, fork bombs. |
+| `PreToolUse` | `Read` | `sensitive-read-guard.py` | 5 s | No | No | Lectura de ficheros sensibles. Avisa sin bloquear. |
+| `PostToolUse` | `Bash` | `activity-capture.py` | 10 s | No | No | Captura comandos y commits. |
+| `PostToolUse` | `Bash` | `quality-gate.py` | 10 s | No | No | Resultado de ejecuciones de tests. Avisa sin bloquear. |
+| `PostToolUse` | `Bash` | `evidence-guard.py` | 10 s | No | No | Registra evidencia real de tests para gates automaticas. |
+| `PostToolUse` | `Write\|Edit` | `activity-capture.py` | 10 s | No | No | Captura escrituras y seguimiento de fases. |
 
 ---
 
@@ -472,14 +397,14 @@ La variable `${CLAUDE_PLUGIN_ROOT}` se resuelve automáticamente al directorio r
 
 Alfred Dev utiliza tres patrones de comunicación en sus hooks, cada uno con un propósito y un contrato definidos:
 
-**Informativo (exit 0 + stderr).** El hook detecta algo que merece atencion pero no impide la operación. El mensaje se imprime en stderr para que Claude Code lo muestre al usuario como advertencia. Es el patron que usan `quality-gate.py`, `dependency-watch.py` y `spelling-guard.py`. Ejemplo:
+**Informativo (exit 0 + stderr).** El hook detecta algo que merece atencion pero no impide la operación. El mensaje se imprime en stderr para que Claude Code lo muestre al usuario como advertencia. Es el patron que usan `quality-gate.py` y `sensitive-read-guard.py`. Ejemplo:
 
 ```python
 print("[Mi Hook] He detectado algo relevante.", file=sys.stderr)
 sys.exit(0)
 ```
 
-**Bloqueo (exit 2 + stderr).** El hook impide que la operación se ejecute. Solo tiene sentido en `PreToolUse`, porque en `PostToolUse` la operación ya se ha realizado. El mensaje de stderr explica por que se bloquea. En este patrón stdout debe quedar vacío: Claude Code ignora cualquier JSON cuando el proceso sale con `2`. Es el patron que usan `secret-guard.sh`, `dangerous-command-guard.py` y `prefetch-finish-guard.py`. Ejemplo:
+**Bloqueo (exit 2 + stderr).** El hook impide que la operación se ejecute. Solo tiene sentido en `PreToolUse`, porque en `PostToolUse` la operación ya se ha realizado. El mensaje de stderr explica por que se bloquea. En este patrón stdout debe quedar vacío: Claude Code ignora cualquier JSON cuando el proceso sale con `2`. Es el patron que usan `secret-guard.py` y `dangerous-command-guard.py`. Ejemplo:
 
 ```python
 print("[Mi Hook] Operación bloqueada: motivo detallado.", file=sys.stderr)
@@ -505,7 +430,7 @@ Hay varias restricciones de diseño que conviene respetar para mantener la coher
 
 - **No modificar el contenido del evento.** Los hooks pueden leer y analizar la información del evento, pero no deben intentar modificarla. Un hook de `PreToolUse` puede bloquear una escritura, pero no puede alterar el contenido que Claude quiere escribir.
 
-- **Fallo seguro.** Si el hook no puede leer su entrada, no puede acceder a un fichero necesario o sufre cualquier error interno, la decisión por defecto debe ser no bloquear (exit 0). Las excepciones son los hooks de seguridad que protegen escrituras o comandos destructivos, como `secret-guard.sh` y `dangerous-command-guard.py`, donde la politica fail-closed (bloquear ante la duda) tiene mas sentido que fail-open.
+- **Fallo seguro.** Si el hook no puede leer su entrada, no puede acceder a un fichero necesario o sufre cualquier error interno, la decisión por defecto debe ser no bloquear (exit 0). Las excepciones son los hooks de seguridad que protegen escrituras o comandos destructivos, como `secret-guard.py` y `dangerous-command-guard.py`, donde la politica fail-closed (bloquear ante la duda) tiene mas sentido que fail-open.
 
 - **Una responsabilidad por hook.** Cada hook debe hacer una cosa y hacerla bien. Si necesitas vigilar dos aspectos diferentes, crea dos hooks. Esto facilita la depuración, el testing y la posibilidad de desactivar un hook concreto sin afectar a los demas.
 

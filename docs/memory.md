@@ -163,7 +163,7 @@ La base de datos de memoria podria acabar almacenando secretos si un agente menc
 
 La razon de sanitizar en la capa de persistencia (no en la de presentacion) es que el dano de un secreto almacenado es permanente: una vez que la clave esta en la DB, cualquier consulta futura la expondria. Sanitizar antes de escribir garantiza que la información sensible nunca llega al disco.
 
-Los patrones son los mismos que utiliza el hook `secret-guard.sh` para mantener coherencia en toda la cadena de seguridad del plugin. El orden importa: los patrones mas específicos van primero para evitar que uno genérico consuma un match que deberia ser mas preciso.
+Los patrones son los mismos que utiliza el hook `secret-guard.py` para mantener coherencia en toda la cadena de seguridad del plugin. El orden importa: los patrones mas específicos van primero para evitar que uno genérico consuma un match que deberia ser mas preciso.
 
 ### Patrones detectados
 
@@ -335,15 +335,13 @@ Importa datos desde fuentes externas a la memoria persistente. Admite dos fuente
 | `limit` | integer | no | Máximo de registros a importar (por defecto 100, maximo 1000, solo git) |
 
 
-## El Bibliotecario
+## Consulta de memoria
 
-El Bibliotecario es un agente opcional que actua como interfaz de consulta sobre la memoria persistente. Su nombre interno es `librarian` y se activa en la configuración del proyecto (`agentes_opcionales.librarian: true`). A diferencia de los agentes de nucleo, que participan en todas las sesiones, el Bibliotecario solo interviene cuando hay memoria activa y el usuario o Alfred necesitan consultar el histórico.
-
-La filosofía del Bibliotecario es la de un archivero de tribunal: cada dato que proporciona debe poder rastrearse hasta su origen. No inventa, no supone, no extrapola. Si la memoria no tiene registros sobre algo, lo dice sin rodeos. Esta restricción deliberada es lo que hace que sus respuestas tengan valor: si el Bibliotecario dice que una decisión existe, existe; si dice que no hay registros, no los hay.
+No hay agente `librarian`. La interfaz de consulta es el servidor MCP `alfred-memory` y `/alfred-dev:memory-ui`. Cada dato mostrado debe poder rastrearse hasta su origen. Si la memoria no tiene registros, se dice sin rodeos.
 
 ### Clasificacion de preguntas
 
-Antes de consultar la memoria, el Bibliotecario clasifica cada pregunta en una de cuatro categorías para elegir la herramienta MCP mas adecuada:
+Antes de consultar la memoria, Alfred clasifica cada pregunta en una de cuatro categorías para elegir la herramienta MCP mas adecuada:
 
 | Categoría | Tipo de pregunta | Herramienta principal | Ejemplo |
 |-----------|------------------|-----------------------|---------|
@@ -363,7 +361,7 @@ Toda respuesta que incluya datos de la memoria debe citar su fuente. Los formato
 | Iteracion | `[I#<id>]` | `[I#5] feature -- Sistema de memoria` |
 | Evento | `[E#<id>]` | `[E#42] phase_completed 2026-02-15` |
 
-Si no puede citar una fuente concreta, el Bibliotecario no incluye el dato en la respuesta. Esta regla esta marcada como `HARD-GATE` en su definición de agente: no admite excepciones.
+Si no puede citar una fuente concreta, Alfred no incluye el dato en la respuesta. Esta regla no admite excepciones.
 
 
 ## Captura automática
@@ -372,7 +370,7 @@ Desde v0.3.6 la captura automática esta centralizada en un único hook: `activi
 
 ### activity-capture.py (captura centralizada)
 
-Este script se ejecuta como hook `PostToolUse` para practicamente todas las herramientas de Claude Code (Write, Edit, Bash, Read, Glob, Grep, Agent, WebFetch, WebSearch, NotebookEdit), además de `UserPromptSubmit`, `UserPromptExpansion`, `PreCompact` y `Stop`. Actua como un hook fail-open: no bloquea la operación ni interfiere con el flujo de trabajo, pero en `UserPromptSubmit` y `UserPromptExpansion` puede preparar por adelantado artefactos helper-first de continuidad (`map-codebase`, `discuss`, `quick`, `feature`, `fix`, `spike`, `ship`, `audit`, `lucius` y el caso brownfield de `/alfred`) antes del razonamiento principal. Si algo falla --DB inexistente, JSON corrupto, configuración ausente--, imprime un aviso en stderr y sale con `exit 0`.
+Este script esta registrado en `UserPromptSubmit` y en `PostToolUse` para `Write|Edit` y `Bash`. Actua como un hook fail-open: no bloquea la operación ni interfiere con el flujo de trabajo. Este plugin no registra `UserPromptExpansion`, `PreCompact` ni `Stop`. Si algo falla --DB inexistente, JSON corrupto, configuración ausente--, imprime un aviso en stderr y sale con `exit 0`.
 
 La razon de automatizar la captura en lugar de depender de que los agentes registren eventos manualmente es la fiabilidad: un agente puede olvidarse de llamar a `memory_log_event()`, pero el hook siempre se ejecuta porque esta conectado al ciclo de vida de las herramientas.
 
@@ -491,7 +489,7 @@ La migración de v1 a v2 añade tres columnas (`decisions.tags`, `decisions.stat
 
 ## Configuración
 
-La memoria persistente se configura en la sección `memoria` del fichero `.claude/alfred-dev.local.md` del proyecto. También se puede gestionar de forma interactiva con `/alfred-dev:config`.
+La memoria persistente se configura en la sección `memoria` del fichero `.claude/alfred-dev.local.md` del proyecto. También se puede gestionar de forma interactiva con `/alfred-dev:ajustes`.
 
 ### Claves de configuración
 
@@ -528,11 +526,11 @@ memoria:
   retention_days: 365
 
 agentes_opcionales:
-  librarian: true
+  lucius: false
 ---
 ```
 
-Activar el agente `librarian` junto con la memoria es la combinación recomendada: la memoria almacena los datos y el Bibliotecario proporciona la interfaz de consulta. Sin el Bibliotecario, la memoria sigue funcionando (los datos se registran), pero las consultas historicas requieren invocaciones MCP directas en lugar de un agente especializado que interprete y cite los resultados.
+La memoria funciona sin Lucius. Las consultas historicas van por MCP o `/alfred-dev:memory-ui`.
 
 
 ## Ficheros fuente de referencia
@@ -541,6 +539,6 @@ Activar el agente `librarian` junto con la memoria es la combinación recomendad
 |---------|-----------|
 | `core/memory.py` | Clase `MemoryDB`, función `sanitize_content()`, esquema SQL, migraciones, patrones de secretos, lógica de FTS5 |
 | `mcp/memory_server.py` | Clase `MemoryMCPServer`, 15 herramientas MCP, transporte JSON-RPC stdio |
-| `hooks/activity-capture.py` | Hook centralizado de captura: registra ficheros, comandos, busquedas, subagentes, prompts, compactaciones y cierre de sesión. Incluye la lógica de seguimiento de iteraciones/fases y la captura de commits. |
-| `hooks/memory-compact.py` | Hook PreCompact, inyección de decisiones críticas como contexto protegido |
-| `agents/librarian.md` | Definición del agente Bibliotecario, 15 herramientas, gestion de ciclo de vida, citas verificables |
+| `hooks/activity-capture.py` | Hook de captura en UserPromptSubmit y PostToolUse (Write/Edit/Bash). Incluye seguimiento de iteraciones/fases y captura de commits. |
+| `hooks/session-start.sh` | Briefing de sesión con decisiones y ADRs |
+| `commands/memory-ui.md` | Visor local GET de la memoria SQLite |

@@ -10,8 +10,8 @@
 #   1. Verifica que Claude Code esta instalado
 #   2. Registra globalmente en Claude Code la fuente GitHub del plugin
 #   3. Instala el plugin con claude plugin install
-#   4. Instala el alias personal global /alfred y elimina shims obsoletos
-#   5. Listo para usar: /alfred
+#   4. No pisa ~/.claude/skills ni instala alias global /alfred
+#   5. Listo para usar: /alfred-dev:alfred
 #
 # El script delega toda la gestion en la CLI nativa de Claude Code
 # (claude plugin marketplace / claude plugin install) para registrar una
@@ -22,7 +22,7 @@ set -euo pipefail
 
 REPO="686f6c61/alfred-dev"
 PLUGIN_NAME="alfred-dev"
-VERSION="0.6.1"
+VERSION="0.7.0"
 
 # -- Colores ----------------------------------------------------------------
 
@@ -141,76 +141,6 @@ refresh_user_marketplace() {
         ok "Marketplace local actualizado"
     else
         info "No se pudo ejecutar 'claude plugin marketplace update'; continuo con el checkout recien registrado"
-    fi
-}
-
-install_global_alfred_alias() {
-    local plugin_root
-    local source_alias
-    local alias_dir
-    local alias_file
-    local command_alias_dir
-    local command_alias_file
-
-    plugin_root=$(resolve_installed_plugin_root 2>/dev/null || true)
-    if [[ -z "${plugin_root}" ]]; then
-        error "No se pudo resolver la raiz del plugin instalado para crear /alfred"
-        return 1
-    fi
-
-    source_alias="${plugin_root}/skills/alfred/alfred/SKILL.md"
-    if [[ ! -f "${source_alias}" ]]; then
-        error "No se encontro el skill de alias global en la instalacion:"
-        error "  ${source_alias}"
-        return 1
-    fi
-
-    alias_dir="${HOME}/.claude/skills/alfred"
-    alias_file="${alias_dir}/SKILL.md"
-    command_alias_dir="${HOME}/.claude/commands"
-    command_alias_file="${command_alias_dir}/alfred.md"
-    mkdir -p "${alias_dir}"
-
-    materialize_alias() {
-        local target="$1"
-        local invocable="$2"
-
-        "${PYTHON_CMD}" - "${source_alias}" "${target}" "${invocable}" <<'PYEOF'
-import re
-import sys
-from pathlib import Path
-
-source = Path(sys.argv[1])
-target = Path(sys.argv[2])
-invocable = sys.argv[3].lower() == "true"
-text = source.read_text(encoding="utf-8")
-replacement = f"user-invocable: {str(invocable).lower()}"
-if re.search(r"(?m)^user-invocable:\s*(true|false)\s*$", text):
-    text = re.sub(r"(?m)^user-invocable:\s*(true|false)\s*$", replacement, text, count=1)
-elif text.startswith("---\n"):
-    text = text.replace("---\n", "---\n" + replacement + "\n", 1)
-target.write_text(text, encoding="utf-8")
-PYEOF
-    }
-
-    if [[ -f "${alias_file}" ]] && ! grep -q "Alfred Dev global alias" "${alias_file}"; then
-        local backup="${alias_file}.before-alfred-dev.$(date +%Y%m%d%H%M%S)"
-        cp "${alias_file}" "${backup}"
-        info "Skill /alfred existente respaldado en ${backup}"
-    fi
-
-    materialize_alias "${alias_file}" "true"
-    ok "Alias global /alfred instalado en ${alias_file}"
-
-    if [[ -f "${command_alias_file}" ]]; then
-        if grep -q "Alfred Dev global alias" "${command_alias_file}"; then
-            rm -f "${command_alias_file}"
-            ok "Shim de comando global /alfred obsoleto eliminado en ${command_alias_file}"
-        else
-            local backup="${command_alias_file}.before-alfred-dev.$(date +%Y%m%d%H%M%S)"
-            mv "${command_alias_file}" "${backup}"
-            info "Comando /alfred existente movido a ${backup} para evitar duplicados"
-        fi
     fi
 }
 
@@ -439,7 +369,7 @@ else
     exit 1
 fi
 
-install_global_alfred_alias
+info "Usa /alfred-dev:alfred o /alfred-dev:feature. No se pisa ~/.claude/skills."
 verify_user_scope_installation
 
 # -- 3. Parchear hooks y MCP si python3 no es 3.10+ ------------------------
@@ -585,8 +515,8 @@ fi
 
 printf "\n${GREEN}${BOLD}Instalacion completada${NC}\n\n"
 printf "  En Claude Code, ejecuta ${BOLD}/reload-plugins${NC} y despues:\n"
-printf "  ${BOLD}/alfred${NC}\n"
-printf "  ${DIM}Ayuda completa: /alfred-dev:help${NC}\n\n"
+printf "  ${BOLD}/alfred-dev:alfred${NC}\n"
+printf "  ${DIM}Estado: /alfred-dev:progress · retomar: /alfred-dev:retomar${NC}\n\n"
 printf "  ${DIM}Si /reload-plugins avisa por MCP/coste de cache o no aparece el plugin, reinicia Claude Code.${NC}\n"
 printf "  ${DIM}Repositorio: https://github.com/${REPO}${NC}\n"
 printf "  ${DIM}Documentacion: https://alfred-dev.com${NC}\n\n"

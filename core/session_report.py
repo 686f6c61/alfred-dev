@@ -731,9 +731,9 @@ def _get_plugin_version() -> str:
         )
         with open(plugin_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get("version", "0.6.0")
+        return data.get("version", "0.7.0")
     except (OSError, json.JSONDecodeError, KeyError):
-        return "0.6.0"
+        return "0.7.0"
 
 
 def _section_mode(session: Dict[str, Any]) -> str:

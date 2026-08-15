@@ -1,8 +1,10 @@
 # Pipeline de tests automaticos para Alfred Dev.
 #
-# Se ejecuta en cada push y pull request sobre main. Cubre Python 3.10-3.13
-# en Ubuntu (entorno mas cercano a produccion). No necesita dependencias
-# externas porque el proyecto usa exclusivamente la stdlib de Python.
+# Job test: pytest en Python 3.10-3.13. En 3.12 tambien corre
+# scripts/release_audit.py y cobertura (minimo 60%).
+# Job plugin: Linux, macOS y Windows. Instala Claude CLI, valida,
+# instala 0.7.0 desde el checkout (no desde GitHub main) y desinstala.
+# FastMCP (requirements.txt) es opcional y no se instala aqui.
 #
 # Seguridad: no se usa ningun input dinamico de usuario (issue titles,
 # PR bodies, commit messages) en bloques run:. Todos los comandos son
@@ -39,13 +41,17 @@ jobs:
         run: python3 -m pip install --quiet pytest
 
       - name: Ejecutar tests
-        run: python3 -m pytest tests/ -v --tb=short
+        run: python3 -m pytest tests/ -q --tb=short
+
+      - name: Auditoría de release 0.7.0
+        if: matrix.python-version == '3.12'
+        run: python3 scripts/release_audit.py
 
       - name: Ejecutar tests con cobertura (solo 3.12)
         if: matrix.python-version == '3.12'
         run: |
           python3 -m pip install --quiet coverage
-          coverage run -m pytest tests/ -v --tb=short
+          coverage run -m pytest tests/ -q --tb=short
           coverage report --fail-under=60
           coverage html -d coverage-html
 
@@ -56,3 +62,117 @@ jobs:
           name: coverage-report
           path: coverage-html/
           retention-days: 14
+
+  plugin:
+    name: Claude CLI + plugin (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 0. Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: 1. Instalar Claude CLI (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.claude/local/bin" >> "$GITHUB_PATH"
+
+      - name: 1. Instalar Claude CLI (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://claude.ai/install.ps1 | iex
+          Add-Content $env:GITHUB_PATH "$env:USERPROFILE\.local\bin"
+          Add-Content $env:GITHUB_PATH "$env:USERPROFILE\.claude\local\bin"
+          if ($env:LOCALAPPDATA) {
+            Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Programs\claude"
+          }
+
+      - name: 2. Comprobar Claude CLI
+        run: |
+          command -v claude
+          claude --version
+
+      - name: 3. Validar marketplace
+        run: claude plugin validate . --strict
+
+      - name: 4. Validar plugin
+        run: claude plugin validate .claude-plugin/plugin.json --strict
+
+      - name: 5. Registrar marketplace local
+        run: claude plugin marketplace add "${{ github.workspace }}" --scope user
+
+      - name: 6. Instalar alfred-dev 0.7.0
+        run: claude plugin install alfred-dev@alfred-dev --scope user -y
+
+      - name: 7. Ver inventario instalado
+        run: |
+          claude plugin list
+          claude plugin details alfred-dev@alfred-dev > "$RUNNER_TEMP/alfred-details.txt"
+          cat "$RUNNER_TEMP/alfred-details.txt"
+          python -c '
+          from pathlib import Path
+          import os
+          text = Path(os.environ["RUNNER_TEMP"], "alfred-details.txt").read_text(encoding="utf-8")
+          needed = ("0.7.0", "Skills (11)", "Agents (10)", "MCP servers (1)")
+          missing = [item for item in needed if item not in text]
+          if missing:
+              raise SystemExit("Inventario incompleto: " + ", ".join(missing))
+          print("inventario ok:", ", ".join(needed))
+          '
+
+      - name: 8. Desinstalar (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: bash uninstall.sh
+
+      - name: 8. Validar sintaxis PowerShell
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $errors = $null
+          foreach ($script in @('install.ps1', 'uninstall.ps1')) {
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path $PWD $script),
+              [ref]$null,
+              [ref]$errors
+            )
+            if ($errors) {
+              $errors | ForEach-Object { Write-Error $_.ToString() }
+              exit 1
+            }
+          }
+          Write-Host "sintaxis PowerShell ok: install.ps1 uninstall.ps1"
+
+      - name: 8. Desinstalar (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./uninstall.ps1
+
+      - name: 9. Comprobar que no queda el plugin
+        run: |
+          python -c '
+          import json
+          import subprocess
+          raw = subprocess.check_output(["claude", "plugin", "list", "--json"], text=True)
+          entries = json.loads(raw)
+          leftover = [
+              item.get("id")
+              for item in entries
+              if isinstance(item, dict) and "alfred" in str(item.get("id", ""))
+          ]
+          if leftover:
+              raise SystemExit("Tras uninstall sigue habiendo: " + ", ".join(leftover))
+          print("uninstall ok: sin alfred-dev en claude plugin list")
+          '

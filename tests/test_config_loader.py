@@ -163,11 +163,10 @@ class TestLoadConfig(unittest.TestCase):
 
     def test_get_active_optional_agents_returns_enabled_agents_in_catalog_order(self):
         config = load_config("/ruta/que/no/existe")
-        config["agentes_opcionales"]["seo-specialist"] = True
-        config["agentes_opcionales"]["copywriter"] = True
+        config["agentes_opcionales"]["lucius"] = True
         self.assertEqual(
             get_active_optional_agents(config),
-            ["seo-specialist", "copywriter"],
+            ["lucius"],
         )
 
     def test_build_equipo_sesion_from_config_returns_none_without_runtime_flags(self):
@@ -176,14 +175,13 @@ class TestLoadConfig(unittest.TestCase):
 
     def test_build_equipo_sesion_from_config_preserves_catalog_and_memory(self):
         config = load_config("/ruta/que/no/existe")
-        config["agentes_opcionales"]["github-manager"] = True
+        config["agentes_opcionales"]["lucius"] = True
         config["memoria"]["enabled"] = True
 
         equipo = build_equipo_sesion_from_config(config)
 
         self.assertEqual(equipo["fuente"], "config_persistida")
-        self.assertTrue(equipo["opcionales_activos"]["github-manager"])
-        self.assertFalse(equipo["opcionales_activos"]["lucius"])
+        self.assertTrue(equipo["opcionales_activos"]["lucius"])
         self.assertTrue(equipo["infra"]["memoria"])
 
     def test_build_project_equipo_sesion_reads_local_config(self):
@@ -198,7 +196,7 @@ class TestLoadConfig(unittest.TestCase):
                 f.write(
                     "---\n"
                     "agentes_opcionales:\n"
-                    "  github-manager: true\n"
+                    "  lucius: true\n"
                     "memoria:\n"
                     "  enabled: true\n"
                     "---\n"
@@ -207,17 +205,17 @@ class TestLoadConfig(unittest.TestCase):
             equipo = build_project_equipo_sesion(tmpdir)
 
         self.assertEqual(equipo["fuente"], "config_persistida")
-        self.assertTrue(equipo["opcionales_activos"]["github-manager"])
+        self.assertTrue(equipo["opcionales_activos"]["lucius"])
         self.assertTrue(equipo["infra"]["memoria"])
 
     def test_render_config_markdown_serializes_canonical_frontmatter_and_notes(self):
         config = load_config("/ruta/que/no/existe")
-        config["agentes_opcionales"]["github-manager"] = True
+        config["agentes_opcionales"]["lucius"] = True
         config["personalidad"]["idioma"] = "es"
         content = render_config_markdown(config, notes="Preferir Netlify sobre Vercel.")
 
         self.assertTrue(content.startswith("---\nautonomia:\n"))
-        self.assertIn("github-manager: true", content)
+        self.assertIn("lucius: true", content)
         self.assertIn("## Notas", content)
         self.assertIn("Preferir Netlify sobre Vercel.", content)
         self.assertNotIn("\nnotas:", content)
@@ -245,7 +243,7 @@ class TestLoadConfig(unittest.TestCase):
     def test_save_project_config_writes_canonical_local_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = load_config("/ruta/que/no/existe")
-            config["agentes_opcionales"]["copywriter"] = True
+            config["agentes_opcionales"]["lucius"] = True
 
             path = save_project_config(
                 tmpdir,
@@ -255,7 +253,7 @@ class TestLoadConfig(unittest.TestCase):
             reloaded = load_config(path)
 
         self.assertTrue(path.endswith(os.path.join(".claude", "alfred-dev.local.md")))
-        self.assertTrue(reloaded["agentes_opcionales"]["copywriter"])
+        self.assertTrue(reloaded["agentes_opcionales"]["lucius"])
         self.assertIn("tono cercano", reloaded["notas"])
 
     def test_ensure_bootstrap_local_config_creates_minimal_canonical_file(self):
@@ -273,7 +271,7 @@ class TestLoadConfig(unittest.TestCase):
         self.assertTrue(changed)
         self.assertTrue(reloaded["memoria"]["enabled"])
         self.assertEqual(reloaded["autonomia"]["producto"], "autonomo")
-        self.assertIn("Puedes personalizarlo con `/alfred-dev:config`.", content)
+        self.assertIn("Puedes personalizarlo con `/alfred-dev:ajustes`.", content)
 
     def test_ensure_bootstrap_local_config_respects_explicit_memory_disable(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
@@ -309,8 +307,7 @@ class TestLoadConfig(unittest.TestCase):
         config = load_config("/ruta/que/no/existe")
         config["autonomia"]["producto"] = "interactivo"
         config["autonomia"]["calidad"] = "semi-autonomo"
-        config["agentes_opcionales"]["copywriter"] = True
-        config["agentes_opcionales"]["librarian"] = True
+        config["agentes_opcionales"]["lucius"] = True
         config["memoria"]["enabled"] = True
 
         summaries = build_config_section_summaries(config)
@@ -332,9 +329,8 @@ class TestLoadConfig(unittest.TestCase):
         memory = next(section for section in summaries if section["section"] == "memoria")
 
         self.assertIn("interactivas", autonomy["summary"])
-        self.assertIn("2 activos", agents["summary"])
-        self.assertIn("Copywriter", agents["summary"])
-        self.assertIn("Bajo demanda: Librarian", agents["summary"])
+        self.assertIn("1 activo", agents["summary"])
+        self.assertIn("Lucius", agents["summary"])
         self.assertIn("Activa con sync nativa", memory["summary"])
 
     def test_build_config_section_menu_uses_current_summaries(self):
@@ -349,7 +345,7 @@ class TestLoadConfig(unittest.TestCase):
                     f,
                 )
             config = load_config("/ruta/que/no/existe")
-            config["agentes_opcionales"]["github-manager"] = True
+            config["agentes_opcionales"]["lucius"] = True
             menu = build_config_section_menu(config, project_dir=tmpdir)
 
         labels = [option["label"] for option in menu["options"]]
@@ -374,7 +370,7 @@ class TestLoadConfig(unittest.TestCase):
         self.assertIn("Agentes opcionales", labels)
         self.assertIn("next", project_option["description"])
         self.assertIn("Detectado automáticamente.", project_option["description"])
-        self.assertIn("GitHub Manager", agents_option["description"])
+        self.assertIn("Lucius", agents_option["description"])
 
     def test_apply_config_section_update_normalizes_and_preserves_rest(self):
         config = load_config("/ruta/que/no/existe")
@@ -404,7 +400,6 @@ class TestLoadConfig(unittest.TestCase):
         )
 
         self.assertTrue(updated["agentes_opcionales"]["lucius"])
-        self.assertFalse(updated["agentes_opcionales"]["github-manager"])
         self.assertEqual(
             set(updated["agentes_opcionales"].keys()),
             set(get_optional_agent_names()),
@@ -425,7 +420,6 @@ class TestLoadConfig(unittest.TestCase):
             },
             "agentes_opcionales": {
                 "lucius": True,
-                "github-manager": True,
             },
             "memoria": {
                 "enabled": True,
@@ -709,264 +703,42 @@ class TestDetectStack(unittest.TestCase):
 
 
 class TestOptionalAgents(unittest.TestCase):
-    """Tests para la configuración y descubrimiento de agentes opcionales."""
+    """Tests para el catalogo reducido de opcionales (solo Lucius)."""
 
     def test_default_config_has_optional_agents(self):
-        """La configuración por defecto incluye la sección de agentes opcionales."""
         self.assertIn("agentes_opcionales", DEFAULT_CONFIG)
         agents = DEFAULT_CONFIG["agentes_opcionales"]
-        self.assertEqual(set(agents.keys()), set(get_optional_agent_names()))
-
-    def test_all_optional_agents_disabled_by_default(self):
-        """Todos los agentes opcionales están desactivados por defecto."""
-        for name, active in DEFAULT_CONFIG["agentes_opcionales"].items():
-            self.assertFalse(active, f"'{name}' debería estar desactivado por defecto")
+        self.assertEqual(set(agents.keys()), {"lucius"})
+        self.assertFalse(agents["lucius"])
 
     def test_optional_agent_catalog_keeps_group_distribution(self):
         grouped = get_optional_agents_by_group()
-        self.assertEqual(grouped["technical"], [
-            "data-engineer",
-            "performance-engineer",
-            "github-manager",
-            "librarian",
-        ])
-        self.assertEqual(grouped["content"], [
-            "ux-reviewer",
-            "seo-specialist",
-            "copywriter",
-            "i18n-specialist",
-        ])
+        self.assertEqual(list(grouped), ["audit"])
         self.assertEqual(grouped["audit"], ["lucius"])
 
-    def test_optional_agent_catalog_exposes_labels_and_specialties(self):
-        self.assertEqual(get_optional_agent_display_label("github-manager"), "GitHub Manager")
-        self.assertIn("Core Web Vitals", get_optional_agent_specialty("seo-specialist"))
-
-    def test_build_group_menu_starts_with_explicit_exit_option(self):
-        menu = build_optional_agent_group_menu("technical")
-        self.assertEqual(menu["header"], "Tecnicos")
-        self.assertEqual(
-            menu["question"],
-            "¿Qué agente técnico quieres activar ahora?",
-        )
-        self.assertEqual(menu["questions"][0]["header"], "Tecnicos")
-        self.assertEqual(menu["questions"][0]["question"], menu["question"])
-        self.assertEqual(menu["questions"][0]["options"], menu["options"])
-        self.assertEqual(menu["questions"][0]["multiSelect"], False)
-        self.assertEqual(menu["options"][0]["label"], "Seguir sin activar más")
-        self.assertEqual(menu["options"][1]["label"], "Data Engineer")
-
-    def test_build_group_menu_marks_recommended_and_active_options(self):
-        menu = build_optional_agent_group_menu(
-            "technical",
-            suggested_reasons={
-                "data-engineer": "El proyecto usa Prisma y la tarea implica migración de esquema",
-            },
-            active_names=["github-manager"],
-        )
-        labels = [option["label"] for option in menu["options"]]
-        self.assertIn("Data Engineer (Recomendado)", labels)
-        github_option = next(
-            option for option in menu["options"]
-            if option["label"] == "GitHub Manager"
-        )
-        self.assertIn("Activo actualmente.", github_option["description"])
-
-    def test_build_group_menu_can_hide_already_selected_agents(self):
-        menu = build_optional_agent_group_menu(
-            "content",
-            excluded_names=["ux-reviewer", "copywriter"],
-            include_done_option=True,
-        )
-        labels = [option["label"] for option in menu["options"]]
-        self.assertEqual(labels[:2], ["Seguir sin activar más", "Listo con este grupo"])
-        self.assertNotIn("UX Reviewer", labels)
-        self.assertNotIn("Copywriter", labels)
-        self.assertIn("SEO Specialist", labels)
-
-    def test_build_group_menus_returns_three_groups_in_canonical_order(self):
-        menus = build_optional_agent_group_menus(
-            suggested_reasons={"lucius": "La tarea pide una segunda opinión independiente"},
-        )
-        self.assertEqual(
-            [menu["group"] for menu in menus],
-            ["technical", "content", "audit"],
-        )
-        audit_labels = [option["label"] for option in menus[2]["options"]]
-        self.assertIn("Lucius (Recomendado)", audit_labels)
-
-    def test_group_menus_cover_each_selectable_agent_once(self):
-        menus = build_optional_agent_group_menus(include_done_option=True)
-        collected_labels = []
-
-        for menu in menus:
-            labels = [option["label"] for option in menu["options"]]
-            self.assertEqual(labels[:2], ["Seguir sin activar más", "Listo con este grupo"])
-            self.assertGreater(len(labels), 2)
-            collected_labels.extend(labels[2:])
-
-        expected_labels = [
-            get_optional_agent_display_label(agent_name)
-            for agent_name in get_optional_agent_names()
-        ]
-        self.assertEqual(collected_labels, expected_labels)
-        self.assertEqual(len(collected_labels), len(set(collected_labels)))
-
-    def test_every_selectable_agent_has_runtime_effect_or_is_explicitly_on_demand(self):
-        integrations = get_optional_integrations()
-        for agent_name in get_optional_agent_names():
-            integration = integrations[agent_name]
-            if agent_name == "librarian":
-                self.assertEqual(integration["fases"], [])
-                self.assertEqual(integration["posicion"], "none")
-                continue
-
-            self.assertTrue(
-                integration["fases"],
-                f"{agent_name} no debería ser seleccionable sin fases integradas",
-            )
-            self.assertIn(
-                integration["posicion"],
-                {"paralelo", "secuencial"},
-                f"{agent_name} debe declarar un modo runtime claro",
-            )
+    def test_build_group_menus_returns_audit_only(self):
+        menus = build_optional_agent_group_menus()
+        self.assertEqual([menu["group"] for menu in menus], ["audit"])
+        labels = [option["label"] for option in menus[0]["options"]]
+        self.assertEqual(labels[0], "Seguir sin activar más")
+        self.assertIn("Lucius", labels)
 
     def test_static_suggestions_exclude_lucius(self):
-        self.assertNotIn("lucius", get_static_suggestible_agent_names())
-        self.assertEqual(len(get_static_suggestible_agent_names()), 8)
+        self.assertEqual(get_static_suggestible_agent_names(), ())
 
-    def test_config_loads_optional_agents(self):
-        """La configuración del fichero .local.md se fusiona con los defaults."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-            f.write("---\nagentes_opcionales:\n  data-engineer: true\n  github-manager: true\n---\n")
-            f.flush()
-            config = load_config(f.name)
-        os.unlink(f.name)
-        self.assertTrue(config["agentes_opcionales"]["data-engineer"])
-        self.assertTrue(config["agentes_opcionales"]["github-manager"])
-        # Los no especificados mantienen el default (false)
-        self.assertFalse(config["agentes_opcionales"]["ux-reviewer"])
-
-    def test_suggest_for_node_project_with_orm(self):
-        """Un proyecto Node con ORM sugiere data-engineer."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            pkg = {
-                "name": "test",
-                "dependencies": {"next": "^14.0.0", "@prisma/client": "^5.0.0"},
-            }
-            with open(os.path.join(tmpdir, "package.json"), "w") as f:
-                json.dump(pkg, f)
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertIn("data-engineer", agent_names)
-        self.assertIn("ux-reviewer", agent_names)
-
-    def test_suggest_for_project_with_html(self):
-        """Un proyecto con contenido web público sugiere seo-specialist y copywriter."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with open(os.path.join(tmpdir, "index.html"), "w") as f:
-                f.write("<html></html>")
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertIn("seo-specialist", agent_names)
-        self.assertIn("copywriter", agent_names)
-
-    def test_i18n_signals_do_not_imply_copywriter_without_public_content(self):
-        """i18n puro debe sugerir i18n-specialist, no copywriter."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            os.makedirs(os.path.join(tmpdir, "i18n"))
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertIn("i18n-specialist", agent_names)
-        self.assertNotIn("copywriter", agent_names)
-        self.assertNotIn("seo-specialist", agent_names)
-
-    def test_frontend_without_public_html_does_not_imply_seo_or_copywriter(self):
-        """Frontend privado no debe activar por sí solo copywriter ni SEO."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            pkg = {
-                "name": "dashboard",
-                "dependencies": {"react": "^18.0.0"},
-            }
-            with open(os.path.join(tmpdir, "package.json"), "w") as f:
-                json.dump(pkg, f)
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertIn("ux-reviewer", agent_names)
-        self.assertNotIn("copywriter", agent_names)
-        self.assertNotIn("seo-specialist", agent_names)
-
-    def test_suggest_skips_already_active(self):
-        """No sugiere agentes que ya están activos en la configuración."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with open(os.path.join(tmpdir, "index.html"), "w") as f:
-                f.write("<html></html>")
-            config = load_config("/ruta/que/no/existe")
-            config["agentes_opcionales"]["seo-specialist"] = True
-            suggestions = suggest_optional_agents(tmpdir, config)
-        agent_names = [s[0] for s in suggestions]
-        self.assertNotIn("seo-specialist", agent_names)
-        self.assertIn("copywriter", agent_names)
-
-    def test_suggest_empty_for_minimal_project(self):
-        """Un proyecto vacío no sugiere ningún agente."""
+    def test_suggest_empty_for_any_project(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             suggestions = suggest_optional_agents(tmpdir)
         self.assertEqual(suggestions, [])
 
-    def test_suggest_github_manager_with_github_remote(self):
-        """Un proyecto con remote GitHub sugiere github-manager."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            git_dir = os.path.join(tmpdir, ".git")
-            os.makedirs(git_dir)
-            with open(os.path.join(git_dir, "config"), "w") as f:
-                f.write('[remote "origin"]\n\turl = git@github.com:user/repo.git\n')
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertIn("github-manager", agent_names)
-
-    def test_does_not_suggest_github_manager_for_non_github_remote(self):
-        """No debe sugerirse github-manager en forjas no GitHub."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            git_dir = os.path.join(tmpdir, ".git")
-            os.makedirs(git_dir)
-            with open(os.path.join(git_dir, "config"), "w") as f:
-                f.write('[remote "origin"]\n\turl = git@gitlab.com:user/repo.git\n')
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertNotIn("github-manager", agent_names)
-
-    def test_librarian_menu_option_is_explicitly_on_demand(self):
-        option = build_optional_agent_menu_option("librarian")
-        self.assertIn("Solo bajo demanda", option["description"])
-
-    def test_suggests_ux_reviewer_for_mixed_react_and_express_project(self):
-        """Si hay frontend y backend en el mismo package.json, debe aflorar la UI."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            pkg = {
-                "name": "test",
-                "dependencies": {"react": "^18.0.0", "express": "^5.0.0"},
-            }
-            with open(os.path.join(tmpdir, "package.json"), "w") as f:
-                json.dump(pkg, f)
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertIn("ux-reviewer", agent_names)
-
-    def test_does_not_suggest_librarian_from_markdown_body_notes(self):
-        """La sugerencia de librarian debe seguir el parser canónico."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            claude_dir = os.path.join(tmpdir, ".claude")
-            os.makedirs(claude_dir)
-            with open(
-                os.path.join(claude_dir, "alfred-dev.local.md"),
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write("# Notas\n\nmemoria:\n  enabled: true\n")
-            suggestions = suggest_optional_agents(tmpdir)
-        agent_names = [s[0] for s in suggestions]
-        self.assertNotIn("librarian", agent_names)
+    def test_legacy_optional_flags_are_ignored(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write("---\nagentes_opcionales:\n  data-engineer: true\n  lucius: true\n---\n")
+            f.flush()
+            config = load_config(f.name)
+        os.unlink(f.name)
+        self.assertTrue(config["agentes_opcionales"]["lucius"])
+        self.assertNotIn("data-engineer", config["agentes_opcionales"])
 
 
 class TestConfigCli(unittest.TestCase):

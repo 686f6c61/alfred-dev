@@ -39,13 +39,20 @@ ejecutar la fase actual respetando las gates.
 Antes de lanzar la primera fase, localiza el fichero compartido de composición
 dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces la
 ruta exacta, búscala primero en la instalación del plugin (por ejemplo, bajo
-`~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y léela desde
+`${CLAUDE_PLUGIN_ROOT}/commands/_composicion.md`) y léela desde
 ahí.
 
 Después, sigue el protocolo de composición dinámica (pasos 1 a 4). Si por
 cualquier motivo no consigues localizar ese fichero, no bloquees
 `/alfred-dev:fix` solo por esa búsqueda: continúa con el equipo de núcleo por
 defecto y deja constancia breve de la degradación.
+
+Lee `${CLAUDE_PLUGIN_ROOT}/commands/_docs_vivas.md`. Sync mínimo: índice y
+`current.md`. En `fix` no preguntes por Lucius. Antes de cerrar `validacion`:
+
+```bash
+python3 .claude/alfred-continuity.py check-project-docs "$PWD" --command fix --phase validacion
+```
 
 ## Modo autopilot
 
@@ -71,28 +78,23 @@ Activa `qa-engineer` y `security-officer` en paralelo para regression testing y 
 
 ### Especialistas opcionales en `fix`
 
-Si hay opcionales activos en `equipo_sesion` (ya sea por composición dinámica
-efímera o por fallback a `.claude/alfred-dev.local.md`), intégralos donde más
-aportan:
-
-- `diagnostico`: `data-engineer`, `performance-engineer`, `ux-reviewer`
-- `correccion`: `data-engineer`, `copywriter`, `i18n-specialist`
-- `validacion`: `performance-engineer`, `ux-reviewer`, `seo-specialist`, `i18n-specialist`
-- `lucius`: revisión secuencial de cierre en `validacion`
-
-`github-manager` y `librarian` no forman parte del loop estándar de `fix`: úsalos solo si el contexto lo pide de forma explícita.
-Consulta `equipo_sesion` como fuente runtime canónica. Si no existe equipo
-efímero, usa el equipo persistido que el orquestador ya haya derivado desde
-`.claude/alfred-dev.local.md`.
+El único opcional es **lucius**. Si está activo, corre en secuencia en
+`validacion`. No invoques data-engineer, copywriter, github-manager ni librarian.
 
 ## Loop iterativo
 
 Si una gate no se supera al primer intento, corrige los problemas y vuelve a intentarlo. Maximo 5 intentos por fase. Si tras 5 intentos la gate sigue sin superarse, informa al usuario y espera instrucciones. En modo autopilot, si agotas los 5 intentos, deten el flujo e informa del problema -- no sigas reintentando indefinidamente.
 
+Cuando el fix está validado, cierra con:
+
+```bash
+python3 .claude/alfred-continuity.py cierre "$PWD"
+```
+
 ## Cierre canónico del comando
 
 - NO cierres con una explicación larga si el estado del fix ya quedó
-  persistido.
+  persistido. Si ya corriste `cierre`, ese bloque es la respuesta final.
 - Si una gate de usuario queda pendiente, usa un único `AskUserQuestion`
   navegable y pegado a la fase actual.
 - Si el flujo sigue abierto, apóyate en `.claude/alfred-dev-state.json` y en

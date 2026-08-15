@@ -130,9 +130,9 @@ def _load_plugin_version() -> str:
     try:
         with open(plugin_path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
-        return str(data.get("version", "0.6.0"))
+        return str(data.get("version", "0.7.0"))
     except (OSError, json.JSONDecodeError, TypeError, ValueError):
-        return "0.6.0"
+        return "0.7.0"
 
 
 def _bounded_limit(
@@ -1839,18 +1839,52 @@ class MemoryMCPServer:
 
     # --- Bucle principal ---------------------------------------------------
 
+    def _run_fastmcp(self) -> bool:
+        """Arranca el servidor con el SDK oficial si esta instalado."""
+        try:
+            from mcp.server.fastmcp import FastMCP
+        except ImportError:
+            _log.warning(
+                "Paquete 'mcp' no disponible. "
+                "Instala el SDK oficial (pip install mcp) o se usara el transporte propio."
+            )
+            return False
+
+        mcp = FastMCP("alfred-memory")
+        server = self
+
+        for tool_name, handler in self._TOOL_HANDLERS.items():
+            meta = next((item for item in _TOOLS if item["name"] == tool_name), None)
+            description = meta["description"] if meta else tool_name
+
+            def _bind(name: str, fn, doc: str):
+                def tool_fn(**kwargs):
+                    db = server._ensure_db()
+                    return fn(server, db, kwargs)
+
+                tool_fn.__name__ = name
+                tool_fn.__doc__ = doc
+                return tool_fn
+
+            mcp.tool(name=tool_name)(_bind(tool_name, handler, description))
+
+        _log.info("Servidor MCP alfred-memory iniciado con FastMCP")
+        _log.info("DB path: %s", self._db_path)
+        try:
+            mcp.run()
+        finally:
+            if self._db is not None:
+                self._db.close()
+        return True
+
     def run(self) -> None:
-        """
-        Bucle principal del servidor MCP.
+        """Bucle principal: SDK oficial FastMCP, con fallback stdio propio."""
+        if self._run_fastmcp():
+            return
+        self._run_legacy_stdio()
 
-        Lee mensajes JSON-RPC de stdin, los despacha al handler apropiado
-        y escribe las respuestas en stdout. El bucle termina cuando stdin
-        se cierra (fin del proceso padre) o cuando se recibe una senal
-        de terminacion.
-
-        Las notificaciones (mensajes sin ``id``) se procesan pero no generan
-        respuesta, conforme al protocolo JSON-RPC 2.0.
-        """
+    def _run_legacy_stdio(self) -> None:
+        """Transporte stdio propio (compatibilidad si falta el paquete mcp)."""
         _log.info("Servidor MCP alfred-memory iniciado")
         _log.info("DB path: %s", self._db_path)
 

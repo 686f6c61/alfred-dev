@@ -3,7 +3,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear|compact",
+        "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
           {
             "type": "command",
@@ -18,6 +18,20 @@
             "command": "bash",
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/session-end.py"
             ],
             "async": true
           }
@@ -34,68 +48,27 @@
               "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
             ],
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "UserPromptExpansion": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
           },
           {
             "type": "command",
             "command": "python3",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.py"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/prompt-route.py"
             ],
-            "timeout": 10
+            "timeout": 5
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Read|Write|Edit|Glob|Grep",
+        "matcher": "Write|Edit|Bash|mcp__.*",
         "hooks": [
           {
             "type": "command",
             "command": "python3",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/prefetch-finish-guard.py"
-            ],
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.sh"
+              "${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard.py"
             ],
             "timeout": 5
           }
@@ -128,8 +101,9 @@
         ]
       }
     ],
-    "PreCompact": [
+    "PostToolUse": [
       {
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
@@ -143,43 +117,10 @@
             "type": "command",
             "command": "python3",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/memory-compact.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/quality-gate.py"
             ],
             "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
+          },
           {
             "type": "command",
             "command": "python3",
@@ -192,123 +133,6 @@
       },
       {
         "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/dependency-watch.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/spelling-guard.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "WebSearch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3",
-            "args": [
-              "${CLAUDE_PLUGIN_ROOT}/hooks/activity-capture.py"
-            ],
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "NotebookEdit",
         "hooks": [
           {
             "type": "command",

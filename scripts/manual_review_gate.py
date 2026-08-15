@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gate de revisión humana para la matriz manual de Alfred Dev 0.6.0."""
+"""Gate de revisión humana para la matriz manual de Alfred Dev 0.7.0."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 
 from core.secrets import find_secret_label
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 CASE_CONTRACT_FIELDS = (
     "prompt",
     "expected",

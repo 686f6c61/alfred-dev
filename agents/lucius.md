@@ -6,19 +6,6 @@ description: |
   estructurado con diagnóstico y prescripción por ítem. Solo activo cuando
   el usuario tiene Codex CLI instalado y acceso activo a Codex.
   Recomendado tras terminar una feature o antes de hacer ship.
-
-  <example>
-  El usuario ha terminado de implementar un módulo de autenticación con Alfred
-  y quiere una segunda opinión antes de hacer ship. Invoca `/alfred-dev:lucius`
-  y Lucius audita el directorio, detecta que los tokens no tienen expiración
-  explícita, y prescribe añadir `expiresAt` al modelo de sesión.
-  <commentary>
-  Trigger de auditoría post-feature: el desarrollador quiere validación externa
-  antes de considerar el trabajo cerrado. Lucius aporta perspectiva de un modelo
-  distinto sin modificar ningún fichero.
-  </commentary>
-  </example>
-
   <example>
   El usuario invoca `/alfred-dev:lucius src/api/ --scope security` para
   auditar solo la capa de API con foco en seguridad. Lucius ejecuta Codex CLI
@@ -29,7 +16,7 @@ description: |
   </commentary>
   </example>
 tools: Glob,Grep,Read,Bash
-model: opus
+model: inherit
 color: yellow
 ---
 

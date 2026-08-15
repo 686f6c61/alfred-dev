@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runner reproducible de la matriz manual humana de Alfred Dev 0.6.0.
+"""Runner reproducible de la matriz manual humana de Alfred Dev 0.7.0.
 
 Este script ejecuta prompts reales con ``claude -p`` contra el worktree actual,
 contra el plugin instalado con ``--installed`` o contra un ``--plugin-dir``
@@ -29,7 +29,7 @@ if str(ROOT) not in sys.path:
 
 from core.secrets import sanitize_text
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 DEFAULT_PLUGIN_DIR = Path.home() / ".claude" / "plugins" / "cache" / "alfred-dev" / "alfred-dev" / VERSION
 DEFAULT_TIMEOUT_SECONDS = 240
 PLUGIN_SURFACE_ROOTS = (
@@ -87,10 +87,10 @@ OPTION_CONTRACTS: tuple[str, ...] = (
     "config:personalidad",
     "spike:topic",
     "map-codebase:optional-area",
-    "search:with-query",
-    "search:empty-query",
     "sync-github:autodetect",
     "sync-github:owner-repo",
+    "memory-ui:no-argument",
+    "memory-ui:stop",
     "verify:no-argument",
     "verify:approved",
     "verify:rejected",
@@ -108,7 +108,7 @@ OPTION_CONTRACTS: tuple[str, ...] = (
     "fix:user-gate-menu",
     "spike:conclusion-review-menu",
     "discuss:route-menu",
-    "next:route-menu",
+    "alfred:route-menu",
     "update:confirm-update-menu",
 )
 
@@ -129,17 +129,17 @@ CASES: tuple[ManualCase, ...] = (
         setup="mapped_project",
         commands=("alfred",),
         suite="public-command",
-        option_keys=("alfred:optional-prompt",),
+        option_keys=("alfred:optional-prompt", "alfred:route-menu"),
     ),
     ManualCase(
         "help",
-        "/alfred-dev:help",
+        "/alfred-dev:alfred",
         "Muestra un mapa accionable y priorizado, no un volcado interno interminable.",
         commands=("help",),
     ),
     ManualCase(
         "config",
-        "/alfred-dev:config",
+        "/alfred-dev:ajustes",
         "Detecta stack, expone salida sin cambios y las 7 secciones navegables, explica supuestos y no pisa configuracion existente sin avisar.",
         commands=("config",),
         option_keys=(
@@ -242,20 +242,20 @@ CASES: tuple[ManualCase, ...] = (
     ),
     ManualCase(
         "next",
-        "/alfred-dev:next",
+        "/alfred-dev:retomar",
         "Decide siguiente paso desde handoff/UAT/mapa sin reanalizar a ciegas.",
         setup="handoff",
-        commands=("next",),
+        commands=("resume",),
         suite="public-command",
     ),
     ManualCase(
         "next-route-menu",
-        "/alfred-dev:next",
+        "/alfred que toca hacer ahora en este repo ya mapeado?",
         "Si no hay ruta inequívoca en un repo ya mapeado, usa un único menú seleccionable con rutas plausibles.",
         setup="mapped_idle",
-        commands=("next",),
+        commands=("alfred",),
         suite="public-option",
-        option_keys=("next:route-menu",),
+        option_keys=("alfred:route-menu",),
     ),
     ManualCase(
         "pause",
@@ -319,24 +319,7 @@ CASES: tuple[ManualCase, ...] = (
         commands=("validate",),
         suite="public-command",
     ),
-    ManualCase(
-        "search-login",
-        "/alfred-dev:search login",
-        "Busca en artefactos y memoria sin inventar resultados ni hacer analisis largo.",
-        setup="sonia_board",
-        commands=("search",),
-        suite="public-command",
-        option_keys=("search:with-query",),
-    ),
-    ManualCase(
-        "search-empty",
-        "/alfred-dev:search",
-        "No inventa búsqueda cuando falta texto; pide una consulta o devuelve bloqueo claro.",
-        setup="sonia_board",
-        commands=("search",),
-        suite="public-option",
-        option_keys=("search:empty-query",),
-    ),
+
     ManualCase(
         "sync-github",
         "/alfred-dev:sync-github",
@@ -362,10 +345,20 @@ CASES: tuple[ManualCase, ...] = (
         setup="sonia_board",
         commands=("memory-ui",),
         suite="public-command",
+        option_keys=("memory-ui:no-argument",),
+    ),
+    ManualCase(
+        "memory-ui-stop",
+        "/alfred-dev:memory-ui stop",
+        "Cierra la UI local si está viva y no deja el proceso huérfano.",
+        setup="sonia_board",
+        commands=("memory-ui",),
+        suite="public-option",
+        option_keys=("memory-ui:stop",),
     ),
     ManualCase(
         "verify-approved",
-        "/alfred-dev:verify aprobado por usuario",
+        "/alfred-dev:uat aprobado por usuario",
         "Registra UAT humana como aprobada y la deja trazable.",
         setup="completed_quick",
         commands=("verify",),
@@ -373,7 +366,7 @@ CASES: tuple[ManualCase, ...] = (
     ),
     ManualCase(
         "verify-no-argument",
-        "/alfred-dev:verify",
+        "/alfred-dev:uat",
         "Prepara o refresca la UAT sin marcarla como aprobada si falta indicacion humana explicita.",
         setup="completed_quick",
         commands=("verify",),
@@ -382,7 +375,7 @@ CASES: tuple[ManualCase, ...] = (
     ),
     ManualCase(
         "verify-rejected",
-        "/alfred-dev:verify rechazado falta revisar copy",
+        "/alfred-dev:uat rechazado falta revisar copy",
         "Registra UAT humana como rechazada con nota y no la presenta como aprobada.",
         setup="completed_quick",
         commands=("verify",),
@@ -391,7 +384,7 @@ CASES: tuple[ManualCase, ...] = (
     ),
     ManualCase(
         "verify-pending",
-        "/alfred-dev:verify pendiente esperando validacion de negocio",
+        "/alfred-dev:uat pendiente esperando validacion de negocio",
         "Deja la UAT pendiente con nota y siguiente paso claro, sin cerrar el entregable.",
         setup="completed_quick",
         commands=("verify",),
@@ -489,11 +482,28 @@ def _public_command_names() -> tuple[str, ...]:
     return tuple(names)
 
 
+_PUBLIC_COMMAND_ALIASES = {
+    "help": "alfred",
+    "config": "ajustes",
+    "resume": "retomar",
+    "status": "progress",
+    "verify": "uat",
+    "blocked": "progress",
+    "in-progress": "progress",
+    "standup": "progress",
+    "validate": "progress",
+}
+
+
 def _case_command_coverage() -> dict[str, list[str]]:
     coverage = {name: [] for name in _public_command_names()}
     for case in CASES:
         for command_name in case.commands:
-            coverage.setdefault(command_name, []).append(case.case_id)
+            key = _PUBLIC_COMMAND_ALIASES.get(command_name, command_name)
+            if key in coverage:
+                coverage[key].append(case.case_id)
+            else:
+                coverage.setdefault(command_name, []).append(case.case_id)
     return coverage
 
 

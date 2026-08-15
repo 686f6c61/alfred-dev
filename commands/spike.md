@@ -39,13 +39,20 @@ ejecutar la fase actual respetando las gates.
 Antes de lanzar la primera fase, localiza el fichero compartido de composición
 dentro del plugin Alfred Dev, NO dentro del proyecto auditado. Si no conoces la
 ruta exacta, búscala primero en la instalación del plugin (por ejemplo, bajo
-`~/.claude/plugins/cache/alfred-dev/**/commands/_composicion.md`) y léela desde
+`${CLAUDE_PLUGIN_ROOT}/commands/_composicion.md`) y léela desde
 ahí.
 
 Después, sigue el protocolo de composición dinámica (pasos 1 a 4). Si por
 cualquier motivo no consigues localizar ese fichero, no bloquees
 `/alfred-dev:spike` solo por esa búsqueda: continúa con el equipo de núcleo por
 defecto y deja constancia breve de la degradación.
+
+Lee `${CLAUDE_PLUGIN_ROOT}/commands/_docs_vivas.md`. Si el spike cierra una
+decisión, escribe un ADR. Antes de cerrar `conclusiones`:
+
+```bash
+python3 .claude/alfred-continuity.py check-project-docs "$PWD" --command spike --phase conclusiones
+```
 
 Si `equipo_sesion` trae opcionales activos (ya sea por composición dinámica
 efímera o por fallback a `.claude/alfred-dev.local.md`), consúltalo siempre

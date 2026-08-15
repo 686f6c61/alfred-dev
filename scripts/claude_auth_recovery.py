@@ -12,7 +12,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 AUTH_REFERENCES = (
     "https://code.claude.com/docs/en/authentication",
     "https://code.claude.com/docs/en/errors",
@@ -182,7 +182,7 @@ def build_recovery_payload(preflight: dict, system_name: str | None = None) -> d
 
 def format_guidance(payload: dict) -> str:
     lines = [
-        "Claude auth recovery 0.6.0",
+        "Claude auth recovery 0.7.0",
         "",
         f"Status: {payload.get('status')}",
         f"Diagnosis: {payload.get('diagnosis_code')}",

@@ -2,7 +2,7 @@
 
 Alfred Dev esta disenado para adaptarse a cada proyecto sin que el desarrollador tenga que rellenar formularios ni editar ficheros de configuración a mano. Al iniciarse, el plugin analiza el directorio del proyecto, detecta el stack tecnologico y aplica valores por defecto sensatos para cada apartado: autonomía, personalidad, agentes opcionales y memoria. `load_config()` puede funcionar sin fichero local, pero `session-bootstrap.sh` y `session-start.sh` materializan `.claude/alfred-dev.local.md` en la primera sesión para dejar un estado operativo explicito y estable.
 
-Cuando el desarrollador quiere personalizar el comportamiento --ajustar el nivel de autonomía, activar agentes especializados o cambiar el tono de las respuestas--, puede hacerlo editando `.claude/alfred-dev.local.md` o ejecutando `/alfred-dev:config` desde la interfaz del plugin. El formato combina YAML frontmatter para los valores estructurados con Markdown libre para notas de contexto, lo que permite que el mismo fichero sea legible tanto por humanos como por el parser del plugin. Desde la ronda actual, `/alfred-dev:config` ya no depende solo del prompt: `config_loader.py` expone `build_config_section_summaries()`, `build_config_section_menu()`, `apply_config_section_update()`, `build_config_section_change_preview()`, `update_config_section()` y `update_project_config_section()` para resumir el estado real, construir el menú principal navegable, aplicar cambios por sección, confirmar el diff efectivo y persistir el resultado sin reimplementar el round-trip del fichero.
+Cuando el desarrollador quiere personalizar el comportamiento --ajustar el nivel de autonomía, activar Lucius o cambiar el tono de las respuestas--, puede hacerlo editando `.claude/alfred-dev.local.md` o ejecutando `/alfred-dev:ajustes` desde la interfaz del plugin. El formato combina YAML frontmatter para los valores estructurados con Markdown libre para notas de contexto, lo que permite que el mismo fichero sea legible tanto por humanos como por el parser del plugin. Desde la ronda actual, `/alfred-dev:ajustes` ya no depende solo del prompt: `config_loader.py` expone `build_config_section_summaries()`, `build_config_section_menu()`, `apply_config_section_update()`, `build_config_section_change_preview()`, `update_config_section()` y `update_project_config_section()` para resumir el estado real, construir el menú principal navegable, aplicar cambios por sección, confirmar el diff efectivo y persistir el resultado sin reimplementar el round-trip del fichero.
 
 
 ## Detección automática de stack
@@ -184,11 +184,11 @@ Para proyectos Node, el parser lee `dependencies` y `devDependencies` de `packag
 
 La configuración de Alfred Dev vive en `.claude/alfred-dev.local.md`, dentro del directorio del proyecto. Se utiliza el formato YAML frontmatter (delimitado por `---`) para los valores estructurados, seguido de contenido Markdown libre para notas y contexto adicional.
 
-La razon de este formato hibrido es practica: YAML cubre la configuración tipada (booleanos, números, listas), mientras que el cuerpo Markdown permite al desarrollador añadir instrucciones en lenguaje natural que Alfred inyecta en su contexto. El fichero es editable a mano, pero la forma recomendada de gestionarlo es a traves del comando `/alfred-dev:config`, que guia al usuario por cada sección de forma interactiva. El menú principal de secciones y sus descripciones ya salen de `build_config_section_menu()` / `build_config_section_summaries()`, la confirmación de cambios puede apoyarse en `build_config_section_change_preview()`, y la persistencia final en `update_config_section()` / `update_project_config_section()`, así que la UX de `config` no depende de reescribir a mano el estado actual, el diff esperado ni el guardado final en cada prompt.
+La razon de este formato hibrido es practica: YAML cubre la configuración tipada (booleanos, números, listas), mientras que el cuerpo Markdown permite al desarrollador añadir instrucciones en lenguaje natural que Alfred inyecta en su contexto. El fichero es editable a mano, pero la forma recomendada de gestionarlo es a traves del comando `/alfred-dev:ajustes`, que guia al usuario por cada sección de forma interactiva. El menú principal de secciones y sus descripciones ya salen de `build_config_section_menu()` / `build_config_section_summaries()`, la confirmación de cambios puede apoyarse en `build_config_section_change_preview()`, y la persistencia final en `update_config_section()` / `update_project_config_section()`, así que la UX de `ajustes` no depende de reescribir a mano el estado actual, el diff esperado ni el guardado final en cada prompt.
 
 La fusion con los valores por defecto es recursiva: el desarrollador solo necesita definir las claves que quiere cambiar. El resto se hereda automáticamente del `DEFAULT_CONFIG` del plugin. El runtime acepta alias legacy como `autonomía`, pero la escritura canónica del plugin es `autonomia`.
 
-El menú principal de `/alfred-dev:config` expone estas 7 secciones canónicas:
+El menú principal de `/alfred-dev:ajustes` expone estas 7 secciones canónicas:
 Autonomía por fase, Proyecto, Agentes opcionales, Memoria persistente,
 Compliance, Integraciones y Personalidad.
 
@@ -273,36 +273,20 @@ personalidad:
 
 ### Sección `agentes_opcionales`
 
-Activa o desactiva los agentes opcionales del plugin. Cada agente es un especialista que se incorpora a los flujos cuando esta activado. Todos vienen desactivados por defecto y se activan segun las necesidades del proyecto.
+Activa o desactiva el único agente opcional del runtime. Lucius viene desactivado por defecto.
 
 | Clave                    | Rol del agente                              | Valor por defecto |
 |--------------------------|---------------------------------------------|-------------------|
-| `data-engineer`          | Ingeniero de datos (esquemas, migraciones)  | `false`           |
-| `performance-engineer`   | Ingeniero de rendimiento (profiling)        | `false`           |
-| `github-manager`         | Gestor de GitHub (PRs, issues, releases)    | `false`           |
-| `librarian`              | Bibliotecario (memoria persistente)         | `false`           |
-| `ux-reviewer`            | Revisor de UX (accesibilidad, flujos)       | `false`           |
-| `seo-specialist`         | Especialista SEO (meta tags, Core Vitals)   | `false`           |
-| `copywriter`             | Copywriter (CTAs, tono, textos publicos)    | `false`           |
-| `i18n-specialist`        | Especialista i18n (traducciones, locales)   | `false`           |
 | `lucius`                 | Director técnico externo (segunda opinión)  | `false`           |
 
 Ejemplo:
 
 ```yaml
 agentes_opcionales:
-  data-engineer: true
-  performance-engineer: false
-  github-manager: true
-  librarian: true
-  ux-reviewer: false
-  seo-specialist: false
-  copywriter: false
-  i18n-specialist: false
   lucius: false
 ```
 
-La memoria persistente y `librarian` son piezas relacionadas pero separadas: activar `memoria.enabled` hace que Alfred registre y exponga historial, pero no escribe `librarian: true` automáticamente. El Bibliotecario sigue siendo un agente opcional que el usuario activa cuando quiere consultas históricas dentro de los flujos.
+La memoria persistente no depende de un agente bibliotecario. Activar `memoria.enabled` hace que Alfred registre y exponga historial; las consultas van por MCP o `/alfred-dev:memory-ui`.
 
 ### Sección `memoria`
 
@@ -414,32 +398,13 @@ El nivel de autonomía modifica el comportamiento de las gates de tipo `usuario`
 
 ## Descubrimiento de agentes opcionales
 
-Alfred Dev incluye 10 agentes de nucleo que siempre estan activos (Alfred, Product Owner, Selina, Arquitecto, Senior Dev, Security Officer, QA, SonIA, Tech Writer y DevOps) y 9 agentes opcionales que el desarrollador activa segun las necesidades de su proyecto. Los agentes opcionales no son genéricos: cada uno esta especializado en un dominio concreto y solo tiene sentido en proyectos que lo necesitan.
+Alfred Dev incluye 8 agentes de nucleo más Selina si hay frontend. El único opcional es Lucius. El kanban lo escribe el runtime, no un agente aparte.
 
-La función `suggest_optional_agents()` en `config_loader.py` analiza el proyecto y sugiere que agentes opcionales podrian ser utiles. La lógica de sugerencia se basa en indicadores objetivos del proyecto, no en preferencias arbitrarias. A continuacion se detalla la lógica de cada sugerencia:
-
-### Lógica de sugerencias
-
-| Agente sugerido        | Condicion de activacion                                                                     | Razon                                                                         |
-|------------------------|---------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| `data-engineer`        | El ORM detectado es distinto de `ninguno`                                                   | Si hay ORM, hay base de datos. El agente ayuda con esquemas, migraciones y queries. |
-| `ux-reviewer`          | El framework detectado esta en la lista de frameworks frontend (Next, Nuxt, Astro, Remix, Gatsby, Svelte, Solid, Qwik, Vue, React, Angular) | Si hay interfaz de usuario, tiene sentido revisar accesibilidad y flujos.     |
-| `seo-specialist`       | Se detectan ficheros HTML publicos (en raiz, `public/`, `site/`, `dist/` o `docs/`)         | Si hay contenido web público, el SEO importa para la visibilidad.             |
-| `copywriter`           | Se detectan ficheros HTML publicos (misma condicion que SEO)                                 | Los textos publicos necesitan cuidar el tono, los CTAs y la coherencia.       |
-| `github-manager`       | El proyecto tiene un remote GitHub configurado (se lee `.git/config`)                        | Si hay GitHub, hay PRs, issues y releases que gestionar.                      |
-| `performance-engineer` | El proyecto tiene mas de 50 ficheros de código fuente (hasta 3 niveles de profundidad)      | Los proyectos grandes se benefician de profiling y optimizacion.              |
-| `librarian`            | La memoria persistente esta habilitada en la configuración local                            | Si hay memoria activa, el Bibliotecario consulta decisiones e historial bajo demanda. |
-| `i18n-specialist`      | Se detectan directorios o ficheros de i18n (`i18n/`, `locales/`, `translations/`, etc.)     | Si hay señales de internacionalización, revisar claves, formatos y cadenas.   |
-
-El recuento de ficheros fuente ignora directorios de dependencias y artefactos (`node_modules`, `.git`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `venv`, `vendor`, `target`, `.cargo`) para no inflar artificialmente la cuenta.
-
-Estas sugerencias estáticas son deliberadamente conservadoras. Peticiones directas como "la query tarda 2 segundos" o "el bundle pesa demasiado" no pasan por esta tabla: Alfred las resuelve en la capa semántica de composición dinámica, donde puede activar `performance-engineer`, `data-engineer` o ambos según la causa probable.
-
-`lucius` no aparece en esta tabla porque `suggest_optional_agents()` no lo decide por I/O del proyecto. Su valor depende de la tarea actual y se presenta en la tercera pregunta de auditoría externa durante la composicion dinámica.
+La función `suggest_optional_agents()` en `config_loader.py` no propone el catálogo 0.6. Lucius no se decide por I/O del proyecto: su valor depende de si el usuario quiere una segunda opinión externa en un cierre.
 
 ### Flujo de activacion
 
-El descubrimiento contextual se ejecuta la primera vez que el desarrollador abre `/alfred-dev:config` en un proyecto nuevo (o cuando no hay agentes opcionales activados). El flujo es:
+El descubrimiento contextual se ejecuta la primera vez que el desarrollador abre `/alfred-dev:ajustes` en un proyecto nuevo (o cuando Lucius no está configurado). El flujo es:
 
 1. Se detecta el stack con `detect_stack()`.
 2. Se ejecuta `suggest_optional_agents()` con el directorio del proyecto y la configuración actual.
@@ -471,29 +436,18 @@ La composicion dinámica se ejecuta al invocar cualquier flujo y opera en tres c
    --> preseleccion razonada, no por keywords
 
 3. PRESENTACION + EJECUCIÓN
-   Los agentes se presentan con AskUserQuestion en 3 menús
-   navegables por grupo: tecnicos, contenido/UX y auditoria externa.
-   Los recomendados llevan «(Recomendado)» en el label.
+   Lucius se presenta con AskUserQuestion en un menú del grupo Auditoria.
+   Si el usuario no quiere activarlo, elige «Seguir sin activar más».
    --> equipo_sesion efimero
 ```
 
-La primera capa proporciona señales objetivas del proyecto (I/O de ficheros). La segunda aprovecha la capacidad de comprension semántica de Alfred para decidir que agentes son relevantes para la tarea concreta, sin depender de un diccionario de keywords. La tercera da al usuario la decisión final mostrando **todos** los agentes disponibles.
+La primera capa proporciona señales objetivas del proyecto (I/O de ficheros). La segunda aprovecha la capacidad de comprension semántica de Alfred para decidir que agentes son relevantes para la tarea concreta, sin depender de un diccionario de keywords. La tercera da al usuario la decisión final sobre Lucius.
 
 ### Capa de proyecto: suggest_optional_agents
 
 La función `suggest_optional_agents()` en `config_loader.py` analiza el proyecto de forma estática para generar señales contextuales. No analiza la descripción de la tarea; eso lo hace Alfred semanticamente.
 
-| Señal | Agente sugerido | Condicion |
-|-------|-----------------|-----------|
-| ORM detectado | data-engineer | `detect_stack()` detecta Prisma, Drizzle, etc. |
-| Framework frontend | ux-reviewer | Next, React, Vue, Svelte, etc. |
-| HTML público | seo-specialist, copywriter | `index.html` o ficheros en `public/`, `site/` |
-| Remote GitHub | github-manager | `.git/config` contiene una URL `github.com` |
-| Proyecto grande | performance-engineer | Mas de 50 ficheros fuente |
-| Memoria activa | librarian | `.claude/alfred-dev.local.md` con `memoria: enabled: true` |
-| Ficheros i18n | i18n-specialist | Directorios `i18n/`, `locales/`, `translations/`, etc. |
-
-`lucius` queda fuera de esta tabla por diseño: es un agente de auditoría externa activado por contexto de tarea, no por señales estáticas del proyecto.
+`suggest_optional_agents()` ya no propone el catálogo 0.6. El único opcional es Lucius, y queda fuera de las señales estáticas: se activa por contexto de tarea o desde `/alfred-dev:ajustes`, no porque el repo tenga ORM, frontend o remoto GitHub.
 
 ### Capa semántica: Alfred como razonador
 
@@ -503,14 +457,14 @@ Ejemplos de razonamiento semántico:
 
 | Tarea | Decisión de Alfred | Por que |
 |-------|--------------------|---------|
-| "Implementar pagos con Stripe" | senior-dev, quiza data-engineer | Entiende que "pagos" es lógica de negocio, no automáticamente datos |
-| "Dark mode en el dashboard" | ux-reviewer | Entiende que afecta a la interfaz aunque no diga "formulario" |
-| "¿Por que se eligio SQLite?" | librarian | Entiende que es una pregunta sobre decisiones pasadas |
-| "El endpoint tarda 3 segundos" | performance-engineer, quizá data-engineer | Entiende que primero hay que medir; si el cuello cae en queries o persistencia, suma al especialista de datos |
+| "Implementar pagos con Stripe" | senior-dev | Entiende que "pagos" es lógica de negocio del nucleo |
+| "Dark mode en el dashboard" | selina si hay frontend, luego senior-dev | Entiende que afecta a la interfaz |
+| "¿Por que se eligio SQLite?" | memory-ui / MCP | Consulta histórica, no un agente bibliotecario |
+| "Segunda opinión antes de cerrar" | lucius | Único opcional, activado por tarea o ajustes |
 
 ### Capa de presentacion: todos los agentes visibles
 
-Los comandos presentan al usuario **todos** los agentes opcionales mediante `AskUserQuestion` con 3 menús navegables por grupo, no con una llamada gigante difícil de usar. Cada menú se construye como payload actual de Claude Code (`questions[]` con `multiSelect: false`) y conserva `question`/`header`/`options` en raíz solo como compatibilidad interna de lectura. Cada grupo se recorre por separado y, si el usuario quiere activar más de un agente del mismo grupo, Alfred vuelve a mostrar ese mismo menú para elegir **uno por interacción** hasta que el usuario indica `Seguir sin activar más` o `Listo con este grupo`. Los que Alfred considera relevantes llevan «(Recomendado)» al final del label con una razon contextual en la descripcion. Los demas aparecen con una descripcion breve de su especialidad, para que el usuario pueda activar cualquiera que Alfred no haya detectado.
+Los comandos presentan Lucius mediante `AskUserQuestion` con un menú del grupo `Auditoria`. El menú se construye como payload actual de Claude Code (`questions[]` con `multiSelect: false`) y conserva `question`/`header`/`options` en raíz solo como compatibilidad interna de lectura. Si el usuario no quiere activarlo, elige `Seguir sin activar más`.
 
 Desde v0.6, esa UX ya no depende solo del prompt: `core/optional_agents.py`
 actúa como fuente canónica del menú con `build_optional_agent_group_menu()` y
@@ -518,19 +472,7 @@ actúa como fuente canónica del menú con `build_optional_agent_group_menu()` y
 descripciones base y opción de salida.
 
 ```
-Menú 1 -- Técnicos:
-  Seguir sin activar más
-  Data Engineer     -- "El proyecto usa Prisma y la tarea implica migración (Recomendado)"
-  Performance Eng.  -- "Optimización de rendimiento, profiling y benchmarks"
-  GitHub Manager    -- "Remote git configurado (Recomendado)"
-
-Menú 2 -- Contenido y UX:
-  Seguir sin activar más
-  UX Reviewer       -- "Revisión de accesibilidad, usabilidad y flujos"
-  SEO Specialist    -- "Posicionamiento web, meta tags, Core Web Vitals"
-  Copywriter        -- "Textos publicos, CTAs, tono de comunicación"
-
-Menú 3 -- Auditoría:
+Menú Auditoría:
   Seguir sin activar más
   Lucius            -- "Segunda opinión técnica externa para esta tarea"
 ```
@@ -542,14 +484,6 @@ La seleccion del usuario se traduce en un diccionario `equipo_sesion` que se pas
 ```python
 equipo_sesion = {
     "opcionales_activos": {
-        "data-engineer": True,
-        "performance-engineer": False,
-        "github-manager": True,
-        "librarian": True,
-        "ux-reviewer": False,
-        "seo-specialist": False,
-        "copywriter": False,
-        "i18n-specialist": False,
         "lucius": False,
     },
     "infra": {
@@ -562,7 +496,7 @@ equipo_sesion = {
 Antes de inyectar el equipo en la sesión, `run_flow()` lo valida con `_validate_equipo_sesion()`. Las reglas de validación son:
 
 - El primer nivel exige exactamente tres claves: `opcionales_activos`, `infra` y `fuente`.
-- `opcionales_activos` exige como mínimo las claves de los 9 agentes opcionales conocidos. Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validación.
+- `opcionales_activos` exige como mínimo la clave `lucius`. Acepta claves extra con aviso a stderr, lo que permite extensiones futuras sin romper la validación.
 - `infra` exige exactamente `memoria`, de tipo booleano.
 - `fuente` debe ser una fuente runtime reconocida: `"composicion_dinamica"` para composicion efimera o `"config_persistida"` cuando el equipo se deriva de `.claude/alfred-dev.local.md`.
 
@@ -576,7 +510,7 @@ Los mecanismos de seleccion de agentes opcionales coexisten:
 
 | Mecanismo | Persistencia | Contexto |
 |-----------|--------------|----------|
-| `/alfred-dev:config` | Persistente (fichero `.local.md`) | Proyecto |
+| `/alfred-dev:ajustes` | Persistente (fichero `.local.md`) | Proyecto |
 | Descubrimiento (`suggest_optional_agents`) | Persistente (se guarda al confirmar) | Proyecto |
 | Composicion dinámica (Alfred semántico) | Efímera (solo la sesión) | Tarea |
 
@@ -599,7 +533,7 @@ La razón de que siga siendo configurable es que no todos los proyectos necesita
 
 ### Activacion
 
-Para activar la memoria, se añade la sección `memoria` al frontmatter del fichero de configuración con `enabled: true`. También se puede activar de forma interactiva con `/alfred-dev:config` eligiendo la sección de memoria. Si el proyecto nunca tuvo fichero local, los hooks de arranque ya lo habrán sembrado con `enabled: true`; desactivarla consiste en escribir `enabled: false`, no en borrar la base de datos.
+Para activar la memoria, se añade la sección `memoria` al frontmatter del fichero de configuración con `enabled: true`. También se puede activar de forma interactiva con `/alfred-dev:ajustes` eligiendo la sección de memoria. Si el proyecto nunca tuvo fichero local, los hooks de arranque ya lo habrán sembrado con `enabled: true`; desactivarla consiste en escribir `enabled: false`, no en borrar la base de datos.
 
 Al activarse, Alfred crea automáticamente la base de datos SQLite en `.claude/alfred-memory.db` con permisos `0600` (solo el propietario puede leer y escribir). El esquema incluye tablas para iteraciones, decisiones, commits, eventos y vinculos entre commits y decisiones.
 
@@ -611,7 +545,7 @@ La memoria captura dos tipos de información controlados por su propia clave de 
 
 - **`sync_commits_limit`**: controla cuantos commits recientes se proyectan al fichero nativo `alfred-commits-recent.md`. No limita la memoria SQLite; solo la vista resumida para Claude Code.
 
-- **`capture_decisions`**: cuando esta activo, las llamadas a `memory_log_decision` persisten decisiones en SQLite y quedan disponibles para el Bibliotecario, la sync nativa y las consultas historicas. Si se desactiva, Alfred responde con `skipped` y no escribe la decision.
+- **`capture_decisions`**: cuando esta activo, las llamadas a `memory_log_decision` persisten decisiones en SQLite y quedan disponibles para MCP, Memory UI, la sync nativa y las consultas historicas. Si se desactiva, Alfred responde con `skipped` y no escribe la decision.
 
 - **`capture_commits`**: cuando esta activo, el hook de actividad registra `git commit` y la herramienta MCP `memory_log_commit` persiste commits con SHA, mensaje, autor y ficheros afectados. Si se desactiva, la captura se omite sin tocar la DB.
 
@@ -631,11 +565,11 @@ La memoria soporta dos modos de busqueda, determinados automáticamente por las 
 
 - **LIKE (fallback básico)**: si FTS5 no esta disponible, las busquedas se realizan con `LIKE %termino%`, que es mas lento pero funcional en cualquier entorno SQLite.
 
-La detección del modo es automática al inicializar la base de datos. El plugin registra el resultado en la tabla `meta` para que otros componentes (como el agente Bibliotecario) sepan que modo esta activo sin tener que volver a comprobarlo.
+La detección del modo es automática al inicializar la base de datos. El plugin registra el resultado en la tabla `meta` para que MCP y Memory UI sepan que modo esta activo sin tener que volver a comprobarlo.
 
-### El agente Bibliotecario
+### Consulta de memoria
 
-Cuando la memoria esta activa, el agente opcional `librarian` (El Bibliotecario) se convierte en la interfaz de consulta. Es un archivista riguroso que solo responde con datos verificables de la base de datos, citando siempre la fuente con identificadores formales (`[D#12]` para decisiones, `[C#a1b2c3d]` para commits, `[I#5]` para iteraciones). Si la memoria no tiene registros sobre algo, lo dice sin rodeos en lugar de inferir.
+No hay agente `librarian`. Las consultas van por el servidor MCP (`alfred-memory`) o por `/alfred-dev:memory-ui`. Las citas verificables usan `[D#12]`, `[C#a1b2c3d]` e `[I#5]` cuando el runtime o el visor muestran un registro concreto.
 
 
 ## Personalidad
@@ -690,14 +624,6 @@ proyecto:
   bundler: vite
 
 agentes_opcionales:
-  data-engineer: true
-  performance-engineer: false
-  github-manager: true
-  librarian: true
-  ux-reviewer: false
-  seo-specialist: false
-  copywriter: false
-  i18n-specialist: false
   lucius: false
 
 memoria:

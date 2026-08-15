@@ -1,19 +1,6 @@
 #!/usr/bin/env bash
-# ---------------------------------------------------------------------------
-# Hook síncrono de bootstrap para SessionStart.
-#
-# Se ejecuta antes del contexto rico de session-start.sh para preparar, desde
-# el primer arranque, los artefactos locales que necesitan los comandos
-# helper-first en Claude Code CLI:
-# - configuración local mínima (.claude/alfred-dev.local.md)
-# - SQLite de memoria del proyecto
-# - permisos locales de Claude Code (.claude/settings.local.json y .claude/settings.json)
-# - wrapper local .claude/alfred-continuity.py
-# - iteración "session" activa para el dashboard/memoria
-#
-# No emite contexto adicional. Su único trabajo es dejar el proyecto listo y
-# salir rápido.
-# ---------------------------------------------------------------------------
+# Hook sincrono de SessionStart: prepara artefactos locales del proyecto.
+# No toca settings.json ni settings.local.json de Claude Code.
 
 set -euo pipefail
 
@@ -21,15 +8,12 @@ PROJECT_DIR="${PWD}"
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 LOCAL_CONFIG="${PROJECT_DIR}/.claude/alfred-dev.local.md"
 MEMORY_DB="${PROJECT_DIR}/.claude/alfred-memory.db"
-CLAUDE_PROJECT_SETTINGS_LOCAL="${PROJECT_DIR}/.claude/settings.local.json"
-CLAUDE_PROJECT_SETTINGS_SHARED="${PROJECT_DIR}/.claude/settings.json"
 CONTINUITY_WRAPPER="${PROJECT_DIR}/.claude/alfred-continuity.py"
 
 mkdir -p "${PROJECT_DIR}/.claude"
 
 PYTHONPATH="${PLUGIN_ROOT}" python3 - "$LOCAL_CONFIG" <<'PY' 2>/dev/null || true
 import sys
-
 from core.config_loader import ensure_bootstrap_local_config
 
 ensure_bootstrap_local_config(sys.argv[1])
@@ -52,66 +36,6 @@ db = MemoryDB(sys.argv[1])
 db.close()
 " "$MEMORY_DB" "$PLUGIN_ROOT" 2>/dev/null || echo "[Alfred Dev] Aviso: no se pudo crear la BD de memoria" >&2
 fi
-
-for SETTINGS_PATH in "$CLAUDE_PROJECT_SETTINGS_LOCAL" "$CLAUDE_PROJECT_SETTINGS_SHARED"; do
-PYTHONPATH="${PLUGIN_ROOT}" python3 - "$SETTINGS_PATH" <<'PY' 2>/dev/null || \
-  echo "[Alfred Dev] Aviso: no se pudieron bootstrapear los permisos locales de Claude Code en ${SETTINGS_PATH}" >&2
-import json
-import os
-import sys
-
-settings_path = sys.argv[1]
-required_allow = [
-    "Read(**)",
-    "Edit(docs/project/**)",
-    "Write(docs/project/**)",
-    "Edit(.claude/alfred-*.json)",
-    "Write(.claude/alfred-*.json)",
-    "Edit(.claude/alfred-*.md)",
-    "Write(.claude/alfred-*.md)",
-    "Bash(python3 *)",
-    "Bash(python3 .claude/alfred-continuity.py *)",
-]
-
-os.makedirs(os.path.dirname(settings_path), exist_ok=True)
-
-if os.path.exists(settings_path):
-    try:
-        with open(settings_path, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        sys.exit(1)
-else:
-    data = {}
-
-if not isinstance(data, dict):
-    data = {}
-
-default_mode = data.get("defaultMode")
-if not isinstance(default_mode, str) or not default_mode.strip():
-    data["defaultMode"] = "acceptEdits"
-
-permissions = data.get("permissions")
-if not isinstance(permissions, dict):
-    permissions = {}
-
-allow = permissions.get("allow")
-if not isinstance(allow, list):
-    allow = []
-
-normalized_allow = [str(item) for item in allow]
-for rule in required_allow:
-    if rule not in normalized_allow:
-        normalized_allow.append(rule)
-
-permissions["allow"] = normalized_allow
-data["permissions"] = permissions
-
-with open(settings_path, "w", encoding="utf-8") as fh:
-    json.dump(data, fh, indent=2, ensure_ascii=False)
-    fh.write("\n")
-PY
-done
 
 python3 - "$CONTINUITY_WRAPPER" "$PLUGIN_ROOT" <<'PY' 2>/dev/null || \
   echo "[Alfred Dev] Aviso: no se pudo preparar el wrapper local de continuidad" >&2

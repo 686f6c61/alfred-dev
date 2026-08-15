@@ -68,20 +68,17 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         result = release_audit.check_inventory()
 
-        self.assertIn("25 comandos namespaced publicados", result)
-        self.assertIn("ruta global /alfred instalada como skill personal global sin shim de comando duplicado", result)
-        self.assertIn(
-            "commands/_composicion.md y commands/alfred.md empaquetados solo como recursos internos",
-            result,
-        )
+        self.assertIn("18 comandos namespaced publicados", result)
+        self.assertIn("commands/alfred.md publicado como entrada contextual", result)
+        self.assertIn("commands/_composicion.md interno", result)
         self.assertIn("displayName humano alineado entre manifest y marketplace", result)
-        self.assertIn("skill fuente /alfred oculto en plugin para evitar duplicado de selector", result)
+        self.assertIn("10 agentes en agents/ raiz", result)
+        self.assertIn("11 skills planas", result)
         self.assertTrue(
             any("version canonica solo en plugin.json" in line for line in result),
             result,
         )
         self.assertIn("marketplace no suplementa componentes ni enablement", result)
-        self.assertIn("marketplace root con skills por dominio explicito", result)
         self.assertIn("paths de comandos/skills acotados al root del plugin", result)
         self.assertIn("manifest sin componentes no auditados", result)
 
@@ -237,7 +234,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         finally:
             release_audit._json = original_json
 
-        self.assertIn("dominios skills/ publicados", str(context.exception))
+        self.assertIn("plugin.json no debe listar skills", str(context.exception))
 
     def test_inventory_rejects_manifest_component_path_without_dot_slash(self):
         """Claude resuelve paths de componentes relativos al root; usamos ./ explícito."""
@@ -293,8 +290,8 @@ class TestReleaseAuditScript(unittest.TestCase):
             data = original_json(path)
             if path == ".claude-plugin/plugin.json":
                 data = dict(data)
-                data["skills"] = list(data["skills"])
-                data["skills"][0] = "./../shared-skills/"
+                data["commands"] = list(data["commands"])
+                data["commands"][0] = "./../shared-skills/"
             return data
 
         release_audit._json = fake_json
@@ -317,8 +314,8 @@ class TestReleaseAuditScript(unittest.TestCase):
             data = original_json(path)
             if path == ".claude-plugin/plugin.json":
                 data = dict(data)
-                data["skills"] = list(data["skills"])
-                data["skills"].append(data["skills"][0])
+                data["commands"] = list(data["commands"])
+                data["commands"].append(data["commands"][0])
             return data
 
         release_audit._json = fake_json
@@ -400,7 +397,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "skills/desarrollo/refactor/SKILL.md":
+            if path == "skills/pr-workflow/SKILL.md":
                 return text.replace(
                     "description:",
                     "unsupported-field: true\ndescription:",
@@ -425,8 +422,8 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "skills/desarrollo/refactor/SKILL.md":
-                return text.replace("name: refactor", "name: refactor-code", 1)
+            if path == "skills/pr-workflow/SKILL.md":
+                return text.replace("name: pr-workflow", "name: refactor-code", 1)
             return text
 
         release_audit._read = fake_read
@@ -447,10 +444,10 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "skills/desarrollo/refactor/SKILL.md":
+            if path == "skills/pr-workflow/SKILL.md":
                 return text.replace(
-                    "description:",
-                    "disable-model-invocation: maybe\ndescription:",
+                    "disable-model-invocation: true",
+                    "disable-model-invocation: maybe",
                     1,
                 )
             return text
@@ -474,7 +471,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "skills/desarrollo/refactor/SKILL.md":
+            if path == "skills/pr-workflow/SKILL.md":
                 return re.sub(
                     r"(?m)^description: .+$",
                     f"description: {long_description}",
@@ -501,7 +498,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "skills/desarrollo/refactor/SKILL.md":
+            if path == "skills/pr-workflow/SKILL.md":
                 return text.replace("description:", "effort: enormous\ndescription:", 1)
             return text
 
@@ -523,7 +520,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "skills/desarrollo/refactor/SKILL.md":
+            if path == "skills/pr-workflow/SKILL.md":
                 return text.replace(
                     "description:",
                     "allowed-tools: Browser\ndescription:",
@@ -550,7 +547,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         def fake_read(path):
             text = original_read(path)
             if path == "agents/alfred.md":
-                return text.replace("model: opus", "model: llama", 1)
+                return text.replace("model: inherit", "model: llama", 1)
             return text
 
         release_audit._read = fake_read
@@ -571,7 +568,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         def fake_read(path):
             text = original_read(path)
             if path == "agents/qa-engineer.md":
-                return text.replace("model: sonnet", "model: haiku", 1)
+                return text.replace("model: inherit", "model: haiku", 1)
             return text
 
         release_audit._read = fake_read
@@ -591,8 +588,8 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "agents/project-manager.md":
-                return text.replace("color: cyan", "color: magenta", 1)
+            if path == "agents/alfred.md":
+                return text.replace("color: blue", "color: magenta", 1)
             return text
 
         release_audit._read = fake_read
@@ -696,11 +693,10 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         result = release_audit.check_command_catalog()
 
-        self.assertIn("25 comandos namespaced alineados entre plugin.json, help y arquitectura", result)
-        self.assertIn("ruta global /alfred documentada como skill personal global invocable sin shim de comando duplicado", result)
+        self.assertIn("18 comandos namespaced alineados entre plugin.json y arquitectura", result)
+        self.assertIn("commands/alfred.md publicado como entrada contextual", result)
         self.assertIn("frontmatter de comandos compatible con Claude Code actual", result)
         self.assertIn("model de comandos validado contra Claude Code actual", result)
-        self.assertIn("help sin bloques duplicados", result)
 
     def test_command_catalog_rejects_unsupported_frontmatter_field(self):
         """Los slash commands no deben usar campos de frontmatter que Claude ignore."""
@@ -733,7 +729,7 @@ class TestReleaseAuditScript(unittest.TestCase):
             if path == "commands/quick.md":
                 return text.replace(
                     "description:",
-                    "disable-model-invocation: true\ndescription:",
+                    "when_to_use: solo para skills\ndescription:",
                     1,
                 )
             return text
@@ -746,7 +742,7 @@ class TestReleaseAuditScript(unittest.TestCase):
             release_audit._read = original_read
 
         self.assertIn("campos de frontmatter no soportados", str(context.exception))
-        self.assertIn("disable-model-invocation", str(context.exception))
+        self.assertIn("when_to_use", str(context.exception))
 
     def test_command_catalog_rejects_unknown_allowed_tool(self):
         """Los permisos de slash commands deben nombrar herramientas reales."""
@@ -829,7 +825,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         result = release_audit.check_command_execution_contracts()
 
-        self.assertIn("25 comandos namespaced y /alfred preservan argumentos, prefijo y nomenclatura actual", result)
+        self.assertIn("18 comandos namespaced preservan argumentos, prefijo y nomenclatura actual", result)
         self.assertIn("18 wrappers helper-first cubiertos", result)
         self.assertIn("6 flujos principales con cierre canónico", result)
         self.assertIn("_composicion se carga desde la instalación del plugin", result)
@@ -866,7 +862,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         result = release_audit.check_public_claims()
 
-        self.assertIn("inventario publico 19/62/26/13 verificado", result)
+        self.assertIn("inventario publico 10/11/18 verificado", result)
         self.assertIn("README, arquitectura, help y agentes sin contadores antiguos", result)
         self.assertIn("displayName humano reflejado en README y changelog", result)
         self.assertIn("skills delicados mantienen activacion manual explicita", result)
@@ -938,11 +934,6 @@ class TestReleaseAuditScript(unittest.TestCase):
                 "agents/security-officer.md",
                 "garantiza que nada con vulnerabilidades conocidas llega a los usuarios",
                 "vulnerabilidades conocidas",
-            ),
-            (
-                "agents/i18n-specialist.md",
-                "garantizar que el software habla todos los idiomas que dice hablar",
-                "todos los idiomas",
             ),
             (
                 "agents/alfred.md",
@@ -1098,7 +1089,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         def fake_read(path):
             if path == "CHANGELOG.md":
                 return original_read(path).replace(
-                    "40 opciones públicas y 4 contratos runtime de `/update`",
+                    "42 opciones públicas y 4 contratos runtime de `/update`",
                     "22 opciones/variantes documentadas",
                     1,
                 )
@@ -1112,7 +1103,7 @@ class TestReleaseAuditScript(unittest.TestCase):
             release_audit._read = original_read
 
         self.assertIn("CHANGELOG.md", str(context.exception))
-        self.assertIn("40 opciones públicas", str(context.exception))
+        self.assertIn("42 opciones públicas", str(context.exception))
         self.assertIn("4 contratos runtime", str(context.exception))
 
     def test_public_claims_reject_keyword_based_dynamic_composition(self):
@@ -1142,7 +1133,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         def fake_read(path):
             text = original_read(path)
-            if path == "skills/calidad/sonarqube/SKILL.md":
+            if path == "skills/sonarqube/SKILL.md":
                 return text.replace("disable-model-invocation: true\n", "")
             return text
 
@@ -1153,7 +1144,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         finally:
             release_audit._read = original_read
 
-        self.assertIn("skills/calidad/sonarqube/SKILL.md", str(context.exception))
+        self.assertIn("skills/sonarqube/SKILL.md", str(context.exception))
         self.assertIn("activacion manual explicita", str(context.exception))
 
     def test_config_contracts_cover_all_public_sections(self):
@@ -1174,26 +1165,24 @@ class TestReleaseAuditScript(unittest.TestCase):
         original_read = release_audit._read
 
         def fake_read(path):
-            if path == "commands/config.md":
+            if path == "commands/ajustes.md":
                 return original_read(path).replace(
                     "AskUserQuestion({\n"
                     "  questions: [\n"
                     "    {\n"
-                    "      question: \"¿Qué agente técnico quieres activar ahora?\",\n"
-                    "      header: \"Técnicos\",\n"
+                    "      question: \"¿Quieres activar Lucius como segunda opinión externa?\",\n"
+                    "      header: \"Auditoria\",\n"
                     "      multiSelect: false,\n"
                     "      options: [\n"
                     "        { label: \"Seguir sin activar más\", description: \"Pasar al siguiente grupo\" },\n"
-                    "        { label: \"Data Engineer\", description: \"<razón contextual>\" },\n"
-                    "        { label: \"Performance Engineer\", description: \"<razón contextual>\" },\n"
-                    "        { label: \"GitHub Manager\", description: \"<razón contextual>\" }\n"
+                    "        { label: \"Lucius\", description: \"<razón contextual>\" }\n"
                     "      ]\n"
                     "    }\n"
                     "  ]\n"
                     "})",
                     "AskUserQuestion({\n"
-                    "  question: \"¿Qué agente técnico quieres activar ahora?\",\n"
-                    "  header: \"Técnicos\",\n"
+                    "  question: \"¿Quieres activar Lucius como segunda opinión externa?\",\n"
+                    "  header: \"Auditoria\",\n"
                     "  options: [\n"
                     "    { label: \"Seguir sin activar más\", description: \"Pasar al siguiente grupo\" }\n"
                     "  ]\n"
@@ -1254,11 +1243,12 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         result = release_audit.check_hook_contracts()
 
-        self.assertIn("13 hooks visibles registrados", result)
-        self.assertIn("scripts de hooks declarados existen y cubren los 13 visibles", result)
+        self.assertIn("10 hooks visibles registrados", result)
+        self.assertIn("scripts de hooks declarados existen y cubren los 9 visibles", result)
         self.assertIn("exec form sin shell wrappers ni rutas sin comillas", result)
         self.assertIn("hooks bloqueantes conservan exit 2", result)
         self.assertIn("hooks con exit 2 no emiten JSON ignorado por Claude Code", result)
+        self.assertIn("eventos SessionStart, SessionEnd, UserPromptSubmit, PreToolUse y PostToolUse", result)
         self.assertIn("eventos sin matcher no declaran matcher ignorado", result)
         self.assertIn("hooks no usan if fuera de eventos de herramienta", result)
         self.assertIn("hooks sincronos declaran timeout entero <= 10 segundos", result)
@@ -1283,7 +1273,7 @@ class TestReleaseAuditScript(unittest.TestCase):
                     ]
                     for event, groups in data["hooks"].items()
                 }
-                hooks["Stop"][0]["hooks"][0]["if"] = "Bash(*)"
+                hooks["UserPromptSubmit"][0]["hooks"][0]["if"] = "Bash(*)"
                 data["hooks"] = hooks
             return data
 
@@ -1295,7 +1285,7 @@ class TestReleaseAuditScript(unittest.TestCase):
             release_audit._json = original_json
 
         self.assertIn("declara if que Claude Code no evalua", str(context.exception))
-        self.assertIn("Stop", str(context.exception))
+        self.assertIn("UserPromptSubmit", str(context.exception))
 
     def test_hook_contracts_reject_matcher_on_event_that_ignores_it(self):
         """Claude ignora matcher en algunos eventos; no debemos dar falsa precision."""
@@ -1310,7 +1300,7 @@ class TestReleaseAuditScript(unittest.TestCase):
                     event: [dict(group) for group in groups]
                     for event, groups in data["hooks"].items()
                 }
-                hooks["Stop"][0]["matcher"] = "Bash"
+                hooks["UserPromptSubmit"][0]["matcher"] = "Bash"
                 data["hooks"] = hooks
             return data
 
@@ -1322,10 +1312,10 @@ class TestReleaseAuditScript(unittest.TestCase):
             release_audit._json = original_json
 
         self.assertIn("matcher que Claude Code ignora", str(context.exception))
-        self.assertIn("Stop", str(context.exception))
+        self.assertIn("UserPromptSubmit", str(context.exception))
 
-    def test_hook_contracts_require_user_prompt_expansion(self):
-        """Los slash commands directos deben quedar cubiertos por UserPromptExpansion."""
+    def test_hook_contracts_reject_user_prompt_expansion_event(self):
+        """0.7.0 no publica UserPromptExpansion; un evento extra desalinearia el inventario."""
         release_audit = _load_release_audit_module()
         original_json = release_audit._json
 
@@ -1334,7 +1324,7 @@ class TestReleaseAuditScript(unittest.TestCase):
             if path == "hooks/hooks.json":
                 data = dict(data)
                 hooks = dict(data["hooks"])
-                hooks.pop("UserPromptExpansion", None)
+                hooks["UserPromptExpansion"] = hooks["UserPromptSubmit"]
                 data["hooks"] = hooks
             return data
 
@@ -1347,6 +1337,30 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         self.assertIn("Eventos de hooks desalineados", str(context.exception))
         self.assertIn("UserPromptExpansion", str(context.exception))
+
+    def test_hook_contracts_require_session_start(self):
+        """SessionStart sigue siendo evento obligatorio del plugin."""
+        release_audit = _load_release_audit_module()
+        original_json = release_audit._json
+
+        def fake_json(path):
+            data = original_json(path)
+            if path == "hooks/hooks.json":
+                data = dict(data)
+                hooks = dict(data["hooks"])
+                hooks.pop("SessionStart", None)
+                data["hooks"] = hooks
+            return data
+
+        release_audit._json = fake_json
+        try:
+            with self.assertRaises(release_audit.AuditError) as context:
+                release_audit.check_hook_contracts()
+        finally:
+            release_audit._json = original_json
+
+        self.assertIn("Eventos de hooks desalineados", str(context.exception))
+        self.assertIn("SessionStart", str(context.exception))
 
     def test_hook_contracts_reject_slow_sync_hooks(self):
         """Los hooks síncronos deben tener timeout explicito y conservador."""
@@ -1367,7 +1381,7 @@ class TestReleaseAuditScript(unittest.TestCase):
                     ]
                     for event, groups in data["hooks"].items()
                 }
-                hooks["Stop"][0]["hooks"][1]["timeout"] = 15
+                hooks["UserPromptSubmit"][0]["hooks"][0]["timeout"] = 15
                 data["hooks"] = hooks
             return data
 
@@ -1379,7 +1393,7 @@ class TestReleaseAuditScript(unittest.TestCase):
             release_audit._json = original_json
 
         self.assertIn("hook sincronico supera timeout 10s", str(context.exception))
-        self.assertIn("stop-hook.py", str(context.exception))
+        self.assertIn("activity-capture.py", str(context.exception))
 
     def test_hook_contracts_reject_sync_hooks_without_timeout(self):
         """Un hook síncrono sin timeout puede dejar la sesión bloqueada."""
@@ -1499,8 +1513,8 @@ class TestReleaseAuditScript(unittest.TestCase):
         self.assertIn("paquete sin caches locales ni tests", result)
         self.assertIn("paquete sin .claude/.crupier ni evidencias manuales", result)
         self.assertIn("paquete sin symlinks publicables fuera del plugin", result)
-        self.assertIn("paquete contiene 25 comandos namespaced, /alfred como skill personal global fuente sin shim de comando duplicado, 19 agentes y 62 skills", result)
-        self.assertIn("paquete contiene 7 templates de artefactos", result)
+        self.assertIn("paquete contiene 18 comandos namespaced, 10 agentes y 11 skills", result)
+        self.assertIn("paquete contiene 8 templates de artefactos", result)
         self.assertIn("paquete contiene runtime visual de Selina", result)
 
     def test_packaging_contracts_reject_publishable_symlink_problem(self):
@@ -1640,7 +1654,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         self.assertIn("instaladores usan scope user explicito", result)
         self.assertIn("instaladores verifican scope user despues de instalar", result)
         self.assertIn("instaladores limpian scopes local/project heredados antes de instalar user", result)
-        self.assertIn("instaladores materializan /alfred como skill personal global y eliminan shim de comando obsoleto", result)
+        self.assertIn("instaladores no pisan ~/.claude/skills ni instalan alias global /alfred", result)
         self.assertNotIn("instalación local que limpiar", release_audit._read("uninstall.sh"))
         self.assertIn("update conserva semver y menu humano, normaliza a scope user y documenta reload/reinicio", result)
 
@@ -1681,7 +1695,7 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         result = release_audit.check_audit_docs()
 
-        self.assertIn("matriz manual cubre 26 rutas publicas", result)
+        self.assertIn("matriz manual cubre 18 rutas publicas", result)
         self.assertIn("commands/ documentado como skills planas soportadas", result)
         self.assertIn("matriz manual cubre 40 opciones publicas", result)
         self.assertIn("matriz manual valida IDs de opcion contra comandos publicos", result)
@@ -1701,14 +1715,14 @@ class TestReleaseAuditScript(unittest.TestCase):
         self.assertIn("manual review gate rechaza evidencia/review con secretos", result)
         self.assertIn("manual review gate no crea plantillas desde evidencia con secretos", result)
         self.assertIn("manual review gate ata evidence_file al JSON validado", result)
-        self.assertIn("plugin_surface.sha256 documentado coincide con superficie real del plugin", result)
+        self.assertIn("plugin_surface.sha256 se exige en revision humana, no se congela en docs", result)
         self.assertIn("manual review gate valida metadatos de review contra matriz actual", result)
         self.assertIn("manual review gate valida mapas de cobertura contra matriz actual", result)
         self.assertIn("scripts npm manual/preflight alineados", result)
         self.assertIn("prepublish:prepare genera evidencias manuales antes de la revision humana", result)
         self.assertIn("prepublish valida evidencias manuales ya revisadas sin regenerarlas", result)
         self.assertIn("plugin details documenta displayName humano", result)
-        self.assertIn("docs oficiales revalidadas 2026-06-20", result)
+        self.assertIn("docs oficiales revalidadas 2026-08-15", result)
         self.assertIn("readiness de salida mantiene pendientes humanos y externos", result)
         self.assertIn("runbook de revision humana documenta criterios y bloqueos", result)
 
@@ -1722,7 +1736,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         self.assertIn("readiness de salida mantiene pendientes humanos y externos", result)
         self.assertEqual(
             package["scripts"]["release:audit:external:preflight"],
-            "python3 scripts/external_live_smoke.py --output docs/external-live-smoke-0.6.0.json",
+            "python3 scripts/external_live_smoke.py --output docs/external-live-smoke-0.7.0.json",
         )
         self.assertIn("docs/external-live-smoke*.json", release_audit._read(".gitignore"))
         self.assertIn("docs/external-live-smoke*.json", release_audit._read(".npmignore"))
@@ -1861,16 +1875,16 @@ class TestReleaseAuditScript(unittest.TestCase):
         self.assertIn("docs/manual-smoke*.md", str(context.exception))
 
     def test_audit_docs_reject_stale_plugin_details_display_name(self):
-        """La evidencia local debe reflejar el displayName visible en Claude Code."""
+        """La pagina viva debe documentar el displayName visible en Claude Code."""
         release_audit = _load_release_audit_module()
         original_read = release_audit._read
 
         def fake_read(path):
             text = original_read(path)
-            if path == "docs/release-audit-0.6.0.md":
+            if path == "docs/release.md":
                 return text.replace(
-                    "Resultado: Alfred Dev (alfred-dev) 0.6.0",
-                    "Resultado: alfred-dev 0.6.0",
+                    'displayName: "Alfred Dev"',
+                    'displayName: "alfred-dev"',
                 )
             return text
 
@@ -1883,19 +1897,15 @@ class TestReleaseAuditScript(unittest.TestCase):
 
         self.assertIn("displayName humano", str(context.exception))
 
-    def test_audit_docs_reject_stale_plugin_surface_hash(self):
-        """La revisión humana debe quedar atada a la superficie real del plugin."""
+    def test_audit_docs_reject_frozen_plugin_surface_hash(self):
+        """docs/release.md no debe congelar plugin_surface.sha256 de una run concreta."""
         release_audit = _load_release_audit_module()
         original_read = release_audit._read
 
         def fake_read(path):
             text = original_read(path)
-            if path == "docs/release-audit-0.6.0.md":
-                return re.sub(
-                    r"plugin_surface\.sha256=[0-9a-f]{64}",
-                    "plugin_surface.sha256=" + ("0" * 64),
-                    text,
-                )
+            if path == "docs/release.md":
+                return text + "\nplugin_surface.sha256=" + ("0" * 64) + "\n"
             return text
 
         release_audit._read = fake_read
@@ -1905,7 +1915,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         finally:
             release_audit._read = original_read
 
-        self.assertIn("plugin_surface.sha256 obsoleto", str(context.exception))
+        self.assertIn("no debe congelar plugin_surface.sha256", str(context.exception))
 
     def test_audit_docs_reject_architecture_claiming_all_hooks_have_matcher(self):
         """La arquitectura no debe prometer matcher universal en hooks."""
@@ -1960,10 +1970,14 @@ class TestReleaseAuditScript(unittest.TestCase):
         manual_smoke = _load_manual_smoke_module()
 
         argument_commands = release_audit._public_argument_commands()
-        option_commands = {
-            key.split(":", 1)[0]
-            for key in manual_smoke.OPTION_CONTRACTS
-        }
+        aliases = getattr(manual_smoke, "_PUBLIC_COMMAND_ALIASES", {})
+        option_commands = set()
+        for key in manual_smoke.OPTION_CONTRACTS:
+            prefix = key.split(":", 1)[0]
+            option_commands.add(prefix)
+            mapped = aliases.get(prefix)
+            if mapped:
+                option_commands.add(mapped)
 
         self.assertEqual(
             argument_commands,
@@ -1975,10 +1989,10 @@ class TestReleaseAuditScript(unittest.TestCase):
                 "lucius",
                 "map-codebase",
                 "quick",
-                "search",
                 "spike",
                 "sync-github",
-                "verify",
+                "uat",
+                "memory-ui",
             },
         )
         self.assertEqual(sorted(argument_commands - option_commands), [])
@@ -1989,13 +2003,13 @@ class TestReleaseAuditScript(unittest.TestCase):
         original_read = release_audit._read
 
         def fake_read(path):
-            if path == "commands/status.md":
+            if path == "commands/pause.md":
                 return (
                     "---\n"
-                    "description: \"Estado\"\n"
+                    "description: \"Pausa\"\n"
                     "argument-hint: \"[filtro opcional]\"\n"
                     "---\n"
-                    "# /alfred-dev:status\n\n"
+                    "# /alfred-dev:pause\n\n"
                     "Filtro: $ARGUMENTS\n"
                 )
             return original_read(path)
@@ -2007,7 +2021,7 @@ class TestReleaseAuditScript(unittest.TestCase):
         finally:
             release_audit._read = original_read
 
-        self.assertIn("status", str(context.exception))
+        self.assertIn("pause", str(context.exception))
 
     def test_option_contract_shape_rejects_typos(self):
         """Los IDs de opciones deben apuntar a comandos reales y config exacta."""
@@ -2168,15 +2182,17 @@ class TestReleaseAuditScript(unittest.TestCase):
     def test_installed_cache_freshness_detects_worktree_drift(self):
         """El smoke Claude no debe aceptar una cache instalada stale."""
         release_audit = _load_release_audit_module()
+        original_installed = release_audit.INSTALLED_PLUGIN_DIR
         freshness_files = set(release_audit._iter_installed_cache_freshness_files())
         self.assertIn(".mcp.json", freshness_files)
         self.assertIn("package.json", freshness_files)
         self.assertIn("core/continuity.py", freshness_files)
         self.assertIn("templates/prd.md", freshness_files)
-        self.assertIn("skills/alfred/alfred/SKILL.md", freshness_files)
+        self.assertIn("skills/pr-workflow/SKILL.md", freshness_files)
         self.assertIn("scripts/claude_auth_recovery.py", freshness_files)
+        self.assertNotIn("skills/alfred/alfred/SKILL.md", freshness_files)
 
-        def seed_cache_and_alias(tmpdir: str) -> Path:
+        def seed_cache(tmpdir: str) -> Path:
             cache = Path(tmpdir) / "cache"
             release_audit.INSTALLED_PLUGIN_DIR = cache
             for relative in freshness_files:
@@ -2184,72 +2200,46 @@ class TestReleaseAuditScript(unittest.TestCase):
                 target = cache / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(source.read_bytes())
-            alias_file = Path(tmpdir) / "home" / ".claude" / "skills" / "alfred" / "SKILL.md"
-            alias_file.parent.mkdir(parents=True, exist_ok=True)
-            alias_file.write_bytes(release_audit._materialized_alfred_alias_bytes())
-            release_audit.GLOBAL_ALFRED_ALIAS_FILE = alias_file
-            command_alias_file = Path(tmpdir) / "home" / ".claude" / "commands" / "alfred.md"
-            command_alias_file.parent.mkdir(parents=True, exist_ok=True)
-            command_alias_file.unlink(missing_ok=True)
-            release_audit.GLOBAL_ALFRED_COMMAND_FILE = command_alias_file
             return cache
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            cache = seed_cache_and_alias(tmpdir)
-            transient_pyc = release_audit.ROOT / "hooks" / "__pycache__" / "transient.cpython-314.pyc"
-            try:
-                transient_pyc.parent.mkdir(exist_ok=True)
-                transient_pyc.write_bytes(b"transient")
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                cache = seed_cache(tmpdir)
+                transient_pyc = release_audit.ROOT / "hooks" / "__pycache__" / "transient.cpython-314.pyc"
+                try:
+                    transient_pyc.parent.mkdir(exist_ok=True)
+                    transient_pyc.write_bytes(b"transient")
 
-                result = release_audit.check_installed_cache_freshness()
-                self.assertIn("alias global /alfred", result[0])
-                self.assertIn("sin shim de comando", result[0])
-            finally:
-                transient_pyc.unlink(missing_ok=True)
+                    result = release_audit.check_installed_cache_freshness()
+                    self.assertIn("cache instalada 0.7.0 completa", result[0])
+                    self.assertIn("coincide con el worktree", result[0])
+                finally:
+                    transient_pyc.unlink(missing_ok=True)
 
-            release_audit.GLOBAL_ALFRED_ALIAS_FILE.unlink()
-            with self.assertRaises(release_audit.AuditError) as context:
-                release_audit.check_installed_cache_freshness()
-            self.assertIn("No existe el alias personal global /alfred", str(context.exception))
+                (cache / "agents" / "lucius.md").write_text("stale lucius\n", encoding="utf-8")
+                with self.assertRaises(release_audit.AuditError) as context:
+                    release_audit.check_installed_cache_freshness()
 
-            release_audit.GLOBAL_ALFRED_ALIAS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            release_audit.GLOBAL_ALFRED_ALIAS_FILE.write_text("stale alias\n", encoding="utf-8")
-            with self.assertRaises(release_audit.AuditError) as context:
-                release_audit.check_installed_cache_freshness()
-            self.assertIn("alias personal global /alfred no coincide", str(context.exception))
+            self.assertIn("no coincide", str(context.exception))
+            self.assertIn("agents/lucius.md", str(context.exception))
 
-            release_audit.GLOBAL_ALFRED_ALIAS_FILE.write_bytes(
-                release_audit._materialized_alfred_alias_bytes()
-            )
-            release_audit.GLOBAL_ALFRED_COMMAND_FILE.parent.mkdir(parents=True, exist_ok=True)
-            release_audit.GLOBAL_ALFRED_COMMAND_FILE.write_text("stale command alias\n", encoding="utf-8")
-            with self.assertRaises(release_audit.AuditError) as context:
-                release_audit.check_installed_cache_freshness()
-            self.assertIn("duplica el selector", str(context.exception))
+            with tempfile.TemporaryDirectory() as tmpdir:
+                cache = seed_cache(tmpdir)
+                (cache / "core" / "continuity.py").write_text("stale core\n", encoding="utf-8")
+                with self.assertRaises(release_audit.AuditError) as context:
+                    release_audit.check_installed_cache_freshness()
 
-            release_audit.GLOBAL_ALFRED_COMMAND_FILE.unlink()
-            (cache / "agents" / "lucius.md").write_text("stale lucius\n", encoding="utf-8")
-            with self.assertRaises(release_audit.AuditError) as context:
-                release_audit.check_installed_cache_freshness()
+            self.assertIn("core/continuity.py", str(context.exception))
 
-        self.assertIn("no coincide", str(context.exception))
-        self.assertIn("agents/lucius.md", str(context.exception))
+            with tempfile.TemporaryDirectory() as tmpdir:
+                cache = seed_cache(tmpdir)
+                (cache / "templates" / "prd.md").write_text("stale template\n", encoding="utf-8")
+                with self.assertRaises(release_audit.AuditError) as context:
+                    release_audit.check_installed_cache_freshness()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            cache = seed_cache_and_alias(tmpdir)
-            (cache / "core" / "continuity.py").write_text("stale core\n", encoding="utf-8")
-            with self.assertRaises(release_audit.AuditError) as context:
-                release_audit.check_installed_cache_freshness()
-
-        self.assertIn("core/continuity.py", str(context.exception))
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            cache = seed_cache_and_alias(tmpdir)
-            (cache / "templates" / "prd.md").write_text("stale template\n", encoding="utf-8")
-            with self.assertRaises(release_audit.AuditError) as context:
-                release_audit.check_installed_cache_freshness()
-
-        self.assertIn("templates/prd.md", str(context.exception))
+            self.assertIn("templates/prd.md", str(context.exception))
+        finally:
+            release_audit.INSTALLED_PLUGIN_DIR = original_installed
 
 
 if __name__ == "__main__":

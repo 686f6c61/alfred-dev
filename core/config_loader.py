@@ -29,6 +29,7 @@ if __package__ in {None, ""}:
 from core.optional_agents import (
     build_optional_agent_flags,
     get_optional_agent_display_label,
+    get_optional_agent_names,
     get_optional_integrations,
     get_static_suggestible_agent_names,
     order_optional_agent_names,
@@ -124,7 +125,7 @@ DEFAULT_CONFIG = {
         "insultar_malas_practicas": True,
     },
     # Agentes opcionales: predefinidos que el usuario activa según su proyecto.
-    # Todos desactivados por defecto; se activan con /alfred config o por
+    # Todos desactivados por defecto; se activan con /alfred-dev:ajustes o por
     # descubrimiento contextual al iniciar el plugin en un proyecto nuevo.
     "agentes_opcionales": build_optional_agent_flags(),
     "memoria": dict(DEFAULT_MEMORY_CONFIG),
@@ -148,7 +149,7 @@ _BOOTSTRAP_LOCAL_CONFIG_PATCH = {
 }
 _BOOTSTRAP_LOCAL_CONFIG_NOTE = (
     "Este fichero se genera automáticamente en la primera sesión.\n"
-    "Puedes personalizarlo con `/alfred-dev:config`."
+    "Puedes personalizarlo con `/alfred-dev:ajustes`."
 )
 _CONFIG_SECTION_ORDER = (
     "autonomia",
@@ -275,10 +276,11 @@ def get_active_optional_agents(config: Dict[str, Any]) -> List[str]:
     if not isinstance(opcionales, dict):
         return []
 
+    known = set(get_optional_agent_names())
     return order_optional_agent_names(
         name
         for name, enabled in opcionales.items()
-        if enabled
+        if enabled and name in known
     )
 
 
@@ -344,7 +346,7 @@ def build_config_section_summaries(
 ) -> List[Dict[str, Any]]:
     """Describe la configuración actual por secciones con resúmenes canónicos.
 
-    Esta estructura está pensada para que `/alfred-dev:config` pueda mostrar el
+    Esta estructura está pensada para que `/alfred-dev:ajustes` pueda mostrar el
     estado actual en un menú navegable sin volver a reconstruir frases a mano.
     """
     effective_config = _deep_merge(
@@ -369,7 +371,7 @@ def build_config_section_menu(
     project_dir: Optional[str] = None,
     include_exit_option: bool = True,
 ) -> Dict[str, Any]:
-    """Construye el menú principal navegable de `/alfred-dev:config`."""
+    """Construye el menú principal navegable de `/alfred-dev:ajustes`."""
     options: List[Dict[str, str]] = []
     if include_exit_option:
         options.append(dict(_CONFIG_SECTION_MENU_EXIT))
@@ -407,7 +409,7 @@ def apply_config_section_update(
 ) -> Dict[str, Any]:
     """Aplica un cambio sobre una sección canónica y devuelve la config final.
 
-    Usa la misma normalización que `load_config()` para que `/alfred-dev:config`
+    Usa la misma normalización que `load_config()` para que `/alfred-dev:ajustes`
     pueda actualizar solo una sección sin perder orden, defaults ni aliases.
     """
     if section_name not in _CONFIG_SECTION_ORDER:
@@ -431,7 +433,7 @@ def build_config_section_change_preview(
     """Resume el cambio efectivo de una sección antes de persistirlo.
 
     Devuelve el resumen canónico antes/después y la configuración actualizada
-    para que `/alfred-dev:config` pueda confirmar el cambio sin reconstruirlo
+    para que `/alfred-dev:ajustes` pueda confirmar el cambio sin reconstruirlo
     a mano ni reimplementar la normalización.
     """
     effective_config = _deep_merge(
@@ -521,7 +523,7 @@ def render_config_markdown(
     """Serializa una configuración al formato canónico ``.local.md``.
 
     El frontmatter se escribe con claves canónicas y orden estable para que
-    el runtime, los hooks y `/alfred-dev:config` compartan exactamente el
+    el runtime, los hooks y `/alfred-dev:ajustes` compartan exactamente el
     mismo formato base.
     """
     normalized_input = _normalize_loaded_config(config)
@@ -732,7 +734,8 @@ def _describe_config_section(
                 for agent_name in active_names
                 if not get_optional_integrations()[agent_name]["fases"]
             ]
-            summary = f"{len(active_names)} activos: {active_labels}."
+            noun = "activo" if len(active_names) == 1 else "activos"
+            summary = f"{len(active_names)} {noun}: {active_labels}."
             if on_demand_names:
                 on_demand_labels = ", ".join(
                     get_optional_agent_display_label(agent_name)
@@ -1225,6 +1228,15 @@ def _normalize_loaded_config(parsed: Dict[str, Any]) -> Dict[str, Any]:
 
         if normalized_key == "autonomia" and isinstance(raw_value, dict):
             normalized["autonomia"] = _normalize_autonomy_section(raw_value)
+            continue
+
+        if canonical_key == "agentes_opcionales" and isinstance(raw_value, dict):
+            known = set(get_optional_agent_names())
+            normalized["agentes_opcionales"] = {
+                name: bool(value)
+                for name, value in raw_value.items()
+                if name in known
+            }
             continue
 
         normalized[canonical_key] = raw_value
@@ -1966,42 +1978,7 @@ def _build_suggestion_checks(stack, project_dir):
         Lista de tuplas ``(nombre_agente, condicion_bool, razon)``
         listas para filtrar contra la configuración activa.
     """
-    framework = stack.get("framework", "desconocido")
-    has_public = _has_public_html(project_dir)
-    checks = {
-        "data-engineer": (
-            stack.get("orm", "ninguno") != "ninguno",
-            f"Usas {stack.get('orm')} como ORM: te ayuda con esquemas, migraciones y queries",
-        ),
-        "performance-engineer": (
-            _count_source_files(project_dir) > 50,
-            "Proyecto con más de 50 ficheros fuente: ayuda con profiling, benchmarks y optimización",
-        ),
-        "github-manager": (
-            _has_github_remote(project_dir),
-            "Repositorio con remote GitHub: gestiona PRs, releases, issues y configuración de repo",
-        ),
-        "librarian": (
-            _is_memory_enabled(project_dir),
-            "Memoria persistente activa: consulta decisiones, historial y cronología del proyecto bajo demanda",
-        ),
-        "ux-reviewer": (
-            framework in _FRONTEND_FRAMEWORKS,
-            f"Proyecto con {framework}: revisa accesibilidad, usabilidad y flujos de usuario",
-        ),
-        "seo-specialist": (
-            has_public,
-            "Contenido web público detectado: optimiza SEO, meta tags y datos estructurados",
-        ),
-        "copywriter": (
-            has_public,
-            "Textos públicos detectados: mejora copys, CTAs y tono de comunicación",
-        ),
-        "i18n-specialist": (
-            _has_i18n_signals(project_dir),
-            "Ficheros de internacionalización detectados: revisa claves, formatos y cadenas hardcodeadas",
-        ),
-    }
+    checks = {}
     return [
         (agent_name, *checks[agent_name])
         for agent_name in get_static_suggestible_agent_names()

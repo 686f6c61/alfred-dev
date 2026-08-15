@@ -11,21 +11,11 @@ de detalle:
 - **payload**: JSON estructurado para filtrado programatico.
 - **content**: texto completo sin truncar para consulta bajo demanda.
 
-Eventos gestionados:
-    - PostToolUse Write: fichero escrito (contenido completo).
-    - PostToolUse Edit: fichero editado (diff old/new).
-    - PostToolUse Bash: comando ejecutado (stdout+stderr completos).
-    - PostToolUse Read: fichero leido (ruta y rango, sin contenido).
-    - PostToolUse Glob: busqueda de ficheros por patron.
-    - PostToolUse Grep: busqueda de contenido en ficheros.
-    - PostToolUse Agent: lanzamiento de subagente (prompt + resultado).
-    - PostToolUse WebFetch: peticion HTTP a URL externa.
-    - PostToolUse WebSearch: busqueda web.
-    - PostToolUse NotebookEdit: edicion de notebook Jupyter.
-    - UserPromptSubmit: prompt del usuario.
-    - UserPromptExpansion: slash command o prompt MCP expandido.
-    - PreCompact: marcador de compactacion de contexto.
-    - Stop: cierre de sesion.
+Politica de escritura: solo se persiste lo que un humano querría releer.
+    En runtime se registran prompts de slash Alfred, commits `git commit` de
+    la sesión y escrituras de estado/handoff/UAT/`docs/project/`. No se
+    copian Read/Glob/Grep, ni el historial antiguo de Git, ni cada edit de
+    código.
 
 Politica fail-open: el hook NUNCA bloquea el flujo de trabajo. Cualquier
 error se imprime en stderr con prefijo ``[activity-capture]`` y se sale
@@ -253,6 +243,47 @@ def _segment_command_name(tokens: list[str]) -> str:
             continue
         return os.path.basename(token)
     return ""
+
+
+_NOISE_TOOLS = frozenset({
+    "Read",
+    "Glob",
+    "Grep",
+    "WebFetch",
+    "WebSearch",
+    "NotebookEdit",
+    "Agent",
+})
+_MEMORY_WRITE_PREFIXES = ("docs/project/", "docs/adr/")
+_MEMORY_WRITE_FILES = frozenset({
+    ".claude/alfred-dev-state.json",
+    ".claude/alfred-handoff.json",
+    ".claude/alfred-uat.json",
+})
+
+
+def _should_record_event(dispatch_key: str, data: dict) -> bool:
+    """Filtra ruido: la memoria no es un log de cada herramienta."""
+    if dispatch_key in {"UserPromptSubmit", "UserPromptExpansion", "PreCompact", "Stop"}:
+        return True
+    if dispatch_key in _NOISE_TOOLS:
+        return False
+    if dispatch_key == "Bash":
+        command = ""
+        tool_input = data.get("tool_input")
+        if isinstance(tool_input, dict):
+            command = str(tool_input.get("command") or "")
+        return is_git_commit_command(command)
+    if dispatch_key in {"Write", "Edit"}:
+        file_path = ""
+        tool_input = data.get("tool_input")
+        if isinstance(tool_input, dict):
+            file_path = str(tool_input.get("file_path") or "")
+        relative = _relative_path(file_path, os.getcwd()).replace("\\", "/")
+        if relative.startswith(_MEMORY_WRITE_PREFIXES):
+            return True
+        return relative in _MEMORY_WRITE_FILES
+    return False
 
 
 def _is_trivial_command(command: str) -> bool:
@@ -556,6 +587,7 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
     _ensure_plugin_root_on_path()
     try:
         from core.continuity import (
+            is_memory_ui_stop_request,
             launch_memory_ui,
             needs_codebase_map,
             prepare_lucius_review,
@@ -602,10 +634,15 @@ def _prefetch_alfred_continuity(prompt_text: str) -> Optional[dict]:
             raw_request=raw_request,
         )
     elif source_command == "memory-ui":
-        action = lambda project_dir, raw_request: launch_memory_ui(
-            project_dir,
-            open_browser_window=False,
-        )
+        if is_memory_ui_stop_request(raw_request):
+            from core.continuity import stop_memory_ui
+
+            action = lambda project_dir, raw_request: stop_memory_ui(project_dir)
+        else:
+            action = lambda project_dir, raw_request: launch_memory_ui(
+                project_dir,
+                open_browser_window=False,
+            )
 
     if action is None:
         return None
@@ -876,9 +913,13 @@ def _dispatch_write(db, data: dict) -> None:
     _, ext = os.path.splitext(file_path)
     ext_clean = ext.lstrip(".") if ext else ""
 
-    # Leer el contenido completo del fichero
     file_content = _read_file_safe(file_path)
     line_count = len(file_content.splitlines()) if file_content else 0
+    try:
+        from core.secrets import is_secret_storage_path
+    except Exception:
+        is_secret_storage_path = lambda _path: False  # noqa: E731
+    stored_content = None if is_secret_storage_path(file_path) else file_content
 
     summary = f"Escrito {rel_path} ({line_count} lineas, {ext_clean or 'sin extension'})"
 
@@ -886,7 +927,7 @@ def _dispatch_write(db, data: dict) -> None:
         event_type="file_written",
         summary=summary,
         payload={"file": rel_path, "extension": ext_clean, "lines": line_count},
-        content=file_content,
+        content=stored_content,
     )
 
 
@@ -938,7 +979,9 @@ def _dispatch_bash(db, data: dict) -> None:
         data: datos del hook PostToolUse.
     """
     tool_input = data.get("tool_input", {})
-    tool_result = data.get("tool_result", {})
+    tool_result = data.get("tool_response") or data.get("tool_result") or {}
+    if not isinstance(tool_result, dict):
+        tool_result = {"output": str(tool_result)}
 
     command = tool_input.get("command", "")
     if not command or _is_trivial_command(command):
@@ -1374,6 +1417,8 @@ def main():
     dispatchers = _build_dispatcher_table()
     handler = dispatchers.get(dispatch_key)
     if handler is None:
+        sys.exit(0)
+    if not _should_record_event(dispatch_key, data):
         sys.exit(0)
 
     # Comprobar si la memoria esta habilitada

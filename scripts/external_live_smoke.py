@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preflight seguro para pendientes externos de release 0.6.0.
+"""Preflight seguro para pendientes externos de release 0.7.0.
 
 Por defecto no escribe en GitHub, no arranca SonarQube y no ejecuta Codex. Solo
 captura si el entorno esta preparado para esas pruebas reales y genera una
@@ -32,8 +32,8 @@ from core.continuity import (  # noqa: E402
 from core.secrets import sanitize_text  # noqa: E402
 
 
-VERSION = "0.6.0"
-DEFAULT_OUTPUT = ROOT / "docs" / "external-live-smoke-0.6.0.json"
+VERSION = "0.7.0"
+DEFAULT_OUTPUT = ROOT / "docs" / "external-live-smoke-0.7.0.json"
 
 
 def _safe_preview(value: Any, limit: int = 2000) -> str:
@@ -133,7 +133,7 @@ def _seed_github_sync_fixture(project: Path) -> None:
     (project / "docs" / "project" / "traceability.md").write_text("# Traceability\n", encoding="utf-8")
     (kanban / "backlog.md").write_text(
         "# Backlog\n\n"
-        "### [T-990] Smoke externo Alfred 0.6.0\n\n"
+        "### [T-990] Smoke externo Alfred 0.7.0\n\n"
         "- **Agente:** project-manager\n"
         "- **Tipo:** delivery\n",
         encoding="utf-8",

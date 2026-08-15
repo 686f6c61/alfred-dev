@@ -26,15 +26,13 @@ from evidence_guard_lib import is_test_command, detect_test_result
 
 
 def _get_tool_result(data: dict) -> dict:
-    """Normaliza payloads historicos y actuales del runtime de hooks."""
-    tool_result = data.get("tool_result")
-    if isinstance(tool_result, dict):
-        return tool_result
-
-    tool_output = data.get("tool_output")
-    if isinstance(tool_output, dict):
-        return tool_output
-
+    """Normaliza payloads actuales e historicos del runtime de hooks."""
+    for key in ("tool_response", "tool_result", "tool_output"):
+        value = data.get(key)
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str) and value:
+            return {"output": value}
     return {}
 
 

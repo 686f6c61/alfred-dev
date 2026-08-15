@@ -38,6 +38,7 @@ en este orden, si existen:
 8. `docs/project/kanban/done.md`
 9. `docs/project/kanban/blocked.md`
 10. `docs/project/current.md`
+11. `docs/project/discovery.md`
 
 ## Qué debes mostrar
 

@@ -6,22 +6,6 @@ description: |
   un catálogo de 10 sistemas de diseño base y permite fijar familia visual,
   tipografía y gama cromática antes de bajar a tres direcciones comparables
   en el navegador para que el usuario elija.
-
-  <example>
-  El usuario tiene un PRD aprobado para una aplicación de finanzas personales
-  y Selina primero recorre su catálogo de 10 sistemas de diseño base. Después
-  abre el navegador con tres propuestas visuales finalistas: una editorial con
-  tipografía serif y tonos neutros, otra data-driven con tablas densas y paleta
-  azul corporativa, y una tercera con tarjetas grandes y un enfoque de dashboard
-  moderno. El usuario elige la tercera opción y Selina genera el artefacto
-  docs/style-direction.md con la dirección elegida.
-  <commentary>
-  Trigger de fase visual: el PRD está aprobado y alfred activa a Selina para
-  decidir la dirección de estilo antes de que el architect diseñe componentes.
-  La elección del usuario queda registrada en el artefacto y cierra la gate.
-  </commentary>
-  </example>
-
   <example>
   El usuario ejecuta directamente a Selina en un proyecto de e-commerce ya
   iniciado. Selina detecta que existe un docs/style-direction.md previo,
@@ -36,7 +20,7 @@ description: |
   </commentary>
   </example>
 tools: Glob,Grep,Read,Write,Bash
-model: opus
+model: inherit
 color: purple
 ---
 
@@ -203,14 +187,14 @@ El flujo estándar de Selina sigue siempre estos pasos en orden:
 
 1. **Leer contexto** — PRD, `.claude/alfred-dev.local.md`, `docs/style-direction.md` existente si lo hay.
 2. **Confirmar audiencia** — Si el PRD no especifica claramente para quién se diseña, una pregunta directa al usuario. Máximo dos preguntas antes de asumir y enunciar las suposiciones.
-3. **Arrancar servidor visual** — Usando `visual/scripts/start-server.sh`. Guardar `screen_dir` y `state_dir` del JSON de arranque.
-4. **Explorar catálogo base si aporta contexto** — Puedes usar `python3 visual/scripts/write-style-demo-gallery.py --visual-path "$state_dir"` para enseñar la galería de 10 sistemas de diseño base cuando ayude a alinear criterio antes de cerrar la ronda final.
-5. **Flujo guiado recomendado** — Usa `python3 visual/scripts/write-style-selector.py --visual-path "$state_dir"` para dejar que el usuario elija la familia visual. Luego lee la elección con `python3 visual/scripts/read-choice.py "$state_dir"`.
-6. **Fijar tipografía + paleta** — Usa `python3 visual/scripts/write-style-selector.py --visual-path "$state_dir" --style-id "<style_id>"` para que el usuario elija la combinación concreta. Lee después la elección con `python3 visual/scripts/read-choice.py "$state_dir"`. Si `parsed_choice` está presente, usa sus campos directamente.
-7. **Generar las 3 finales desde esa selección** — Preferiblemente usa `python3 visual/scripts/write-guided-style-options.py --visual-path "$state_dir"`. Solo si necesitas un flujo manual o ya traes tres propuestas decididas, usa `python3 visual/scripts/write-style-options.py --visual-path "$state_dir"` con tu sidecar propio.
+3. **Arrancar servidor visual** — Usando `${CLAUDE_PLUGIN_ROOT}/visual/scripts/start-server.sh`. Guardar `screen_dir` y `state_dir` del JSON de arranque.
+4. **Explorar catálogo base si aporta contexto** — Puedes usar `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/write-style-demo-gallery.py" --visual-path "$state_dir"` para enseñar la galería de 10 sistemas de diseño base cuando ayude a alinear criterio antes de cerrar la ronda final.
+5. **Flujo guiado recomendado** — Usa `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/write-style-selector.py" --visual-path "$state_dir"` para dejar que el usuario elija la familia visual. Luego lee la elección con `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/read-choice.py" "$state_dir"`.
+6. **Fijar tipografía + paleta** — Usa `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/write-style-selector.py" --visual-path "$state_dir" --style-id "<style_id>"` para que el usuario elija la combinación concreta. Lee después la elección con `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/read-choice.py" "$state_dir"`. Si `parsed_choice` está presente, usa sus campos directamente.
+7. **Generar las 3 finales desde esa selección** — Preferiblemente usa `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/write-guided-style-options.py" --visual-path "$state_dir"`. Solo si necesitas un flujo manual o ya traes tres propuestas decididas, usa `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/write-style-options.py" --visual-path "$state_dir"` con tu sidecar propio.
 8. **Informar URL al usuario** — Recordar la URL local y pedir que abra el navegador y elija la dirección final entre A/B/C.
 9. **Leer la elección final** — En el siguiente turno, usar `python3 visual/scripts/read-choice.py "$state_dir"` o leer `state_dir/events` y tomar el último clic válido sobre `.style-option`.
-10. **Generar artefacto** — Preferiblemente usar `python3 visual/scripts/write-style-direction.py --project-dir "$PWD" --visual-path "$state_dir"` para escribir `docs/style-direction.md` desde la elección registrada y el sidecar JSON.
+10. **Generar artefacto** — Preferiblemente usar `python3 "${CLAUDE_PLUGIN_ROOT}/visual/scripts/write-style-direction.py" --project-dir "$PWD" --visual-path "$state_dir"` para escribir `docs/style-direction.md` desde la elección registrada y el sidecar JSON.
 11. **Limpiar pantalla** — Escribir `screen_dir/waiting.html` para vaciar el navegador.
 12. **Emitir veredicto** — Formato estándar y comunicar a alfred que la gate está aprobada.
 
