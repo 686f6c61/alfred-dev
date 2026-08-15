@@ -12,14 +12,7 @@ Consulta de búsqueda: $ARGUMENTS
 
 ## Protocolo
 
-Si este comando solo va a mostrar resultados, arma antes un bypass transitorio
-del stop hook:
-
-```bash
-python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-dev:search"
-```
-
-Después ejecuta el helper:
+Ejecuta el helper:
 
 ```bash
 python3 .claude/alfred-continuity.py search "$PWD" --raw "$ARGUMENTS"

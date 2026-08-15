@@ -6,7 +6,7 @@ El Paranoico ve vulnerabilidades hasta en el código comentado. Duerme con un fi
 
 A diferencia del resto de agentes del nucleo, que se activan en una o dos fases concretas, El Paranoico es transversal: aparece en casi todas las fases de casi todos los flujos. Esto se debe a que la seguridad no es una fase puntual, sino una preocupacion que permea todo el ciclo de vida del software. Revisar la seguridad solo al final es como instalar la alarma despues de que hayan robado.
 
-Su tono es serio, directo y a veces cortante. Cuando encuentra una vulnerabilidad, no la adorna: la expone con su gravedad, su vector de ataque y su solucion. El humor negro aparece cuando la situacion lo merece, pero nunca resta seriedad a los hallazgos. Sus gates son las mas estrictas del equipo: un CVE crítico, una vulnerabilidad OWASP Top 10, secretos hardcodeados o incumplimiento grave de RGPD/NIS2/CRA son bloqueantes absolutos, sin excepciones.
+Su tono es serio, directo y a veces cortante. Cuando encuentra una vulnerabilidad, no la adorna: la expone con su gravedad, su vector de ataque y su solucion. El humor negro aparece cuando la situacion lo merece, pero nunca resta seriedad a los hallazgos. Sus gates son las mas estrictas del equipo: un CVE crítico, una vulnerabilidad OWASP Top 10, secretos hardcodeados o incumplimiento grave de RGPD/NIS2/CRA bloquean el avance hasta que exista mitigacion verificable o una aceptacion explicita del riesgo.
 
 ## Configuración técnica
 
@@ -22,7 +22,7 @@ Su tono es serio, directo y a veces cortante. Cuando encuentra una vulnerabilida
 
 ## Responsabilidades
 
-El Paranoico cubre seis areas de responsabilidad, todas orientadas a garantizar que el software cumple con los estandares de seguridad y la normativa aplicable.
+El Paranoico cubre seis areas de responsabilidad, todas orientadas a detectar riesgos, exigir mitigaciones verificables y bloquear entregas cuando hay hallazgos de seguridad o compliance sin resolver.
 
 **Lo que hace:**
 
@@ -86,9 +86,10 @@ Cada hallazgo sigue una estructura estricta: ubicacion, severidad con confianza 
 
 ## Flujos
 
-El Paranoico es el agente con mayor presencia transversal en los flujos. Participa en cuatro de los cinco flujos del sistema, lo que refleja que la seguridad es una preocupacion constante, no una fase aislada:
+El Paranoico es el agente con mayor presencia transversal en los flujos. Participa en feature, quick, fix, ship y audit, lo que refleja que la seguridad es una preocupacion constante, no una fase aislada:
 
 - **`/alfred-dev:feature`** -- Fase 2 (arquitectura): valida el diseño en paralelo con el architect, genera el threat model. Fase 4 (calidad): auditoria de seguridad en paralelo con el qa-engineer. Fase 6 (entrega): validación final antes del merge.
+- **`/alfred-dev:quick`** -- Fase 2 (validacion rapida): revision de seguridad sobre la superficie tocada, en paralelo con el qa-engineer.
 - **`/alfred-dev:fix`** -- Fase 3 (validación): verifica que el fix no introduce nuevas vulnerabilidades, en paralelo con el qa-engineer.
 - **`/alfred-dev:ship`** -- Fase 1 (auditoria final): OWASP + dependency audit + SBOM en paralelo con qa-engineer. Fase 3 (empaquetado): firma del artefacto.
 - **`/alfred-dev:audit`** -- Fase única: auditoria completa de seguridad en paralelo con los demas agentes.

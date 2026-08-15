@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import dataEs from '@/i18n/data.es';
 import dataEn from '@/i18n/data.en';
 import type { Locale } from '@/i18n/ui';
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 
@@ -17,6 +18,26 @@ const canonicalUrl = isEn ? 'https://alfred-dev.com/en/' : 'https://alfred-dev.c
 const alternateUrl = isEn ? 'https://alfred-dev.com/' : 'https://alfred-dev.com/en/';
 const repoRootPath = resolvePath(process.cwd(), '..');
 const tr = (es: string, en: string) => (isEn ? en : es);
+const readGithubMainPlugin = () => {
+  try {
+    const raw = execFileSync('git', ['show', 'origin/main:.claude-plugin/plugin.json'], {
+      cwd: repoRootPath,
+      encoding: 'utf8',
+    });
+    const manifest = JSON.parse(raw) as { version?: string; commands?: unknown[] };
+    return {
+      version: String(manifest.version ?? ''),
+      commandCount: Array.isArray(manifest.commands) ? manifest.commands.length : 0,
+    };
+  } catch {
+    return { version: '', commandCount: 0 };
+  }
+};
+const githubMainPlugin = readGithubMainPlugin();
+const landingVersion = data.footer.version.replace(/^v/i, '');
+const installOneLinerMatchesLanding =
+  Boolean(githubMainPlugin.version) && githubMainPlugin.version === landingVersion;
+const mainInstallCreatesAlfredAlias = githubMainPlugin.version.startsWith('0.6');
 
 const stripMd = (value: string) =>
   value
@@ -202,8 +223,8 @@ const uiText = {
   manifestoLeadTag: 'CLAUDE CODE',
   manifestoLeadSuffix: tr('para trabajar con método', 'for working with rigor'),
   manifestoHighlights: [
-    { label: tr('19 agentes', '19 agents'), className: 'mini-tag mini-tag--peach' },
-    { label: tr('25 + /alfred', '25 + /alfred'), className: 'mini-tag mini-tag--sky' },
+    { label: tr('10 agentes', '10 agents'), className: 'mini-tag mini-tag--peach' },
+    { label: tr('18 comandos', '18 commands'), className: 'mini-tag mini-tag--sky' },
     { label: tr('memoria local', 'local memory'), className: 'mini-tag mini-tag--butter' },
     { label: 'quality gates', className: 'mini-tag mini-tag--pink' },
   ],
@@ -215,8 +236,8 @@ const uiText = {
   teamTitle: tr('Equipo', 'Team'),
   agentsReal: tr('agentes reales', 'real agents'),
   teamNote: tr(
-    'Publicados en plugin.json. Núcleo y opcionales, con nombres y función real del plugin.',
-    'Published in plugin.json. Core and optional agents with their real names and function in the plugin.',
+    'Ocho de núcleo, Selina si hay frontend y Lucius bajo demanda.',
+    'Eight core agents, Selina when there is a frontend, and Lucius on demand.',
   ),
   core: tr('Core', 'Core'),
   optional: tr('Opcionales', 'Optional'),
@@ -225,29 +246,29 @@ const uiText = {
     'Orquestación, alcance, arquitectura, implementación, seguridad, QA, release, trazabilidad y sistema de diseño.',
     'Orchestration, scope, architecture, implementation, security, QA, release, traceability, and design-system direction.',
   ),
-  optionalTitle: tr('Especialistas activables', 'Activatable specialists'),
+  optionalTitle: tr('Único opcional', 'Only optional'),
   optionalBody: tr(
-    'Se activan según stack, tarea o configuración: datos, UX, rendimiento, GitHub, SEO, i18n, copy, memoria y auditoría externa.',
-    'They activate depending on stack, task, or config: data, UX, performance, GitHub, SEO, i18n, copy, memory, and external audit.',
+    'El único opcional es Lucius, segunda opinión vía Codex CLI.',
+    'The only optional agent is Lucius, a second opinion via Codex CLI.',
   ),
   openSheet: tr('Abrir ficha', 'Open profile'),
   commandsTitle: tr('Comandos', 'Commands'),
   commandsNote: tr(
-    'Las 26 rutas públicas del plugin, agrupadas por entrada, orientación, construcción, control y operación.',
-    'The 26 public plugin routes, grouped by entry, orientation, build, control, and operations.',
+    'Las 18 rutas públicas, agrupadas por entrada, orientación, construcción y operación.',
+    'The 18 public routes, grouped by entry, orientation, build, and operations.',
   ),
   openCommandAriaPrefix: tr('Abrir ficha de', 'Open profile for'),
   skillsTitle: tr('Skills y playbooks', 'Skills and playbooks'),
-  skillsBadge: tr('62 publicadas / 15 dominios', '62 published / 15 domains'),
+  skillsBadge: tr('11 planas', '11 flat skills'),
   publishedSkillsLabel: tr('skills publicadas', 'published skills'),
-  domainsCovered: tr('15 dominios cubiertos', '15 domains covered'),
+  domainsCovered: tr('Proceso, seguridad, calidad y estilo', 'Process, security, quality, and style'),
   skillsBody: tr(
-    'El catálogo publicado encapsula decisiones repetibles para incidentes, releases, dependencias, estilo, QA, seguridad y entrega.',
-    'The published catalog encapsulates repeatable decisions for incidents, releases, dependencies, style, QA, security, and delivery.',
+    'Once skills planas: ADRs, dependencias, docs vivas, memoria, threat-model, compliance, SBOM, SonarQube, incidentes, PRs y dirección visual. No hay un catálogo de 60 procedimientos anidados.',
+    'Eleven flat skills: ADRs, dependencies, living docs, memory, threat model, compliance, SBOM, SonarQube, incidents, PRs, and visual direction. There is no 60-skill nested catalog.',
   ),
   publicSkills: tr('Ejemplos destacados', 'Featured examples'),
   skillsFooter: tr(
-    'Procedimientos reutilizables y versionados dentro del plugin, no prompts ad hoc.',
+    'Procedimientos reutilizables y versionados dentro del plugin, no prompts sueltos.',
     'Reusable, versioned procedures inside the plugin, not ad-hoc prompts.',
   ),
   auxiliaryLayers: tr('Capas auxiliares', 'Auxiliary layers'),
@@ -261,8 +282,8 @@ const uiText = {
   installPreviewTitle: tr('Instalación en macOS', 'Install on macOS'),
   copy: tr('Copiar', 'Copy'),
   installPreviewBody: tr(
-    'El comando registra la fuente GitHub global en Claude Code y deja Alfred Dev listo para instalar o actualizar.',
-    'The command registers the global GitHub source in Claude Code and leaves Alfred Dev ready to install or update.',
+    'Descarga el script de la rama main, registra 686f6c61/alfred-dev como marketplace --scope user e instala alfred-dev@alfred-dev. El script 0.7.0 no pisa ~/.claude/skills ni crea /alfred.',
+    'It downloads the script from the main branch, registers 686f6c61/alfred-dev as a --scope user marketplace, and installs alfred-dev@alfred-dev. The 0.7.0 script does not overwrite ~/.claude/skills or create /alfred.',
   ),
   update: tr('Actualizar', 'Update'),
   uninstall: tr('Desinstalar', 'Uninstall'),
@@ -294,23 +315,27 @@ const uiText = {
     'If you only want to remove Alfred Dev from Claude Code, use the script for your system. If the installation was left half-done or you want to review every trace, use the manual path.',
   ),
   uninstallBashBody: tr(
-    'Primero intenta la desinstalación nativa con Claude CLI y luego limpia caché, marketplace y registros residuales.',
-    'It first tries native uninstallation with the Claude CLI and then cleans cache, marketplace, and residual records.',
+    'Si hay claude, hace uninstall y marketplace remove con --scope user. Luego borra cache/alfred-dev y marketplaces/alfred-dev, quita el alias /alfred de 0.6.1 si existe, y limpia las entradas del plugin en known_marketplaces.json, installed_plugins.json y settings.json. No borra esos JSON enteros.',
+    'If claude is available, it runs uninstall and marketplace remove with --scope user. Then it deletes cache/alfred-dev and marketplaces/alfred-dev, removes the 0.6.1 /alfred alias if present, and cleans the plugin entries in known_marketplaces.json, installed_plugins.json, and settings.json. It does not delete those JSON files.',
   ),
   uninstallWindowsBody: tr(
-    'Hace la misma limpieza completa en Windows: plugin, marketplace, caché y JSON internos si siguen teniendo rastro.',
-    'It performs the same full cleanup on Windows: plugin, marketplace, cache, and internal JSON files if they still keep traces.',
+    'Misma secuencia en PowerShell: CLI nativa si existe, luego caché, marketplace, alias /alfred heredado y entradas JSON residuales. No toca el .claude/ del proyecto.',
+    'Same sequence in PowerShell: native CLI if present, then cache, marketplace, leftover /alfred alias, and residual JSON entries. It does not touch the project .claude/.',
   ),
   uninstallNativeStep: tr('1. Intenta la vía nativa de Claude Code', '1. Try Claude Code native removal first'),
   uninstallCleanupStep: tr('2. Si quedan restos, revisa estas rutas', '2. If anything remains, review these paths'),
-  uninstallKeepStep: tr('3. Esto no se borra automáticamente', '3. This is not deleted automatically'),
+  uninstallKeepStep: tr('3. El script no toca el proyecto', '3. The script does not touch the project'),
   uninstallKeepBody: tr(
-    'Si quieres limpieza total de un proyecto concreto, elimina esos ficheros a mano dentro de cada repo donde hayas usado Alfred Dev.',
-    'If you want full cleanup for a specific project, delete those files manually inside each repo where you used Alfred Dev.',
+    'Si quieres borrar memoria o docs de un repo concreto, hazlo a mano dentro de ese proyecto. El desinstalador solo limpia ~/.claude/.',
+    'If you want to delete memory or docs for a specific repo, do it by hand inside that project. The uninstaller only cleans ~/.claude/.',
   ),
   uninstallFinalNote: tr(
-    'Después de desinstalar, ejecuta /reload-plugins; si Alfred sigue visible, reinicia Claude Code.',
-    'After uninstalling, run /reload-plugins; if Alfred is still visible, restart Claude Code.',
+    'Los scripts terminan pidiendo que reinicies Claude Code. /reload-plugins puede bastar; si Alfred sigue en el inventario, reinicia.',
+    'The scripts end by asking you to restart Claude Code. /reload-plugins may be enough; if Alfred stays in the inventory, restart.',
+  ),
+  changelogHistoryNote: tr(
+    'Cada bloque histórico describe esa versión. La superficie actual es 10 agentes, 11 skills y 18 comandos.',
+    'Each historical block describes that version. The current surface is 10 agents, 11 skills, and 18 commands.',
   ),
   fullChangelog: tr('Changelog completo', 'Full changelog'),
   added: tr('Añadido', 'Added'),
@@ -389,13 +414,17 @@ const uninstallGuides = {
     cleanup: [
       '~/.claude/plugins/cache/alfred-dev/',
       '~/.claude/plugins/marketplaces/alfred-dev/',
-      '~/.claude/plugins/known_marketplaces.json',
-      '~/.claude/plugins/installed_plugins.json',
-      '~/.claude/settings.json',
+      '~/.claude/skills/alfred/SKILL.md  (solo si es el alias de Alfred Dev)',
+      '~/.claude/commands/alfred.md  (solo si es el shim de Alfred Dev)',
     ],
     keep: [
       '.claude/alfred-dev.local.md',
       '.claude/alfred-dev-state.json',
+      '.claude/alfred-memory.db',
+      '.claude/alfred-handoff.json',
+      '.claude/alfred-uat.json',
+      '.claude/alfred-last-cierre.md',
+      'docs/project/ y docs/adr/',
     ],
   },
 };
@@ -405,8 +434,8 @@ const whatItDoes = [
     index: '01',
     title: tr('Decide el siguiente paso', 'Decides the next step'),
     body: tr(
-      'Lee el repo, la sesión y el estado de SonIA para arrancar por map-codebase, discuss, feature o verify sin montar el flujo a mano.',
-      'Reads the repo, the current session, and SonIA state to start with map-codebase, discuss, feature, or verify without assembling the flow by hand.',
+      'Lee el repo, la sesión y el handoff para arrancar por map-codebase, discuss, feature o uat sin montar el flujo a mano.',
+      'Reads the repo, the session, and the handoff to start with map-codebase, discuss, feature, or uat without assembling the flow by hand.',
     ),
     tone: 'butter',
   },
@@ -414,8 +443,8 @@ const whatItDoes = [
     index: '02',
     title: tr('Expone el estado operativo', 'Exposes operational state'),
     body: tr(
-      'Kanban, bloqueos, handoff, UAT, memoria y siguiente acción quedan visibles desde CLI con progress, standup, blocked, validate y search.',
-      'Kanban, blockers, handoff, UAT, memory, and the next action stay visible from the CLI with progress, standup, blocked, validate, and search.',
+      'Kanban, bloqueos, handoff, UAT y siguiente acción quedan visibles con progress, retomar y uat.',
+      'Kanban, blockers, handoff, UAT, and the next action stay visible with progress, retomar, and uat.',
     ),
     tone: 'mint',
   },
@@ -439,17 +468,8 @@ const agentMeta: AgentMeta[] = [
   { id: 'qa-engineer', file: 'qa-engineer.md', label: 'QA Engineer', cardSummary: tr('Valida y busca regresiones.', 'Validates changes and hunts regressions.'), tone: 'butter', group: 'core' },
   { id: 'devops-engineer', file: 'devops-engineer.md', label: 'DevOps Engineer', cardSummary: tr('Empaqueta y despliega.', 'Packages and deploys.'), tone: 'mint', group: 'core' },
   { id: 'tech-writer', file: 'tech-writer.md', label: 'Tech Writer', cardSummary: tr('Documenta artefactos y cambios.', 'Documents artifacts and changes.'), tone: 'pink', group: 'core' },
-  { id: 'project-manager', file: 'project-manager.md', label: 'Project Manager / SonIA', cardSummary: tr('PM operativo: kanban, estado y trazabilidad.', 'Operational PM: kanban, state, and traceability.'), tone: 'pink', group: 'core', wide: true },
-  { id: 'selina', file: 'selina.md', label: 'Selina', cardSummary: tr('Define el sistema de diseño.', 'Defines the design system.'), tone: 'lavender', group: 'core', wide: true },
-  { id: 'data-engineer', file: 'data-engineer.md', label: 'Data Engineer', cardSummary: tr('Datos, esquemas y migraciones.', 'Data, schemas, and migrations.'), tone: 'sky', group: 'optional' },
-  { id: 'ux-reviewer', file: 'ux-reviewer.md', label: 'UX Reviewer', cardSummary: tr('Experiencia y accesibilidad.', 'User experience and accessibility.'), tone: 'pink', group: 'optional' },
-  { id: 'performance-engineer', file: 'performance-engineer.md', label: 'Performance Engineer', cardSummary: tr('Mide y optimiza rendimiento.', 'Measures and optimizes performance.'), tone: 'lavender', group: 'optional' },
-  { id: 'github-manager', file: 'github-manager.md', label: 'GitHub Manager', cardSummary: tr('Repo, PRs y releases.', 'Repo, PRs, and releases.'), tone: 'mint', group: 'optional' },
-  { id: 'seo-specialist', file: 'seo-specialist.md', label: 'SEO Specialist', cardSummary: tr('Visibilidad pública y SEO.', 'Public visibility and SEO.'), tone: 'butter', group: 'optional' },
-  { id: 'copywriter', file: 'copywriter.md', label: 'Copywriter', cardSummary: tr('Mensajes, tono y CTAs.', 'Messaging, tone, and CTAs.'), tone: 'peach', group: 'optional' },
-  { id: 'librarian', file: 'librarian.md', label: 'Librarian', cardSummary: tr('Memoria del proyecto bajo demanda.', 'On-demand project memory.'), tone: 'butter', group: 'optional' },
-  { id: 'i18n-specialist', file: 'i18n-specialist.md', label: 'I18n Specialist', cardSummary: tr('Locales, formatos y cadenas.', 'Locales, formats, and strings.'), tone: 'sky', group: 'optional' },
-  { id: 'lucius', file: 'lucius.md', label: 'Lucius', cardSummary: tr('Segunda opinión técnica externa.', 'External technical second opinion.'), tone: 'lavender', group: 'optional' },
+  { id: 'selina', file: 'selina.md', label: 'Selina', cardSummary: tr('Define el sistema de diseño si hay frontend.', 'Defines the design system when there is a frontend.'), tone: 'lavender', group: 'core', wide: true },
+  { id: 'lucius', file: 'lucius.md', label: 'Lucius', cardSummary: tr('Segunda opinión técnica externa.', 'External technical second opinion.'), tone: 'lavender', group: 'optional', wide: true },
 ];
 const agentVoiceMap: Record<Locale, Record<string, string>> = {
   es: {
@@ -469,26 +489,8 @@ const agentVoiceMap: Record<Locale, Record<string, string>> = {
       'Mantiene la infraestructura, CI/CD y despliegues bajo control. Si un proceso se repite o una entrega depende de pasos manuales, su terreno natural es automatizarlo.',
     'tech-writer':
       'Traduce jerga técnica a documentación utilizable. Aterriza decisiones, guías y cambios para que el producto no dependa sólo de la memoria de quien lo implementó.',
-    'project-manager':
-      'SonIA es la memoria operativa del flujo. No programa ni diseña: convierte PRDs, fases, tareas, bloqueos y evidencia en un estado legible y trazable para todo el equipo.',
     selina:
       'Define el sistema de diseño antes de construir UI de verdad. Parte de 10 familias base, fuerza una decisión explícita entre 3 finalistas y la convierte en una referencia reutilizable para frontend.',
-    'data-engineer':
-      'Piensa en tablas, relaciones, migraciones y consistencia. Entra cuando el modelo de datos puede condicionar la estabilidad del producto mucho más que cualquier detalle visual.',
-    'ux-reviewer':
-      'Defiende al usuario final desde usabilidad y accesibilidad. Revisa si los flujos son comprensibles, si sobran pasos y si la interfaz excluye a alguien sin necesidad.',
-    'performance-engineer':
-      'Mide, perfila y optimiza. Su trabajo es evitar que la latencia, el peso del bundle o el coste de render degraden la experiencia y la conversión.',
-    'github-manager':
-      'Ordena el repositorio como superficie operativa: issues, PRs, releases y automatismos. Entra para que el trabajo colaborativo no dependa del caos ni de la memoria informal.',
-    'seo-specialist':
-      'Piensa en descubrimiento orgánico y señales públicas. Revisa estructura, metadatos y rendimiento para que una página correcta también sea encontrable.',
-    copywriter:
-      'Cuida la redacción de superficies públicas. Ajusta tono, claridad y CTAs para que el producto explique bien su valor sin sonar genérico ni inflado.',
-    librarian:
-      'Es el archivista riguroso del proyecto. Cuando entra, responde sólo con memoria trazable y deja claro qué sabe, qué no sabe y de dónde sale cada afirmación.',
-    'i18n-specialist':
-      'Se encarga de que el producto pueda hablar varios idiomas sin trampas. Revisa claves, cobertura por locale, formatos regionales y señales que rompen la traducibilidad real.',
     lucius:
       'Es la segunda opinión técnica externa del equipo. No forma parte del loop normal de implementación: entra para auditar con distancia antes de cerrar o publicar.',
   },
@@ -509,26 +511,8 @@ const agentVoiceMap: Record<Locale, Record<string, string>> = {
       'He keeps infrastructure, CI/CD, and deployments under control. If a process repeats or a release depends on manual steps, his natural terrain is automation.',
     'tech-writer':
       'He translates technical jargon into usable documentation. He turns decisions, guides, and changes into assets the product can keep beyond the memory of the implementer.',
-    'project-manager':
-      'SonIA is the operational memory of the flow. She does not code or design: she turns PRDs, phases, tasks, blockers, and evidence into a readable and traceable state for the whole team.',
     selina:
       'She defines the design system before real UI gets built. She starts from 10 base families, forces an explicit decision between 3 finalists, and turns it into a reusable frontend reference.',
-    'data-engineer':
-      'He thinks in tables, relationships, migrations, and consistency. He comes in when the data model can shape product stability more than any visual detail.',
-    'ux-reviewer':
-      'He defends the end user through usability and accessibility. He checks whether flows are understandable, whether steps are unnecessary, and whether the interface excludes anyone.',
-    'performance-engineer':
-      'He measures, profiles, and optimizes. His job is to stop latency, bundle weight, or render cost from degrading experience and conversion.',
-    'github-manager':
-      'He orders the repository as an operational surface: issues, PRs, releases, and automations. He comes in so collaboration does not depend on chaos or informal memory.',
-    'seo-specialist':
-      'He thinks in organic discovery and public signals. He reviews structure, metadata, and performance so a correct page is also discoverable.',
-    copywriter:
-      'He looks after public-facing writing. He adjusts tone, clarity, and CTAs so the product explains its value well without sounding generic or inflated.',
-    librarian:
-      'He is the strict archivist of the project. When he enters, he answers only with traceable memory and makes clear what he knows, what he does not know, and where each statement comes from.',
-    'i18n-specialist':
-      'She makes sure the product can speak multiple languages without shortcuts. She reviews keys, locale coverage, regional formats, and signals that break real translatability.',
     lucius:
       'He is the team external technical second opinion. He is not part of the normal implementation loop: he enters to audit from a distance before closure or publication.',
   },
@@ -537,7 +521,6 @@ const agentVoiceMap: Record<Locale, Record<string, string>> = {
 const englishAgentSource = [...dataEn.coreAgents.agents, ...dataEn.optionalAgents.agents];
 const englishAgentProfileMap = {
   alfred: englishAgentSource.find((agent) => agent.name === 'Alfred'),
-  'project-manager': englishAgentSource.find((agent) => agent.name === 'SonIA'),
   'product-owner': englishAgentSource.find((agent) => agent.alias === 'Product Owner'),
   architect: englishAgentSource.find((agent) => agent.alias === 'Architect'),
   'senior-dev': englishAgentSource.find((agent) => agent.alias === 'Senior Dev'),
@@ -546,14 +529,6 @@ const englishAgentProfileMap = {
   'devops-engineer': englishAgentSource.find((agent) => agent.alias === 'DevOps Engineer'),
   'tech-writer': englishAgentSource.find((agent) => agent.alias === 'Tech Writer'),
   selina: englishAgentSource.find((agent) => agent.name === 'Selina'),
-  'data-engineer': englishAgentSource.find((agent) => agent.alias === 'Data Engineer'),
-  'ux-reviewer': englishAgentSource.find((agent) => agent.alias === 'UX Reviewer'),
-  'performance-engineer': englishAgentSource.find((agent) => agent.alias === 'Performance Engineer'),
-  'github-manager': englishAgentSource.find((agent) => agent.alias === 'GitHub Manager'),
-  'seo-specialist': englishAgentSource.find((agent) => agent.alias === 'SEO Specialist'),
-  copywriter: englishAgentSource.find((agent) => agent.alias === 'Copywriter'),
-  librarian: englishAgentSource.find((agent) => agent.alias === 'Project memory'),
-  'i18n-specialist': englishAgentSource.find((agent) => agent.alias === 'i18n Specialist'),
   lucius: englishAgentSource.find((agent) => agent.name === 'Lucius'),
 };
 
@@ -628,24 +603,24 @@ const commandGroups = [
   {
     count: '03',
     name: tr('Entrada', 'Entry'),
-    subtitle: tr('Arranque y ayuda', 'Bootstrap and help'),
+    subtitle: tr('Arranque y ajustes', 'Bootstrap and settings'),
     tone: 'peach',
     description: tr(
-      'Cargar Alfred, fijar configuración y entender la superficie pública del plugin.',
-      'Load Alfred, set configuration, and understand the public surface of the plugin.',
+      'Cargar Alfred, fijar autonomía/Lucius y actualizar el plugin.',
+      'Load Alfred, set autonomy/Lucius, and update the plugin.',
     ),
-    chips: ['alfred', 'config', 'help'],
+    chips: ['alfred', 'ajustes', 'update'],
   },
   {
-    count: '07',
+    count: '05',
     name: tr('Orientación', 'Orientation'),
     subtitle: tr('Contexto y continuidad', 'Context and continuity'),
     tone: 'sky',
     description: tr(
-      'Leer el estado real del repo y decidir el siguiente paso sin reabrir todo el contexto.',
-      'Read the real state of the repo and decide the next step without reopening all context.',
+      'Leer el repo, pausar, retomar y ver el estado sin reabrir todo el contexto.',
+      'Read the repo, pause, retomar, and see state without reopening all context.',
     ),
-    chips: ['map-codebase', 'discuss', 'next', 'status', 'progress', 'pause', 'resume'],
+    chips: ['map-codebase', 'discuss', 'progress', 'pause', 'retomar'],
   },
   {
     count: '06',
@@ -653,262 +628,130 @@ const commandGroups = [
     subtitle: tr('Entrega y auditoría', 'Delivery and audit'),
     tone: 'pink',
     description: tr(
-      'Abrir entrega real: features, cambios rápidos, fixes, exploración técnica, ship y auditoría.',
-      'Open real delivery work: features, quick changes, fixes, technical exploration, ship, and audit.',
+      'Abrir entrega real: features, cambios rápidos, fixes, exploración, ship y auditoría.',
+      'Open real delivery work: features, quick changes, fixes, exploration, ship, and audit.',
     ),
     chips: ['feature', 'quick', 'fix', 'spike', 'ship', 'audit'],
   },
   {
-    count: '05',
-    name: tr('Control', 'Control'),
-    subtitle: tr('Verificación y bloqueos', 'Verification and blockers'),
-    tone: 'butter',
-    description: tr(
-      'Verificar UAT, detectar bloqueos y revisar la salud operativa antes de seguir o cerrar.',
-      'Verify UAT, detect blockers, and review operational health before continuing or closing.',
-    ),
-    chips: ['verify', 'validate', 'blocked', 'in-progress', 'standup'],
-  },
-  {
-    count: '05',
+    count: '04',
     name: tr('Operación', 'Operations'),
-    subtitle: tr('Memoria y mantenimiento', 'Memory and maintenance'),
+    subtitle: tr('UAT, memoria y segunda opinión', 'UAT, memory, and second opinion'),
     tone: 'lavender',
     description: tr(
-      'Buscar en memoria, abrir la UI local, sincronizar GitHub, actualizar y pedir una segunda opinión.',
-      'Search memory, open the local UI, sync GitHub, update, and request a second opinion.',
+      'Cerrar aceptación humana, abrir Memory UI, espejar GitHub y pedir a Lucius.',
+      'Close human acceptance, open Memory UI, mirror GitHub, and ask Lucius.',
     ),
-    chips: ['search', 'memory-ui', 'sync-github', 'update', 'lucius'],
+    chips: ['uat', 'memory-ui', 'sync-github', 'lucius'],
   },
 ];
+for (const group of commandGroups) {
+  group.count = String(group.chips.length).padStart(2, '0');
+}
 const commandRuntimeMeta: Record<string, CommandRuntimeMeta> = {
   alfred: {
     mode: 'Contextual',
     detail:
-      'Clasifica la intención del usuario y el estado del proyecto para disparar el comando correcto sin obligar a navegar un menú manual.',
+      'Clasifica la intención y el estado del proyecto para disparar el comando correcto sin obligar a un menú.',
     notes: [
       'Lee continuidad, handoff, UAT y contexto persistente antes de decidir.',
-      'Prioriza rutas operativas como next, resume, verify o map-codebase cuando el estado ya lo deja claro.',
-      'Solo pregunta al usuario cuando hay ambigüedad real entre dos caminos con consecuencias distintas.',
+      'Prioriza retomar, uat, progress o map-codebase cuando el estado ya deja la ruta clara.',
+      'La entrada pública es /alfred-dev:alfred. No hay alias global /alfred.',
     ],
     coreAgents: ['alfred'],
-    layerIds: ['continuity', 'sonia'],
+    layerIds: ['continuity'],
   },
-  config: {
+  ajustes: {
     mode: 'Setup',
     detail:
-      'Ajusta autonomía, memoria, personalidad y catálogo opcional del proyecto para que el runtime responda con el equipo correcto.',
+      'Ajusta autonomía, Lucius, memoria y personalidad del proyecto. Es el antiguo /alfred-dev:config.',
     notes: [
-      'Es el punto canónico para activar o desactivar especialistas opcionales.',
-      'Define cómo trabaja Alfred en el repo antes de entrar en flujos largos.',
-      'Deja cerrados memoria local, autonomía y composición dinámica de equipo.',
+      'El único opcional persistente es Lucius.',
+      'No ofrece el catálogo 0.6 de especialistas.',
+      'SessionStart siembra el fichero si falta. No reescribe settings.json.',
     ],
     coreAgents: ['alfred'],
     optionalAgents: allOptionalAgentIds,
-    layerIds: ['sonia', 'memory-ui'],
+    layerIds: ['memory-ui'],
   },
-  help: {
-    mode: 'Catálogo',
+  update: {
+    mode: 'Mantenimiento',
     detail:
-      'Expone la superficie pública del plugin para entender qué comandos existen, qué agentes hay y cuándo conviene usar cada capa.',
+      'Comprueba la última release en GitHub, compara semver real y ejecuta el instalador si aceptas actualizar.',
     notes: [
-      'Resume comandos, flujos, agentes y límites del sistema.',
-      'Sirve como mapa público del plugin, no como flujo de ejecución.',
-      'Hace visible qué parte del equipo es núcleo y qué parte es opcional.',
+      'Lee la versión instalada desde la caché del plugin y la compara con GitHub Releases.',
+      'Si hay versión nueva, ofrece actualizar ahora o dejarlo.',
+      'Normaliza a --scope user. No recrea un alias /alfred.',
     ],
-    coreAgents: coreAgents.map((agent) => agent.id),
-    optionalAgents: allOptionalAgentIds,
+    coreAgents: ['alfred'],
   },
   discuss: {
     mode: 'Refinado',
     detail:
-      'Aterriza una idea o feature antes de abrir un flujo de implementación completo, intentando resolver el refinado con el menor número de especialistas posible.',
+      'Aterriza una idea o feature antes de abrir un flujo de implementación completo.',
     notes: [
-      'Alfred intenta resolver primero y solo llama apoyo si realmente aporta.',
       'Product Owner es el criterio principal para alcance y problema real.',
-      'UX, copy e i18n entran solo si la idea toca interfaz o texto visible.',
+      'Si hace falta UI, Selina entra más tarde en feature.',
+      'No abre un catálogo de opcionales.',
     ],
     coreAgents: ['alfred', 'product-owner'],
-    optionalAgents: ['ux-reviewer', 'copywriter', 'i18n-specialist'],
-    layerIds: ['sonia'],
+    layerIds: ['continuity'],
   },
   'map-codebase': {
     mode: 'Brownfield',
     detail:
-      'Analiza un repositorio existente y construye un mapa persistente del codebase antes de abrir feature, fix o audit en un brownfield.',
+      'Analiza un repositorio existente y construye un mapa persistente del codebase.',
     notes: [
-      'Cruza arquitectura, desarrollo, seguridad y PM operativo sobre el repo real.',
-      'Genera contexto reutilizable para continuidad, memoria y siguientes comandos.',
-      'Evita arrancar un equipo multiagente a ciegas en proyectos ya existentes.',
+      'Cruza arquitectura, desarrollo y seguridad sobre el repo real.',
+      'Evita arrancar feature, fix o audit a ciegas en un brownfield.',
+      'Deja contexto reutilizable en docs/project/.',
     ],
-    coreAgents: ['alfred', 'architect', 'senior-dev', 'security-officer', 'project-manager'],
-    layerIds: ['sonia', 'continuity'],
-  },
-  next: {
-    mode: 'Operativo',
-    detail:
-      'Decide el siguiente paso operativo y lo ejecuta solo cuando la ruta es inequívoca a partir del estado persistido del proyecto.',
-    notes: [
-      'Usa continuity como señal primaria para no reabrir contexto manualmente.',
-      'Puede redirigir a resume, verify, map-codebase u otro comando operativo.',
-      'Está pensado para seguir trabajando, no para explicar todo el sistema otra vez.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
-  },
-  status: {
-    mode: 'Operativo',
-    detail:
-      'Muestra el estado de la sesión activa sin reabrir fases ni volver a ejecutar el flujo completo.',
-    notes: [
-      'Lee sesión activa, handoff, UAT y artefactos operativos para resumir el punto exacto.',
-      'Hace visible fase actual, gates pendientes y siguiente comando recomendado.',
-      'No intenta avanzar el flujo desde la propia lectura de estado.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
+    coreAgents: ['alfred', 'architect', 'senior-dev', 'security-officer'],
+    layerIds: ['continuity'],
   },
   progress: {
     mode: 'Operativo',
     detail:
-      'Resume el proyecto desde SonIA: progreso, kanban, bloqueos, trazabilidad y señal operativa principal.',
+      'Resume el proyecto desde el runtime: progreso, kanban, bloqueos, trazabilidad y UAT.',
     notes: [
-      'Es la vista compacta del estado operativo real del proyecto.',
+      'Es la vista pública de standup, blocked, in-progress y validate.',
       'Cruza backlog, in progress, blocked, done y trazabilidad.',
-      'Está orientado a decidir el siguiente movimiento, no a rehacer análisis técnico.',
+      'No reabre el flujo ni lanza un agente project-manager.',
     ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'continuity'],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity', 'board'],
   },
   pause: {
     mode: 'Operativo',
     detail:
-      'Pausa la sesión actual y deja un handoff explícito para que el trabajo pueda retomarse sin pérdida de fase ni gate.',
+      'Pausa la sesión actual y deja un handoff explícito para retomar sin perder fase ni gate.',
     notes: [
-      'Persiste estado de pausa y contexto de continuidad.',
+      'Escribe handoff en JSON y Markdown.',
       'Sirve para cortar una sesión sin degradar trazabilidad.',
-      'Prepara el terreno para resume o next en la siguiente entrada.',
+      'El siguiente paso público es /alfred-dev:retomar.',
     ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity'],
   },
-  resume: {
+  retomar: {
     mode: 'Operativo',
     detail:
-      'Retoma una sesión activa o un handoff pendiente y deja claro el siguiente paso exacto sin abrir una nueva iteración por sorpresa.',
+      'Retoma una sesión pausada usando el handoff y el estado guardados. Antes /alfred-dev:resume.',
     notes: [
-      'Recupera flujo, fase actual, gate pendiente y acción concreta.',
-      'Limpia marcas de pausa y deja constancia de la reanudación.',
-      'No lanza un flujo nuevo: recompone el contexto y te deja listo para seguir.',
+      'Lee .claude/alfred-handoff.json y el estado del flujo.',
+      'No abre una iteración nueva a ciegas.',
     ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
-  },
-  blocked: {
-    mode: 'Operativo',
-    detail:
-      'Lista los bloqueos visibles del kanban local para decidir si toca resolver dependencias, validar o pausar.',
-    notes: [
-      'Lee el tablero de SonIA y devuelve solo bloqueos reales.',
-      'Está pensado para quitar fricción operativa, no para abrir un flujo técnico.',
-      'La salida acaba orientando el siguiente comando más útil.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia'],
-  },
-  'in-progress': {
-    mode: 'Operativo',
-    detail:
-      'Muestra el trabajo que está en marcha ahora mismo en el kanban local del proyecto.',
-    notes: [
-      'Se centra en tareas activas y foco actual del equipo.',
-      'Ayuda a evitar duplicidades y a ver si una fase sigue viva.',
-      'Funciona como lectura rápida del tablero, no como backlog completo.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia'],
-  },
-  standup: {
-    mode: 'Operativo',
-    detail:
-      'Devuelve un standup corto y accionable desde SonIA con tareas en curso, bloqueos y siguiente paso recomendado.',
-    notes: [
-      'Compacta el estado diario sin reabrir el flujo entero.',
-      'Se apoya en counts, tareas clave en curso y señal operativa principal.',
-      'No intenta cerrar gates ni rehacer análisis profundo del repo.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia'],
-  },
-  validate: {
-    mode: 'Operativo',
-    detail:
-      'Valida la integridad operativa del estado local: kanban, trazabilidad, UAT y sincronía con GitHub si existe.',
-    notes: [
-      'Emite un veredicto claro sobre la salud del estado operativo.',
-      'Detecta huecos entre tareas, evidencia, UAT y espejo remoto.',
-      'No corrige artefactos: valida y recomienda el siguiente paso.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'github-sync'],
-  },
-  search: {
-    mode: 'Operativo',
-    detail:
-      'Busca texto en los artefactos de SonIA y en la memoria SQLite del proyecto sin convertir la respuesta en un análisis largo.',
-    notes: [
-      'Prioriza coincidencias exactas o cercanas en el estado operativo.',
-      'Distingue entre resultados documentales y resultados de memoria persistente.',
-      'Es la vía rápida para recuperar decisiones, tareas o contexto perdido.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'memory-ui'],
-  },
-  'memory-ui': {
-    mode: 'Operativo',
-    detail:
-      'Abre la interfaz local de memoria sobre SQLite para revisar timeline, decisiones, commits, health y búsqueda.',
-    notes: [
-      'Hace visible una memoria que de otro modo quedaría enterrada en la base local.',
-      'Trabaja sobre SQLite WAL con FTS5, no sobre un servicio remoto.',
-      'Sirve para inspección operativa y trazabilidad, no para sustituir Claude Code.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['memory-ui', 'sonia'],
-  },
-  'sync-github': {
-    mode: 'Operativo',
-    detail:
-      'Refleja el tablero local de SonIA en GitHub Issues sin perder que la fuente de verdad sigue estando en el proyecto.',
-    notes: [
-      'Sincroniza desde el estado local hacia GitHub, no al revés.',
-      'Actualiza artefactos de sync y puede cerrar o retirar issues generados por Alfred.',
-      'Si gh no está listo, lo deja visible y sugiere apoyo de GitHub Manager.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    optionalAgents: ['github-manager'],
-    layerIds: ['sonia', 'github-sync'],
-  },
-  verify: {
-    mode: 'Operativo',
-    detail:
-      'Prepara o registra la validación manual del entregable actual sin reinterpretar los tests automáticos.',
-    notes: [
-      'Sin argumento prepara el checklist de UAT; con aprobado, rechazado o pendiente persiste el resultado.',
-      'Cierra verificación humana, no quality gates técnicas.',
-      'Mantiene el historial de aceptación manual vinculado al flujo real.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'hooks-evidence'],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity'],
   },
   feature: {
     mode: 'Flujo',
     detail:
       'Abre el ciclo completo de producto, arquitectura, implementación, seguridad, QA, documentación y entrega.',
     notes: [
-      'Compone equipo según stack, contexto y opcionales configurados.',
-      'Selina solo entra cuando el proyecto tiene superficie visual real y trabaja con 10 sistemas de diseño base antes de cerrar 3 finalistas.',
+      'Hasta 7 fases. Selina solo entra si hay frontend.',
       'Pasa por gates y evidencia antes de cerrar cada fase.',
+      'Lucius puede entrar después como segunda opinión, no como núcleo.',
     ],
     coreAgents: [
       'product-owner',
@@ -920,50 +763,32 @@ const commandRuntimeMeta: Record<string, CommandRuntimeMeta> = {
       'devops-engineer',
       'selina',
     ],
-    optionalAgents: allOptionalAgentIds,
-    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+    optionalAgents: ['lucius'],
+    layerIds: ['continuity', 'hooks-evidence'],
   },
   quick: {
     mode: 'Flujo',
     detail:
-      'Resuelve un cambio pequeño y acotado con menos ceremonia, pero manteniendo seguridad, tests y validación.',
+      'Resuelve un cambio pequeño y acotado con menos ceremonia, manteniendo tests y seguridad.',
     notes: [
       'Recorta burocracia, no rigor técnico.',
-      'Senior Dev, seguridad y QA siguen siendo núcleo fijo.',
-      'Escala a especialistas solo cuando el cambio lo exige de verdad.',
+      'Senior Dev, seguridad y QA siguen siendo núcleo.',
     ],
     coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
-    optionalAgents: [
-      'data-engineer',
-      'ux-reviewer',
-      'performance-engineer',
-      'seo-specialist',
-      'copywriter',
-      'i18n-specialist',
-      'lucius',
-    ],
-    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+    optionalAgents: ['lucius'],
+    layerIds: ['continuity', 'hooks-evidence'],
   },
   fix: {
     mode: 'Flujo',
     detail:
-      'Ataca bugs y regresiones con diagnóstico, corrección TDD y validación posterior antes de dar el cambio por bueno.',
+      'Ataca bugs y regresiones con diagnóstico, corrección TDD y validación posterior.',
     notes: [
       'Empieza por aislar el problema antes de corregir.',
       'Desarrollo, seguridad y QA forman el núcleo del loop.',
-      'Los especialistas opcionales entran según la naturaleza real del bug.',
     ],
     coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
-    optionalAgents: [
-      'data-engineer',
-      'ux-reviewer',
-      'performance-engineer',
-      'seo-specialist',
-      'copywriter',
-      'i18n-specialist',
-      'lucius',
-    ],
-    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+    optionalAgents: ['lucius'],
+    layerIds: ['continuity', 'hooks-evidence'],
   },
   spike: {
     mode: 'Flujo',
@@ -972,19 +797,18 @@ const commandRuntimeMeta: Record<string, CommandRuntimeMeta> = {
     notes: [
       'Architect compara alternativas y Senior Dev prototipa.',
       'El resultado es conocimiento estructurado, no entrega a producción.',
-      'Los opcionales solo entran bajo demanda si el tema lo justifica.',
     ],
     coreAgents: ['architect', 'senior-dev'],
-    layerIds: ['sonia'],
+    layerIds: ['continuity'],
   },
   audit: {
     mode: 'Flujo',
     detail:
-      'Lanza una auditoría paralela sobre calidad, seguridad, arquitectura y documentación para dejar un diagnóstico transversal del proyecto.',
+      'Lanza una auditoría paralela sobre calidad, seguridad, arquitectura y documentación.',
     notes: [
-      'Ejecuta cuatro revisiones en paralelo como núcleo por defecto.',
+      'Cuatro revisiones en paralelo como núcleo por defecto.',
       'Lucius puede entrar después como segunda opinión técnica externa.',
-      'Si SonarQube no puede correr, deja visible la degradación y sigue con trazabilidad.',
+      'SonarQube solo si el usuario lo decide.',
     ],
     coreAgents: ['qa-engineer', 'security-officer', 'architect', 'tech-writer'],
     optionalAgents: ['lucius'],
@@ -993,38 +817,62 @@ const commandRuntimeMeta: Record<string, CommandRuntimeMeta> = {
   ship: {
     mode: 'Flujo',
     detail:
-      'Prepara la entrega a producción: auditoría final, documentación, empaquetado y despliegue con confirmación humana.',
+      'Prepara la entrega: auditoría final, documentación, empaquetado y despliegue con confirmación humana.',
     notes: [
-      'No deja pasar despliegue sin firma y confirmación explícita.',
+      'Hygiene puede bloquear si la UAT está abierta o docs/project sigue en esqueleto.',
       'QA, seguridad, documentación y DevOps forman el núcleo del release.',
-      'Puede incorporar copy, GitHub y Lucius como soporte de cierre.',
+      'El deploy pide confirmación humana.',
     ],
     coreAgents: ['qa-engineer', 'security-officer', 'tech-writer', 'devops-engineer'],
-    optionalAgents: ['copywriter', 'github-manager', 'lucius'],
-    layerIds: ['hooks-evidence', 'github-sync', 'continuity'],
+    optionalAgents: ['lucius'],
+    layerIds: ['hooks-evidence', 'continuity'],
+  },
+  uat: {
+    mode: 'Operativo',
+    detail:
+      'Registra la validación humana del entregable. Antes /alfred-dev:verify.',
+    notes: [
+      'Separa tests automáticos de la aceptación del usuario.',
+      'Deja pending, approved o rejected.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity'],
+  },
+  'memory-ui': {
+    mode: 'Operativo',
+    detail:
+      'Abre la interfaz local de memoria sobre SQLite para timeline, decisiones, commits, health y búsqueda.',
+    notes: [
+      'Es un visor GET en localhost. No importa el historial de Git.',
+      'Si la memoria está vacía, se ve vacía.',
+      'SessionEnd o /alfred-dev:memory-ui stop la cierran.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['memory-ui'],
+  },
+  'sync-github': {
+    mode: 'Operativo',
+    detail:
+      'Refleja el tablero local en GitHub Issues. La fuente de verdad sigue en el proyecto.',
+    notes: [
+      'Sincroniza desde el estado local hacia GitHub, no al revés.',
+      'Si gh no está listo, lo deja visible.',
+      'No hay agente github-manager.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['github-sync', 'continuity', 'board'],
   },
   lucius: {
     mode: 'Auditoría externa',
     detail:
-      'Invoca una segunda opinión técnica externa vía Codex CLI en modo read-only para contrastar el trabajo hecho.',
+      'Invoca una segunda opinión técnica externa vía Codex CLI en modo solo lectura.',
     notes: [
-      'Usa codex exec con sandbox read-only y el modelo configurado en Codex CLI; después compara el estado Git antes/después.',
+      'Usa codex exec con sandbox read-only y compara el estado Git antes y después.',
       'No sustituye el sign-off canónico del flujo principal.',
-      'Puede centrarse en all, security, tests, architecture o performance.',
+      'Scope: all, security, tests, architecture o performance.',
     ],
     coreAgents: ['alfred', 'architect'],
     optionalAgents: ['lucius'],
-  },
-  update: {
-    mode: 'Mantenimiento',
-    detail:
-      'Comprueba la última release en GitHub, compara semver real y ejecuta el instalador correcto si el usuario acepta actualizar.',
-    notes: [
-      'Lee la versión instalada desde la caché del plugin y la compara con GitHub Releases.',
-      'Si hay versión nueva, ofrece actualizar ahora o dejarlo para luego.',
-      'Tras actualizar, recuerda ejecutar /reload-plugins; reinicia solo si MCP/caché lo exige o el inventario no cambia.',
-    ],
-    coreAgents: ['alfred'],
   },
 };
 const commandRuntimeMetaEn: Record<string, CommandRuntimeMeta> = {
@@ -1034,208 +882,101 @@ const commandRuntimeMetaEn: Record<string, CommandRuntimeMeta> = {
       'Classifies user intent and project state so it can trigger the right command without forcing a manual menu.',
     notes: [
       'Reads continuity, handoff, UAT, and persistent context before deciding.',
-      'Only asks the user when two routes would have materially different consequences.',
+      'Prioritizes retomar, uat, progress, or map-codebase when state already makes the route clear.',
+      'Public entry is /alfred-dev:alfred. There is no global /alfred alias.',
     ],
     coreAgents: ['alfred'],
-    layerIds: ['continuity', 'sonia'],
+    layerIds: ['continuity'],
   },
-  config: {
+  ajustes: {
     mode: 'Setup',
     detail:
-      'Adjusts autonomy, memory, personality, and optional catalog so runtime responds with the right team for the repo.',
+      'Adjusts autonomy, Lucius, memory, and personality. Formerly /alfred-dev:config.',
     notes: [
-      'This is the canonical place to enable or disable optional specialists.',
-      'Leaves memory, autonomy, and runtime composition explicitly configured.',
+      'Lucius is the only persistent optional agent.',
+      'It does not offer the 0.6 specialist catalog.',
+      'SessionStart seeds the file if missing. It does not rewrite settings.json.',
     ],
     coreAgents: ['alfred'],
     optionalAgents: allOptionalAgentIds,
-    layerIds: ['sonia', 'memory-ui'],
+    layerIds: ['memory-ui'],
   },
-  help: {
-    mode: 'Catalog',
+  update: {
+    mode: 'Maintenance',
     detail:
-      'Exposes the public surface of the plugin so you can understand commands, agents, and runtime layers without entering a workflow.',
+      'Checks the latest GitHub release, compares real semver, and runs the installer if you accept.',
     notes: [
-      'It maps the system; it does not execute it.',
-      'Makes core and optional parts of the team visible in one place.',
+      'Reads the installed version from the plugin cache and compares it with GitHub Releases.',
+      'If a newer version exists, it offers update now or later.',
+      'Normalizes to --scope user. It does not recreate a /alfred alias.',
     ],
-    coreAgents: coreAgents.map((agent) => agent.id),
-    optionalAgents: allOptionalAgentIds,
+    coreAgents: ['alfred'],
   },
   discuss: {
     mode: 'Refinement',
     detail:
-      'Refines an idea or feature before opening a full implementation workflow, using the smallest team that still gives signal.',
+      'Refines an idea or feature before opening a full implementation workflow.',
     notes: [
-      'Product Owner is the main lens for scope and real problem.',
-      'UX, copy, and i18n join only if the idea touches visible interface or content.',
+      'Product Owner is the main lens for scope and the real problem.',
+      'If UI is needed later, Selina enters in feature.',
+      'No optional catalog is opened here.',
     ],
     coreAgents: ['alfred', 'product-owner'],
-    optionalAgents: ['ux-reviewer', 'copywriter', 'i18n-specialist'],
-    layerIds: ['sonia'],
+    layerIds: ['continuity'],
   },
   'map-codebase': {
     mode: 'Brownfield',
     detail:
-      'Analyzes an existing repository and builds a persistent codebase map before opening feature, fix, or audit in a brownfield project.',
+      'Analyzes an existing repository and builds a persistent codebase map.',
     notes: [
-      'Crosses architecture, development, security, and PM signals over the real repo.',
-      'Avoids starting a multi-agent team blind on an existing system.',
+      'Crosses architecture, development, and security over the real repo.',
+      'Avoids starting feature, fix, or audit blind on a brownfield project.',
+      'Leaves reusable context in docs/project/.',
     ],
-    coreAgents: ['alfred', 'architect', 'senior-dev', 'security-officer', 'project-manager'],
-    layerIds: ['sonia', 'continuity'],
-  },
-  next: {
-    mode: 'Operational',
-    detail:
-      'Decides the next operational step and executes it only when the route is unambiguous from persisted project state.',
-    notes: [
-      'Uses continuity as the primary signal so you do not have to reopen context manually.',
-      'Can redirect to resume, verify, map-codebase, or another operational command.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
-  },
-  status: {
-    mode: 'Operational',
-    detail:
-      'Shows the state of the active session without reopening phases or replaying the entire flow.',
-    notes: [
-      'Makes current phase, pending gates, and recommended next command visible.',
-      'It is a read of state, not a step forward.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
+    coreAgents: ['alfred', 'architect', 'senior-dev', 'security-officer'],
+    layerIds: ['continuity'],
   },
   progress: {
     mode: 'Operational',
     detail:
-      'Summarizes the project from SonIA: progress, kanban, blockers, traceability, and the main operational signal.',
+      'Summarizes the project from runtime: progress, kanban, blockers, traceability, and UAT.',
     notes: [
-      'Acts as the compact read of real project state.',
-      'Helps decide the next move without rerunning technical analysis.',
+      'This is the public view that replaced standup, blocked, in-progress, and validate.',
+      'It does not reopen the flow or launch a project-manager agent.',
     ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'continuity'],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity', 'board'],
   },
   pause: {
     mode: 'Operational',
     detail:
-      'Pauses the current session and leaves an explicit handoff so work can resume without losing phase or gate.',
+      'Pauses the current session and leaves an explicit handoff so work can continue without losing phase or gate.',
     notes: [
-      'Persists pause state and continuity context.',
-      'Prepares the ground for resume or next in the following entry.',
+      'Writes the handoff in JSON and Markdown.',
+      'The public follow-up is /alfred-dev:retomar.',
     ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity'],
   },
-  resume: {
+  retomar: {
     mode: 'Operational',
     detail:
-      'Resumes an active session or pending handoff and makes the exact next step explicit without opening a new iteration by surprise.',
+      'Resumes a paused session from the stored handoff. Formerly /alfred-dev:resume.',
     notes: [
-      'Recovers workflow, current phase, pending gate, and concrete next action.',
-      'Rebuilds context first; it does not silently start a new flow.',
+      'Reads .claude/alfred-handoff.json and flow state.',
+      'Does not open a new iteration blindly.',
     ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['continuity', 'sonia'],
-  },
-  blocked: {
-    mode: 'Operational',
-    detail:
-      'Lists visible blockers from the local kanban so the team can decide whether to resolve dependencies, validate, or pause.',
-    notes: [
-      'Reads only real blockers from SonIA board state.',
-      'Its output points to the most useful next command.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia'],
-  },
-  'in-progress': {
-    mode: 'Operational',
-    detail:
-      'Shows the work currently in flight on the project local kanban.',
-    notes: [
-      'Focuses on active tasks and current team attention.',
-      'Useful to avoid duplication before picking up work.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia'],
-  },
-  standup: {
-    mode: 'Operational',
-    detail:
-      'Returns a short actionable standup from SonIA with work in progress, blockers, and the recommended next step.',
-    notes: [
-      'Compresses the daily state without reopening the whole flow.',
-      'Designed as an operational briefing, not as a deep repo audit.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia'],
-  },
-  validate: {
-    mode: 'Operational',
-    detail:
-      'Validates the integrity of local operational state: kanban, traceability, UAT, and GitHub sync if it exists.',
-    notes: [
-      'Returns a clear verdict on operational health.',
-      'Does not repair artifacts; it validates and recommends the next step.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'github-sync'],
-  },
-  search: {
-    mode: 'Operational',
-    detail:
-      'Searches SonIA artifacts and project SQLite memory without turning the response into a long analysis.',
-    notes: [
-      'Distinguishes between documentary matches and persistent-memory matches.',
-      'Useful to recover decisions, tasks, or lost context quickly.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'memory-ui'],
-  },
-  'memory-ui': {
-    mode: 'Operational',
-    detail:
-      'Opens the local memory UI on top of SQLite so you can inspect timeline, decisions, commits, health, and search.',
-    notes: [
-      'Makes project memory visible instead of burying it inside the local database.',
-      'Works over local SQLite WAL with FTS5, not a remote service.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['memory-ui', 'sonia'],
-  },
-  'sync-github': {
-    mode: 'Operational',
-    detail:
-      'Mirrors SonIA local board into GitHub Issues without giving up the project as the source of truth.',
-    notes: [
-      'Sync goes from local state to GitHub, never the other way around.',
-      'If gh is not ready, it leaves the limitation visible and suggests GitHub Manager support.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    optionalAgents: ['github-manager'],
-    layerIds: ['sonia', 'github-sync'],
-  },
-  verify: {
-    mode: 'Operational',
-    detail:
-      'Prepares or records manual validation of the current deliverable without reinterpreting automated tests.',
-    notes: [
-      'Without arguments it prepares UAT; with approved, rejected, or pending it persists the result.',
-      'Closes human validation, not technical quality gates.',
-    ],
-    coreAgents: ['alfred', 'project-manager'],
-    layerIds: ['sonia', 'hooks-evidence'],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity'],
   },
   feature: {
     mode: 'Flow',
     detail:
-      'Opens the complete cycle of product, architecture, implementation, security, QA, documentation, and delivery.',
+      'Opens the full cycle of product, architecture, implementation, security, QA, documentation, and delivery.',
     notes: [
-      'Builds the team according to stack, context, and configured optionals.',
-      'Selina only enters when the project has a real visual surface and works from 10 base design systems before closing 3 finalists.',
+      'Up to 7 phases. Selina enters only when there is a frontend.',
+      'Each phase closes with gates and evidence.',
+      'Lucius may join later as a second opinion, not as core.',
     ],
     coreAgents: [
       'product-owner',
@@ -1247,67 +988,52 @@ const commandRuntimeMetaEn: Record<string, CommandRuntimeMeta> = {
       'devops-engineer',
       'selina',
     ],
-    optionalAgents: allOptionalAgentIds,
-    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+    optionalAgents: ['lucius'],
+    layerIds: ['continuity', 'hooks-evidence'],
   },
   quick: {
     mode: 'Flow',
     detail:
-      'Resolves a small bounded change with less ceremony, while keeping security, tests, and validation in place.',
+      'Handles a small, bounded change with less ceremony while keeping tests and security.',
     notes: [
-      'Cuts bureaucracy, not technical rigor.',
-      'Scales to specialists only when the change really needs them.',
+      'It cuts ceremony, not technical rigor.',
+      'Senior Dev, security, and QA stay in the core.',
     ],
     coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
-    optionalAgents: [
-      'data-engineer',
-      'ux-reviewer',
-      'performance-engineer',
-      'seo-specialist',
-      'copywriter',
-      'i18n-specialist',
-      'lucius',
-    ],
-    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+    optionalAgents: ['lucius'],
+    layerIds: ['continuity', 'hooks-evidence'],
   },
   fix: {
     mode: 'Flow',
     detail:
-      'Attacks bugs and regressions with diagnosis, TDD correction, and post-fix validation before the change is accepted.',
+      'Attacks bugs and regressions with diagnosis, a TDD fix, and later validation.',
     notes: [
-      'Starts by isolating the problem before changing code.',
-      'Development, security, and QA form the stable loop.',
+      'It isolates the problem before changing code.',
+      'Development, security, and QA form the loop core.',
     ],
     coreAgents: ['senior-dev', 'security-officer', 'qa-engineer'],
-    optionalAgents: [
-      'data-engineer',
-      'ux-reviewer',
-      'performance-engineer',
-      'seo-specialist',
-      'copywriter',
-      'i18n-specialist',
-      'lucius',
-    ],
-    layerIds: ['sonia', 'continuity', 'hooks-evidence'],
+    optionalAgents: ['lucius'],
+    layerIds: ['continuity', 'hooks-evidence'],
   },
   spike: {
     mode: 'Flow',
     detail:
-      'Investigates a technical topic without committing production code and leaves a documented recommendation behind.',
+      'Researches a technical topic without committing production code and leaves a documented recommendation.',
     notes: [
       'Architect compares alternatives and Senior Dev prototypes.',
-      'The result is structured knowledge, not a production release.',
+      'The result is structured knowledge, not a production delivery.',
     ],
     coreAgents: ['architect', 'senior-dev'],
-    layerIds: ['sonia'],
+    layerIds: ['continuity'],
   },
   audit: {
     mode: 'Flow',
     detail:
-      'Launches a parallel audit over quality, security, architecture, and documentation to leave a transversal project diagnosis.',
+      'Runs a parallel audit on quality, security, architecture, and documentation.',
     notes: [
-      'Runs four parallel reviews as the default core.',
-      'Lucius can join afterward as an external second opinion.',
+      'Four reviews in parallel by default.',
+      'Lucius may enter afterwards as an external second opinion.',
+      'SonarQube runs only if the user decides.',
     ],
     coreAgents: ['qa-engineer', 'security-officer', 'architect', 'tech-writer'],
     optionalAgents: ['lucius'],
@@ -1316,38 +1042,65 @@ const commandRuntimeMetaEn: Record<string, CommandRuntimeMeta> = {
   ship: {
     mode: 'Flow',
     detail:
-      'Prepares delivery to production: final audit, documentation, packaging, and deployment with human confirmation.',
+      'Prepares delivery: final audit, documentation, packaging, and deploy with a human confirmation.',
     notes: [
-      'Does not allow deployment without explicit sign-off.',
-      'QA, security, documentation, and DevOps form the release nucleus.',
+      'Hygiene can block if UAT is open or docs/project is still a scaffold.',
+      'QA, security, documentation, and DevOps form the release core.',
+      'Deploy stays a human confirmation.',
     ],
     coreAgents: ['qa-engineer', 'security-officer', 'tech-writer', 'devops-engineer'],
-    optionalAgents: ['copywriter', 'github-manager', 'lucius'],
-    layerIds: ['hooks-evidence', 'github-sync', 'continuity'],
+    optionalAgents: ['lucius'],
+    layerIds: ['hooks-evidence', 'continuity'],
+  },
+  uat: {
+    mode: 'Operational',
+    detail:
+      'Records human validation of the deliverable. Formerly /alfred-dev:verify.',
+    notes: [
+      'Separates automated tests from user acceptance.',
+      'Stores pending, approved, or rejected.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['continuity'],
+  },
+  'memory-ui': {
+    mode: 'Operational',
+    detail:
+      'Opens the local memory UI over SQLite for timeline, decisions, commits, health, and search.',
+    notes: [
+      'It is a localhost GET viewer. It does not import Git history.',
+      'Empty memory stays empty.',
+      'SessionEnd or /alfred-dev:memory-ui stop close it.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['memory-ui'],
+  },
+  'sync-github': {
+    mode: 'Operational',
+    detail:
+      'Mirrors the local board to GitHub Issues. The source of truth stays in the project.',
+    notes: [
+      'Syncs from local state to GitHub, not the other way around.',
+      'If gh is not ready, it leaves that visible.',
+      'There is no github-manager agent.',
+    ],
+    coreAgents: ['alfred'],
+    layerIds: ['github-sync', 'continuity', 'board'],
   },
   lucius: {
     mode: 'External audit',
     detail:
-      'Invokes an external technical second opinion through Codex CLI in read-only mode to contrast the work already done.',
+      'Invokes an external technical second opinion via Codex CLI in read-only mode.',
     notes: [
-      'Uses codex exec with a read-only sandbox and the configured Codex CLI model; then compares Git status before and after.',
-      'It does not replace the canonical sign-off of the main workflow.',
+      'Uses codex exec with a read-only sandbox and compares Git state before and after.',
+      'It does not replace the canonical flow sign-off.',
+      'Scope: all, security, tests, architecture, or performance.',
     ],
     coreAgents: ['alfred', 'architect'],
     optionalAgents: ['lucius'],
   },
-  update: {
-    mode: 'Maintenance',
-    detail:
-      'Checks the latest GitHub release, compares real semver, and updates through the safe route for the detected plugin scope.',
-    notes: [
-      'Reads the installed version and scope from claude plugin list --json, with cache fallback only if the CLI cannot report it.',
-      'User, local and project installs use the idempotent installer and normalize to user scope; managed installs stay under admin policy.',
-      'After updating, it reminds you to restart Claude Code so the new plugin loads.',
-    ],
-    coreAgents: ['alfred'],
-  },
 };
+const knownAgentIds = new Set(agentMeta.map((agent) => agent.id));
 const activeCommandRuntimeMeta = isEn ? commandRuntimeMetaEn : commandRuntimeMeta;
 const commandCatalog = commandGroups.flatMap((group) =>
   group.chips.map((id) => {
@@ -1360,16 +1113,43 @@ const commandCatalog = commandGroups.flatMap((group) =>
       group: group.name,
       subtitle: group.subtitle,
       tone: group.tone,
-      description: upperFirst(isEn ? meta?.detail ?? `Alfred Dev ${id} command.` : parseFrontmatterField(source, 'description') || `Comando ${id} de Alfred Dev.`),
+      description: upperFirst(
+        meta?.detail
+        ?? (isEn ? `Alfred Dev ${id} command.` : parseFrontmatterField(source, 'description') || `Comando ${id} de Alfred Dev.`),
+      ),
       detail: meta?.detail ?? (isEn ? 'Operational plugin surface.' : 'Superficie operativa del plugin.'),
       mode: meta?.mode ?? (isEn ? 'Operational' : 'Operativo'),
       notes: meta?.notes ?? [],
-      coreAgents: meta?.coreAgents ?? [],
-      optionalAgents: meta?.optionalAgents ?? [],
+      coreAgents: (meta?.coreAgents ?? []).filter((id) => knownAgentIds.has(id)),
+      optionalAgents: (meta?.optionalAgents ?? []).filter((id) => knownAgentIds.has(id)),
       layerIds: meta?.layerIds ?? [],
     };
   }),
 );
+const pluginManifest = JSON.parse(readRepoFile('.claude-plugin/plugin.json')) as {
+  version?: string;
+  commands?: string[];
+};
+const publishedCommandIds = (pluginManifest.commands ?? []).map((entry) =>
+  String(entry).replace(/^\.\/commands\//, '').replace(/\.md$/, ''),
+);
+const groupedCommandIds = commandGroups.flatMap((group) => group.chips);
+const missingPublishedCommands = publishedCommandIds.filter((id) => !groupedCommandIds.includes(id));
+const extraGroupedCommands = groupedCommandIds.filter((id) => !publishedCommandIds.includes(id));
+if (pluginManifest.version !== data.footer.version.replace(/^v/i, '')) {
+  throw new Error(
+    `Landing version drift: plugin.json=${pluginManifest.version} footer=${data.footer.version}`,
+  );
+}
+if (
+  missingPublishedCommands.length > 0 ||
+  extraGroupedCommands.length > 0 ||
+  new Set(groupedCommandIds).size !== groupedCommandIds.length
+) {
+  throw new Error(
+    `Landing command drift missing=${missingPublishedCommands.join(',')} extra=${extraGroupedCommands.join(',')}`,
+  );
+}
 const commandCatalogClient = commandCatalog.map((command) => ({
   i: command.id,
   l: command.label,
@@ -1386,38 +1166,26 @@ const commandCatalogClient = commandCatalog.map((command) => ({
 }));
 
 const skillDomainMeta: Record<string, { label: string; summary: string }> = {
-  arquitectura: { label: tr('Arquitectura', 'Architecture'), summary: tr('Stack, ADRs, dependencias y diseño de sistema.', 'Stack, ADRs, dependencies, and system design.') },
-  calidad: { label: tr('Calidad', 'Quality'), summary: tr('Revisión, regresión, testing, Sonar e incidentes.', 'Review, regression, testing, Sonar, and incidents.') },
-  datos: { label: tr('Datos', 'Data'), summary: tr('Esquema, migraciones y optimización de consultas.', 'Schema, migrations, and query optimization.') },
-  desarrollo: { label: tr('Desarrollo', 'Development'), summary: tr('Exploración de código, TDD, refactor y respuesta a review.', 'Code exploration, TDD, refactor, and review response.') },
-  devops: { label: 'DevOps', summary: tr('CI/CD, deploy, Docker, observabilidad y releases.', 'CI/CD, deploy, Docker, observability, and releases.') },
-  documentacion: { label: tr('Documentación', 'Documentation'), summary: tr('API, README, onboarding, changelog y guías.', 'API, README, onboarding, changelog, and guides.') },
-  estilo: { label: tr('Estilo', 'Style'), summary: tr('Dirección visual antes de tocar frontend.', 'Visual direction before touching frontend.') },
-  github: { label: 'GitHub', summary: tr('Issues, PRs, releases y setup de repositorio.', 'Issues, PRs, releases, and repository setup.') },
-  marketing: { label: tr('Marketing', 'Marketing'), summary: tr('Copy, tono y CTAs para superficies públicas.', 'Copy, tone, and CTAs for public surfaces.') },
-  producto: { label: tr('Producto', 'Product'), summary: tr('PRD, historias, criterios y análisis competitivo.', 'PRD, stories, criteria, and competitive analysis.') },
-  rendimiento: { label: tr('Rendimiento', 'Performance'), summary: tr('Benchmarks, profiling y bundle size.', 'Benchmarks, profiling, and bundle size.') },
-  seguridad: { label: tr('Seguridad', 'Security'), summary: tr('OWASP, SBOM, dependencias y compliance.', 'OWASP, SBOM, dependencies, and compliance.') },
-  seo: { label: 'SEO', summary: tr('Meta tags, structured data y Lighthouse.', 'Meta tags, structured data, and Lighthouse.') },
-  ux: { label: 'UX', summary: tr('Accesibilidad, flujos y heurísticas de usabilidad.', 'Accessibility, flows, and usability heuristics.') },
+  proceso: { label: tr('Proceso', 'Process'), summary: tr('ADRs, dependencias, docs vivas y memoria.', 'ADRs, dependencies, living docs, and memory.') },
+  seguridad: { label: tr('Seguridad', 'Security'), summary: tr('Threat model, compliance y SBOM.', 'Threat model, compliance, and SBOM.') },
+  calidad: { label: tr('Calidad', 'Quality'), summary: tr('SonarQube, incidentes y PRs.', 'SonarQube, incidents, and PRs.') },
+  estilo: { label: tr('Estilo', 'Style'), summary: tr('Dirección visual de Selina.', 'Selina visual direction.') },
 };
-const skillDomainOrder = [
-  'producto',
-  'arquitectura',
-  'desarrollo',
-  'calidad',
-  'seguridad',
-  'datos',
-  'devops',
-  'documentacion',
-  'estilo',
-  'ux',
-  'seo',
-  'marketing',
-  'github',
-  'rendimiento',
-];
-const featuredSkillIds = ['incident-response', 'sonarqube', 'release-planning', 'dependency-strategy', 'style-direction'];
+const skillToDomain: Record<string, string> = {
+  'write-adr': 'proceso',
+  'evaluate-dependency': 'proceso',
+  'sync-project-docs': 'proceso',
+  memory: 'proceso',
+  'threat-model': 'seguridad',
+  'compliance-check': 'seguridad',
+  'sbom-generate': 'seguridad',
+  sonarqube: 'calidad',
+  'incident-response': 'calidad',
+  'pr-workflow': 'calidad',
+  'style-direction': 'estilo',
+};
+const skillDomainOrder = ['proceso', 'seguridad', 'calidad', 'estilo'];
+const featuredSkillIds = ['write-adr', 'threat-model', 'style-direction', 'compliance-check', 'memory'];
 const collectSkillFiles = (root: string, bucket: string[] = []) => {
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     const entryPath = resolvePath(root, entry.name);
@@ -1432,12 +1200,15 @@ const collectSkillFiles = (root: string, bucket: string[] = []) => {
 const skillCatalog = collectSkillFiles(resolvePath(repoRootPath, 'skills')).map((skillPath) => {
   const source = readFileSync(skillPath, 'utf8');
   const relativePath = skillPath.slice(repoRootPath.length).replace(/^[/\\]/, '');
-  const [, domainId, skillId] = relativePath.match(/^skills\/([^/]+)\/([^/]+)\/SKILL\.md$/) ?? [];
+  const nested = relativePath.match(/^skills\/([^/]+)\/([^/]+)\/SKILL\.md$/);
+  const flat = relativePath.match(/^skills\/([^/]+)\/SKILL\.md$/);
+  const skillId = nested?.[2] ?? flat?.[1] ?? '';
+  const domainId = skillToDomain[skillId] ?? nested?.[1] ?? 'proceso';
   const description =
     parseFrontmatterField(source, 'description') ||
     (skillId === 'style-direction'
-      ? 'Fija el sistema de diseño con 10 bases y 3 finalistas antes de tocar frontend.'
-      : `Skill interno de ${skillDomainMeta[domainId]?.label ?? titleFromId(domainId)}.`);
+      ? 'Fija el sistema de diseño antes de tocar frontend.'
+      : `Skill ${skillDomainMeta[domainId]?.label ?? titleFromId(domainId)}.`);
 
   return {
     id: skillId,
@@ -1448,6 +1219,16 @@ const skillCatalog = collectSkillFiles(resolvePath(repoRootPath, 'skills')).map(
     featured: featuredSkillIds.includes(skillId),
   };
 });
+if (agentCatalog.length !== 10) {
+  throw new Error(`Landing agent drift: expected 10, got ${agentCatalog.length}`);
+}
+if (skillCatalog.length !== 11) {
+  throw new Error(`Landing skill drift: expected 11, got ${skillCatalog.length}`);
+}
+const unknownSkillIds = skillCatalog.map((skill) => skill.id).filter((id) => !skillToDomain[id]);
+if (unknownSkillIds.length > 0) {
+  throw new Error(`Landing skill domain drift: ${unknownSkillIds.join(',')}`);
+}
 const skillDomains = skillDomainOrder
   .map((domainId) => ({
     id: domainId,
@@ -1467,17 +1248,17 @@ const featuredSkills = featuredSkillIds
 
 const auxiliaryLayers = [
   {
-    id: 'sonia',
-    title: 'SonIA',
-    body: tr('Tablero, trazabilidad y estado operativo en tiempo real.', 'Board, traceability, and real-time operational state.'),
+    id: 'board',
+    title: tr('Tablero runtime', 'Runtime board'),
+    body: tr('Kanban y trazabilidad escritos por el runtime, no por un agente PM.', 'Kanban and traceability written by the runtime, not a PM agent.'),
     detail: tr(
-      'Es la memoria operativa del flujo: convierte PRDs, fases, tareas, bloqueos y evidencia en un estado legible para todo el equipo.',
-      'It is the operational memory of the flow: it turns PRDs, phases, tasks, blockers, and evidence into a readable state for the whole team.',
+      'core/continuity.py convierte fases, tareas, bloqueos y evidencia en un estado legible. No hay agente project-manager.',
+      'core/continuity.py turns phases, tasks, blockers, and evidence into a readable state. There is no project-manager agent.',
     ),
     points: [
       tr('Hace visible el progreso real y los bloqueos activos.', 'Makes real progress and active blockers visible.'),
       tr('Sostiene continuidad, handoff y trazabilidad entre fases.', 'Sustains continuity, handoff, and traceability across phases.'),
-      tr('Da contexto a comandos como progress, standup, blocked y validate.', 'Gives context to commands such as progress, standup, blocked, and validate.'),
+      tr('Da contexto a progress, retomar y uat.', 'Gives context to progress, retomar, and uat.'),
     ],
   },
   {
@@ -1497,7 +1278,7 @@ const auxiliaryLayers = [
   {
     id: 'continuity',
     title: 'Continuity',
-    body: tr('next, pause, resume y handoff sin perder fase ni gate.', 'next, pause, resume, and handoff without losing phase or gate.'),
+    body: tr('progress, pause, retomar y handoff sin perder fase ni gate.', 'progress, pause, retomar, and handoff without losing phase or gate.'),
     detail: tr(
       'Mantiene el hilo operativo de la sesión para que el trabajo no dependa de memoria informal ni de releer todo el contexto cada vez.',
       'Keeps the operational thread of the session so work does not depend on informal memory or rereading all context every time.',
@@ -1505,7 +1286,7 @@ const auxiliaryLayers = [
     points: [
       tr('Congela y recupera estado real del flujo.', 'Freezes and restores the real state of the flow.'),
       tr('Permite handoff entre sesiones sin saltarse gates.', 'Allows handoff between sessions without skipping gates.'),
-      tr('Hace que next, pause y resume sean operativos de verdad.', 'Makes next, pause, and resume truly operational.'),
+      tr('Hace que progress, pause y retomar sean operativos de verdad.', 'Makes progress, pause, and retomar truly operational.'),
     ],
   },
   {
@@ -1557,6 +1338,13 @@ const auxiliaryLayersClient = auxiliaryLayers.map((layer) => ({
   d: layer.detail,
   p: layer.points,
 }));
+const knownLayerIds = new Set(auxiliaryLayers.map((layer) => layer.id));
+const unknownLayerIds = commandCatalog.flatMap((command) =>
+  command.layerIds.filter((layerId) => !knownLayerIds.has(layerId)),
+);
+if (unknownLayerIds.length > 0) {
+  throw new Error(`Landing layer drift: ${unknownLayerIds.join(',')}`);
+}
 
 const technicalVision = {
   kicker: 'Python 3.10+ · Node.js · SQLite local · MCP + Hooks',
@@ -1564,7 +1352,7 @@ const technicalVision = {
   title: 'Visión técnica del plugin',
   repoUrl: 'https://github.com/686f6c61/alfred-dev',
   lead:
-    'Alfred no es un prompt pack. Es un sistema de orquestación de ingeniería con 19 agentes, 25 comandos namespaced + /alfred, seis flujos principales y quality gates automáticas que obligan a demostrar el trabajo antes de avanzar.',
+    'Alfred no es un prompt pack. Es un plugin de Claude Code alineado con el SDK: 10 agentes, 18 comandos /alfred-dev:*, 11 skills planas y quality gates que obligan a demostrar el trabajo antes de avanzar.',
   summary:
     'Opera sobre tres capas coordinadas: un core Python que orquesta y persiste estado, una superficie pública en Astro y una capa visual de Node.js nativo para Selina. El orquestador es la única fuente de verdad del flujo.',
   highlights: [
@@ -1572,8 +1360,8 @@ const technicalVision = {
     { label: 'Sitio', value: 'Astro 6 + TypeScript' },
     { label: 'Memoria', value: 'SQLite WAL + FTS5' },
     { label: 'Flujos', value: '6 quality-gated' },
-    { label: 'Comandos', value: '26' },
-    { label: 'Agentes especializados', value: '19' },
+    { label: 'Comandos', value: '18' },
+    { label: 'Agentes', value: '10' },
   ],
   sections: [
     {
@@ -1581,18 +1369,18 @@ const technicalVision = {
       body:
         'Transforma desarrollo asistido por IA en un proceso gobernado por fases secuenciales, agentes especializados y puntos de control que no se pueden saltar sin evidencia.',
       bullets: [
-        'Trabaja con 19 agentes especializados y responsabilidades delimitadas.',
+        'Trabaja con 10 agentes y responsabilidades delimitadas.',
         'Automatiza seis flujos principales: feature, fix, spike, ship, audit y quick.',
-        'Detecta el stack tecnológico del repo y adapta artefactos, testing y agentes opcionales.',
+        'Detecta el stack del repo y adapta artefactos. El único opcional es Lucius.',
       ],
     },
     {
       title: 'Resumen operativo para reconstrucción',
       body:
-        'La superficie visible son 26 ficheros de comandos y un catálogo de agentes, pero el sistema real vive detrás: core Python, hooks del ciclo de vida, memoria SQLite y un orchestrator que no delega el estado a nadie más.',
+        'La superficie visible son 18 comandos publicados y 10 agentes, pero el sistema real vive detrás: core Python, 10 hooks, memoria SQLite y un orchestrator que no delega el estado.',
       bullets: [
-        '10 agentes de núcleo quedan fuera de plugin.json y entran sólo a través del flujo orquestado.',
-        '9 agentes opcionales sí son configurables y activables según stack o tarea.',
+        'Los agentes se descubren desde agents/. plugin.json lista los 18 comandos.',
+        'Lucius es el único opcional. Selina entra si hay frontend.',
         'Las quality gates son duras: evidence-guard y quality-gate frenan el avance si falta prueba real.',
         'Cada fase puede reintentarse hasta 5 veces antes de escalar al usuario.',
       ],
@@ -1614,7 +1402,7 @@ const technicalVision = {
         'Commands, agentes, core, hooks, MCP y servidor visual están separados. Los commands no llaman agentes directamente: activan al orchestrator, y Alfred decide qué entra y en qué orden.',
       bullets: [
         'Commands visibles -> orchestrator.py -> agentes y fases.',
-        'Hooks interceptan SessionStart, PreToolUse, PostToolUse y Stop.',
+        'Hooks interceptan SessionStart, SessionEnd, UserPromptSubmit, PreToolUse y PostToolUse.',
         'memory_server expone herramientas MCP para consultar memoria desde cualquier agente.',
         'Los agentes no se comunican entre sí; todo pasa por Alfred y el estado de sesión.',
       ],
@@ -1626,7 +1414,7 @@ const technicalVision = {
       bullets: [
         'SQLite local con modo WAL y búsqueda FTS5.',
         'Persistencia de decisiones, commits, iteraciones y eventos.',
-        'Permisos 0600 y sanitización con 14 patrones regex para secretos.',
+        'Permisos 0600 y sanitización con 13 patrones regex para secretos.',
         'Migración automática del esquema y purga configurable con retention_days.',
       ],
     },
@@ -1646,7 +1434,7 @@ const technicalVision = {
       body:
         'Además del core, el sistema añade piezas operativas que vuelven usable el flujo en el día a día: continuidad, memoria consultable, sincronía opcional con GitHub y servidor visual con timeout.',
       bullets: [
-        'Continuity mantiene next, pause, resume y handoff sin perder fase.',
+        'Continuity mantiene progress, pause, retomar y handoff sin perder fase.',
         'Memory UI abre timeline, decisiones, commits y health sobre SQLite local.',
         'GitHub Sync refleja el estado local en issues cuando conviene compartir seguimiento.',
         'El runtime visual de Selina usa timeout de 30 minutos, comprueba el proceso padre cada 60 segundos y soporta tanto galería base como selección final.',
@@ -1658,7 +1446,7 @@ const technicalVision = {
         'Para reconstruirlo o ponerlo en marcha no hace falta una infraestructura compleja, pero sí respetar las reglas que hacen fiable el sistema.',
       bullets: [
         'Claude Code, Python 3.10+ y Node.js deben estar disponibles en el entorno.',
-        'La memoria SQLite se crea automáticamente al activar memoria en /alfred-dev:config.',
+        'La memoria SQLite se crea al activar memoria en /alfred-dev:ajustes.',
         'map-codebase, discuss y quick generan contexto útil para que la memoria no nazca vacía.',
         'El error más caro sería romper el aislamiento de agentes o dejar que otra capa sustituya al orchestrator como fuente de verdad.',
       ],
@@ -1714,7 +1502,7 @@ const technicalVisionEn = {
   title: 'Plugin technical vision',
   repoUrl: 'https://github.com/686f6c61/alfred-dev',
   lead:
-    'Alfred is not a prompt pack. It is an engineering orchestration system with 19 agents, 25 namespaced commands + /alfred, six main workflows, and automatic quality gates that force work to be demonstrated before it can advance.',
+    'Alfred is not a prompt pack. It is a Claude Code plugin aligned with the SDK: 10 agents, 18 /alfred-dev:* commands, 11 flat skills, and quality gates that force work to be demonstrated before it can advance.',
   summary:
     'It operates over three coordinated layers: a Python core that orchestrates and persists state, a public Astro surface, and a native Node.js visual layer for Selina. The orchestrator is the only source of truth for the flow.',
   highlights: [
@@ -1722,8 +1510,8 @@ const technicalVisionEn = {
     { label: 'Site', value: 'Astro 6 + TypeScript' },
     { label: 'Memory', value: 'SQLite WAL + FTS5' },
     { label: 'Flows', value: '6 quality-gated' },
-    { label: 'Commands', value: '26' },
-    { label: 'Specialized agents', value: '19' },
+    { label: 'Commands', value: '18' },
+    { label: 'Agents', value: '10' },
   ],
   sections: [
     {
@@ -1731,18 +1519,18 @@ const technicalVisionEn = {
       body:
         'It turns AI-assisted development into a process governed by sequential phases, specialized agents, and control points that cannot be skipped without evidence.',
       bullets: [
-        'Works with 19 specialized agents and tightly bounded responsibilities.',
+        'Works with 10 agents and tightly bounded responsibilities.',
         'Automates six main workflows: feature, fix, spike, ship, audit, and quick.',
-        'Detects the repo technology stack and adapts artifacts, testing, and optional agents.',
+        'Detects the repo stack and adapts artifacts. Lucius is the only optional agent.',
       ],
     },
     {
       title: 'Operational summary for reconstruction',
       body:
-        'The visible surface is 26 command files and an agent catalog, but the real system lives behind that: Python core, lifecycle hooks, SQLite memory, and an orchestrator that never delegates state to anyone else.',
+        'The visible surface is 18 published commands and 10 agents, but the real system lives behind that: Python core, 10 hooks, SQLite memory, and an orchestrator that never delegates state.',
       bullets: [
-        '10 core agents stay outside plugin.json and enter only through orchestrated flow.',
-        '9 optional agents can be configured and activated according to stack or task.',
+        'Agents are discovered from agents/. plugin.json lists the 18 commands.',
+        'Lucius is the only optional agent. Selina enters when there is a frontend.',
         'Quality gates are hard: evidence-guard and quality-gate stop progress if real proof is missing.',
         'Each phase can retry up to 5 times before escalation to the user.',
       ],
@@ -1764,7 +1552,7 @@ const technicalVisionEn = {
         'Commands, agents, core, hooks, MCP, and visual server are separated. Commands do not call agents directly: they activate the orchestrator, and Alfred decides what enters and in what order.',
       bullets: [
         'Visible commands -> orchestrator.py -> agents and phases.',
-        'Hooks intercept SessionStart, PreToolUse, PostToolUse, and Stop.',
+        'Hooks intercept SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, and PostToolUse.',
         'memory_server exposes MCP tools to query memory from any agent.',
         'Agents do not talk to each other; everything goes through Alfred and session state.',
       ],
@@ -1776,7 +1564,7 @@ const technicalVisionEn = {
       bullets: [
         'Local SQLite with WAL mode and FTS5 search.',
         'Persistence of decisions, commits, iterations, and events.',
-        '0600 permissions and sanitization with 14 regex patterns for secrets.',
+        '0600 permissions and sanitization with 13 regex patterns for secrets.',
         'Automatic schema migration and configurable purge with retention_days.',
       ],
     },
@@ -1796,7 +1584,7 @@ const technicalVisionEn = {
       body:
         'Beyond the core, the system adds operational pieces that make the flow usable day to day: continuity, inspectable memory, optional GitHub sync, and a visual server with timeout.',
       bullets: [
-        'Continuity keeps next, pause, resume, and handoff without losing phase.',
+        'Continuity keeps progress, pause, retomar, and handoff without losing phase.',
         'Memory UI opens timeline, decisions, commits, and health over local SQLite.',
         'GitHub Sync mirrors local state to issues when shared tracking is useful.',
         'Selina visual server uses a 30-minute timeout and checks the parent process every 60 seconds.',
@@ -1808,7 +1596,7 @@ const technicalVisionEn = {
         'You do not need complex infrastructure to rebuild or boot it, but you do need to respect the rules that make the system reliable.',
       bullets: [
         'Claude Code, Python 3.10+, and Node.js must be available in the environment.',
-        'SQLite memory is created automatically when memory is enabled in /alfred-dev:config.',
+        'SQLite memory is created when memory is enabled in /alfred-dev:ajustes.',
         'map-codebase, discuss, and quick generate useful context so memory does not start empty.',
         'The most expensive mistake would be breaking agent isolation or allowing another layer to replace the orchestrator as the source of truth.',
       ],
@@ -1874,12 +1662,21 @@ const collaborationEgg = {
   url: collaborationIssueUrl,
 };
 
-const faqItems = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 15].map((index) => ({
-  ...data.faq.items[index],
-  question: ensureQuestionPunctuation(data.faq.items[index].question),
+const interpolateFaq = (value: string) =>
+  value
+    .replaceAll('{{LANDING_VERSION}}', landingVersion)
+    .replaceAll('{{GITHUB_MAIN_VERSION}}', githubMainPlugin.version || (isEn ? 'unknown' : 'desconocida'))
+    .replaceAll(
+      '{{GITHUB_MAIN_COMMANDS}}',
+      githubMainPlugin.commandCount > 0 ? String(githubMainPlugin.commandCount) : (isEn ? 'unknown' : 'desconocido'),
+    );
+const faqItems = data.faq.items.map((item) => ({
+  ...item,
+  question: ensureQuestionPunctuation(item.question),
+  answerHtml: interpolateFaq(item.answerHtml),
 }));
 
-const faqColumns = [faqItems.slice(0, 6), faqItems.slice(6)];
+
 
 const latestChangelog = data.changelog[0];
 const changelogPreview = [
@@ -1933,7 +1730,7 @@ const softwareApplicationLd = JSON.stringify({
 const faqPageLd = JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  mainEntity: data.faq.items.map((item) => ({
+  mainEntity: faqItems.map((item) => ({
     '@type': 'Question',
     name: item.question,
     acceptedAnswer: {
@@ -2031,15 +1828,15 @@ const organizationLd = JSON.stringify({
         <h1>{tr('UN SISTEMA DE TRABAJO PARA CLAUDE CODE', 'A WORK SYSTEM FOR CLAUDE CODE')}</h1>
         <p class="hero-copy__body">
           {tr(
-            '19 agentes reales, 25 comandos namespaced + /alfred, 62 skills publicadas, memoria SQLite por proyecto y PM operativo. Alfred convierte Claude Code en un flujo con continuidad, contexto y gates de calidad.',
-            '19 real agents, 25 namespaced commands + /alfred, 62 published skills, per-project SQLite memory, and operational PM. Alfred turns Claude Code into a flow with continuity, context, and quality gates.',
+            '10 agentes, 18 comandos /alfred-dev:*, 11 skills planas, memoria SQLite y gates con evidencia. Alineado con el SDK de Claude Code.',
+            '10 agents, 18 /alfred-dev:* commands, 11 flat skills, SQLite memory, and evidence-backed gates. Aligned with the Claude Code SDK.',
           )}
         </p>
 
         <div class="hero-stats">
-          <span class="hero-chip hero-chip--butter">{tr('19 agentes', '19 agents')}</span>
-          <span class="hero-chip hero-chip--mint">{tr('25 + /alfred', '25 + /alfred')}</span>
-          <span class="hero-chip hero-chip--sky">{tr('SQLite + PM', 'SQLite + PM')}</span>
+          <span class="hero-chip hero-chip--butter">{tr('10 agentes', '10 agents')}</span>
+          <span class="hero-chip hero-chip--mint">{tr('18 comandos', '18 commands')}</span>
+          <span class="hero-chip hero-chip--sky">{tr('SQLite + MCP', 'SQLite + MCP')}</span>
         </div>
 
         <div class="hero-install">
@@ -2130,7 +1927,7 @@ const organizationLd = JSON.stringify({
       <div class="section-heading section-heading--wide">
         <h2 class="headline">
           <span class="section-icon section-icon--inline" set:html={icons.team}></span>
-          {uiText.teamTitle} <span class="counter">19</span> {uiText.agentsReal}
+          {uiText.teamTitle} <span class="counter">{agentCatalog.length}</span> {uiText.agentsReal}
         </h2>
         <div class="headline-note">
           {uiText.teamNote}
@@ -2140,7 +1937,7 @@ const organizationLd = JSON.stringify({
       <div class="team-group">
         <div class="team-group__header panel panel-cream">
           <div class="team-group__count">
-            <span>10</span>
+            <span>{String(coreAgents.length).padStart(2, '0')}</span>
             <small>{uiText.core}</small>
           </div>
           <div>
@@ -2166,7 +1963,7 @@ const organizationLd = JSON.stringify({
       <div class="team-group">
         <div class="team-group__header panel panel-cream">
           <div class="team-group__count team-group__count--sky">
-            <span>09</span>
+            <span>{String(optionalAgents.length).padStart(2, '0')}</span>
             <small>{uiText.optional}</small>
           </div>
           <div>
@@ -2194,7 +1991,7 @@ const organizationLd = JSON.stringify({
       <div class="section-heading section-heading--wide">
         <h2 class="headline">
           <span class="section-icon section-icon--inline" set:html={icons.commands}></span>
-          {uiText.commandsTitle} <span class="counter counter--sky">26</span>
+          {uiText.commandsTitle} <span class="counter counter--sky">{commandCatalog.length}</span>
         </h2>
         <div class="headline-note">
           {uiText.commandsNote}
@@ -2243,7 +2040,7 @@ const organizationLd = JSON.stringify({
 
           <div class="skills-card__body">
             <div class="skills-card__meter">
-              <strong>61</strong>
+              <strong>{skillCatalog.length}</strong>
               <span>{uiText.publishedSkillsLabel}</span>
               <small>{uiText.domainsCovered}</small>
             </div>
@@ -2267,7 +2064,7 @@ const organizationLd = JSON.stringify({
               <div class="skills-domain">
                 <div class="skills-domain__head">
                   <strong>{domain.label}</strong>
-                  <span>{domain.count} skills</span>
+                  <span>{domain.count} {domain.count === 1 ? 'skill' : 'skills'}</span>
                 </div>
                 <small>{domain.skills.map((skill) => skill.label).join(' · ')}</small>
               </div>
@@ -2318,7 +2115,7 @@ const organizationLd = JSON.stringify({
             <strong>01</strong>
             <div>
               <h4>{tr('Instala Alfred Dev', 'Install Alfred Dev')}</h4>
-              <p>{tr('Usa el instalador de tu sistema; registra el plugin y deja el runtime listo para trabajar.', 'Use the installer for your system; it registers the plugin and leaves the runtime ready to work.')}</p>
+              <p>{tr('El script pide Claude CLI y Python 3.10+. Instala con --scope user. Luego /reload-plugins y /alfred-dev:alfred.', 'The script needs Claude CLI and Python 3.10+. It installs with --scope user. Then /reload-plugins and /alfred-dev:alfred.')}</p>
             </div>
           </div>
 
@@ -2326,7 +2123,7 @@ const organizationLd = JSON.stringify({
             <strong>02</strong>
             <div>
               <h4>{tr('Configura stack y equipo', 'Configure stack and team')}</h4>
-              <p>{tr('Ejecuta ', 'Run ')}<code>/alfred-dev:config</code>{tr(' para fijar stack, memoria, autonomía y opcionales.', ' to set stack, memory, autonomy, and optional agents.')}</p>
+              <p>{tr('Ejecuta ', 'Run ')}<code>/alfred-dev:ajustes</code>{tr(' para fijar autonomía, Lucius y memoria.', ' to set autonomy, Lucius, and memory.')}</p>
             </div>
           </div>
 
@@ -2334,12 +2131,12 @@ const organizationLd = JSON.stringify({
             <strong>03</strong>
             <div>
               <h4>{tr('Entra por el comando correcto', 'Enter through the right command')}</h4>
-              <p>{tr('Nuevo repo: ', 'New repo: ')}<code>/alfred</code>. {tr('Repo existente: ', 'Existing repo: ')}<code>/alfred-dev:map-codebase</code> {tr('y', 'and')} <code>/alfred-dev:discuss</code>.</p>
+              <p>{tr('Nuevo repo: ', 'New repo: ')}<code>/alfred-dev:alfred</code>. {tr('Repo existente: ', 'Existing repo: ')}<code>/alfred-dev:map-codebase</code> {tr('y', 'and')} <code>/alfred-dev:discuss</code>.</p>
             </div>
           </div>
 
           <div class="start-card__footer">
-            {tr('Brownfield primero: ', 'Brownfield first: ')}<code>/map-codebase</code> {tr('y', 'and')} <code>/discuss</code>. {tr('Greenfield', 'Greenfield')}: <code>/alfred</code>.
+            {tr('Brownfield primero: ', 'Brownfield first: ')}<code>/alfred-dev:map-codebase</code> {tr('y', 'and')} <code>/alfred-dev:discuss</code>. {tr('Greenfield', 'Greenfield')}: <code>/alfred-dev:alfred</code>.
           </div>
         </article>
 
@@ -2371,6 +2168,14 @@ const organizationLd = JSON.stringify({
             </div>
             <code>curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash</code>
             <p>{uiText.installPreviewBody}</p>
+            {!installOneLinerMatchesLanding && githubMainPlugin.version ? (
+              <p class="install-preview__warn">
+                {tr(
+                  `Atención: GitHub main publica ahora ${githubMainPlugin.version} (${githubMainPlugin.commandCount} comandos)${mainInstallCreatesAlfredAlias ? ' y ese instalador crea el alias /alfred' : ''}. Esta página describe ${landingVersion}. El mismo curl no instala ${landingVersion} hasta que main publique esa release.`,
+                  `Warning: GitHub main currently publishes ${githubMainPlugin.version} (${githubMainPlugin.commandCount} commands)${mainInstallCreatesAlfredAlias ? ' and that installer creates the /alfred alias' : ''}. This page describes ${landingVersion}. The same curl will not install ${landingVersion} until main ships that release.`,
+                )}
+              </p>
+            ) : null}
           </div>
 
           <div class="utility-row">
@@ -2380,7 +2185,7 @@ const organizationLd = JSON.stringify({
                 {uiText.update}
               </span>
               <code>/alfred-dev:update</code>
-              <small>{tr('Lee release notes y decide desde Claude Code.', 'Read release notes and decide from Claude Code.')}</small>
+              <small>{tr('Compara semver con GitHub Releases y, si aceptas, relanza el instalador de main.', 'Compares semver with GitHub Releases and, if you accept, reruns the main installer.')}</small>
             </div>
             <button type="button" class="utility-pill utility-pill--button" data-uninstall-trigger>
               <span class="utility-pill__label utility-pill__label--sky">
@@ -2403,16 +2208,12 @@ const organizationLd = JSON.stringify({
         </h2>
       </div>
 
-      <div class="faq-grid">
-        {faqColumns.map((column, columnIndex) => (
-          <article class={`panel ${columnIndex === 0 ? 'tone-butter' : 'tone-pink'} faq-panel`}>
-            {column.map((item) => (
-              <div class="faq-item">
-                <h3>{item.question}</h3>
-                <div set:html={item.answerHtml}></div>
-              </div>
-            ))}
-          </article>
+      <div class="faq-list">
+        {faqItems.map((item, index) => (
+          <details class="faq-item panel tone-butter" open={index === 0}>
+            <summary>{item.question}</summary>
+            <div class="faq-item__body" set:html={item.answerHtml}></div>
+          </details>
         ))}
       </div>
     </section>
@@ -2571,6 +2372,7 @@ const organizationLd = JSON.stringify({
         <button type="submit" class="modal__close">{uiText.close}</button>
       </div>
       <div class="changelog-modal__body">
+        <p class="changelog-modal__note">{uiText.changelogHistoryNote}</p>
         {data.changelog.map((entry) => (
           <article class="changelog-entry">
             <header>
@@ -4224,11 +4026,20 @@ const organizationLd = JSON.stringify({
     }
 
     .start-step p,
-    .install-preview p,
-    .faq-item div {
+    .install-preview p {
       font-size: 12px;
       line-height: 1.35;
       font-weight: 700;
+    }
+
+    .install-preview__warn {
+      margin: 0 12px 12px;
+      padding: 10px 12px;
+      background: #111111;
+      color: #f7f0e8;
+      font-size: 13px !important;
+      line-height: 1.45 !important;
+      font-weight: 700 !important;
     }
 
     .start-card__footer {
@@ -4353,22 +4164,87 @@ const organizationLd = JSON.stringify({
       color: #f1e7db;
     }
 
-    .faq-grid {
+    .faq-list {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
+      gap: 10px;
+      max-width: 920px;
     }
 
-    .faq-item + .faq-item {
-      border-top: 2px solid rgba(17, 17, 17, 0.2);
-      padding-top: 14px;
+    .faq-item {
+      overflow: hidden;
     }
 
-    .faq-item h3 {
+    .faq-item summary {
+      font-family: var(--font-display);
       font-size: 18px;
-      line-height: 1.05;
+      line-height: 1.2;
       font-weight: 900;
-      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+      padding: 16px 18px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item summary::after {
+      content: '+';
+      float: right;
+      font-family: var(--font-display);
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .faq-item[open] summary {
+      border-bottom: 3px solid #111111;
+    }
+
+    .faq-item[open] summary::after {
+      content: '–';
+    }
+
+    .faq-item__body {
+      padding: 16px 18px 20px;
+      font-size: 15px;
+      line-height: 1.55;
+      font-weight: 500;
+    }
+
+    .faq-item__body :global(p + p),
+    .faq-item__body :global(p + pre),
+    .faq-item__body :global(pre + p) {
+      margin-top: 10px;
+    }
+
+    .faq-item__body :global(code) {
+      font-family: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+      letter-spacing: 0;
+      background: #111111;
+      color: #f7f0e8;
+      padding: 2px 7px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .faq-item__body :global(pre) {
+      font-family: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+      letter-spacing: 0;
+      background: #111111;
+      color: #f7f0e8;
+      padding: 12px 14px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+      white-space: pre;
+    }
+
+    .faq-item__body :global(a) {
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
 
     .closing-cta {
@@ -5115,8 +4991,7 @@ const organizationLd = JSON.stringify({
 
       .team-grid--core,
       .team-grid--optional,
-      .reality-grid,
-      .faq-grid {
+      .reality-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -5137,7 +5012,6 @@ const organizationLd = JSON.stringify({
       .team-grid--core,
       .team-grid--optional,
       .reality-grid,
-      .faq-grid,
       .install-row,
       .utility-row {
         grid-template-columns: 1fr;

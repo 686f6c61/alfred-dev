@@ -1,8 +1,8 @@
 # El equipo
 
-Alfred Dev no es un agente monolítico que intenta saberlo todo y hacerlo todo. Es un equipo de **19 especialistas**, cada uno con un rol delimitado, herramientas restringidas, personalidad propia y quality gates infranqueables. Esta decisión de diseño responde a un principio fundamental: un modelo de IA generalista rinde mejor cuando se le asigna un rol concreto con instrucciones focalizadas que cuando se le pide que sea todo a la vez.
+Alfred Dev no es un agente monolítico que intenta saberlo todo y hacerlo todo. Es un equipo de **10 especialistas** (8 de nucleo, Selina si hay frontend y Lucius bajo demanda), cada uno con un rol delimitado, herramientas restringidas, personalidad propia y quality gates verificables con evidencia. Esta decisión de diseño responde a un principio fundamental: un modelo de IA generalista rinde mejor cuando se le asigna un rol concreto con instrucciones focalizadas que cuando se le pide que sea todo a la vez.
 
-Cada agente se invoca como un subproceso de Claude Code mediante la herramienta **Task**. Esto garantiza aislamiento de contexto: el agente arranca con su propio system prompt, sin heredar sesgos ni ruido de conversaciones anteriores. El resultado es previsible y reproducible: el mismo agente, ante la misma entrada, produce resultados consistentes porque no arrastra el contexto acumulado de la sesión.
+Cada agente se invoca como un subproceso de Claude Code mediante la herramienta **Agent**. Esto garantiza aislamiento de contexto: el agente arranca con su propio system prompt, sin heredar sesgos ni ruido de conversaciones anteriores. El resultado no se promete determinista, pero sí más controlable: el mismo rol, con las mismas instrucciones y artefactos, reduce variabilidad y facilita revisar si el agente cumplió su contrato.
 
 La filosofía detrás de esta arquitectura se puede resumir en tres principios:
 
@@ -63,11 +63,11 @@ El diagrama muestra algo importante: la seguridad no se comprueba al final, sino
 
 ## Tabla resumen de agentes
 
-Los 19 agentes se dividen en dos categorías: nucleo y opcionales. La tabla siguiente ofrece una vision rápida de cada uno con sus caracteristicas principales.
+Los 10 agentes se dividen en nucleo (8), Selina (frontend) y Lucius (opcional). La tabla siguiente ofrece una vision rápida de cada uno con sus caracteristicas principales.
 
 ### Agentes de nucleo
 
-Estos diez agentes estan siempre activos y forman la espina dorsal del sistema. No se pueden desactivar.
+Estos agentes de nucleo más Selina están disponibles por defecto y la configuración del proyecto no los desactiva. Alfred no los invoca todos a la vez: cada flujo activa el rol que corresponde a la fase, y Selina solo entra cuando hay interfaz de usuario.
 
 | Agente | Alias | Modelo | Tipo | Color | Fase principal |
 |--------|-------|--------|------|-------|----------------|
@@ -79,23 +79,14 @@ Estos diez agentes estan siempre activos y forman la espina dorsal del sistema. 
 | `qa-engineer` | El Rompe-cosas | sonnet | nucleo | magenta | calidad |
 | `devops-engineer` | El Fontanero | sonnet | nucleo | naranja | entrega |
 | `tech-writer` | El Traductor | sonnet | nucleo | blanco | documentación |
-| `project-manager` | SonIA | sonnet | nucleo | magenta | gestion de proyecto |
 | `selina` | Selina — La Estilista | opus | nucleo | morado | estilo visual (fase 1b) |
 
-### Agentes opcionales
+### Agente opcional
 
-Estos nueve agentes cubren necesidades específicas que no todos los proyectos tienen. Se activan por configuración.
+Lucius es el único especialista bajo demanda.
 
 | Agente | Alias | Modelo | Tipo | Color | Fase principal |
 |--------|-------|--------|------|-------|----------------|
-| `data-engineer` | El Fontanero de Datos | sonnet | opcional | cyan | datos |
-| `ux-reviewer` | El Abogado del Usuario | sonnet | opcional | rosa | UX |
-| `performance-engineer` | El Cronometro | sonnet | opcional | amarillo | rendimiento |
-| `github-manager` | El Conserje del Repo | sonnet | opcional | gris | GitHub |
-| `seo-specialist` | El Rastreador | sonnet | opcional | verde | SEO |
-| `copywriter` | El Pluma | sonnet | opcional | magenta | contenido |
-| `librarian` | El Bibliotecario | sonnet | opcional | ambar | memoria |
-| `i18n-specialist` | La Interprete | sonnet | opcional | cyan | internacionalizacion |
 | `lucius` | Lucius — El Director Técnico Externo | opus | opcional | ambar | auditoría técnica externa |
 
 ---
@@ -104,11 +95,11 @@ Estos nueve agentes cubren necesidades específicas que no todos los proyectos t
 
 La distinción entre agentes de nucleo y opcionales no es arbitraria. Responde a una pregunta practica: que necesita *cualquier* proyecto de software, y que solo necesitan *algunos* proyectos.
 
-Los **diez agentes de nucleo** estan siempre activos porque cubren las fases universales del desarrollo: definir que se construye (product-owner), fijar una dirección visual cuando hay frontend (selina), decidir como se construye (architect), construirlo (senior-dev), verificar que funciona (qa-engineer), documentarlo (tech-writer), desplegarlo (devops-engineer), protegerlo (security-officer), gestionar el proyecto y la trazabilidad (project-manager) y orquestarlo todo (alfred). Estos agentes se invocan desde los commands del plugin (`feature.md`, `fix.md`, `spike.md`, etc.) y tambien aparecen en `plugin.json` para que la superficie publicada sea completa y el usuario pueda inspeccionarlos desde fuera de un flujo.
+Los **ocho agentes de nucleo más Selina** existen siempre en el equipo base porque cubren las fases universales del desarrollo: definir que se construye (product-owner), fijar una dirección visual cuando hay frontend (selina), decidir como se construye (architect), construirlo (senior-dev), verificar que funciona (qa-engineer), documentarlo (tech-writer), desplegarlo (devops-engineer), protegerlo (security-officer) y orquestarlo todo (alfred). El kanban lo escribe el runtime. Eso no significa que todos participen en cada respuesta: Alfred los invoca desde los commands del plugin (`feature.md`, `fix.md`, `spike.md`, etc.) segun fase, señales del proyecto y gates. Claude Code los descubre directamente desde `agents/`; el manifiesto `plugin.json` no declara una seccion `agents` manual.
 
-Los **nueve agentes opcionales** cubren necesidades que dependen del tipo de proyecto. No todos los repositorios tienen base de datos (data-engineer), interfaz de usuario (ux-reviewer), landing publica que posicionar (seo-specialist), textos comerciales que redactar (copywriter), multiples idiomas que gestionar (i18n-specialist) o necesitan una auditoría técnica externa con una perspectiva independiente (lucius). Forzar a todos los proyectos a cargar estos agentes seria innecesario y añadirá ruido. Por eso, los opcionales **si se registran en `plugin.json`** (en la sección `agents`, con su modelo, descripción y color) y se activan o desactivan mediante la configuración local del proyecto (`.local.md`). El usuario puede invocarlos directamente; Alfred integra automáticamente en fases solo a los que tienen integración declarada y deja el resto como especialistas bajo demanda.
+El **único agente opcional** es lucius: segunda opinión técnica externa vía Codex CLI. Claude Code descubre los agentes de plugin directamente desde `agents/`; el manifiesto no mantiene una sección `agents` manual. La configuración local del proyecto (`.local.md`) decide si Lucius entra en la orquestación automática.
 
-En resumen: los de nucleo siempre estan porque son imprescindibles; los opcionales se activan bajo demanda porque atienden necesidades específicas.
+En resumen: los de nucleo siempre estan disponibles porque son imprescindibles; los opcionales se activan bajo demanda porque atienden necesidades específicas.
 
 ---
 
@@ -124,9 +115,9 @@ Los agentes de Alfred Dev no se comunican entre si directamente. No existe un ca
 
 El flujo, simplificado, funciona así:
 
-1. El usuario lanza un comando (por ejemplo, `/feature`).
+1. El usuario lanza un comando (por ejemplo, `/alfred-dev:feature`).
 2. Alfred crea una sesión y arranca la primera fase.
-3. Alfred invoca al agente correspondiente mediante Task, pasandole su system prompt y los artefactos relevantes.
+3. Alfred invoca al agente correspondiente mediante Agent, pasandole su system prompt y los artefactos relevantes.
 4. El agente ejecuta su trabajo y devuelve un resultado.
 5. Alfred evalua la gate de la fase con el resultado.
 6. Si la gate se supera, Alfred avanza a la siguiente fase y repite desde el paso 3.
@@ -136,9 +127,9 @@ El flujo, simplificado, funciona así:
 
 ## Distribución de modelos
 
-De los 19 agentes, **6 usan opus** y **13 usan sonnet**. Esta distribución no es aleatoria: refleja la naturaleza de las tareas que realiza cada agente.
+Los 10 agentes usan `model: inherit` para respetar el modelo de la sesión.
 
-Los seis agentes que usan **opus** son los que toman decisiones críticas:
+Los siete agentes que usan **opus** son los que toman decisiones críticas:
 
 | Agente | Razon para opus |
 |--------|-----------------|
@@ -147,21 +138,22 @@ Los seis agentes que usan **opus** son los que toman decisiones críticas:
 | `architect` | Disena la arquitectura; las decisiones de diseño son dificiles de revertir. |
 | `senior-dev` | Escribe código de produccion; la calidad del código es directamente proporcional a la capacidad del modelo. |
 | `security-officer` | Evalua amenazas y vulnerabilidades; un falso negativo aquí tiene consecuencias graves. |
+| `selina` | Define dirección visual y sistema de diseño en proyectos con UI; sus decisiones afectan la experiencia final del usuario. |
 | `lucius` | Coordina la auditoría técnica externa invocando Codex CLI; necesita razonamiento profundo para sintetizar el informe y decidir qué prescripciones son accionables. |
 
 Los trece agentes restantes usan **sonnet**, que es mas rápido y eficiente en coste. Sus tareas, aunque importantes, son de naturaleza mas estructurada: ejecutar tests y reportar resultados (qa-engineer), generar documentación a partir de artefactos existentes (tech-writer), gestionar pipelines (devops-engineer) o realizar revisiones acotadas a un ámbito concreto (ux-reviewer, seo-specialist, etc.). Sonnet resuelve estas tareas con solvencia y permite que los flujos avancen mas rápido sin sacrificar calidad donde no es critica.
 
 ---
 
-## Por que Task y no invocación directa
+## Por que Agent y no invocación directa
 
-Aunque hoy tambien aparecen registrados en `plugin.json`, los agentes de nucleo siguen usandose principalmente como subagentes lanzados por los commands del plugin mediante la herramienta **Task** de Claude Code. Esta decisión tiene tres ventajas fundamentales:
+Los agentes se descubren desde el directorio `agents/` y se usan principalmente como subagentes lanzados por los commands del plugin mediante la herramienta **Agent** de Claude Code. Esta decisión tiene tres ventajas fundamentales:
 
 **Aislamiento de contexto.** Cada agente arranca con un contexto limpio: su system prompt y los artefactos que Alfred le pasa. No hereda la conversacion acumulada de la sesión ni el contexto de otros agentes. Esto evita un problema habitual de los sistemas multiagente: la contaminación cruzada, donde las instrucciones o sesgos de un agente afectan al siguiente.
 
-**Control de herramientas.** Cada llamada a Task puede restringir las herramientas disponibles para el subagente. Un tech-writer no necesita acceso a la terminal; un qa-engineer no necesita escribir ficheros de produccion. Limitar las herramientas reduce la superficie de errores accidentales y fuerza a cada agente a trabajar dentro de su ámbito.
+**Control de herramientas.** Cada llamada a Agent puede restringir las herramientas disponibles para el subagente. Un tech-writer no necesita acceso a la terminal; un qa-engineer no necesita escribir ficheros de produccion. Limitar las herramientas reduce la superficie de errores accidentales y fuerza a cada agente a trabajar dentro de su ámbito.
 
-**Paralelismo.** La herramienta Task permite lanzar dos o mas subagentes en paralelo. En el runtime actual, el paralelismo se usa sobre todo en arquitectura y calidad del flujo `feature`, en la validación de `fix`, en la exploración de `spike` y en las auditorías de `ship` y `audit`. La fase `entrega` de `feature` mantiene dos agentes, pero no se modela como paralela en `core/orchestrator.py`.
+**Paralelismo.** La herramienta Agent permite lanzar dos o mas subagentes en paralelo. En el runtime actual, el paralelismo se usa sobre todo en arquitectura y calidad del flujo `feature`, en la validación de `fix`, en la exploración de `spike` y en las auditorías de `ship` y `audit`. La fase `entrega` de `feature` mantiene dos agentes, pero no se modela como paralela en `core/orchestrator.py`.
 
 ---
 
@@ -179,14 +171,5 @@ Cada agente tiene una ficha individual con su system prompt completo, herramient
 | `qa-engineer` | [qa-engineer.md](qa-engineer.md) | Ejecuta y disena tests; busca edge cases y regresiones. |
 | `devops-engineer` | [devops-engineer.md](devops-engineer.md) | Gestiona CI/CD, pipelines, despliegues y empaquetado de releases. |
 | `tech-writer` | [tech-writer.md](tech-writer.md) | Genera documentación técnica y de usuario comprensible para la comunidad. |
-| `project-manager` | [project-manager.md](project-manager.md) | Materializa kanban, trazabilidad y siguiente paso operativo a partir del estado del flujo; no decide producto ni arquitectura. |
 | `selina` | [selina.md](selina.md) | Define la dirección visual del producto y cierra la fase 1b cuando hay frontend. |
-| `data-engineer` | [data-engineer.md](data-engineer.md) | Disena esquemas de datos, migraciones y optimiza queries. |
-| `ux-reviewer` | [ux-reviewer.md](ux-reviewer.md) | Revisa accesibilidad, flujos de usuario y coherencia de la interfaz. |
-| `performance-engineer` | [performance-engineer.md](performance-engineer.md) | Mide y optimiza rendimiento: tiempos de carga, bundles y metricas clave. |
-| `github-manager` | [github-manager.md](github-manager.md) | Gestiona issues, PRs, labels, releases y configuración del repositorio. |
-| `seo-specialist` | [seo-specialist.md](seo-specialist.md) | Optimiza el posicionamiento: meta tags, datos estructurados y Core Web Vitals. |
-| `copywriter` | [copywriter.md](copywriter.md) | Redacta textos comerciales, CTAs y contenido con tono coherente y ortografia impecable. |
-| `librarian` | [librarian.md](librarian.md) | Gestiona la memoria persistente del proyecto: decisiones, historial y consultas. |
-| `i18n-specialist` | [i18n-specialist.md](i18n-specialist.md) | Audita claves i18n, detecta cadenas hardcodeadas y valida formatos por locale. |
 | `lucius` | [lucius.md](lucius.md) | Auditoría técnica externa vía Codex CLI; diagnóstico y prescripción por ítem. |

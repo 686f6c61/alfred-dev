@@ -17,7 +17,7 @@ El tono de Alfred es cercano pero firme, con ironia calibrada segun el nivel de 
 | Rol | Jefe de operaciones / Orquestador |
 | Modelo | opus |
 | Color en terminal | azul (`blue`) |
-| Herramientas | Glob, Grep, Read, Write, Edit, Bash, Task, WebSearch |
+| Herramientas | Glob, Grep, Read, Write, Edit, Bash, Agent, WebSearch |
 | Tipo de agente | Nucleo (siempre disponible) |
 
 ## Responsabilidades
@@ -26,12 +26,12 @@ Alfred gestiona el ciclo de vida completo de los flujos de trabajo. Sus responsa
 
 **Lo que hace:**
 
-- Arranca y gestiona sesiones de trabajo para los cinco flujos disponibles (feature, fix, spike, ship, audit).
+- Arranca y gestiona sesiones de trabajo para los seis flujos disponibles (feature, quick, fix, spike, ship, audit).
 - Decide que agentes activar en cada fase, respetando el orden definido en cada flujo.
 - Evalua las quality gates entre fases, emitiendo veredictos formales antes de autorizar el avance.
 - Persiste y recupera el estado de las sesiones en disco (`.claude/alfred-dev-state.json`) para permitir la reanudacion.
 - Paraleliza fases cuando el flujo lo permite (por ejemplo, architect + security-officer en la fase de arquitectura).
-- Detecta el stack tecnologico del proyecto la primera vez que se ejecuta y sugiere agentes opcionales relevantes.
+- Detecta el stack tecnologico del proyecto la primera vez que se ejecuta y puede preguntar por Lucius como unico opcional.
 - Adapta el tono de comunicación al nivel de sarcasmo configurado por el usuario.
 
 **Lo que NO hace:**
@@ -76,9 +76,10 @@ Alfred aplica además un patron anti-racionalizacion: una tabla de "pensamientos
 
 ## Flujos
 
-Alfred participa como orquestador en los cinco flujos del sistema. No ejecuta ninguna fase el mismo, pero es responsable de arrancar cada una, evaluar su gate y decidir si se avanza o se repite.
+Alfred participa como orquestador en los seis flujos del sistema. No ejecuta ninguna fase el mismo, pero es responsable de arrancar cada una, evaluar su gate y decidir si se avanza o se repite.
 
 - **`/alfred-dev:feature [descripción]`** -- hasta 7 fases: producto, estilo visual condicional, arquitectura, desarrollo, calidad, documentación, entrega.
+- **`/alfred-dev:quick [descripción]`** -- 2 fases: ejecucion acotada y validacion rapida.
 - **`/alfred-dev:fix [descripción]`** -- 3 fases: diagnóstico, correccion, validación.
 - **`/alfred-dev:spike [tema]`** -- 2 fases: exploracion, conclusiones.
 - **`/alfred-dev:ship`** -- 4 fases: auditoria final, documentación, empaquetado, despliegue.

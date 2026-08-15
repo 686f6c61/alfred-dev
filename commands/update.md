@@ -1,14 +1,38 @@
 ---
 description: "Comprueba y aplica actualizaciones del plugin Alfred Dev"
+disable-model-invocation: true
+allowed-tools: Bash, Read
 ---
 
-# Actualizar Alfred Dev
+# /alfred-dev:update
 
 Eres Alfred. El usuario quiere comprobar si hay una version nueva del plugin. Sigue estos pasos al pie de la letra.
 
-## Paso 1: obtener la version instalada
+## Paso 1: obtener la version instalada y el scope
 
-Ejecuta con Bash:
+Primero usa la CLI nativa de Claude Code, porque es la fuente autoritativa de
+instalaciones activas, scopes e installPath:
+
+```bash
+claude plugin list --json
+```
+
+Busca la entrada `alfred-dev@alfred-dev`. Si hay varias, prioriza:
+
+1. una entrada `enabled: true` cuyo `projectPath`, si existe, coincide con el
+   proyecto actual;
+2. una entrada `enabled: true` sin `projectPath` (instalación `user`);
+3. cualquier entrada `alfred-dev@alfred-dev` como último recurso.
+
+Extrae:
+
+- `version`
+- `scope` (`user`, `local`, `project` o `managed`)
+- `installPath`
+- `projectPath` si existe
+
+Si `claude plugin list --json` falla o no devuelve la entrada, usa este fallback
+de cache para la version y marca el scope como `desconocido`:
 
 ```bash
 python3 -c "
@@ -27,7 +51,9 @@ with open(candidates[0]) as f:
 " 2>/dev/null || echo "desconocida"
 ```
 
-Si no se puede leer, busca la version en el fichero `plugin.json` mas cercano dentro de `~/.claude/plugins/cache/alfred-dev/`. El script selecciona la version mas reciente por fecha de modificacion para evitar errores cuando coexistan varias versiones en cache.
+El fallback selecciona la version mas reciente por fecha de modificacion para
+evitar errores cuando coexistan varias versiones en cache, pero no lo uses para
+decidir scope si la CLI sí ha devuelto uno.
 
 ## Paso 2: consultar la ultima release en GitHub
 
@@ -87,7 +113,26 @@ Informa de que no hay actualizaciones disponibles y muestra la version actual. F
 
 ## Paso 4: ejecutar la actualizacion
 
-Si el usuario acepta, primero detecta la plataforma y despues ejecuta el instalador correspondiente.
+Si el usuario acepta, usa siempre la ruta global de usuario salvo que el scope
+sea `managed`. Alfred Dev no conserva instalaciones `local` ni `project` al
+actualizar desde este comando: las normaliza a `--scope user` para que
+`/alfred-dev:*` funcione en cualquier proyecto del usuario. No rematerializa
+un alias global `/alfred` ni pisa `~/.claude/skills`.
+
+### Scope user, local, project o desconocido
+
+Para instalaciones de usuario, locales, de proyecto o con scope desconocido,
+usa el instalador soportado de Alfred Dev. Esta ruta vuelve a registrar la
+fuente GitHub con `--scope user`, reinstala mediante la CLI nativa de Claude
+Code, limpia/refresca el checkout local del marketplace para evitar caches
+obsoletas y no pisa `~/.claude/skills`. Vuelve a aplicar el parche de Python compatible
+en `hooks.json` y `.mcp.json` cuando hace falta.
+
+Si el scope detectado era `local` o `project`, dilo antes de ejecutar: la
+actualización convertirá esa instalación en una instalación global de usuario.
+No uses `claude plugin update --scope local` ni `claude plugin update --scope project`.
+
+Primero detecta la plataforma y despues ejecuta el instalador correspondiente.
 
 ### Deteccion de plataforma
 
@@ -112,12 +157,27 @@ curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh
 irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex
 ```
 
-Despues de que termine, informa al usuario de que **debe reiniciar Claude Code** (cerrar y volver a abrir) para que los cambios surtan efecto. Los plugins se cargan al inicio de sesion.
+### Scope managed
+
+Si el scope detectado es `managed`, no intentes actualizarlo. Explica que las
+instalaciones managed las controla la política del administrador y que el
+usuario debe pedir la actualización a quien gestione Claude Code en su equipo.
+
+Despues de que termine cualquier actualización, informa al usuario de que debe
+ejecutar **`/reload-plugins`** en Claude Code para cargar la nueva versión en la
+sesión actual. Si Claude Code avisa por MCP/caché, si decide no usar
+`/reload-plugins --force` o si el inventario no cambia, entonces debe reiniciar
+Claude Code.
 
 ## Notas
 
 - Los instaladores son idempotentes: sobreescriben la instalacion anterior sin conflictos.
-- No hace falta desinstalar primero.
+- No hace falta desinstalar primero en scope `user`.
+- No sustituyas esta ruta por `claude plugin update` directo salvo reparación
+  manual: el instalador existe para evitar marketplaces locales obsoletos.
+- En scope `local` o `project`, no conserves el scope: convierte a instalacion
+  global de usuario con el instalador. No crees `~/.claude/commands/alfred.md`
+  ni un skill personal `/alfred`. La entrada es `/alfred-dev:alfred`.
 - Si el script de instalacion falla, muestra el error completo al usuario.
 - En Windows tambien funciona con WSL o Git Bash usando el instalador bash.
 
@@ -125,4 +185,4 @@ Despues de que termine, informa al usuario de que **debe reiniciar Claude Code**
 
 - Si no hay versión nueva, cierra ahí: no propongas pasos extra ni una decisión ficticia.
 - Si sí hay versión nueva, usa un único menú seleccionable real con las dos opciones definidas arriba y no lo sustituyas por texto libre.
-- Si la actualización se ejecuta bien, el cierre debe ser corto y accionable: versión aplicada y recordatorio de reiniciar Claude Code.
+- Si la actualización se ejecuta bien, el cierre debe ser corto y accionable: versión aplicada, ejecutar `/reload-plugins` y reiniciar solo si MCP/caché lo exige o el inventario no cambia.

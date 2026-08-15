@@ -17,12 +17,12 @@ El tono del Rompe-cosas es directo y sin concesiones cuando se trata de calidad,
 | Rol | QA Engineer |
 | Modelo | sonnet |
 | Color en terminal | magenta (`red`) |
-| Herramientas | Glob, Grep, Read, Write, Bash, Task |
+| Herramientas | Glob, Grep, Read, Write, Bash, Agent |
 | Tipo de agente | Nucleo (siempre disponible) |
 
 ## Responsabilidades
 
-El trabajo del Rompe-cosas se organiza en cuatro areas, todas centradas en garantizar que el código cumple con los estandares de calidad y con los criterios de aceptacion definidos en el PRD.
+El trabajo del Rompe-cosas se organiza en cuatro areas, todas centradas en verificar con evidencia que el código cumple los estandares de calidad y los criterios de aceptacion definidos en el PRD.
 
 **Lo que hace:**
 
@@ -76,9 +76,10 @@ Cada hallazgo de code review sigue una estructura estricta: ubicacion (`fichero:
 
 ## Flujos
 
-El Rompe-cosas participa en cuatro de los cinco flujos, siempre en fases de verificación y validación:
+El Rompe-cosas participa en feature, quick, fix, ship y audit, siempre en fases de verificación y validación:
 
 - **`/alfred-dev:feature`** -- Fase 4 (calidad): code review, test plan y testing exploratorio sobre el código implementado por el senior-dev. Trabaja en paralelo con el security-officer.
+- **`/alfred-dev:quick`** -- Fase 2 (validacion rapida): regresion local y tests sobre la superficie tocada, en paralelo con el security-officer.
 - **`/alfred-dev:fix`** -- Fase 3 (validación): verifica que el fix resuelve el bug sin introducir regresiones, en paralelo con el security-officer.
 - **`/alfred-dev:ship`** -- Fase 1 (auditoria final): code review completo y suite de tests antes del despliegue, en paralelo con el security-officer.
 - **`/alfred-dev:audit`** -- Fase única: code review de calidad sobre el codebase completo, en paralelo con los demas agentes.

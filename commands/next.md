@@ -47,24 +47,18 @@ Lee SIEMPRE, en este orden:
 Después decide así:
 
 1. **Si hay sesión activa** y `fase_actual` no es `completado`:
-   - actúa como `/alfred-dev:resume`
-   - antes de cerrar, arma un bypass transitorio del stop hook con el helper del plugin para que el comando pueda terminar limpio en CLI:
-
-```bash
-python3 .claude/alfred-continuity.py allow-stop-once "$PWD" --command "/alfred-dev:next"
-```
+   - actúa como `/alfred-dev:retomar`
    - resume flujo, fase actual, gate pendiente y primer paso concreto
-   - NO intentes superar la gate pendiente ni uses `AskUserQuestion` dentro de `/alfred-dev:next`
+   - NO intentes superar la gate pendiente ni uses `AskUserQuestion` dentro de este helper
 
 2. **Si no hay sesión activa pero sí handoff pendiente**:
-   - actúa como `/alfred-dev:resume`
-   - arma también el bypass transitorio anterior antes de responder
+   - actúa como `/alfred-dev:retomar`
    - usa el handoff como contexto principal
-   - NO uses `AskUserQuestion` dentro de `/alfred-dev:next`
+   - NO uses `AskUserQuestion` aquí
 
 3. **Si el último flujo completado todavía no tiene UAT aprobada**:
-   - si `.claude/alfred-uat.json` no existe o tiene `status: "pending"` para el último entregable, actúa como `/alfred-dev:verify`
-   - si `.claude/alfred-uat.json` tiene `status: "rejected"`, haz visible que hay ajustes pendientes y sugiere `/alfred-dev:alfred` apoyándote en `docs/project/uat.md`
+   - si `.claude/alfred-uat.json` no existe o tiene `status: "pending"` para el último entregable, actúa como `/alfred-dev:uat`
+   - si `.claude/alfred-uat.json` tiene `status: "rejected"`, haz visible que hay ajustes pendientes y sugiere `/alfred` apoyándote en `docs/project/uat.md`
 
 4. **Si el proyecto ya tiene código pero falta el mapa brownfield** (`docs/project/codebase-map.md` o `docs/project/current.md`):
    - actúa como `/alfred-dev:map-codebase`

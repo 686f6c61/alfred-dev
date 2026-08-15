@@ -17,6 +17,9 @@ Crear o actualizar estos artefactos sin tocar código de producto:
 
 - `docs/project/codebase-map.md`
 - `docs/project/current.md`
+- esqueleto de `docs/project/architecture.md` (vía `sync-project-docs`)
+
+Lee `${CLAUDE_PLUGIN_ROOT}/commands/_docs_vivas.md` si caes a modo manual.
 
 ## Protocolo
 
@@ -60,7 +63,7 @@ Solo en modo manual:
    - `architect`: dominios, entrypoints, arquitectura, límites y convenciones
    - `senior-dev`: hotspots, patrones repetidos, deuda visible, puntos frágiles
    - `security-officer`: superficies sensibles, secretos, dependencias y riesgos obvios
-   - `project-manager (SonIA)`: estado operativo, artefactos de proyecto, trazabilidad y huecos
+   - runtime de continuidad (SonIA): estado operativo, artefactos de proyecto, trazabilidad y huecos
 
 3. Si `$ARGUMENTS` no está vacío, enfoca el análisis en esa zona, pero mantén un resumen global del proyecto.
 

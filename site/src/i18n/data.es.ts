@@ -1,9 +1,8 @@
 /**
  * Datos de contenido de la landing page en castellano de Espana.
  *
- * Este fichero es la fuente de contenido en castellano para la web. Los
- * claims publicos deben mantenerse alineados con plugin.json, README.md y la
- * matriz docs/promise-evidence-0.6.1.md antes de publicar.
+ * Fuente de contenido en castellano. Los claims publicos deben coincidir
+ * con plugin.json 0.7.0, README.md y docs/release.md.
  *
  * @module i18n/data.es
  */
@@ -11,20 +10,15 @@
 import type { PageData } from '../types/index';
 
 const data: PageData = {
-
-  // ----------------------------------------------------------------
-  // Meta
-  // ----------------------------------------------------------------
-
   meta: {
-    title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-    description: 'Plugin de Claude Code con 19 agentes especializados, un catalogo publicado de 62 skills y memoria persistente por proyecto. TDD estricto, seguridad transversal y quality gates automáticas en cada fase.',
+    title: 'Alfred Dev - plugin de Claude Code alineado con el SDK',
+    description: 'Plugin de Claude Code con 10 agentes, 11 skills planas, 18 comandos y memoria local. Quality gates con evidencia, MCP oficial y sin alias global /alfred.',
     canonical: 'https://alfred-dev.com/',
     locale: 'es_ES',
     og: {
       type: 'website',
-      title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: 'Un equipo de 19 agentes especializados para Claude Code. Cada rol tiene herramientas restringidas, personalidad propia y quality gates que exigen evidencia antes de cerrar trabajo.',
+      title: 'Alfred Dev - plugin de Claude Code alineado con el SDK',
+      description: 'Un equipo corto para Claude Code: 8 de núcleo, Selina si hay frontend y Lucius bajo demanda. Habla en castellano, gates con evidencia y memoria SQLite por proyecto.',
       url: 'https://alfred-dev.com/',
       siteName: 'Alfred Dev',
       locale: 'es_ES',
@@ -32,664 +26,237 @@ const data: PageData = {
       imageWidth: 2400,
       imageHeight: 1260,
       imageType: 'image/png',
-      imageAlt: 'Captura de la landing de Alfred Dev con el titular Un sistema de trabajo para Claude Code',
+      imageAlt: 'Landing de Alfred Dev: un sistema de trabajo para Claude Code',
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Alfred Dev - plugin de Claude Code para equipos de desarrollo',
-      description: 'Plugin de Claude Code: 10 agentes de núcleo + 9 opcionales, memoria SQLite por proyecto, 25 comandos namespaced + /alfred y quality gates automáticas en cada fase del desarrollo.',
+      title: 'Alfred Dev - plugin de Claude Code alineado con el SDK',
+      description: '10 agentes, 11 skills, 18 comandos /alfred-dev:*. MCP oficial, secret-guard y quality gates verificables.',
       image: 'https://alfred-dev.com/screenshots/alfred-dev-share-es.png',
-      imageAlt: 'Captura de la landing de Alfred Dev con el titular Un sistema de trabajo para Claude Code',
+      imageAlt: 'Landing de Alfred Dev: un sistema de trabajo para Claude Code',
       site: '@686f6c61',
       creator: '@686f6c61',
     },
   },
 
-  // ----------------------------------------------------------------
-  // Navegacion
-  // ----------------------------------------------------------------
-
   nav: [
-    {
-      href: '#agentes',
-      label: 'Agentes',
-      svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    },
-    {
-      href: '#flujos',
-      label: 'Flujos',
-      svgContent: '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/>',
-    },
-    {
-      href: '#skills',
-      label: 'Skills',
-      svgContent: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
-    },
-    {
-      href: '#gates',
-      label: 'Gates',
-      svgContent: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
-    },
-    {
-      href: '#infra',
-      label: 'Infra',
-      svgContent: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-    },
-    {
-      href: '#uso',
-      label: 'Uso',
-      svgContent: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
-    },
-    {
-      href: '#memoria',
-      label: 'Memoria',
-      svgContent: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
-    },
-    {
-      href: '#instalar',
-      label: 'Instalar',
-      svgContent: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-    },
-    {
-      href: '#faq',
-      label: 'FAQ',
-      svgContent: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-    },
+    { href: '#agentes', label: 'Agentes', svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+    { href: '#flujos', label: 'Flujos', svgContent: '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/>' },
+    { href: '#skills', label: 'Skills', svgContent: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>' },
+    { href: '#gates', label: 'Gates', svgContent: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+    { href: '#infra', label: 'Infra', svgContent: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' },
+    { href: '#uso', label: 'Uso', svgContent: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>' },
+    { href: '#memoria', label: 'Memoria', svgContent: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>' },
+    { href: '#instalar', label: 'Instalar', svgContent: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>' },
+    { href: '#faq', label: 'FAQ', svgContent: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
   ],
-
-  // ----------------------------------------------------------------
-  // Hero
-  // ----------------------------------------------------------------
 
   hero: {
     titleHtml: 'Tus compañeros de<br>desarrollo en un <em>plugin</em>',
-    platformHtml: 'para <span style="color: var(--blue);">Claude Code</span> <span style="font-size: 13px; opacity: 0.7;">(compatibilidad OpenCode en investigacion)</span>',
-    subtitle: '19 agentes especializados con personalidad propia. 10 de núcleo, 9 opcionales. Hasta 7 fases, 25 comandos namespaced + /alfred, memoria persistente y quality gates automáticas en cada transición.',
+    platformHtml: 'para <span style="color: var(--blue);">Claude Code</span>',
+    subtitle: '10 agentes (8 de núcleo, Selina si hay frontend, Lucius bajo demanda). 11 skills planas, 18 comandos /alfred-dev:*. Habla en castellano: no hace falta memorizar slashes. Quality gates con evidencia y MCP oficial.',
     ctas: [
-      {
-        label: 'macOS / Linux',
-        command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        ariaLabel: 'Copiar comando de instalación para macOS y Linux',
-      },
-      {
-        label: 'Windows',
-        command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
-        ariaLabel: 'Copiar comando de instalación para Windows',
-      },
+      { label: 'macOS / Linux', command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash', ariaLabel: 'Copiar comando de instalación para macOS y Linux' },
+      { label: 'Windows', command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex', ariaLabel: 'Copiar comando de instalación para Windows' },
     ],
     features: {
-      label: 'Capacidades destacadas',
+      label: 'Por qué se queda instalado',
       items: [
-        {
-          title: 'Lucius — segunda opinión técnica',
-          description: 'Cuando Alfred termina, invoca a Codex CLI para una perspectiva externa. Diagnóstico y prescripción por ítem: seguridad, arquitectura, tests o rendimiento. Sin tocar nada. Tú decides qué implementar y con quién.',
-          svgContent: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
-          tag: { text: 'Nuevo', href: '#uso' },
-        },
-        {
-          title: 'Selina — flujo guiado de dirección visual',
-          description: 'Selina deja fijar sistema de diseño base, pairing tipográfico y gama cromática antes de bajar a tres propuestas comparables. La implementación arranca con una familia visual cerrada, no con intuiciones sueltas.',
-          svgContent: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>',
-          tag: { text: 'Nuevo', href: '#uso' },
-        },
-        {
-          title: 'Continuidad operativa real',
-          description: 'Alfred ya sabe decir qué toca ahora, pausar una sesión, retomarla y mostrar el estado del proyecto sin reabrir medio repo.',
-          svgContent: '<path d="M9 12l2 2 4-4"/><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z"/>',
-        },
-        {
-          title: 'Brownfield sin empezar a ciegas',
-          description: 'Repos existentes arrancan por map-codebase y discuss: Alfred deja un mapa persistente del codebase antes de abrir flujos de implementación.',
-          svgContent: '<path d="M12 16v5"/><path d="M16 14l-4 2-4-2"/><path d="M12 3l9 4.5v5L12 17l-9-4.5v-5L12 3z"/>',
-        },
-        {
-          title: 'Quick mode con controles',
-          description: 'Los cambios pequeños ya tienen su propio flujo ligero: menos ceremonia, pero con tests, regresión local y revisión de seguridad.',
-          svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
-        },
-        {
-          title: 'UAT explícita y trazable',
-          description: 'verify separa los tests automáticos de la validación humana y progress expone kanban, bloqueos, trazabilidad y estado de UAT.',
-          svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
-        },
-        {
-          title: 'SonIA usable desde CLI',
-          description: 'standup, blocked, in-progress, validate y search convierten el kanban local en una interfaz diaria útil, no solo en documentación oculta.',
-          svgContent: '<path d="M4 19h16"/><path d="M4 5h16"/><path d="M9 9h11"/><path d="M9 15h7"/><circle cx="6" cy="9" r="1"/><circle cx="6" cy="15" r="1"/>',
-        },
-        {
-          title: 'GitHub como espejo opcional',
-          description: 'SonIA Sync publica backlog, bloqueos y progreso en GitHub Issues con gh, sin perder la fuente de verdad local en docs/project y SQLite.',
-          svgContent: '<path d="M9 19c-5 1.5-5-2.5-7-3"/><path d="M15 22v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 19 4.77 5.07 5.07 0 0 0 18.91 1S17.73.65 15 2.48a13.38 13.38 0 0 0-6 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77 5.44 5.44 0 0 0 3.5 8.53c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>',
-        },
-        {
-          title: 'Memory UI en navegador',
-          description: 'La memoria SQLite del proyecto ya se puede abrir como UI local viva: overview, timeline, decisiones, commits, búsqueda, salud y señales operativas.',
-          svgContent: '<path d="M3 4h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M6 8h5"/><path d="M6 12h10"/><path d="M16 8h2"/>',
-        },
+        { title: 'Alineado con el SDK de Anthropic', description: 'commands/, skills planas, hooks en exec form con args y timeout, MCP con FastMCP. No muta settings.json ni inventa un alias global /alfred.', svgContent: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', tag: { text: '0.7.0', href: '#infra' } },
+        { title: 'Habla, no recites comandos', description: 'Escribe «el login peta» o «sigue donde lo dejé». prompt-route sugiere fix, quick o retomar. SessionStart inyecta el briefing real.', svgContent: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>', tag: { text: 'Nuevo', href: '#uso' } },
+        { title: 'Núcleo corto, no un catálogo inflado', description: 'Diez roles de verdad. El kanban lo escribe el runtime. El único opcional es Lucius. Sin data-engineer, github-manager ni bibliotecario.', svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>' },
+        { title: 'Gates que no se creen un «tests OK»', description: 'Autopilot solo resuelve gates de usuario. Tests, seguridad, evidencia y el deploy humano no se saltan.', svgContent: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+        { title: 'Selina cuando hay UI', description: 'Tres propuestas en el navegador y docs/style-direction.md antes de que el architect dibuje cajas. Si no hay frontend, se salta.', svgContent: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/>' },
+        { title: 'Lucius, segunda opinión', description: 'Codex CLI en solo lectura. Diagnóstico y prescripción. Tú decides qué aplicar. Se activa con /alfred-dev:ajustes.', svgContent: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>' },
+        { title: 'Memoria local y Memory UI', description: 'SQLite por proyecto, 15 tools MCP y un visor GET en localhost. No importa el git log. SessionEnd apaga la UI.', svgContent: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8"/>' },
+        { title: 'Docs que se actualizan solas', description: 'Arquitectura, compliance, threat-model y ADRs en tu repo. El Escriba los sincroniza por fase. Hygiene bloquea ship si siguen en esqueleto.', svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' },
+        { title: 'Secret-guard de verdad', description: 'Bloquea secretos en Write, Edit, Bash y tools MCP. Fail-closed. No es un aviso decorativo.', svgContent: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
       ],
     },
   },
 
-  // ----------------------------------------------------------------
-  // Stats
-  // ----------------------------------------------------------------
-
   stats: [
-    { number: 19, label: 'Agentes' },
-    { number: 62, label: 'Skills' },
+    { number: 10, label: 'Agentes' },
+    { number: 11, label: 'Skills' },
     { number: 6, label: 'Flujos' },
-    { number: 26, label: 'Rutas' },
-    { number: 7, label: 'Templates' },
-    { number: 13, label: 'Hooks' },
-    { number: 23, label: 'Gates' },
+    { number: 18, label: 'Comandos' },
+    { number: 8, label: 'Templates' },
+    { number: 10, label: 'Hooks' },
+    { number: 5, label: 'Gates tipo' },
   ],
-
-  // ----------------------------------------------------------------
-  // Agentes de nucleo
-  // ----------------------------------------------------------------
 
   coreAgents: {
     header: {
       label: 'El equipo',
-      title: '10 agentes de núcleo',
-      description: 'Cada agente tiene un rol definido, una personalidad propia y frases características. Trabajan coordinados por Alfred, el mayordomo jefe, y forman el equipo de núcleo disponible por defecto.',
+      title: '8 de núcleo + Selina',
+      description: 'Cada agente tiene un rol delimitado y quality gates verificables. Alfred coordina. El kanban lo escribe el runtime, no un project-manager.',
     },
     agents: [
-      {
-        name: 'Alfred',
-        model: 'opus',
-        alias: 'Mayordomo jefe',
-        role: 'Orquestador del equipo. Decide qué agentes activar, en qué orden, y evalúa las quality gates entre fases.',
-        phrase: '"Muy bien, señor. Permítame organizar eso."',
-        color: 'var(--blue)',
-      },
-      {
-        name: 'SonIA',
-        model: 'sonnet',
-        alias: 'Project Manager',
-        role: 'Si no está en el kanban, no existe. Descompone el PRD en tareas, traza cada criterio de aceptación hasta su test y documentación, y detecta desvíos de alcance.',
-        phrase: '"El criterio CA-05 no tiene test asociado. Quién se encarga?"',
-        color: 'var(--magenta)',
-      },
-      {
-        name: 'El buscador de problemas',
-        model: 'opus',
-        alias: 'Product Owner',
-        role: 'Obsesionado con el problema del usuario. PRDs, historias de usuario, criterios de aceptación, análisis competitivo.',
-        phrase: '"Muy bonito, pero qué problema resuelve esto?"',
-        color: 'var(--purple)',
-      },
-      {
-        name: 'El dibujante de cajas',
-        model: 'opus',
-        alias: 'Arquitecto',
-        role: 'Piensa en sistemas, no en líneas de código. Diagramas Mermaid, ADRs, matrices de decisión, evaluación de dependencias.',
-        phrase: '"Si no cabe en un diagrama, es demasiado complejo."',
-        color: 'var(--green)',
-      },
-      {
-        name: 'El artesano',
-        model: 'opus',
-        alias: 'Senior Dev',
-        role: 'Pragmático, test-first. TDD estricto, refactoring, commits atómicos. Alergia crónica al código clever.',
-        phrase: '"Primero el test. Siempre primero el test."',
-        color: 'var(--orange)',
-      },
-      {
-        name: 'El paranoico',
-        model: 'opus',
-        alias: 'Security Officer',
-        role: 'Desconfiado por defecto. OWASP Top 10, compliance RGPD/NIS2/CRA, auditoría de dependencias, threat modeling, SBOM.',
-        phrase: '"Habéis validado esa entrada? No, en serio."',
-        color: 'var(--red)',
-      },
-      {
-        name: 'El rompe-cosas',
-        model: 'sonnet',
-        alias: 'QA Engineer',
-        role: 'Su misión es demostrar que el código no funciona. Test plans, code review, testing exploratorio, regresión.',
-        phrase: '"Ese edge case que no contemplaste? Lo encontré."',
-        color: 'var(--gold)',
-      },
-      {
-        name: 'El fontanero',
-        model: 'sonnet',
-        alias: 'DevOps Engineer',
-        role: 'Infraestructura invisible es infraestructura bien hecha. Docker, CI/CD, deploy, monitoring. Todo automatizado.',
-        phrase: '"Si lo despliegas a mano, lo despliegas mal."',
-        color: 'var(--cyan)',
-      },
-      {
-        name: 'El escriba',
-        model: 'sonnet',
-        alias: 'Tech Writer',
-        role: 'Document first. Comenta el código inline (cabeceras, docstrings) y genera la documentación de proyecto: API docs, arquitectura con diagramas Mermaid, guías y changelogs.',
-        phrase: '"Ese fichero no tiene cabecera. Nadie sabe para qué sirve."',
-        color: 'var(--white)',
-      },
-      {
-        name: 'Selina',
-        model: 'opus',
-        alias: 'Sistema de diseño',
-        role: 'Dirección de sistema de diseño. Parte de 10 familias base y deja cerradas tipografía, paleta y densidad antes de que el architect diseñe el primer componente. Solo activa en proyectos con interfaz de usuario.',
-        phrase: '"El estilo no es decoración: es comunicación."',
-        color: 'var(--purple)',
-      },
+      { name: 'Alfred', model: 'inherit', alias: 'Mayordomo jefe', role: 'Orquesta flujos, elige quién entra y evalúa las gates. No redefine alcance ni arquitectura.', phrase: '"He tomado la libertad de preparar un plan."', color: 'var(--blue)' },
+      { name: 'El buscador de problemas', model: 'inherit', alias: 'Product Owner', role: 'PRDs, historias, criterios. Decide qué problema se resuelve y por qué.', phrase: '"Antes de diseñar nada, el problema real."', color: 'var(--purple)' },
+      { name: 'El dibujante de cajas', model: 'inherit', alias: 'Arquitecto', role: 'Sistemas, ADRs, diagramas, threat model con seguridad.', phrase: '"Si no está en el diagrama, es deuda."', color: 'var(--green)' },
+      { name: 'El artesano', model: 'inherit', alias: 'Senior Dev', role: 'TDD, commits atómicos, implementación mantenible.', phrase: '"Los tests ya están preparados."', color: 'var(--orange)' },
+      { name: 'El paranoico', model: 'inherit', alias: 'Security Officer', role: 'OWASP, STRIDE, SBOM, RGPD/NIS2/CRA. Transversal en arquitectura, calidad y entrega.', phrase: '"Eso no se hardcodea."', color: 'var(--red)' },
+      { name: 'El rompe-cosas', model: 'inherit', alias: 'QA Engineer', role: 'Test plans, review, exploración, regresión.', phrase: '"Ese edge case que no contemplaste? Lo encontré."', color: 'var(--gold)' },
+      { name: 'El fontanero', model: 'inherit', alias: 'DevOps Engineer', role: 'Docker, CI/CD, empaquetado, deploy. El deploy pide confirmación humana.', phrase: '"Si lo despliegas a mano, lo despliegas mal."', color: 'var(--cyan)' },
+      { name: 'El traductor', model: 'inherit', alias: 'Tech Writer', role: 'Docs del código y del proyecto. Sincroniza docs/project y ADRs.', phrase: '"Si no está escrito, no existe."', color: 'var(--white)' },
+      { name: 'Selina', model: 'inherit', alias: 'Dirección visual', role: 'Tres propuestas en navegador y docs/style-direction.md. Solo si hay frontend.', phrase: '"El estilo no es decoración: es comunicación."', color: 'var(--purple)' },
     ],
   },
-
-  // ----------------------------------------------------------------
-  // Agentes opcionales
-  // ----------------------------------------------------------------
 
   optionalAgents: {
     header: {
-      label: 'Ampliables',
+      label: 'Bajo demanda',
       labelColor: 'var(--gold)',
-      title: '9 agentes opcionales',
-      description: 'Roles especializados que activas según lo que necesite tu proyecto. Alfred analiza tu stack y te sugiere cuáles activar. Se gestionan con <strong style="color: var(--blue);">/alfred-dev:config</strong>.',
+      title: '1 opcional: Lucius',
+      description: 'Segunda opinión vía Codex CLI. Se activa con <strong style="color: var(--blue);">/alfred-dev:ajustes</strong>. No hay catálogo 0.6.',
     },
     agents: [
-      {
-        name: 'El fontanero de datos',
-        model: 'sonnet',
-        alias: 'Data Engineer',
-        role: 'Diseño de esquemas, migraciones con rollback obligatorio, optimización de queries. Si hay base de datos, hay trabajo.',
-        phrase: '"Una migración sin rollback es un billete de ida."',
-        color: 'var(--orange)',
-      },
-      {
-        name: 'El abogado del usuario',
-        model: 'sonnet',
-        alias: 'UX Reviewer',
-        role: 'Auditoría WCAG 2.1 AA, heurísticas de Nielsen, revisión de flujos. Lo que es obvio para ti no lo es para el usuario.',
-        phrase: '"Si el usuario necesita un manual, has fallado."',
-        color: '#ff69b4',
-      },
-      {
-        name: 'El cronómetro',
-        model: 'sonnet',
-        alias: 'Performance Engineer',
-        role: 'Profiling, benchmarks con estadísticas reales (p50, p95, p99), análisis de bundles. Medir antes y después, siempre.',
-        phrase: '"Sin números no hay optimización, hay superstición."',
-        color: 'var(--purple)',
-      },
-      {
-        name: 'El portero',
-        model: 'sonnet',
-        alias: 'GitHub Manager',
-        role: 'Configuración de repositorios, branch protection, PRs, releases, issue templates. Todo vía gh CLI, sin menciones a IA.',
-        phrase: '"Un repo sin protección de ramas es una ruleta rusa."',
-        color: 'var(--text-muted)',
-      },
-      {
-        name: 'El rastreador',
-        model: 'sonnet',
-        alias: 'SEO Specialist',
-        role: 'Meta tags, datos estructurados JSON-LD, Core Web Vitals, Lighthouse. Si Google no lo encuentra, no existe.',
-        phrase: '"Un canonical mal puesto y tienes contenido duplicado."',
-        color: 'var(--green)',
-      },
-      {
-        name: 'La pluma',
-        model: 'sonnet',
-        alias: 'Copywriter',
-        role: 'Revisión de textos, CTAs efectivos, guía de tono. Ortografía impecable como prioridad absoluta. Sin teletienda.',
-        phrase: '"Si escribes \'aplicacion\' sin tilde, no publiques."',
-        color: 'var(--cyan)',
-      },
-      {
-        name: 'El Bibliotecario',
-        model: 'sonnet',
-        alias: 'Memoria del proyecto',
-        role: 'Responde consultas históricas sobre decisiones, commits e iteraciones del proyecto. Siempre cita las fuentes con IDs verificables: [D#id], [C#sha], [I#id].',
-        phrase: '"Según la decisión D#42 del 15 de febrero, se descartó Redis por latencia."',
-        color: '#c9a96e',
-      },
-      {
-        name: 'La Intérprete',
-        model: 'sonnet',
-        alias: 'i18n Specialist',
-        role: 'Auditoría de claves i18n, detección de cadenas hardcodeadas, validación de formatos por locale. Si el idioma base tiene N claves, todos los demás deben tener N.',
-        phrase: '"El idioma base tiene 847 claves. El francés tiene 831. Faltan 16."',
-        color: 'var(--cyan)',
-      },
-      {
-        name: 'Lucius',
-        model: 'opus',
-        alias: 'Director técnico externo',
-        role: 'Segunda opinión técnica vía Codex CLI con el modelo configurado por el usuario. Audita el proyecto completo y devuelve diagnóstico y prescripción por ítem. Requiere acceso activo a Codex CLI. Sin modificaciones: solo analiza.',
-        phrase: '"Desde fuera, esto tiene un punto débil que probablemente no veis porque estáis dentro."',
-        color: '#d97706',
-      },
+      { name: 'Lucius', model: 'inherit', alias: 'Director técnico externo', role: 'Audita en solo lectura con Codex CLI. Diagnóstico y prescripción. No sustituye el sign-off del flujo.', phrase: '"Desde fuera se ve un punto débil que desde dentro no."', color: '#d97706' },
     ],
   },
-
-  // ----------------------------------------------------------------
-  // Composicion dinamica de equipo
-  // ----------------------------------------------------------------
 
   composition: {
     header: {
-      label: 'Composicion dinamica',
+      label: 'Composición',
       labelColor: 'var(--gold)',
-      title: 'El equipo que necesitas, cuando lo necesitas',
-    description: 'Cuando Alfred detecta que toca abrir un flujo multiagente, analiza tu tarea en tiempo real y sugiere los agentes opcionales mas relevantes. Si antes toca mapear, retomar, verificar o mostrar progreso, resuelve eso primero.',
+      title: 'El núcleo siempre. Lucius si lo pides.',
+    description: 'Alfred no ofrece menús de 9 especialistas. El runtime solo admite Lucius. Selina entra sola si hay frontend.',
     },
-    introHtml: 'Cuando <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred</code> o un comando explicito deciden que la ruta correcta es un flujo multiagente, Alfred razona sobre que especialistas encajan con el trabajo, te presenta la seleccion de agentes y arranca la fase adecuada. Asi se ve cuando la ruta elegida es <code style="font-family: var(--font-mono); font-size: 14px; color: var(--cyan);">/alfred-dev:feature</code>:',
+    introHtml: 'Cuando <code>/alfred-dev:alfred</code> o un flujo deciden abrir trabajo, el equipo de núcleo está listo. Si quieres segunda opinión externa, Alfred pregunta por Lucius:',
     terminalPrompt: '$ /alfred-dev:feature',
-    terminalText: 'Migrar la base de datos de SQLite a PostgreSQL y rediseñar la interfaz del checkout con tests de accesibilidad',
-    coreTeamText: 'Equipo de nucleo disponible por defecto: Alfred, Product Owner, Arquitecto, Senior Dev, Security Officer, QA Engineer, Tech Writer, DevOps, SonIA, Selina.',
-    techQuestion: 'Que agentes tecnicos quieres activar?',
+    terminalText: 'Login con email y password, TDD y threat model',
+    coreTeamText: 'Equipo de núcleo: Alfred, Product Owner, Architect, Senior Dev, Security, QA, Tech Writer, DevOps. Selina si hay UI.',
+    techQuestion: 'Quieres activar Lucius como segunda opinión externa?',
     techOptions: [
-      { label: 'Data Engineer', desc: 'Migracion de BD detectada (Recomendado)', selected: true },
-      { label: 'Performance Engineer', desc: 'Profiling y optimizacion', selected: false },
-      { label: 'GitHub Manager', desc: 'Remote git configurado (Recomendado)', selected: true },
-      { label: 'Librarian', desc: 'Memoria persistente', selected: false },
+      { label: 'Lucius', desc: 'Codex CLI, solo lectura (Recomendado si hay cierre)', selected: false },
     ],
-    contentQuestion: 'Que agentes de contenido y UX quieres activar?',
+    contentQuestion: 'Listo con este grupo',
     contentOptions: [
-      { label: 'UX Reviewer', desc: 'Rediseño de checkout (Recomendado)', selected: true },
-      { label: 'SEO Specialist', desc: 'Posicionamiento web', selected: false },
-      { label: 'Copywriter', desc: 'Textos publicos', selected: false },
-      { label: 'i18n Specialist', desc: 'Internacionalizacion', selected: false },
+      { label: 'Seguir sin activar más', desc: 'Mantener solo el núcleo', selected: true },
     ],
-    confirmText: 'Equipo confirmado: 10 de nucleo + 3 opcionales',
-    productQuestion: 'Quien es el usuario principal de esta funcionalidad?',
+    confirmText: 'Equipo: núcleo + Lucius opcional',
+    productQuestion: 'Quién es el usuario principal?',
     productOptions: [
-      { label: 'Administrador de tienda', desc: '', selected: true },
-      { label: 'Cliente final', desc: '', selected: false },
-      { label: 'Equipo de soporte', desc: '', selected: false },
-      { label: 'Desarrollador externo', desc: '', selected: false },
+      { label: 'Usuario final', desc: '', selected: true },
+      { label: 'Administrador', desc: '', selected: false },
+      { label: 'Equipo interno', desc: '', selected: false },
     ],
   },
-
-  // ----------------------------------------------------------------
-  // Flujos de trabajo
-  // ----------------------------------------------------------------
 
   workflows: {
     header: {
       label: 'Flujos de trabajo',
-      title: '6 flujos de ejecución, 18 fases',
-      description: 'Cada flujo se ejecuta por fases. Entre fase y fase hay una quality gate (la sección de abajo las detalla todas). Fuera de los flujos, comandos como <code>next</code>, <code>pause</code>, <code>resume</code> y <code>progress</code> permiten pausar, retomar o consultar el estado sin perder el hilo.',
+      title: '6 flujos, gates entre fases',
+      description: 'feature hasta 7 fases. Fuera de los flujos: <code>progress</code>, <code>pause</code> y <code>retomar</code>. No hay slash público next/standup/validate.',
     },
     flows: [
-      {
-        command: '/alfred-dev:feature',
-        subtitle: 'Ciclo completo o parcial',
-        description: 'Hasta 7 fases: producto, sistema de diseño (Selina, condicional), arquitectura, desarrollo TDD, calidad + seguridad, documentación, entrega. Puedes arrancar desde cualquier fase.',
-        stages: ['Producto', 'Estilo visual', 'Arquitectura', 'Desarrollo', 'Calidad + Seguridad', 'Documentación', 'Entrega'],
-      },
-      {
-        command: '/alfred-dev:quick',
-        subtitle: 'Cambio pequeño',
-        description: '2 fases: ejecución acotada y validación rápida. Menos ceremonia que feature, pero con tests y revisión de seguridad.',
-        stages: ['Ejecución acotada', 'Validación rápida'],
-      },
-      {
-        command: '/alfred-dev:fix',
-        subtitle: 'Corrección rápida',
-        description: 'Diagnóstico de causa raíz, corrección con TDD (test que reproduce el bug primero), validación con QA + seguridad.',
-        stages: ['Diagnóstico', 'Corrección TDD', 'Validación'],
-      },
-      {
-        command: '/alfred-dev:spike',
-        subtitle: 'Investigación',
-        description: 'Exploración técnica sin compromiso: prototipos, benchmarks, evaluación de alternativas. Documento de hallazgos.',
-        stages: ['Investigación', 'Hallazgos'],
-      },
-      {
-        command: '/alfred-dev:ship',
-        subtitle: 'Despliegue',
-        description: 'Auditoría final paralela, documentación de release, empaquetado con versionado semántico, despliegue a producción.',
-        stages: ['Auditoría', 'Documentación', 'Empaquetado', 'Despliegue'],
-      },
-      {
-        command: '/alfred-dev:audit',
-        subtitle: 'Auditoría',
-        description: '4 agentes en paralelo: calidad, seguridad, arquitectura y documentación. Informe consolidado con prioridades.',
-        stages: ['Auditoría paralela'],
-      },
+      { command: '/alfred-dev:feature', subtitle: 'Ciclo completo o parcial', description: 'Hasta 7 fases: producto, estilo visual (Selina, condicional), arquitectura, desarrollo TDD, calidad, documentación, entrega.', stages: ['Producto', 'Estilo visual', 'Arquitectura', 'Desarrollo', 'Calidad', 'Documentación', 'Entrega'] },
+      { command: '/alfred-dev:quick', subtitle: 'Cambio pequeño', description: '2 fases: ejecución acotada y validación rápida. Tests y seguridad, menos ceremonia.', stages: ['Ejecución acotada', 'Validación rápida'] },
+      { command: '/alfred-dev:fix', subtitle: 'Bug', description: 'Causa raíz, test que reproduce, corrección mínima, validación.', stages: ['Diagnóstico', 'Corrección TDD', 'Validación'] },
+      { command: '/alfred-dev:spike', subtitle: 'Investigación', description: 'Sin compromiso de implementación. Hallazgos y ADR si toca decidir.', stages: ['Investigación', 'Hallazgos'] },
+      { command: '/alfred-dev:ship', subtitle: 'Release', description: 'Auditoría, changelog, empaquetado, deploy. Hygiene bloquea si la UAT está abierta o los docs vivos siguen en esqueleto.', stages: ['Auditoría', 'Documentación', 'Empaquetado', 'Despliegue'] },
+      { command: '/alfred-dev:audit', subtitle: 'Auditoría', description: 'Calidad, seguridad, arquitectura y documentación en paralelo. SonarQube solo con decisión humana.', stages: ['Auditoría paralela'] },
     ],
   },
-
-  // ----------------------------------------------------------------
-  // Quality gates
-  // ----------------------------------------------------------------
 
   gates: {
     header: {
       label: 'Quality gates',
-      title: 'Cobertura de calidad en todo el ciclo',
-      description: 'Cada fase del desarrollo tiene sus propias quality gates. Los 10 agentes de núcleo cubren desde la validación del producto hasta la entrega, y los opcionales amplían el control a dominios especializados. Si una gate no se supera, el flujo se detiene.',
+      title: 'Evidencia antes que afirmaciones',
+      description: 'Autopilot solo resuelve gates de usuario configuradas. No salta tests, seguridad, evidencia ni la confirmación humana de despliegue.',
     },
-    coreLabel: 'Núcleo -- de la idea a producción',
+    coreLabel: 'Núcleo',
     core: [
-      { text: 'Valida el PRD con el usuario antes de pasar a diseño' },
-      { text: 'Revisa coherencia arquitectónica y acoplamiento entre módulos antes de codificar' },
-      { text: 'Analiza el diseño en busca de vectores de ataque con modelo de amenazas' },
-      { text: 'Aplica TDD estricto: test que falla, implementación mínima, refactor' },
-      { text: 'Ejecuta tests unitarios, de integración y E2E antes de avanzar a calidad' },
-      { text: 'Audita OWASP Top 10, CVEs en dependencias y compliance RGPD, NIS2 y CRA' },
-      { text: 'Documenta código en línea durante el desarrollo y genera documentación de proyecto al cierre' },
-      { text: 'Exige pipeline CI/CD en verde como requisito de entrega' },
-      { text: 'Rastrea progreso entre fases y mantiene la trazabilidad de cada decisión' },
-      { text: 'Consulta la memoria persistente del proyecto para contextualizar con el histórico' },
-      { text: 'Vigila cada escritura de fichero buscando secretos, API keys o tokens' },
-      { text: 'Detecta tildes omitidas en castellano al escribir o editar ficheros' },
-      { text: 'Verifica que los tests se ejecutaron realmente antes de aceptar que pasan (evidencia verificable)' },
-      { text: 'Itera dentro de cada fase hasta 5 veces si la gate no se supera, habilitando ciclos TDD naturales' },
+      { text: 'Producto: el usuario aprueba el PRD antes de diseñar' },
+      { text: 'Selina: el usuario elige dirección visual si hay frontend' },
+      { text: 'Arquitectura: diseño + threat model, gate de usuario' },
+      { text: 'Desarrollo: tests verdes (automático)' },
+      { text: 'Calidad: tests + seguridad (automático + seguridad)' },
+      { text: 'Documentación: gate libre con checklist, no bloqueo mudo' },
+      { text: 'Entrega: usuario + seguridad. Deploy nunca en silencio' },
+      { text: 'evidence-guard registra runners reales; no vale «tests OK» de palabra' },
+      { text: 'secret-guard bloquea secretos en Write, Edit, Bash y MCP' },
+      { text: 'Hygiene impide ship con UAT abierta o docs/project en esqueleto' },
     ],
-    optionalLabel: 'Opcionales -- amplían el control',
+    optionalLabel: 'Lucius',
     optional: [
-      { text: 'Analiza el código con SonarQube (instala Docker si falta, con tu permiso)', optional: true },
-      { text: 'Exige rollback en cada migración de base de datos antes de ejecutarla', optional: true },
-      { text: 'Verifica accesibilidad WCAG 2.1 AA antes de dar por buena la interfaz', optional: true },
-      { text: 'Mide rendimiento con métricas reales (p50, p95, p99) antes y después', optional: true },
-      { text: 'Configura branch protection en main y exige PR con aprobación', optional: true },
-      { text: 'Monitoriza Core Web Vitals (LCP, INP, CLS) y alerta si están fuera de umbral', optional: true },
-      { text: 'Revisa meta tags, structured data y rastreabilidad SEO antes de publicar', optional: true },
-      { text: 'Valida ortografía, tono y consistencia de los textos de la interfaz', optional: true },
-      { text: 'Comprueba que todas las claves i18n del idioma base existan en todos los idiomas destino', optional: true },
+      { text: 'Segunda opinión externa: no sustituye el sign-off del flujo', optional: true },
     ],
   },
-
-  // ----------------------------------------------------------------
-  // Skills
-  // ----------------------------------------------------------------
 
   skills: {
     header: {
       label: 'Capacidades',
-      title: '62 skills en 15 dominios',
-      description: 'Catalogo publicado del plugin: cada skill es una capacidad concreta que los agentes pueden invocar. Los 7 dominios originales se amplían con 6 nuevos para los agentes opcionales, un dominio de sistema de diseño para Selina y un dominio Alfred para el alias manual /alfred. Desde la v0.5.2, el manifiesto público de Claude Code expone los dominios completos; los skills más pesados o con side effects claros siguen disponibles, pero marcados como manuales.',
+      title: '11 skills planas',
+      description: 'Cada skill es skills/&lt;nombre&gt;/SKILL.md. No hay 62 skills en 15 dominios. Las de side effects van con disable-model-invocation.',
     },
     domains: [
       {
-        name: 'Alfred',
+        name: 'Proceso',
         skills: [
-          { name: 'alfred', description: 'Alias global /alfred para el asistente contextual' },
+          { name: 'write-adr', description: 'ADRs en docs/adr/' },
+          { name: 'evaluate-dependency', description: 'Veredicto de paquetes nuevos' },
+          { name: 'sync-project-docs', description: 'Índice y sync de docs/project/' },
+          { name: 'memory', description: 'Consulta y política de escritura SQLite' },
         ],
       },
       {
-        name: 'Producto',
+        name: 'Seguridad y compliance',
         skills: [
-          { name: 'write-prd', description: 'PRD completo con historias y criterios' },
-          { name: 'user-stories', description: 'Descomposición en historias de usuario' },
-          { name: 'acceptance-criteria', description: 'Criterios Given/When/Then' },
-          { name: 'competitive-analysis', description: 'Análisis de alternativas' },
-        ],
-      },
-      {
-        name: 'Arquitectura',
-        skills: [
-          { name: 'write-adr', description: 'Architecture Decision Records' },
-          { name: 'choose-stack', description: 'Matriz de decisión de stack' },
-          { name: 'design-system', description: 'Diseño con diagramas Mermaid' },
-          { name: 'evaluate-dependencies', description: 'Auditoría de dependencias' },
-        ],
-      },
-      {
-        name: 'Desarrollo',
-        skills: [
-          { name: 'tdd-cycle', description: 'Ciclo rojo-verde-refactor' },
-          { name: 'explore-codebase', description: 'Exploración de código' },
-          { name: 'refactor', description: 'Refactoring guiado' },
-          { name: 'code-review-response', description: 'Respuesta a code reviews' },
-        ],
-      },
-      {
-        name: 'Seguridad',
-        skills: [
-          { name: 'threat-model', description: 'Modelado STRIDE' },
-          { name: 'dependency-audit', description: 'CVEs, licencias, versiones' },
-          { name: 'dependency-strategy', description: 'Estrategia de dependencias a medio plazo' },
-          { name: 'security-review', description: 'OWASP Top 10' },
+          { name: 'threat-model', description: 'STRIDE' },
           { name: 'compliance-check', description: 'RGPD, NIS2, CRA' },
           { name: 'sbom-generate', description: 'Software Bill of Materials' },
-          { name: 'dependency-update', description: 'Actualización segura de dependencias' },
         ],
       },
       {
-        name: 'Calidad',
+        name: 'Calidad y entrega',
         skills: [
-          { name: 'test-plan', description: 'Test plans por riesgo' },
-          { name: 'code-review', description: 'Review de calidad' },
-          { name: 'e2e-testing', description: 'Pruebas end-to-end de recorridos críticos' },
-          { name: 'exploratory-testing', description: 'Testing exploratorio' },
-          { name: 'incident-response', description: 'Triaje, mitigación y postmortem' },
-          { name: 'regression-check', description: 'Análisis de regresión' },
-          { name: 'sonarqube', description: 'Análisis con SonarQube + Docker' },
-          { name: 'spelling-check', description: 'Verificación ortográfica (tildes)' },
+          { name: 'sonarqube', description: 'Preflight y análisis (manual)' },
+          { name: 'incident-response', description: 'Incidente (manual)' },
+          { name: 'pr-workflow', description: 'Pull request (manual)' },
         ],
       },
       {
-        name: 'DevOps',
+        name: 'Visual',
         skills: [
-          { name: 'dockerize', description: 'Dockerfile multi-stage' },
-          { name: 'ci-cd-pipeline', description: 'GitHub Actions, GitLab CI' },
-          { name: 'deploy-config', description: 'Vercel, Railway, Fly, AWS, K8s' },
-          { name: 'monitoring-setup', description: 'Logging, alertas, tracking' },
-          { name: 'release-planning', description: 'Versionado, changelog y release notes' },
-        ],
-      },
-      {
-        name: 'Documentación',
-        skills: [
-          { name: 'api-docs', description: 'Endpoints, params, ejemplos' },
-          { name: 'architecture-docs', description: 'Visión global del sistema' },
-          { name: 'user-guide', description: 'Instalación, uso, troubleshooting' },
-          { name: 'changelog', description: 'Keep a Changelog' },
-          { name: 'project-docs', description: 'Documentación completa en docs/' },
-          { name: 'glossary', description: 'Corpus lingüístico del proyecto' },
-          { name: 'readme-review', description: 'Auditoría del README' },
-          { name: 'onboarding-guide', description: 'Guía para nuevos developers' },
-          { name: 'migration-guide', description: 'Migración entre versiones' },
-        ],
-      },
-      {
-        name: 'Estilo',
-        skills: [
-          { name: 'style-direction', description: 'Companion visual y cierre de dirección de estilo' },
-        ],
-      },
-      {
-        name: 'Datos',
-        optional: true,
-        skills: [
-          { name: 'schema-design', description: 'Diseño de esquemas normalizados' },
-          { name: 'migration-plan', description: 'Migraciones con rollback' },
-          { name: 'query-optimization', description: 'Optimización con EXPLAIN' },
-        ],
-      },
-      {
-        name: 'UX',
-        optional: true,
-        skills: [
-          { name: 'accessibility-audit', description: 'WCAG 2.1 AA completo' },
-          { name: 'usability-heuristics', description: '10 heurísticas de Nielsen' },
-          { name: 'flow-review', description: 'Análisis de flujos de usuario' },
-        ],
-      },
-      {
-        name: 'Rendimiento',
-        optional: true,
-        skills: [
-          { name: 'profiling', description: 'CPU y memoria por runtime' },
-          { name: 'benchmark', description: 'Benchmarks con p50, p95, p99' },
-          { name: 'bundle-size', description: 'Análisis y reducción de bundles' },
-        ],
-      },
-      {
-        name: 'GitHub',
-        optional: true,
-        skills: [
-          { name: 'repo-setup', description: 'Configuración completa de repo' },
-          { name: 'pr-workflow', description: 'PRs bien documentadas' },
-          { name: 'release', description: 'Releases con versionado semántico' },
-          { name: 'issue-templates', description: 'Plantillas de issues YAML' },
-        ],
-      },
-      {
-        name: 'SEO',
-        optional: true,
-        skills: [
-          { name: 'meta-tags', description: 'Title, description, Open Graph' },
-          { name: 'structured-data', description: 'JSON-LD para schema.org' },
-          { name: 'lighthouse-audit', description: 'Core Web Vitals y métricas' },
-        ],
-      },
-      {
-        name: 'Marketing',
-        optional: true,
-        skills: [
-          { name: 'copy-review', description: 'Revisión de textos públicos' },
-          { name: 'cta-writing', description: 'CTAs efectivos sin teletienda' },
-          { name: 'tone-guide', description: 'Guía de tono de marca' },
+          { name: 'style-direction', description: 'Dirección visual de Selina (manual)' },
         ],
       },
     ],
   },
 
-  // ----------------------------------------------------------------
-  // Infraestructura
-  // ----------------------------------------------------------------
-
   infra: {
     header: {
       label: 'Bajo el capó',
-      title: 'Hooks, templates y core',
-      description: 'La infraestructura que hace funcionar al equipo: hooks que arrancan la sesión, templates que estandarizan artefactos y un core que orquesta tanto los flujos de ejecución como la continuidad operativa.',
+      title: '10 hooks, 8 templates, core Python',
+      description: 'Lo que Claude Code ejecuta de verdad. Sin stop-hook Ralph, sin PreCompact, sin hooks de ortografía o dependencias.',
     },
     groups: [
       {
-        title: '13 hooks',
+        title: '10 hooks',
         items: [
           { name: 'session-bootstrap.sh', label: 'SessionStart' },
           { name: 'session-start.sh', label: 'SessionStart' },
-          { name: 'stop-hook.py', label: 'Stop' },
-          { name: 'secret-guard.sh', label: 'PreToolUse' },
-          { name: 'dangerous-command-guard.py', label: 'PreToolUse' },
-          { name: 'sensitive-read-guard.py', label: 'PreToolUse' },
-          { name: 'prefetch-finish-guard.py', label: 'PreToolUse' },
-          { name: 'quality-gate.py', label: 'PostToolUse' },
-          { name: 'evidence-guard.py', label: 'PostToolUse' },
-          { name: 'dependency-watch.py', label: 'PostToolUse' },
-          { name: 'spelling-guard.py', label: 'PostToolUse' },
-          { name: 'activity-capture.py', label: 'PostToolUse' },
-          { name: 'memory-compact.py', label: 'PreCompact' },
+          { name: 'session-end.py', label: 'SessionEnd' },
+          { name: 'activity-capture.py', label: 'UserPromptSubmit + PostToolUse' },
+          { name: 'prompt-route.py', label: 'UserPromptSubmit' },
+          { name: 'secret-guard.py', label: 'PreToolUse Write/Edit/Bash/MCP' },
+          { name: 'dangerous-command-guard.py', label: 'PreToolUse Bash' },
+          { name: 'sensitive-read-guard.py', label: 'PreToolUse Read' },
+          { name: 'quality-gate.py', label: 'PostToolUse Bash' },
+          { name: 'evidence-guard.py', label: 'PostToolUse Bash' },
         ],
       },
       {
-        title: '7 templates',
+        title: '8 templates',
         items: [
           { name: 'prd.md', label: 'Product Requirements' },
           { name: 'adr.md', label: 'Architecture Decision' },
           { name: 'test-plan.md', label: 'Plan de testing' },
-          { name: 'threat-model.md', label: 'Modelado STRIDE' },
+          { name: 'threat-model.md', label: 'STRIDE' },
           { name: 'sbom.md', label: 'Bill of Materials' },
+          { name: 'compliance.md', label: 'Checklist de cumplimiento' },
           { name: 'changelog-entry.md', label: 'Entrada de changelog' },
           { name: 'release-notes.md', label: 'Notas de release' },
         ],
@@ -697,97 +264,75 @@ const data: PageData = {
       {
         title: 'Core Python',
         items: [
-          { name: 'orchestrator.py', label: 'Flujos, sesiones, gates, loop iterativo y autopilot' },
-          { name: 'continuity.py', label: 'Continuidad, PM operativo, búsqueda y sync GitHub' },
-          { name: 'config_loader.py', label: 'Config, detección de stack y agentes opcionales' },
-          { name: 'memory*.py', label: 'Memoria SQLite, sync Markdown y UI local' },
-          { name: 'selina_*.py', label: 'Dirección visual, catálogo, selección y variantes' },
-          { name: 'secrets.py', label: 'Sanitización reutilizable de secretos' },
+          { name: 'orchestrator.py', label: 'Flujos, fases, gates, autopilot' },
+          { name: 'continuity.py', label: 'Kanban, handoff, UAT, sync GitHub' },
+          { name: 'prompt_route.py', label: 'Ruta sin slash' },
+          { name: 'session_brief.py', label: 'Briefing de sesión' },
+          { name: 'project_docs.py', label: 'Docs vivas y ADRs' },
+          { name: 'memory*.py', label: 'SQLite, MCP y Memory UI' },
         ],
       },
     ],
   },
 
-  // ----------------------------------------------------------------
-  // Comandos
-  // ----------------------------------------------------------------
-
   commands: {
     header: {
       label: 'Interfaz',
-      title: '25 comandos + /alfred',
-      description: 'Todo se controla desde la línea de comandos de Claude Code.',
+      title: '18 comandos /alfred-dev:*',
+      description: 'La entrada es /alfred-dev:alfred. No hay alias global /alfred. next y search son helpers internos.',
     },
     groups: [
       {
-        label: 'Flujos',
+        label: 'Entrada',
         color: 'var(--blue)',
         commands: [
-          { command: '/alfred-dev:feature', description: 'Ciclo completo: hasta 7 fases o desde la que indiques. Selina se activa automáticamente en proyectos con UI para cerrar el sistema de diseño.' },
-          { command: '/alfred-dev:quick',   description: 'Cambio pequeño con dos fases ligeras: ejecución acotada y validación rápida con QA + seguridad.' },
-          { command: '/alfred-dev:fix',     description: 'Bug con 3 fases: diagnóstico, corrección TDD, validación.' },
-          { command: '/alfred-dev:spike',   description: 'Investigación exploratoria sin compromiso: prototipos, benchmarks, conclusiones.' },
-          { command: '/alfred-dev:ship',    description: 'Preparar release: auditoría final, documentación, empaquetado, despliegue.' },
-          { command: '/alfred-dev:audit',   description: 'Auditoría con 4 agentes en paralelo: calidad, seguridad, arquitectura, documentación.' },
+          { command: '/alfred-dev:alfred', description: 'Decide si mapear, retomar, abrir un flujo o responder en corto.' },
+          { command: '/alfred-dev:ajustes', description: 'Autonomía, Lucius, memoria y personalidad. Antes /alfred-dev:config.' },
+          { command: '/alfred-dev:update', description: 'Semver real y un menú: actualizar ahora o no.' },
         ],
       },
       {
-        label: 'Contexto',
+        label: 'Flujos',
         color: 'var(--green)',
         commands: [
-          { command: '/alfred',                  description: 'Asistente contextual global: detecta el estado del proyecto y decide si toca mapear, retomar, refinar o abrir un flujo.' },
-          { command: '/alfred-dev:map-codebase', description: 'Analiza un repo existente y crea <code>codebase-map.md</code> y <code>current.md</code> antes de tocar código.' },
-          { command: '/alfred-dev:discuss',      description: 'Refina una idea antes de abrir implementación. Deja <code>discovery.md</code> y el siguiente comando recomendado.' },
-          { command: '/alfred-dev:lucius',       description: 'Segunda opinión externa vía Codex CLI (modelo configurado por el usuario). Diagnóstico y prescripción por ítem. Requiere acceso activo a Codex CLI.' },
+          { command: '/alfred-dev:feature', description: 'Hasta 7 fases. Selina si hay UI.' },
+          { command: '/alfred-dev:quick', description: 'Cambio pequeño, 2 fases.' },
+          { command: '/alfred-dev:fix', description: 'Bug con TDD.' },
+          { command: '/alfred-dev:spike', description: 'Investigación sin compromiso.' },
+          { command: '/alfred-dev:ship', description: 'Release. Hygiene puede bloquear.' },
+          { command: '/alfred-dev:audit', description: '4 ejes en paralelo.' },
         ],
       },
       {
         label: 'Continuidad',
         color: 'var(--cyan)',
         commands: [
-          { command: '/alfred-dev:next',   description: 'Responde “qué toca ahora” y ejecuta si la ruta es inequívoca: retomar, verificar, mapear o abrir flujo.' },
-          { command: '/alfred-dev:pause',  description: 'Pausa el trabajo y deja un handoff explícito en <code>.claude/alfred-handoff.json</code>.' },
-          { command: '/alfred-dev:resume', description: 'Retoma una sesión activa o handoff pendiente sin abrir una iteración nueva a ciegas.' },
-          { command: '/alfred-dev:verify', description: 'Registra la validación manual/UAT del entregable, separando la aceptación humana de los tests automáticos.' },
+          { command: '/alfred-dev:progress', description: 'Kanban, bloqueos, UAT y trazabilidad. Absorbe standup/validate.' },
+          { command: '/alfred-dev:pause', description: 'Handoff en JSON y Markdown.' },
+          { command: '/alfred-dev:retomar', description: 'Vuelve al handoff. Antes /alfred-dev:resume.' },
+          { command: '/alfred-dev:map-codebase', description: 'Mapa brownfield persistente.' },
+          { command: '/alfred-dev:discuss', description: 'Refinado antes de feature.' },
         ],
       },
       {
-        label: 'PM operativo',
-        color: 'var(--magenta)',
-        commands: [
-          { command: '/alfred-dev:progress',    description: 'Progreso, kanban, bloqueos, trazabilidad y estado de UAT en una vista compacta.' },
-          { command: '/alfred-dev:standup',     description: 'Standup diario accionable: foco actual, trabajo en curso, bloqueos y siguiente paso.' },
-          { command: '/alfred-dev:blocked',     description: 'Tareas bloqueadas con dependencia, nota operativa y responsable.' },
-          { command: '/alfred-dev:in-progress', description: 'Trabajo en curso sin releer todo el tablero.' },
-          { command: '/alfred-dev:validate',    description: 'Salud del tablero: IDs duplicados, trazabilidad incompleta, UAT pendiente, drift de sync.' },
-          { command: '/alfred-dev:search',      description: 'Busca en artefactos y memoria SQLite a la vez para responder dudas históricas u operativas.' },
-          { command: '/alfred-dev:sync-github', description: 'SonIA Sync: refleja el tablero local en GitHub Issues con <code>gh</code>.' },
-        ],
-      },
-      {
-        label: 'Herramientas',
+        label: 'Operación',
         color: 'var(--gold)',
         commands: [
-          { command: '/alfred-dev:memory-ui', description: 'UI local en navegador sobre la SQLite del proyecto: overview, timeline, decisiones, commits, búsqueda.' },
-          { command: '/alfred-dev:config',    description: 'Autonomía, stack, compliance, personalidad, agentes opcionales y memoria. Bootstrappeable en la primera sesión.' },
-          { command: '/alfred-dev:status',    description: 'Sesión activa: fase actual, fases completadas, gate pendiente y foco inmediato.' },
-          { command: '/alfred-dev:update',    description: 'Ver si hay versión nueva, leer las notas de release y actualizar con un clic.' },
-          { command: '/alfred-dev:help',      description: 'Ayuda completa de todos los comandos disponibles.' },
+          { command: '/alfred-dev:uat', description: 'Validación humana. Antes /alfred-dev:verify.' },
+          { command: '/alfred-dev:memory-ui', description: 'Visor local GET de la SQLite.' },
+          { command: '/alfred-dev:sync-github', description: 'Espejo del tablero local en Issues.' },
+          { command: '/alfred-dev:lucius', description: 'Segunda opinión Codex CLI.' },
         ],
       },
     ],
-    optionalNote: 'Los 9 agentes opcionales se activan con <strong style=”color: var(--blue);”>/alfred-dev:config</strong> y Alfred los integra automáticamente en <em>feature</em>, <em>quick</em>, <em>fix</em>, <em>spike</em>, <em>audit</em> y <em>ship</em>.',
+    optionalNote: 'El único opcional es <strong>Lucius</strong>, con <strong>/alfred-dev:ajustes</strong>. Selina entra sola si hay frontend.',
   },
-
-  // ----------------------------------------------------------------
-  // Deteccion de stack
-  // ----------------------------------------------------------------
 
   stacks: {
     header: {
       label: 'Detección automática',
       title: 'Se adapta a tu proyecto',
-      description: 'Alfred Dev detecta automáticamente el stack tecnológico de tu proyecto y adapta sus artefactos al ecosistema real.',
+      description: 'Detecta el stack y adapta artefactos. No inventa especialistas 0.6 por cada señal.',
     },
     list: [
       { name: 'Node.js', description: 'npm, pnpm, bun, yarn. Express, Next.js, Fastify, Hono.' },
@@ -803,406 +348,39 @@ const data: PageData = {
     ],
   },
 
-  // ----------------------------------------------------------------
-  // Casos de uso
-  // ----------------------------------------------------------------
-
   useCases: {
     header: {
       label: 'En la práctica',
       labelColor: 'var(--cyan)',
       title: 'Cómo se usa',
-      description: 'Escenarios reales de uso paso a paso. Cada caso muestra el flujo completo desde la invocación hasta el resultado.',
+      description: 'Habla en castellano o usa /alfred-dev:*. Estos son recorridos reales de 0.7.0.',
     },
     cases: [
-      {
-        category: 'Desarrollo',
-        color: 'var(--blue)',
-        background: 'rgba(91,156,245,0.08)',
-        title: 'Desarrollar una feature completa',
-        command: '/alfred-dev:feature sistema de notificaciones push',
-        steps: [
-          'El product-owner genera el PRD con historias de usuario y criterios de aceptación',
-          'El architect diseña la solución y el security-officer valida el diseño',
-          'El senior-dev implementa siguiendo TDD estricto (rojo-verde-refactor)',
-          'QA y seguridad auditan en paralelo antes de dar el visto bueno',
-          'El escriba documenta el código inline y genera los docs de API; el devops-engineer prepara el despliegue',
-        ],
-      },
-      {
-        category: 'Corrección',
-        color: 'var(--red)',
-        background: 'rgba(229,86,79,0.08)',
-        title: 'Corregir un bug',
-        command: '/alfred-dev:fix el login falla con emails que tienen tildes',
-        steps: [
-          'El senior-dev reproduce el error e identifica la causa raíz',
-          'Escribe un test que falla reproduciendo el bug exacto',
-          'Implementa la corrección mínima que hace pasar el test',
-          'QA y seguridad validan que no se hayan introducido regresiones',
-        ],
-      },
-      {
-        category: 'Investigación',
-        color: 'var(--purple)',
-        background: 'rgba(160,126,232,0.08)',
-        title: 'Investigación técnica (spike)',
-        command: '/alfred-dev:spike evaluar si migrar de REST a gRPC',
-        steps: [
-          'El architect y el senior-dev exploran las alternativas sin compromiso de código',
-          'Se generan pruebas de concepto ligeras para comparar rendimiento',
-          'Se documenta un ADR con los hallazgos, pros, contras y recomendación',
-          'El usuario decide si proceder a implementación o descartarlo',
-        ],
-      },
-      {
-        category: 'Auditoría',
-        color: 'var(--orange)',
-        background: 'rgba(232,164,74,0.08)',
-        title: 'Auditar el proyecto',
-        command: '/alfred-dev:audit',
-        steps: [
-          '4 agentes trabajan en paralelo: QA, seguridad, arquitectura y documentación',
-          'QA busca errores lógicos, code smells y cobertura de tests',
-          'Seguridad analiza OWASP Top 10, dependencias con CVEs y compliance RGPD/NIS2',
-          'Se consolida un informe único con hallazgos priorizados por severidad',
-        ],
-      },
-      {
-        category: 'Entrega',
-        color: 'var(--green)',
-        background: 'rgba(78,201,144,0.08)',
-        title: 'Preparar una entrega',
-        command: '/alfred-dev:ship',
-        steps: [
-          'Auditoría final obligatoria: QA y seguridad deben aprobar',
-          'El escriba actualiza el changelog y genera las notas de release',
-          'El devops-engineer empaqueta, configura el pipeline y verifica el build',
-          'Despliegue supervisado: el usuario confirma antes de subir a producción',
-        ],
-      },
-      {
-        category: 'Conversacional',
-        color: 'var(--gold)',
-        background: 'rgba(201,169,110,0.08)',
-        title: 'Asistente contextual',
-        command: '/alfred',
-        steps: [
-          'Alfred detecta el stack del proyecto, la sesión activa, el handoff pendiente y si falta mapa brownfield',
-          'Decide si toca next, map-codebase, discuss, quick, feature, fix, spike, audit, verify o progress',
-          'Si la ruta correcta es operativa, la resuelve antes de abrir un equipo multiagente',
-          'Solo compone agentes cuando de verdad toca un flujo de ejecución',
-        ],
-      },
-      {
-        category: 'Brownfield',
-        color: 'var(--cyan)',
-        background: 'rgba(78,201,201,0.08)',
-        title: 'Entrar en un repo existente',
-        command: '/alfred-dev:map-codebase checkout',
-        steps: [
-          'Alfred analiza README, manifiestos, estructura principal y zonas sensibles sin tocar código de producto',
-          'Genera docs/project/codebase-map.md con dominios, entrypoints, hotspots, pruebas, despliegue y riesgos',
-          'Deja docs/project/current.md con lectura operativa y siguiente comando recomendado',
-          'A partir de ahí feature, fix, spike y audit ya no arrancan a ciegas',
-        ],
-      },
-      {
-        category: 'Refinado',
-        color: 'var(--gold)',
-        background: 'rgba(201,169,110,0.08)',
-        title: 'Aterrizar una idea antes de construir',
-        command: '/alfred-dev:discuss nuevo onboarding para equipos',
-        steps: [
-          'Alfred clarifica problema real, actor principal, alcance y supuestos antes de hablar de implementación',
-          'Persiste el refinado en docs/project/discovery.md y actualiza docs/project/current.md',
-          'Si la idea ya está madura, recomienda feature o quick; si faltan datos técnicos, spike',
-          'Evita abrir PRD, arquitectura o desarrollo antes de tiempo',
-        ],
-      },
-      {
-        category: 'Cambio pequeño',
-        color: 'var(--blue)',
-        background: 'rgba(91,156,245,0.08)',
-        title: 'Resolver algo pequeño sin abrir toda la maquinaria',
-        command: '/alfred-dev:quick corregir copy del checkout y su test',
-        steps: [
-          'Quick abre una sesión ligera con dos fases: ejecución acotada y validación rápida',
-          'El senior-dev cambia solo la superficie tocada y actualiza los tests necesarios',
-          'QA y seguridad revisan regresión local y riesgos obvios sin convertirlo en una auditoría global',
-          'El siguiente paso esperado queda explícito: /alfred-dev:verify',
-        ],
-      },
-      {
-        category: 'Continuidad',
-        color: 'var(--green)',
-        background: 'rgba(78,201,144,0.08)',
-        title: 'Saber qué toca ahora',
-        command: '/alfred-dev:next',
-        steps: [
-          'Prioriza sesión activa, handoff pendiente, UAT pendiente o brownfield sin mapear',
-          'Si la salida es inequívoca, ejecuta la ruta correcta sin ofrecer un menú genérico',
-          'Si hay trabajo a retomar, muestra flujo, fase actual, gate pendiente y siguiente acción concreta',
-          'Si no hay nada vivo, sugiere el siguiente flujo razonable para el estado real del proyecto',
-        ],
-      },
-      {
-        category: 'Continuidad',
-        color: 'var(--purple)',
-        background: 'rgba(160,126,232,0.08)',
-        title: 'Pausar y retomar sin perder el hilo',
-        command: '/alfred-dev:pause',
-        steps: [
-          'Pause guarda handoff en .claude/alfred-handoff.json y docs/project/handoff.md',
-          'Resume reutiliza estado e handoff para volver exactamente al punto en que se dejó el trabajo',
-          'No abre una iteración nueva ni empuja gates por su cuenta: primero deja claro qué toca',
-          'Sirve igual para sesiones largas de feature que para quick o trabajo interrumpido',
-        ],
-      },
-      {
-        category: 'Verificación',
-        color: 'var(--red)',
-        background: 'rgba(229,86,79,0.08)',
-        title: 'Cerrar la aceptación manual',
-        command: '/alfred-dev:verify aprobado smoke manual correcto',
-        steps: [
-          'Verify prepara o actualiza la UAT del entregable actual en .claude/alfred-uat.json y docs/project/uat.md',
-          'Separa claramente los tests automáticos de la validación humana final',
-          'Registra si la UAT queda pendiente, aprobada o rechazada, junto con la nota principal',
-          'Si la validación falla, el siguiente paso operativo vuelve a quedar visible en current/uat',
-        ],
-      },
-      {
-        category: 'Project management',
-        color: 'var(--magenta)',
-        background: 'rgba(214,106,214,0.08)',
-        title: 'Ver el estado real del proyecto',
-        command: '/alfred-dev:progress',
-        steps: [
-          'Progress expone la capa operativa de SonIA: progreso general, kanban, bloqueos y trazabilidad',
-          'Resume el flujo activo o el handoff pendiente sin reabrir el trabajo en curso',
-          'Muestra huecos de trazabilidad y el estado de la UAT si existe',
-          'Cierra con el siguiente comando recomendado para seguir avanzando',
-        ],
-      },
-      {
-        category: 'Project management',
-        color: 'var(--magenta)',
-        background: 'rgba(214,106,214,0.08)',
-        title: 'Tener un standup diario sin abrir GitHub ni releer docs',
-        command: '/alfred-dev:standup',
-        steps: [
-          'Standup resume foco actual, tareas en curso, bloqueos, evidencia reciente y recomendación operativa',
-          'Lee el kanban de SonIA, el estado de continuidad y la UAT pendiente o aprobada',
-          'Sirve como briefing rápido antes de seguir trabajando o delegar una tarea',
-          'No modifica el tablero: solo hace visible lo importante',
-        ],
-      },
-      {
-        category: 'Project management',
-        color: 'var(--magenta)',
-        background: 'rgba(214,106,214,0.08)',
-        title: 'Validar la salud operativa antes de seguir',
-        command: '/alfred-dev:validate',
-        steps: [
-          'Validate revisa backlog, in-progress, blocked y done buscando IDs duplicados o tareas sin metadatos básicos',
-          'Contrasta trazabilidad, evidencia, UAT y artefactos clave como progress.md o traceability.md',
-          'Si existe sync local con GitHub, también detecta desalineaciones entre tareas e issues',
-          'Devuelve un checklist accionable para corregir el tablero antes de seguir avanzando',
-        ],
-      },
-      {
-        category: 'Project management',
-        color: 'var(--text-muted)',
-        background: 'rgba(110,115,138,0.08)',
-        title: 'Ejecutar SonIA Sync con GitHub',
-        command: '/alfred-dev:sync-github owner/repo',
-        wide: true,
-        image: {
-          src: '/screenshots/sonia-sync-github.png',
-          alt: 'Vista de SonIA Sync en GitHub Issues con el issue paraguas y las tareas sincronizadas',
-          caption: 'SonIA Sync reflejando backlog, trabajo en curso, bloqueos y el issue paraguas en GitHub Issues.',
-        },
-        steps: [
-          'Lee el tablero local y crea o actualiza issues para backlog, trabajo en curso, bloqueos y tareas terminadas',
-          'Asegura labels de Alfred y un issue paraguas de SonIA Sync con el resumen global',
-          'Guarda el mapping local en .claude/alfred-github-sync.json y un resumen humano en docs/project/github-sync.md',
-          'GitHub actúa como espejo colaborativo: la verdad sigue estando en docs/project y SQLite',
-        ],
-      },
-      {
-        category: 'Contexto',
-        color: 'var(--gold)',
-        background: 'rgba(201,169,110,0.08)',
-        title: 'Buscar contexto sin explorar medio repo',
-        command: '/alfred-dev:search login social',
-        steps: [
-          'Search cruza discovery, current, handoff, UAT, kanban y memoria persistente en una sola consulta',
-          'Devuelve coincidencias de artefactos operativos y decisiones históricas con su origen visible',
-          'Es especialmente útil para saber por qué se tomó una decisión o dónde quedó apuntado un bloqueo',
-          'Evita abrir manualmente varios Markdown o consultar SQLite por separado',
-        ],
-      },
-      {
-        category: 'Memoria',
-        color: 'var(--blue)',
-        background: 'rgba(84,196,255,0.08)',
-        title: 'Abrir la memoria viva del proyecto',
-        command: '/alfred-dev:memory-ui',
-        wide: true,
-        steps: [
-          'Levanta una UI local en el navegador sobre la SQLite real del proyecto, sin duplicar la fuente de verdad',
-          'Muestra overview, timeline, decisiones, commits, búsqueda y salud del almacén en una sola pantalla',
-          'Mezcla memoria persistente con señales operativas de current, progress, traceability y kanban cuando existen',
-          'Se refresca sola mientras Alfred sigue trabajando, así que sirve como panel vivo del proyecto',
-        ],
-      },
-      {
-        category: 'Sistema de diseño',
-        color: 'var(--purple)',
-        background: 'rgba(160,126,232,0.08)',
-        title: 'Cerrar el sistema de diseño antes de construir',
-        command: '/alfred-dev:feature nueva app de finanzas personales',
-        wide: true,
-        image: {
-          src: '/screenshots/selina-style-direction.svg',
-          alt: 'Selina enseñando una galería de sistemas de diseño y tres propuestas finalistas en el navegador',
-          caption: 'Selina parte de 10 sistemas de diseño base, reduce la decisión a tres finalistas comparables y cierra la gate con docs/style-direction.md antes de que el architect diseñe un solo componente.',
-        },
-        steps: [
-          'Selina lee el PRD aprobado, detecta el stack (framework, componentes, contexto del producto) y decide qué familias del catálogo de 10 sistemas merecen entrar en la ronda final',
-          'Puede enseñar primero la galería base y después genera tres propuestas HTML en pantalla completa: cada una con tipografía, paleta, densidad y personalidad claramente distinta',
-          'El usuario elige en el navegador; Selina registra la elección y genera docs/style-direction.md con el sistema de diseño ya aterrizado',
-          'Architect, senior-dev, ux-reviewer, copywriter y seo-specialist leen ese artefacto como referencia de diseño para el resto del flujo',
-          'La fase se salta automáticamente en proyectos sin interfaz de usuario',
-        ],
-      },
-      {
-        category: 'Calidad',
-        color: 'var(--red)',
-        background: 'rgba(229,86,79,0.08)',
-        title: 'Análisis con SonarQube',
-        command: '/alfred-dev:audit',
-        steps: [
-          'El security-officer comprueba si Docker está instalado; si no, pide permiso al usuario para instalarlo',
-          'Levanta SonarQube con Docker automáticamente y espera a que esté listo',
-          'Configura el proyecto, ejecuta el scanner y espera los resultados',
-          'Traduce los hallazgos (bugs, vulnerabilidades, code smells) en un informe con correcciones propuestas',
-          'Limpia el contenedor al terminar: no deja nada corriendo',
-        ],
-      },
-      {
-        category: 'Datos',
-        color: 'var(--orange)',
-        background: 'rgba(232,164,74,0.08)',
-        title: 'Diseñar y migrar una base de datos',
-        command: '/alfred-dev:feature añadir sistema de suscripciones con pagos',
-        steps: [
-          'El data-engineer diseña el esquema normalizado con constraints e índices',
-          'Genera el script de migración con rollback obligatorio (ida y vuelta)',
-          'El architect valida la integración con el ORM y el resto del stack',
-          'Se ejecuta la migración, se verifican las tablas y se pasan los tests de integración',
-        ],
-      },
-      {
-        category: 'GitHub',
-        color: 'var(--text-muted)',
-        background: 'rgba(110,115,138,0.08)',
-        title: 'Configurar y publicar un repositorio',
-        command: '/alfred-dev:ship',
-        steps: [
-          'El github-manager verifica que gh CLI está instalado y autenticado; si no, guía el proceso',
-          'Configura branch protection, labels, issue templates y .gitignore optimizado',
-          'Crea la PR con descripción estructurada, labels y asignación de reviewers',
-          'Genera la release con versionado semántico, changelog categorizado y artefactos adjuntos',
-        ],
-      },
-      {
-        category: 'SEO + Copy',
-        color: 'var(--green)',
-        background: 'rgba(78,201,144,0.08)',
-        title: 'Optimizar una landing page',
-        command: '/alfred-dev:audit',
-        steps: [
-          'El seo-specialist audita meta tags, Open Graph, canonical y datos estructurados JSON-LD',
-          'Ejecuta Lighthouse y prioriza las mejoras por impacto en Core Web Vitals',
-          'El copywriter revisa los textos: ortografía (tildes primero), claridad, tono y CTAs',
-          'Se genera un informe conjunto con correcciones listas para aplicar',
-        ],
-      },
-      {
-        category: 'UX',
-        color: '#ff69b4',
-        background: 'rgba(255,105,180,0.08)',
-        title: 'Auditoría de accesibilidad y usabilidad',
-        command: '/alfred-dev:audit',
-        steps: [
-          'El ux-reviewer ejecuta una auditoría WCAG 2.1 AA por los 4 principios (perceptible, operable, comprensible, robusto)',
-          'Aplica las 10 heurísticas de Nielsen al flujo principal del usuario',
-          'Identifica puntos de fricción, edge cases y pasos innecesarios en cada flujo',
-          'Genera un informe con severidad (0-4) y propuesta de mejora para cada hallazgo',
-        ],
-      },
-      {
-        category: 'Rendimiento',
-        color: 'var(--purple)',
-        background: 'rgba(160,126,232,0.08)',
-        title: 'Optimizar el rendimiento',
-        command: '/alfred-dev:spike la API tarda 3 segundos en responder',
-        steps: [
-          'El performance-engineer ejecuta profiling de CPU y memoria para localizar cuellos de botella',
-          'Analiza queries lentas con EXPLAIN y propone índices o reestructuración',
-          'Ejecuta benchmarks antes y después con métricas reales (p50, p95, p99)',
-          'Si hay frontend, analiza el bundle size y propone tree-shaking o code splitting',
-        ],
-      },
-      {
-        category: 'Automático',
-        color: 'var(--cyan)',
-        background: 'rgba(78,201,201,0.08)',
-        title: 'Protección en segundo plano',
-        wide: true,
-        description: 'Sin necesidad de ejecutar ningún comando, Alfred vigila automáticamente tu sesión de trabajo mediante hooks que se activan en cada operación relevante.',
-        steps: [
-          'Guardia de secretos -- bloquea la escritura de API keys, tokens o contraseñas en el código',
-          'Quality gate -- verifica que los tests pasen después de cada cambio significativo',
-          'Verificación de evidencia -- registra cada ejecución de tests como evidencia verificable, impidiendo afirmaciones sin pruebas',
-          'Vigilancia de dependencias -- detecta nuevas librerías y notifica al auditor de seguridad',
-          'Guardia ortográfico -- detecta palabras castellanas sin tilde al escribir o editar ficheros',
-          'Captura de memoria -- registra automáticamente eventos del flujo de trabajo en la memoria persistente',
-          'Captura de commits -- detecta cada git commit y registra SHA, autor y ficheros en la memoria',
-          'Contexto protegido -- las decisiones críticas sobreviven a la compactación de contexto',
-          'Informe de sesión -- al cerrar una sesión completada se genera un resumen en docs/alfred-reports/ con fases, evidencia y artefactos',
-        ],
-      },
-      {
-        category: 'Autonomía',
-        color: 'var(--green)',
-        background: 'rgba(78,201,126,0.08)',
-        title: 'Modo autopilot',
-        command: '/alfred-dev:config',
-        steps: [
-          'Se activa configurando la autonomía del proyecto; no existe un flag mágico por comando',
-          'El flujo completo se ejecuta sin intervención: las gates de usuario se aprueban automáticamente',
-          'Las gates automáticas (tests) y de seguridad se siguen evaluando normalmente',
-          'El despliegue a producción mantiene confirmación humana obligatoria incluso en autopilot',
-          'Si una gate automática falla, el loop iterativo reintenta hasta 5 veces antes de escalar',
-        ],
-      },
+      { category: 'Conversacional', color: 'var(--gold)', background: 'rgba(201,169,110,0.08)', title: 'Sin memorizar slashes', command: 'el login peta con eñes', steps: ['prompt-route clasifica la frase como fix', 'Alfred entra en diagnóstico TDD', 'No hace falta escribir /alfred-dev:fix si la señal es clara'] },
+      { category: 'Desarrollo', color: 'var(--blue)', background: 'rgba(91,156,245,0.08)', title: 'Feature completa', command: '/alfred-dev:feature sistema de notificaciones push', steps: ['Product Owner cierra el PRD', 'Selina solo si hay UI', 'Architect + Security, TDD, QA, docs, entrega'] },
+      { category: 'Corrección', color: 'var(--red)', background: 'rgba(229,86,79,0.08)', title: 'Corregir un bug', command: '/alfred-dev:fix el login falla con tildes', steps: ['Reproduce y aísla la causa', 'Test que falla, corrección mínima', 'QA y seguridad revisan regresión'] },
+      { category: 'Investigación', color: 'var(--purple)', background: 'rgba(160,126,232,0.08)', title: 'Spike', command: '/alfred-dev:spike REST frente a gRPC', steps: ['Exploración sin compromiso', 'Hallazgos y ADR si hay que decidir'] },
+      { category: 'Auditoría', color: 'var(--orange)', background: 'rgba(232,164,74,0.08)', title: 'Auditar', command: '/alfred-dev:audit', steps: ['Cuatro ejes en paralelo', 'SonarQube solo si el usuario lo decide', 'Informe priorizado'] },
+      { category: 'Entrega', color: 'var(--green)', background: 'rgba(78,201,144,0.08)', title: 'Ship', command: '/alfred-dev:ship', steps: ['Hygiene: UAT y docs vivos', 'Changelog y empaquetado', 'Deploy con confirmación humana'] },
+      { category: 'Brownfield', color: 'var(--cyan)', background: 'rgba(78,201,201,0.08)', title: 'Repo existente', command: '/alfred-dev:map-codebase', steps: ['Mapa persistente en docs/project/', 'Luego feature o fix no arrancan a ciegas'] },
+      { category: 'Continuidad', color: 'var(--green)', background: 'rgba(78,201,144,0.08)', title: 'Pausar y retomar', command: '/alfred-dev:pause', steps: ['Handoff JSON + Markdown', '/alfred-dev:retomar o «sigue donde lo dejé»'] },
+      { category: 'Estado', color: 'var(--magenta)', background: 'rgba(214,106,214,0.08)', title: 'Qué hay en curso', command: '/alfred-dev:progress', steps: ['Kanban, bloqueos, UAT, trazabilidad', 'Absorbe standup, blocked y validate'] },
+      { category: 'UAT', color: 'var(--red)', background: 'rgba(229,86,79,0.08)', title: 'Aceptación humana', command: '/alfred-dev:uat', steps: ['Separa tests automáticos de la validación humana', 'pending / approved / rejected'] },
+      { category: 'Memoria', color: 'var(--blue)', background: 'rgba(84,196,255,0.08)', title: 'Memory UI', command: '/alfred-dev:memory-ui', wide: true, steps: ['Visor GET en localhost sobre la SQLite real', 'No importa git log', 'SessionEnd la apaga'] },
+      { category: 'Visual', color: 'var(--purple)', background: 'rgba(160,126,232,0.08)', title: 'Selina', command: '/alfred-dev:feature app con UI', wide: true, image: { src: '/screenshots/selina-style-direction.svg', alt: 'Selina mostrando propuestas visuales', caption: 'Tres finalistas y docs/style-direction.md antes de implementar.' }, steps: ['Tres propuestas en el navegador', 'El usuario elige', 'Architect lee esa dirección'] },
+      { category: 'GitHub', color: 'var(--text-muted)', background: 'rgba(110,115,138,0.08)', title: 'Espejo de tablero', command: '/alfred-dev:sync-github owner/repo', wide: true, image: { src: '/screenshots/sonia-sync-github.png', alt: 'Tablero local reflejado en GitHub Issues', caption: 'GitHub es espejo. La verdad sigue en docs/project y SQLite.' }, steps: ['Proyecta el tablero local con gh', 'No hay agente github-manager'] },
+      { category: 'Automático', color: 'var(--cyan)', background: 'rgba(78,201,201,0.08)', title: 'Lo que corre solo', wide: true, description: 'Hooks registrados. Sin Ralph, sin compactación, sin corrector de tildes.', steps: ['secret-guard bloquea secretos (fail-closed)', 'dangerous-command-guard bloquea rm -rf / y similares', 'quality-gate y evidence-guard vigilan tests', 'prompt-route sugiere ruta sin slash', 'activity-capture registra Write/Edit/Bash y prompts', 'session-end cierra Memory UI y escribe el cierre'] },
+      { category: 'Autonomía', color: 'var(--green)', background: 'rgba(78,201,126,0.08)', title: 'Autopilot honesto', command: '/alfred-dev:ajustes', steps: ['No hay flag mágico por comando', 'Autoaprueba solo gates de usuario', 'Tests, seguridad y deploy humano siguen'] },
     ],
   },
 
-  // ----------------------------------------------------------------
-  // Memoria persistente
-  // ----------------------------------------------------------------
-
   memory: {
     sectionLabel: 'Memoria persistente por proyecto',
-    title: 'Memoria persistente',
-    descriptionHtml: 'Alfred Dev recuerda decisiones, commits e iteraciones entre sesiones. La memoria se almacena en una base de datos SQLite local dentro de cada proyecto, sin dependencias externas ni servicios remotos. Desde v0.2.3: etiquetas, estado y relaciones entre decisiones, auto-captura de commits, filtros avanzados y export/import.',
+    title: 'Memoria local, MCP oficial, UI GET',
+    descriptionHtml: 'SQLite en <code>.claude/alfred-memory.db</code>. FastMCP si el paquete <code>mcp</code> está instalado. Memory UI no importa el historial de Git.',
     traceability: {
-      title: 'Trazabilidad completa',
-      descriptionHtml: 'Cada decisión queda enlazada con el problema que la originó, los commits que la implementaron y la validación que la confirmó. Todo referenciable con IDs verificables.',
+      title: 'Trazabilidad',
+      descriptionHtml: 'Problema, decisión, commit y validación con IDs citables.',
       nodes: [
         { label: 'Problema', color: 'var(--purple)', background: 'rgba(160,126,232,0.08)', borderColor: 'rgba(160,126,232,0.15)' },
         { label: 'Decisión [D#id]', color: 'var(--gold)', background: 'rgba(201,169,110,0.08)', borderColor: 'rgba(201,169,110,0.15)' },
@@ -1211,141 +389,73 @@ const data: PageData = {
       ],
     },
     cards: [
-      {
-        title: 'Base de datos local',
-        descriptionHtml: 'SQLite con modo WAL para escrituras concurrentes. Almacena decisiones, commits, iteraciones y eventos en <code>.claude/alfred-memory.db</code> dentro de cada proyecto. Permisos 0600 por defecto.',
-      },
-      {
-        title: 'Búsqueda inteligente',
-        descriptionHtml: 'Texto completo con FTS5 cuando está disponible, con fallback automático a LIKE para entornos sin extensión FTS. Busca en títulos de decisiones, razones, alternativas descartadas, mensajes de commit y eventos con contenido.',
-      },
-      {
-        title: 'Captura automática',
-        descriptionHtml: 'Un único hook unificado (<code>activity-capture.py</code>) captura todo automáticamente: eventos del flujo (iteraciones, fases), commits de Git (SHA, mensaje, autor, ficheros) y actividad de herramientas. Dispatch interno según el tipo de evento.',
-      },
-      {
-        title: 'Servidor MCP integrado',
-        descriptionHtml: '15 herramientas accesibles desde cualquier agente vía MCP stdio: buscar, registrar, consultar iteraciones, estadísticas, gestión de iteraciones, ciclo de vida de decisiones, validación de integridad, export/import. Sin dependencias externas.',
-      },
-      {
-        title: 'Contexto de sesión',
-        descriptionHtml: 'Al iniciar cada sesión, se inyectan las decisiones relevantes: si hay iteración activa, las de esa iteración; si no, las 5 últimas globales. Un hook PreCompact protege estas decisiones durante la compactación de contexto.',
-      },
-      {
-        title: 'Seguridad integrada',
-        descriptionHtml: 'Sanitización de secretos con los mismos patrones que secret-guard.sh: API keys, tokens, JWT, cadenas de conexión y claves privadas se redactan antes de almacenarse. Permisos 0600 en el fichero de base de datos.',
-      },
+      { title: 'SQLite local', descriptionHtml: 'WAL, FTS5, permisos 0600. Nada sale del proyecto.' },
+      { title: 'MCP oficial', descriptionHtml: '15 tools. Arranca con FastMCP si <code>mcp</code> está instalado; si no, el servidor compatible sigue ahí.' },
+      { title: 'Captura acotada', descriptionHtml: '<code>activity-capture.py</code> en UserPromptSubmit y PostToolUse (Write/Edit/Bash). No está en Stop ni PreCompact.' },
+      { title: 'Briefing de sesión', descriptionHtml: 'SessionStart inyecta estado, última decisión y ADRs. No llama a GitHub.' },
+      { title: 'Cierre', descriptionHtml: 'SessionEnd escribe <code>.claude/alfred-last-cierre.md</code> si hubo sesión o evidencia.' },
+      { title: 'Secretos', descriptionHtml: 'Misma sanitización que <code>secret-guard.py</code> antes de persistir.' },
     ],
     librarian: {
-      title: 'El Bibliotecario',
-      subtitle: 'Agente opcional -- memoria del proyecto',
+      title: 'Consulta: MCP y Memory UI',
+      subtitle: 'No hay agente Bibliotecario',
       descriptionHtml: [
-        'El Bibliotecario es el agente que responde consultas históricas sobre el proyecto. A diferencia de otros agentes que trabajan sobre el código actual, este se centra en el <em>por qué</em> de las decisiones pasadas: qué se decidió, cuándo, qué alternativas se descartaron y qué commits implementaron cada decisión. Desde v0.2.3 también gestiona el ciclo de vida de las decisiones (estado, etiquetas, relaciones), valida la integridad de la memoria y permite exportar decisiones a Markdown o importar desde Git y ADRs.',
-        'Tiene una regla infranqueable: <strong>siempre cita las fuentes</strong>. Cada afirmación incluye referencias verificables con formato <code>[D#42]</code> para decisiones, <code>[C#a1b2c3d]</code> para commits y <code>[I#7]</code> para iteraciones. Si no encuentra evidencia, lo dice en lugar de inventar.',
+        'Las consultas van por las tools MCP o por <code>/alfred-dev:memory-ui</code>. Si no hay evidencia, se dice. Las citas usan <code>[D#id]</code>, <code>[C#sha]</code>, <code>[I#id]</code>.',
+        'Memory UI es un visor GET en localhost. No importa git log. Si la memoria está vacía, se ve vacía.',
       ],
       example: {
-        label: 'Ejemplo de consulta:',
-        question: '> Por qué usamos SQLite en lugar de PostgreSQL para la memoria?',
-        answerHtml: 'Se eligió SQLite porque el requisito era cero dependencias externas <span style="color: var(--gold);">[D#12]</span>. La alternativa de PostgreSQL se descartó por requerir un servicio externo corriendo <span style="color: var(--gold);">[D#12, alternativas]</span>. La implementación se hizo en el commit <span style="color: var(--green);">[C#1833e83]</span> dentro de la iteración <span style="color: var(--blue);">[I#3]</span>.',
+        label: 'Ejemplo:',
+        question: '> Por qué SQLite y no PostgreSQL?',
+        answerHtml: 'Porque el requisito era cero servicios externos <span style="color: var(--gold);">[D#12]</span>. Implementado en <span style="color: var(--green);">[C#1833e83]</span>.',
       },
-      activationHtml: '<strong>Activación:</strong> se habilita desde <strong style="color: var(--blue);">/alfred-dev:config</strong> en la sección de memoria persistente. Una vez activo, Alfred le delega automáticamente las consultas históricas que surjan durante cualquier flujo.',
+      activationHtml: '<strong>Activación:</strong> <code>/alfred-dev:ajustes</code>, sección memoria. El primer arranque puede sembrarla a <code>enabled: true</code>.',
     },
     faq: [
-      {
-        question: 'Dónde se almacenan los datos?',
-        answerHtml: 'En el fichero <code>.claude/alfred-memory.db</code> dentro de la raíz de cada proyecto. Es un fichero SQLite local, no se envía nada a servicios externos. Añádelo a <code>.gitignore</code> si no quieres versionarlo.',
-      },
-      {
-        question: 'La memoria se activa sola?',
-        answerHtml: 'No. La activación es explícitamente opcional. Se habilita desde <strong>/alfred-dev:config</strong> en la sección de memoria. Si no la activas, no se crea la base de datos ni se captura nada.',
-      },
-      {
-        question: 'Qué pasa con los secretos?',
-        answerHtml: 'Todo el contenido pasa por la misma sanitización que usa el hook secret-guard.sh antes de almacenarse. Claves de API, tokens, JWT, cadenas de conexión y cabeceras de clave privada se redactan automáticamente. El fichero de base de datos tiene permisos 0600 (solo lectura/escritura para el propietario).',
-      },
-      {
-        question: 'Puedo borrar la memoria?',
-        answerHtml: 'Sí. Basta con eliminar el fichero <code>.claude/alfred-memory.db</code>. También puedes desactivar la memoria desde <strong>/alfred-dev:config</strong>: los datos existentes se conservan pero dejan de consultarse y no se capturan nuevos eventos.',
-      },
+      { question: 'Dónde se guardan los datos?', answerHtml: 'En <code>.claude/alfred-memory.db</code> del proyecto. No hay servicio remoto.' },
+      { question: 'Se activa sola?', answerHtml: 'El primer SessionStart puede sembrar <code>memoria.enabled: true</code>. Después manda lo que pongas en <code>/alfred-dev:ajustes</code>.' },
+      { question: 'Qué pasa con los secretos?', answerHtml: 'Pasan por <code>core/secrets.py</code>, los mismos patrones que el hook. El fichero queda en 0600.' },
+      { question: 'Puedo borrar la memoria?', answerHtml: 'Sí: borra el <code>.db</code> o pon <code>enabled: false</code>. Memory UI no rellena huecos con git log.' },
     ],
   },
-
-  // ----------------------------------------------------------------
-  // Instalacion
-  // ----------------------------------------------------------------
 
   install: {
     sectionLabel: 'Primeros pasos',
     title: 'Instalación',
-    description: 'Un comando en la terminal y listo. Compatible con macOS, Linux y Windows. El instalador es idempotente: ejecutarlo de nuevo actualiza la copia instalada y deja Alfred Dev como instalación global de usuario.',
+    description: 'Un comando. Scope user. El script 0.7.0 no pisa ~/.claude/skills ni crea /alfred. Hoy GitHub main aún puede servir otra versión.',
     tabs: [
-      {
-        id: 'macos',
-        label: 'macOS',
-        command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requisitos:</strong> Python 3.10+, Claude Code reciente con plugins/skills/hooks/MCP.<br>Tras la instalación, ejecuta <strong>/reload-plugins</strong> y luego <strong>/alfred</strong> o <strong>/alfred-dev:help</strong>. Si Claude avisa por MCP/caché o el plugin no aparece, reinicia Claude Code.',
-      },
-      {
-        id: 'linux',
-        label: 'Linux',
-        command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash',
-        requirementsHtml: '<strong>Requisitos:</strong> Python 3.10+, Claude Code reciente con plugins/skills/hooks/MCP.<br>Tras la instalación, ejecuta <strong>/reload-plugins</strong> y luego <strong>/alfred</strong> o <strong>/alfred-dev:help</strong>. Si Claude avisa por MCP/caché o el plugin no aparece, reinicia Claude Code.',
-      },
-      {
-        id: 'windows',
-        label: 'Windows',
-        command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex',
-        requirementsHtml: '<strong>Requisitos:</strong> PowerShell 5.1+ (preinstalado en Windows 10/11), Python 3.10+, Claude Code reciente con plugins/skills/hooks/MCP.<br>Tras la instalación, ejecuta <strong>/reload-plugins</strong> y luego <strong>/alfred</strong> o <strong>/alfred-dev:help</strong>. Si Claude avisa por MCP/caché o el plugin no aparece, reinicia Claude Code.<br>Alternativa: también puedes usar el instalador bash con WSL o Git Bash.',
-      },
+      { id: 'macos', label: 'macOS', command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash', requirementsHtml: '<strong>Requisitos:</strong> Python 3.10+, Claude Code con plugins/skills/hooks/MCP.<br>Luego <strong>/reload-plugins</strong> y <strong>/alfred-dev:alfred</strong>.' },
+      { id: 'linux', label: 'Linux', command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash', requirementsHtml: '<strong>Requisitos:</strong> Python 3.10+, Claude Code con plugins/skills/hooks/MCP.<br>Luego <strong>/reload-plugins</strong> y <strong>/alfred-dev:alfred</strong>.' },
+      { id: 'windows', label: 'Windows', command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex', requirementsHtml: '<strong>Requisitos:</strong> PowerShell 5.1+, Python 3.10+, Claude Code reciente.<br>Luego <strong>/reload-plugins</strong> y <strong>/alfred-dev:alfred</strong>.' },
     ],
     uninstall: {
       title: 'Desinstalación',
-      description: 'Para eliminar Alfred Dev completamente, ejecuta el desinstalador de tu plataforma. Limpia todos los registros y directorios del plugin.',
+      description: 'Quita plugin, marketplace y caché. No borra .claude/ del proyecto.',
       cards: [
-        {
-          title: 'macOS / Linux',
-          command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.sh | bash',
-          ariaLabel: 'Copiar comando de desinstalación para macOS y Linux',
-        },
-        {
-          title: 'Windows (PowerShell)',
-          command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.ps1 | iex',
-          ariaLabel: 'Copiar comando de desinstalación para Windows',
-        },
+        { title: 'macOS / Linux', command: 'curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.sh | bash', ariaLabel: 'Copiar desinstalación macOS/Linux' },
+        { title: 'Windows (PowerShell)', command: 'irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.ps1 | iex', ariaLabel: 'Copiar desinstalación Windows' },
       ],
     },
     update: {
       title: 'Actualización',
-      descriptionHtml: 'Desde Claude Code, ejecuta <strong style="color: var(--blue);">/alfred-dev:update</strong> para comprobar si hay una versión nueva. Si la hay, Alfred te muestra las notas de la release, detecta el scope instalado y te pregunta si quieres actualizar. En scope de usuario, local, project o desconocido usa el instalador idempotente, limpia rastros heredados <code>local</code>/<code>project</code> del propio plugin y normaliza a instalación global de usuario.',
+      descriptionHtml: '<strong>/alfred-dev:update</strong> compara semver y ofrece un menú. Normaliza a <code>--scope user</code>. No recrea un alias /alfred.',
     },
   },
-
-  // ----------------------------------------------------------------
-  // Configuracion
-  // ----------------------------------------------------------------
 
   config: {
     sectionLabel: 'Personalización',
     title: 'Configuración por proyecto',
-    descriptionHtml: 'Cada proyecto tiene su propio fichero de configuración en <code>.claude/alfred-dev.local.md</code>. La primera sesión puede generarlo automáticamente con una configuración usable para CLI; después <strong>/alfred-dev:config</strong> te deja revisarlo y ampliarlo con autonomía, agentes opcionales y memoria persistente.',
+    descriptionHtml: '<code>.claude/alfred-dev.local.md</code>. Primera sesión lo siembra. Después <strong>/alfred-dev:ajustes</strong>.',
     yamlExample: `---
 autonomia:
-  producto: autonomo
-  arquitectura: autonomo
-  desarrollo: autonomo
-  calidad: autonomo
+  producto: interactivo
+  arquitectura: interactivo
+  desarrollo: semi-autonomo
+  calidad: semi-autonomo
   documentacion: autonomo
-  entrega: autonomo
+  entrega: semi-autonomo
 
 agentes_opcionales:
-  data-engineer: false
-  ux-reviewer: false
-  performance-engineer: false
-  github-manager: false
-  seo-specialist: false
-  copywriter: false
-  librarian: false
-  i18n-specialist: false
+  lucius: false
 
 memoria:
   enabled: true
@@ -1361,167 +471,121 @@ personalidad:
   insultar_malas_practicas: true
 ---`,
     blocks: [
-      {
-        title: 'Bootstrap automático',
-        descriptionHtml: 'Si un proyecto no tiene configuración local, Alfred puede generar <code>.claude/alfred-dev.local.md</code> automáticamente en la primera sesión para que el plugin sea usable desde CLI sin preparación manual.',
-      },
-      {
-        title: 'Autonomía operativa',
-        descriptionHtml: 'Controla cuánta intervención necesitas en cada fase o tramo del flujo. En modo autónomo Alfred reduce entrevistas innecesarias y prioriza continuidad, brownfield y siguiente paso antes de abrir un equipo completo.',
-      },
-      {
-        title: 'Agentes opcionales',
-        descriptionHtml: 'Activa solo los que necesites. Alfred analiza tu proyecto y te sugiere cuáles habilitar según el stack detectado. Se pueden cambiar en cualquier momento sin reinstalar.',
-      },
-      {
-        title: 'Memoria y contexto',
-        descriptionHtml: 'La memoria persistente y los artefactos de continuidad conviven: decisiones en SQLite por proyecto, handoff, UAT y documentos operativos en <code>docs/project/</code> para retomar trabajo sin perder el hilo.',
-      },
-      {
-        title: 'Personalidad',
-        descriptionHtml: 'El nivel de sarcasmo va de 0 (profesional formal) a 5 (ácido con cariño). Las celebraciones y los avisos por malas prácticas se activan por separado.',
-      },
+      { title: 'Bootstrap', descriptionHtml: 'SessionStart crea el fichero si falta. No reescribe settings.json.' },
+      { title: 'Autonomía', descriptionHtml: 'Por fase. Autopilot solo autoaprueba gates de usuario.' },
+      { title: 'Lucius', descriptionHtml: 'Único opcional. Codex CLI, solo lectura.' },
+      { title: 'Memoria y docs', descriptionHtml: 'SQLite + docs/project y docs/adr.' },
+      { title: 'Personalidad', descriptionHtml: 'Sarcasmo 1-5. Las celebraciones van aparte.' },
     ],
   },
-
-  // ----------------------------------------------------------------
-  // FAQ
-  // ----------------------------------------------------------------
 
   faq: {
-    header: {
-      label: 'Preguntas frecuentes',
-      title: 'FAQ',
-    },
+    header: { label: 'Preguntas frecuentes', title: 'FAQ' },
     items: [
       {
-        svgContent: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+        svgContent: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/>',
+        question: 'Cómo se instala?',
+        answerHtml: '<p>macOS y Linux:</p><pre>curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.sh | bash</pre><p>Windows:</p><pre>irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/install.ps1 | iex</pre><p>Hace falta Claude CLI en el PATH, Python 3.10+ y <code>~/.claude</code>. El script instala <code>alfred-dev@alfred-dev</code> con <code>--scope user</code>. Luego <code>/reload-plugins</code> y <code>/alfred-dev:alfred</code>.</p>',
+      },
+      {
+        svgContent: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>',
+        question: 'Ese curl instala ya la 0.7.0?',
+        answerHtml: '<p>No necesariamente. El comando lee la rama <code>main</code> de GitHub, no esta landing.</p><p>Al generar esta página, <code>main</code> publica <strong>{{GITHUB_MAIN_VERSION}}</strong> ({{GITHUB_MAIN_COMMANDS}} comandos). Esta página describe <strong>{{LANDING_VERSION}}</strong>.</p><p>Si no coinciden, el one-liner instala lo de <code>main</code>. La 0.6.1 crea el alias <code>/alfred</code>. La 0.7.0 no lo crea y no pisa <code>~/.claude/skills</code>.</p>',
+      },
+      {
+        svgContent: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>',
+        question: 'Qué hace falta?',
+        answerHtml: '<p>Claude Code reciente con plugins, skills, hooks y MCP. Python 3.10 o superior. El instalador busca <code>python3.13</code> … <code>python3.10</code> si <code>python3</code> es viejo.</p><p>El paquete Python <code>mcp</code> activa FastMCP; si no está, el servidor de memoria sigue con el fallback. En Windows: PowerShell 5.1+ o bash en WSL.</p>',
+      },
+      {
+        svgContent: '<rect x="2" y="3" width="20" height="14" rx="2"/>',
         question: 'Funciona en Windows?',
-        answerHtml: 'Sí. Alfred Dev tiene un instalador nativo en PowerShell para Windows 10/11. También puedes usar el instalador bash a través de WSL (Windows Subsystem for Linux) o Git Bash. Requiere Claude Code reciente y Python 3.10+ también en Windows.',
+        answerHtml: '<p>Sí. Usa <code>install.ps1</code>, o <code>install.sh</code> dentro de WSL.</p><p>Después: <code>/reload-plugins</code> y <code>/alfred-dev:alfred</code>. Si el inventario no carga, reinicia Claude Code.</p>',
       },
       {
-        svgContent: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
-        question: 'Qué dependencias necesita?',
-        answerHtml: 'En macOS, Linux y Windows necesita <strong>Claude Code reciente</strong> y <strong>Python 3.10+</strong>. En Windows, PowerShell 5.1+ viene preinstalado en Windows 10/11.',
+        svgContent: '<polyline points="23 4 23 10 17 10"/>',
+        question: 'Cómo se actualiza y se desinstala?',
+        answerHtml: '<p>Actualizar: <code>/alfred-dev:update</code> compara semver con GitHub Releases y, si aceptas, relanza el instalador de <code>main</code> con <code>--scope user</code>. En 0.7.0 no recrea <code>/alfred</code>.</p><p>Desinstalar:</p><pre>curl -fsSL https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.sh | bash</pre><pre>irm https://raw.githubusercontent.com/686f6c61/alfred-dev/main/uninstall.ps1 | iex</pre><p>Quita plugin, marketplace, caché y el alias <code>/alfred</code> de 0.6.1 si queda. No borra el <code>.claude/</code> del proyecto.</p>',
       },
       {
-        svgContent: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
-        question: 'Cómo actualizo el plugin?',
-        answerHtml: 'Ejecuta <strong>/alfred-dev:update</strong> dentro de Claude Code. El comando consulta GitHub, compara versiones, detecta el scope instalado con <code>claude plugin list --json</code> y te muestra las notas de la release si hay versión nueva. En scope de usuario, local, project o desconocido usa el instalador idempotente, limpia rastros heredados <code>local</code>/<code>project</code> y normaliza a instalación global de usuario; en scope managed te indica que lo gestione el administrador.',
+        svgContent: '<path d="M3 12h18"/>',
+        question: 'Hay un alias /alfred?',
+        answerHtml: '<p>En 0.7.0 no. La entrada es <code>/alfred-dev:alfred</code>. El instalador 0.7.0 no escribe en <code>~/.claude/skills</code>.</p><p>Si vienes de 0.6.1, el desinstalador borra ese alias solo cuando el fichero lleva la marca «Alfred Dev global alias».</p>',
       },
       {
-        svgContent: '<path d="M3 12h18"/><path d="M12 3v18"/><path d="M5 5l14 14"/>',
-        question: 'Qué hace Alfred en un repo ya existente?',
-        answerHtml: 'Si el proyecto ya tiene código pero todavía no tiene mapa persistente, Alfred prioriza <strong>/alfred-dev:map-codebase</strong>. Analiza la estructura, detecta stack, entrypoints, riesgos y convenciones, y deja el contexto en <code>docs/project/codebase-map.md</code> y <code>docs/project/current.md</code> antes de abrir <strong>feature</strong>, <strong>fix</strong>, <strong>spike</strong> o <strong>audit</strong>.',
+        svgContent: '<polyline points="4 17 10 11 4 5"/>',
+        question: 'Tengo que aprender los 18 comandos?',
+        answerHtml: '<p>No. Escribe en castellano. <code>prompt-route</code> sugiere la ruta (fix, quick, retomar, ship…).</p><p>SessionStart inyecta el briefing. Si quieres el slash, empieza por <code>/alfred-dev:alfred</code>.</p>',
       },
       {
-        svgContent: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
-        question: 'Cuándo uso quick y cuándo feature?',
-        answerHtml: '<strong>/alfred-dev:quick</strong> es para cambios pequeños, locales y acotados: dos fases ligeras, tests de la zona tocada y revisión rápida de seguridad. <strong>/alfred-dev:feature</strong> es para funcionalidad nueva o cambios que cruzan varios dominios, necesitan PRD, decisiones de arquitectura o un ciclo completo de producto a entrega.',
+        svgContent: '<path d="M8 6h13"/>',
+        question: 'Cuándo quick y cuándo feature?',
+        answerHtml: '<p><code>quick</code> es un cambio acotado: dos fases, tests y seguridad, menos ceremonia.</p><p><code>feature</code> si cruza producto, arquitectura o varias fases (hasta 7, con Selina solo si hay frontend).</p>',
       },
       {
-        svgContent: '<path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/>',
-        question: 'Puedo pausar y retomar una sesión?',
-        answerHtml: 'Sí. <strong>/alfred-dev:pause</strong> guarda el estado actual en <code>.claude/alfred-handoff.json</code> y <code>docs/project/handoff.md</code>. Después puedes volver con <strong>/alfred-dev:resume</strong> o pedir simplemente <strong>/alfred-dev:next</strong>. Alfred recupera el flujo, la fase actual, la gate pendiente y el siguiente paso concreto.',
+        svgContent: '<path d="M12 2v4"/>',
+        question: 'Cómo retomo una sesión?',
+        answerHtml: '<p><code>/alfred-dev:retomar</code> o «sigue donde lo dejé». Lee <code>.claude/alfred-handoff.json</code>.</p><p>Antes de cortar: <code>/alfred-dev:pause</code>. El tablero está en <code>/alfred-dev:progress</code>.</p>',
       },
       {
-        svgContent: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
-        question: 'Qué es verify y por qué existe si ya hay tests?',
-        answerHtml: '<strong>/alfred-dev:verify</strong> cierra la validación humana del entregable. Los tests automáticos dicen si el sistema funciona técnicamente; verify registra si cumple la expectativa del usuario en UAT. El estado queda trazado como <em>pendiente</em>, <em>aprobado</em> o <em>rechazado</em> en <code>.claude/alfred-uat.json</code> y <code>docs/project/uat.md</code>.',
+        svgContent: '<path d="M3 3v18h18"/>',
+        question: 'Qué son progress y uat?',
+        answerHtml: '<p><code>progress</code> resume kanban, bloqueos, UAT y trazabilidad. Sustituye standup, blocked, in-progress y validate como slash públicos.</p><p><code>uat</code> registra la aceptación humana: <code>pending</code>, <code>approved</code> o <code>rejected</code>. Los tests automáticos no cierran la UAT.</p>',
       },
       {
-        svgContent: '<path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/>',
-        question: 'Qué muestra progress?',
-        answerHtml: '<strong>/alfred-dev:progress</strong> hace visible el estado operativo del proyecto: flujo activo o handoff, progreso general, kanban, bloqueos, trazabilidad y estado de UAT. No abre trabajo nuevo ni fuerza una gate; sirve para decidir qué toca ahora con contexto real.',
+        svgContent: '<rect x="3" y="4" width="18" height="12" rx="2"/>',
+        question: 'Dónde está la memoria?',
+        answerHtml: '<p>En <code>.claude/alfred-memory.db</code> del proyecto (SQLite, WAL, FTS5, 0600). Hay 15 tools MCP.</p><p><code>/alfred-dev:memory-ui</code> abre un visor GET en localhost. No importa el git log. <code>/alfred-dev:memory-ui stop</code> o SessionEnd la cierran. Si está vacía, se ve vacía.</p>',
       },
       {
-        svgContent: '<path d="M4 19h16"/><path d="M4 5h16"/><path d="M9 9h11"/><path d="M9 15h7"/><circle cx="6" cy="9" r="1"/><circle cx="6" cy="15" r="1"/>',
-        question: 'Qué añade SonIA en 0.4.5?',
-        answerHtml: 'Ahora SonIA no solo mantiene el tablero por debajo. <strong>/alfred-dev:standup</strong>, <strong>/alfred-dev:blocked</strong>, <strong>/alfred-dev:in-progress</strong>, <strong>/alfred-dev:validate</strong> y <strong>/alfred-dev:search</strong> convierten ese estado en una interfaz operativa diaria desde CLI.',
+        svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>',
+        question: 'Cuántos agentes y skills hay?',
+        answerHtml: '<p>10 agentes: 8 de núcleo, Selina si hay frontend y Lucius bajo demanda (<code>/alfred-dev:ajustes</code>).</p><p>11 skills planas. Las de efectos (SonarQube, estilo, incidente, PR) piden invocación explícita. 18 comandos publicados <code>/alfred-dev:*</code>.</p>',
       },
       {
-        svgContent: '<path d="M9 19c-5 1.5-5-2.5-7-3"/><path d="M15 22v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 19 4.77 5.07 5.07 0 0 0 18.91 1S17.73.65 15 2.48a13.38 13.38 0 0 0-6 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77 5.44 5.44 0 0 0 3.5 8.53c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>',
-        question: 'GitHub pasa a ser la fuente de verdad del proyecto?',
-        answerHtml: 'No. <strong>/alfred-dev:sync-github</strong> ejecuta SonIA Sync como espejo colaborativo para issues. La fuente de verdad sigue siendo local: <code>docs/project/</code>, <code>.claude/</code> y la memoria SQLite del proyecto.',
+        svgContent: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+        question: 'Está alineado con el SDK de Anthropic?',
+        answerHtml: '<p>Sí. <code>plugin.json</code> lista los 18 comandos, las skills se descubren solas, los hooks van como <code>command</code> + <code>args</code> y el MCP es oficial.</p><p>No hay alias global <code>/alfred</code>, ni Stop hook tipo Ralph, ni reescritura de <code>settings.json</code> para instalar.</p>',
       },
       {
-        svgContent: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M7 9h10"/><path d="M7 12h6"/>',
-        question: 'Qué es Memory UI y cuándo debería usarla?',
-        answerHtml: '<strong>/alfred-dev:memory-ui</strong> abre una vista local en navegador sobre la SQLite real del proyecto. Úsala cuando quieras entender rápido qué ha pasado, qué decisiones hay registradas, qué commits se han capturado, cómo va la continuidad o si la memoria está sana, sin leer la base de datos a mano.',
+        svgContent: '<line x1="12" y1="1" x2="12" y2="23"/>',
+        question: 'Cuánto cuesta y en qué idioma responde?',
+        answerHtml: '<p>El plugin es MIT. El coste es el de tu sesión de Claude Code.</p><p>Responde en castellano de España por defecto. Se ajusta en <code>/alfred-dev:ajustes</code>.</p>',
       },
       {
-        svgContent: '<path d="M12 2l4 4-4 4-4-4 4-4z"/><path d="M4 12l4 4-4 4-4-4 4-4z"/><path d="M20 12l4 4-4 4-4-4 4-4z"/><path d="M12 10v4"/><path d="M10 12h4"/>',
-        question: 'Tengo que configurar Alfred a mano la primera vez?',
-        answerHtml: 'No necesariamente. En la primera sesión Alfred puede bootstrappear <code>.claude/alfred-dev.local.md</code> con una configuración base usable para CLI. Después puedes afinar autonomía, agentes opcionales, memoria o personalidad con <strong>/alfred-dev:config</strong>.',
+        svgContent: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>',
+        question: 'Qué pasa si una gate falla?',
+        answerHtml: '<p>El flujo se para y explica el motivo.</p><p>Autopilot solo autoaprueba gates de usuario configuradas. No salta tests, seguridad, evidencia ni la confirmación humana de despliegue.</p>',
       },
       {
-        svgContent: '<path d="M19.439 5.56a5.018 5.018 0 0 0-7.09 0L11 6.91l-1.35-1.35a5.013 5.013 0 0 0-7.09 7.09L11 21.09l8.44-8.44a5.013 5.013 0 0 0 0-7.09z"/>',
-        question: 'Es compatible con otros plugins de Claude Code?',
-        answerHtml: 'Está diseñado para convivir con otros plugins instalados: usa su propio namespace (<code>alfred-dev</code>) y no escribe configuración de terceros. Si otro plugin define comandos o hooks similares, revisa el inventario con <code>/plugin</code> y <code>/reload-plugins</code>.',
-      },
-      {
-        svgContent: '<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>',
-        question: 'Qué son los agentes opcionales?',
-        answerHtml: 'Son 9 agentes especializados que puedes activar según las necesidades de tu proyecto: <strong>data-engineer</strong> (bases de datos), <strong>ux-reviewer</strong> (accesibilidad y usabilidad), <strong>performance-engineer</strong> (rendimiento), <strong>github-manager</strong> (gestión de repositorios), <strong>seo-specialist</strong> (posicionamiento web), <strong>copywriter</strong> (textos y ortografía), <strong>El Bibliotecario</strong> (memoria persistente: consultas históricas sobre decisiones, commits e iteraciones del proyecto), <strong>La Intérprete</strong> (internacionalización: auditoría de claves i18n, detección de cadenas hardcodeadas, validación de formatos por locale) y <strong>Lucius</strong> (segunda opinión técnica externa con Codex CLI).<br><br>Alfred analiza tu proyecto y te sugiere cuáles activar. También puedes gestionarlos manualmente con <strong>/alfred-dev:config</strong>. Se activan o desactivan sin reinstalar nada.',
-      },
-      {
-        svgContent: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
-        question: 'Cuántos skills tiene en total?',
-        answerHtml: 'Alfred mantiene 62 skills distribuidos en 15 dominios. Los 7 dominios originales (producto, arquitectura, desarrollo, seguridad, calidad, DevOps, documentación) cubren el ciclo de vida estándar. Los 6 dominios de agentes opcionales (datos, UX, rendimiento, GitHub, SEO, marketing) amplían el alcance del plugin, Selina añade un dominio específico de sistema de diseño y el dominio Alfred empaqueta la fuente oculta del alias <code>/alfred</code>, que el instalador materializa como skill personal global. Desde la v0.5.2, el manifiesto público de Claude Code publica el catálogo completo por dominios; los skills más delicados siguen visibles, pero forzados a activación manual explícita.',
-      },
-      {
-        svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
-        question: 'Qué es la memoria persistente?',
-        answerHtml: 'Es una base de datos SQLite local que almacena las decisiones, commits e iteraciones de cada proyecto. Se activa opcionalmente desde <strong>/alfred-dev:config</strong>. Una vez activa, Alfred registra automáticamente los eventos del flujo de trabajo y el agente <strong>El Bibliotecario</strong> puede responder consultas históricas como "por qué se eligió esta arquitectura" o "qué se hizo en la última iteración", citando siempre las fuentes. Los datos no salen del proyecto: todo queda en <code>.claude/alfred-memory.db</code>.',
-      },
-      {
-        svgContent: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
-        question: 'Cuánto cuesta?',
-        answerHtml: 'Nada. Alfred Dev es software libre bajo licencia MIT. Puedes usarlo, modificarlo y distribuirlo sin restricciones. El código fuente está en GitHub (github.com/686f6c61/alfred-dev).',
-      },
-      {
-        svgContent: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-        question: 'En qué idioma responde Alfred?',
-        answerHtml: 'Castellano de España por defecto: tanto las respuestas como los comentarios de código, commits y documentación generada. Puedes ajustar este comportamiento con <strong>/alfred-dev:config</strong>.',
-      },
-      {
-        svgContent: '<polyline points="20 6 9 17 4 12"/>',
-        question: 'Qué versiones de Claude Code soporta?',
-        answerHtml: 'Alfred Dev 0.6.1 se audita contra Claude Code 2.1.186 y requiere una CLI reciente con sistema de plugins, skills, hooks y MCP. Si tu instalación puede instalar plugins pero falla en modo headless o autenticación, actualiza Claude Code con <code>claude update</code>, reinicia la sesión y repite la verificación.',
-      },
-      {
-        svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-        question: 'Puedo contribuir al proyecto?',
-        answerHtml: 'Sí. Alfred Dev es software libre bajo licencia MIT. Puedes reportar bugs, proponer mejoras o enviar pull requests en el repositorio de GitHub (github.com/686f6c61/alfred-dev/issues). Las contribuciones de código, documentación, traducciones o simplemente reportar problemas son bienvenidas.',
-      },
-      {
-        svgContent: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-        question: 'Los agentes consumen tokens adicionales?',
-        answerHtml: 'Sí, como cualquier interacción con Claude. Los agentes son instrucciones de sistema que guían las respuestas, así que consumen contexto proporcional a su complejidad. Alfred mantiene prompts acotados y los agentes opcionales solo se cargan si los activas, pero el coste real depende del flujo, el proyecto y el modelo usado.',
-      },
-      {
-        svgContent: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
-        question: 'Puedo usar Alfred en un monorepo?',
-        answerHtml: 'Alfred detecta el stack del directorio de trabajo actual, no del repositorio raíz. Si ejecutas Claude Code desde la raíz de un monorepo, detectará todos los lenguajes presentes. Si lo ejecutas desde un paquete concreto, se centrará en ese paquete. La memoria persistente es por directorio de trabajo, así que cada paquete puede tener su propia base de datos de decisiones si lo configuras así.',
-      },
-      {
-        svgContent: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-        question: 'Qué pasa si una quality gate falla?',
-        answerHtml: 'El flujo se detiene en la fase actual y Alfred te explica qué no se cumple: tests que fallan, vulnerabilidades detectadas, documentación incompleta o lo que corresponda. Tienes tres opciones: corregir el problema y reintentar la gate, pedir a Alfred que te ayude a resolverlo (por ejemplo, con <strong>/alfred-dev:fix</strong> si es un bug), o continuar manualmente asumiendo el riesgo. Alfred nunca avanza en silencio si una gate no se supera.',
-      },
-      {
-        svgContent: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
-        question: 'Funciona con OpenCode?',
-        answerHtml: 'Todavía no como soporte publicado. Alfred Dev 0.6.1 está auditado para Claude Code. OpenCode tiene su propio sistema de plugins y la compatibilidad se mantiene en investigación; si llega una versión compatible, se anunciará como release separada en el repositorio.',
+        svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>',
+        question: 'Puedo contribuir?',
+        answerHtml: '<p>Sí. MIT. Issues y PRs en <a href="https://github.com/686f6c61/alfred-dev" target="_blank" rel="noopener noreferrer">github.com/686f6c61/alfred-dev</a>.</p>',
       },
     ],
   },
 
-  // ----------------------------------------------------------------
-  // Changelog
-  // ----------------------------------------------------------------
-
   changelog: [
+    {
+      version: '0.7.0',
+      date: '2026-08-15',
+      added: [
+        '<strong>Alineado con el SDK de Claude Code</strong>: comandos, skills planas, hooks en exec form y MCP oficial (FastMCP) si el paquete <code>mcp</code> está instalado.',
+        '<strong>Habla sin slash</strong>: SessionStart inyecta el protocolo y <code>prompt-route.py</code> sugiere fix, quick o retomar cuando escribes en castellano.',
+        '<strong>Documentación viva</strong>: índice, arquitectura, compliance, threat-model y ADRs en el repo del usuario, sincronizados por fase.',
+        '<strong>Cierre de sesión</strong>: SessionEnd escribe <code>.claude/alfred-last-cierre.md</code> y detiene Memory UI.',
+      ],
+      changed: [
+        'Superficie pública recortada: 10 agentes, 11 skills planas, 18 comandos. Entrada <code>/alfred-dev:alfred</code>.',
+        'Continuidad pública: <code>alfred</code>, <code>progress</code> y <code>retomar</code>. <code>config</code> pasa a <code>ajustes</code>, <code>verify</code> a <code>uat</code>.',
+        'Sin stop-hook Ralph y sin reescribir <code>settings.json</code>. Secret-guard cubre Write, Edit, Bash y tools MCP.',
+        'Agent Teams solo si el usuario ya lo tiene activo. Memory UI no importa el historial de Git.',
+      ],
+      removed: [
+        'Alias global <code>/alfred</code> y el catálogo 0.6 de 9 opcionales (data-engineer, github-manager, librarian y el resto).',
+        'Comandos públicos <code>next</code>, <code>search</code>, <code>standup</code>, <code>validate</code>, <code>help</code> y <code>status</code>.',
+      ],
+    },
     {
       version: '0.6.1',
       date: '2026-06-22',
@@ -1976,23 +1040,23 @@ personalidad:
   // Footer
   // ----------------------------------------------------------------
 
+
   footer: {
-    version: 'v0.6.1',
+    version: 'v0.7.0',
     license: 'MIT License',
     githubUrl: 'https://github.com/686f6c61/alfred-dev',
     docsUrl: 'https://github.com/686f6c61/alfred-dev/tree/main/docs',
-    tagline: 'Plugin de Claude Code. 19 agentes. Catalogo publicado de 62 skills. 13 hooks. 25 comandos namespaced + /alfred. 10 sistemas de diseño con Selina. Memory UI local. Memoria persistente. Continuidad operativa. PM operacional. De la idea a producción.',
-    slogan: 'Ingeniería de software automatizada para Claude Code.',
+    tagline: 'Plugin de Claude Code. 10 agentes. 11 skills planas. 10 hooks. 18 comandos /alfred-dev:*. MCP oficial. Memory UI local. Gates con evidencia. Sin alias global /alfred.',
+    slogan: 'Ingeniería de software con método para Claude Code.',
     disclaimer: {
       linkText: 'Descargo de responsabilidad',
       title: 'Descargo de responsabilidad',
       closeText: 'Cerrar',
       contentHtml: `
         <p><strong>Alfred Dev</strong> es un proyecto independiente de codigo abierto. No esta afiliado, patrocinado ni respaldado por <strong>Anthropic</strong> ni por el equipo de <strong>Claude Code</strong>.</p>
-        <p>El software se proporciona «tal cual» (<em>as is</em>), sin garantias de ningun tipo, expresas o implicitas, incluyendo, entre otras, las garantias de comerciabilidad, adecuacion a un proposito particular y no infraccion. En ningun caso los autores o titulares de los derechos de autor seran responsables de reclamaciones, danos u otras responsabilidades derivadas del uso del software.</p>
-        <p>Alfred Dev ejecuta agentes que pueden crear, modificar y eliminar ficheros, ejecutar comandos en terminal e interactuar con servicios externos (GitHub, Docker, etc.). El usuario es responsable de revisar y aprobar las acciones que el plugin propone antes de su ejecucion.</p>
-        <p>Los agentes utilizan modelos de lenguaje de gran tamano (LLM) que pueden generar contenido incorrecto, incompleto o inadecuado. Las salidas del plugin deben tratarse como sugerencias que requieren revision humana, no como resultados definitivos.</p>
-        <p>El uso de este plugin esta sujeto a la <a href="https://github.com/686f6c61/alfred-dev/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">licencia MIT</a> del proyecto.</p>
+        <p>El software se proporciona tal cual, sin garantias. El usuario revisa y aprueba las acciones que el plugin propone.</p>
+        <p>Los agentes usan modelos de lenguaje que pueden equivocarse. Trata las salidas como sugerencias.</p>
+        <p>Uso sujeto a la <a href="https://github.com/686f6c61/alfred-dev/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">licencia MIT</a>.</p>
       `,
     },
   },
