@@ -1,3 +1,7 @@
+<!-- yarkr:badges:start -->
+[![Indexed on Yarkr](https://api.yarkr.com/functions/v1/api/api/v1/badges/repos/686f6c61/alfred-dev/version.svg)](https://yarkr.com/arks/686f6c61/alfred-dev)
+<!-- yarkr:badges:end -->
+
 ```text
 █████╗ ██╗     ███████╗██████╗ ███████╗██████╗     ██████╗ ███████╗██╗   ██╗
 ██╔══██╗██║     ██╔════╝██╔══██╗██╔════╝██╔══██╗    ██╔══██╗██╔════╝██║   ██║
@@ -477,3 +481,37 @@ MIT
 ---
 
 [Documentación completa](https://alfred-dev.com/) | [Código fuente](https://github.com/686f6c61/alfred-dev)
+
+<!-- yarkr:install:start -->
+## Install with Yarkr
+
+This repo is indexed on [Yarkr](https://yarkr.com/arks/686f6c61/alfred-dev) as the ark [686f6c61/alfred-dev](https://yarkr.com/arks/686f6c61/alfred-dev), so its skills install into Claude Code, Codex, Cursor and other agent harnesses with one command.
+
+### CLI
+
+Install the whole ark, which Yarkr keeps equal to this repo:
+
+```bash
+npx yarkr-cli sync 686f6c61/alfred-dev
+```
+
+Or add individual skills:
+
+```bash
+npx yarkr-cli add skill:686f6c61/alfred-dev/acceptance-criteria
+npx yarkr-cli add skill:686f6c61/alfred-dev/accessibility-audit
+npx yarkr-cli add skill:686f6c61/alfred-dev/alfred
+```
+
+No Node.js? `curl -fsSL https://yarkr.com/install.sh | sh` (macOS, Linux) or `irm https://yarkr.com/install.ps1 | iex` (Windows PowerShell) installs `yarkr` as a standalone binary; then type `yarkr` in place of `npx yarkr-cli`.
+
+### MCP
+
+Connect your agent to the ark over MCP:
+
+```bash
+npx yarkr-cli mcp add 686f6c61/alfred-dev
+```
+
+Or point any MCP client at `https://api.yarkr.com/functions/v1/api/mcp/o/686f6c61/alfred-dev`.
+<!-- yarkr:install:end -->
